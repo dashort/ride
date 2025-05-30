@@ -205,52 +205,104 @@ function createMenu() {
     .addToUi();
 }
 
-
-
 /**
  * Fetches the HTML content of the shared navigation menu.
- * @param {string} [currentPage=''] The name of the current page to set the active link.
+ * @param {string} [currentPage=''] The name of the current page (e.g., 'dashboard', 'requests') - now handled by client-side JS.
  * @return {string} The HTML content of the navigation menu.
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    console.log(`Getting navigation HTML for page: ${currentPage}`);
-    
-    // Get the navigation template
-    let navHtml = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
-    
-    // Apply active class to the current page
-    if (currentPage) {
-      // Create a more specific replacement pattern
-      const pattern = `data-page="${currentPage}"`;
-      const replacement = `data-page="${currentPage}" class="nav-button active"`;
-      
-      // Replace class="nav-button" with class="nav-button active" for the matching page
-      navHtml = navHtml.replace(
-        new RegExp(`class="nav-button"\\s+data-page="${currentPage}"`, 'g'),
-        replacement
-      );
-      
-      console.log(`✅ Active class applied for page: ${currentPage}`);
-    }
-    
-    console.log(`Navigation HTML generated (${navHtml.length} chars)`);
+    const navHtml = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
     return navHtml;
-    
   } catch (error) {
     logError('Error getting navigation HTML', error);
-    console.error('Navigation error:', error);
-    
-    // Return a fallback navigation
     return `
+      <style>
+        .navigation {
+          display: flex;
+          gap: 1rem;
+          margin: 2rem auto;
+          padding: 0 2rem;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: center;
+          max-width: 1200px;
+        }
+        .nav-button {
+          padding: 0.75rem 1.5rem;
+          background: rgba(255, 255, 255, 0.9);
+          border: none;
+          border-radius: 25px;
+          color: #2c3e50;
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .nav-button:hover, .nav-button.active {
+          background: #3498db;
+          color: white;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+      </style>
       <nav class="navigation">
-        <a href="?page=dashboard" class="nav-button">📊 Dashboard</a>
-        <a href="?page=requests" class="nav-button">📋 Requests</a>
-        <a href="?page=assignments" class="nav-button">🏍️ Assignments</a>
-        <a href="?page=notifications" class="nav-button">📱 Notifications</a>
-        <a href="?page=reports" class="nav-button">📊 Reports</a>
+        <a href="#" class="nav-button" onclick="navigateToPage('dashboard')">📊 Dashboard</a>
+        <a href="#" class="nav-button" onclick="navigateToPage('requests')">📋 Requests</a>
+        <a href="#" class="nav-button" onclick="navigateToPage('assignments')">🏍️ Assignments</a>
+        <a href="#" class="nav-button" onclick="navigateToPage('notifications')">📱 Notifications</a>
+        <a href="#" class="nav-button" onclick="navigateToPage('reports')">📊 Reports</a>
       </nav>
-    `;
+      <script>
+        function navigateToPage(page) {
+          const baseUrl = window.location.href.split('?')[0];
+          if (page === 'dashboard') {
+            window.location.href = baseUrl;
+          } else {
+            window.location.href = baseUrl + '?page=' + page;
+          }
+        }
+      </script>
+    `; // Fallback navigation
+  }
+}
+
+/**
+ * Server-side navigation function to handle page routing
+ * Add this function to your Code.js file
+ */
+function getNavigationUrl(page) {
+  try {
+    console.log('🧭 Server-side navigation request for page:', page);
+    
+    // Get the current web app URL
+    const currentUrl = ScriptApp.getService().getUrl();
+    
+    let navigationUrl;
+    if (page === 'dashboard') {
+      navigationUrl = currentUrl;
+    } else {
+      navigationUrl = currentUrl + '?page=' + encodeURIComponent(page);
+    }
+    
+    console.log('🧭 Generated navigation URL:', navigationUrl);
+    
+    return {
+      success: true,
+      url: navigationUrl,
+      page: page
+    };
+    
+  } catch (error) {
+    console.error('🧭 Server navigation error:', error);
+    logError('Error in getNavigationUrl', error);
+    
+    return {
+      success: false,
+      error: error.message,
+      page: page
+    };
   }
 }
 /**
@@ -468,18 +520,10 @@ function doGet(e) {
       case 'reports': pageFileName = 'reports'; break;
     }
     
-    // Create navigation HTML with active page
-    const navigationHtml = `
-<nav class="navigation" style="display: flex; gap: 1rem; margin-bottom: 2rem; padding: 0 2rem; flex-wrap: wrap;">
-  <a href="?page=dashboard" class="nav-button ${page === 'dashboard' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'dashboard' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'dashboard' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📊 Dashboard</a>
-  <a href="?page=requests" class="nav-button ${page === 'requests' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'requests' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'requests' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📋 Requests</a>
-  <a href="?page=assignments" class="nav-button ${page === 'assignments' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'assignments' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'assignments' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">🏍️ Assignments</a>
-  <a href="?page=notifications" class="nav-button ${page === 'notifications' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'notifications' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'notifications' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📱 Notifications</a>
-  <a href="?page=reports" class="nav-button ${page === 'reports' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'reports' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'reports' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📊 Reports</a>
-</nav>
-<style>
-.nav-button:hover { background: #2980b9 !important; color: white !important; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3); }
-</style>`;
+    console.log(`Loading HTML file: ${pageFileName}`);
+    
+    // Get navigation HTML from _navigation.html file
+    const navigationHtml = getNavigationHtml(page);
     
     // Get page content
     const htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
@@ -529,7 +573,12 @@ function doGet(e) {
     }
     
     if (!injected) {
-      console.log('❌ No injection point found, navigation will not appear');
+      console.log('❌ No injection point found, adding navigation at end of body');
+      // Fallback: inject before closing body tag
+      if (pageContent.includes('</body>')) {
+        pageContent = pageContent.replace('</body>', navigationHtml + '\n</body>');
+        console.log('✅ Injected before </body> as fallback');
+      }
     }
     
     console.log(`Final content length: ${pageContent.length}`);
@@ -539,12 +588,15 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       
   } catch (error) {
-    console.log(`❌ doGet error: ${error.message}`);
+    console.error(`❌ doGet error: ${error.message}`);
+    logError('doGet error', error);
+    
     return HtmlService.createHtmlOutput(`
       <html><body style="font-family: Arial; padding: 20px;">
         <h1>⚠️ Error Loading Page</h1>
         <p>Error: ${error.message}</p>
         <p><a href="?" style="color: #3498db;">Return to Dashboard</a></p>
+        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page || 'dashboard'}</p>
       </body></html>
     `);
   }

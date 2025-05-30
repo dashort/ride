@@ -1,21 +1,16 @@
-<nav class="navigation">
-    <a href="?page=dashboard" class="nav-button" data-page="dashboard">📊 Dashboard</a>
-    <a href="?page=requests" class="nav-button" data-page="requests">📋 Requests</a>
-    <a href="?page=assignments" class="nav-button" data-page="assignments">🏍️ Assignments</a>
-    <a href="?page=notifications" class="nav-button" data-page="notifications">📱 Notifications</a>
-    <a href="?page=reports" class="nav-button" data-page="reports">📊 Reports</a>
-</nav>
-
 <style>
 .navigation {
     display: flex;
     gap: 1rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
+    margin: 2rem auto;
     padding: 0 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    max-width: 1200px;
 }
 
-.nav-button {
+.nav-link {
     padding: 0.75rem 1.5rem;
     background: rgba(255, 255, 255, 0.9);
     border: none;
@@ -28,30 +23,109 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.nav-button:hover, .nav-button.active {
+.nav-link:hover, .nav-link.active {
     background: #3498db;
     color: white;
     transform: translateY(-2px);
     box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
-.nav-button.active {
-    background: #2980b9;
-}
-
 /* Mobile responsive */
 @media (max-width: 768px) {
     .navigation {
+        flex-direction: column;
+        gap: 0.75rem;
+        margin: 1.5rem auto;
         padding: 0 1rem;
-        justify-content: center;
     }
     
-    .nav-button {
-        padding: 0.5rem 1rem;
+    .nav-link {
+        width: 100%;
+        max-width: 280px;
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+    }
+}
+
+/* Tablet responsive */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .navigation {
+        justify-content: center;
+        gap: 0.75rem;
+    }
+    
+    .nav-link {
+        padding: 0.7rem 1.25rem;
         font-size: 0.9rem;
     }
 }
 </style>
+
+<nav class="navigation" id="main-navigation">
+    <!-- These are direct URL links that should work in any iframe -->
+    <a href="?" class="nav-link" id="nav-dashboard">📊 Dashboard</a>
+    <a href="?page=requests" class="nav-link" id="nav-requests">📋 Requests</a>
+    <a href="?page=assignments" class="nav-link" id="nav-assignments">🏍️ Assignments</a>
+    <a href="?page=notifications" class="nav-link" id="nav-notifications">📱 Notifications</a>
+    <a href="?page=reports" class="nav-link" id="nav-reports">📊 Reports</a>
+</nav>
+
+<script>
+(function() {
+    'use strict';
+    
+    console.log('🧭 Direct navigation script loaded');
+    
+    // Only handle active state - no navigation interception
+    function setActiveButton() {
+        try {
+            console.log('🧭 Setting active button...');
+            
+            // Get current page from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentPage = urlParams.get('page') || 'dashboard';
+            
+            console.log('🧭 Current page detected as:', currentPage);
+            
+            // Remove active class from all links
+            document.querySelectorAll('.nav-link').forEach(function(link) {
+                link.classList.remove('active');
+            });
+            
+            // Add active class to current page link
+            const activeLink = document.getElementById('nav-' + currentPage);
+            if (activeLink) {
+                activeLink.classList.add('active');
+                console.log('🧭 Set active state for:', currentPage);
+            }
+        } catch (error) {
+            console.log('🧭 Error setting active button:', error);
+        }
+    }
+    
+    // Initialize when DOM is ready
+    function initialize() {
+        try {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', setActiveButton);
+            } else {
+                setActiveButton();
+            }
+            
+            // Also try after delay for dynamic content
+            setTimeout(setActiveButton, 1000);
+        } catch (error) {
+            console.log('🧭 Error initializing navigation:', error);
+        }
+    }
+    
+    initialize();
+    
+    console.log('🧭 Direct navigation script complete');
+})();
+</script>
