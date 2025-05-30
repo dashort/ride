@@ -288,9 +288,46 @@
                 <div id="userRole">User</div>
             </div>
         </div>
-    </header>
 
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
+    </header>
+<!--NAVIGATION_MENU_PLACEHOLDER-->
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('currentUrl').textContent = window.location.href;
+    document.getElementById('windowLocation').textContent = window.location.toString();
+    
+    try {
+        document.getElementById('parentUrl').textContent = window.parent.location.href;
+    } catch(e) {
+        document.getElementById('parentUrl').textContent = 'Cannot access parent: ' + e.message;
+    }
+});
+
+function testNavigation() {
+    console.log('Current URL:', window.location.href);
+    console.log('Trying to navigate to requests...');
+    
+    // Test method 1: Simple search parameter change
+    try {
+        window.location.search = '?page=requests';
+    } catch(e) {
+        console.error('Method 1 failed:', e);
+        
+        // Test method 2: Full URL reconstruction
+        try {
+            const baseUrl = window.location.href.split('?')[0];
+            window.location.href = baseUrl + '?page=requests';
+        } catch(e2) {
+            console.error('Method 2 failed:', e2);
+        }
+    }
+}
+</script>
+
+
+<div class="container">
 
     <div class="container">
         <div class="dashboard-grid">
