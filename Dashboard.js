@@ -151,6 +151,13 @@ function calculateDashboardStatistics() {
   try {
     console.log('📊 Calculating dashboard statistics...');
 
+    // Fetch all necessary raw data once
+    const rawRequestsData = getRequestsData();
+    const rawAssignmentsData = getAssignmentsData();
+    // getActiveRidersCount already fetches riders data internally,
+    // but if we need rawRidersData for other stats, fetch it here:
+    // const rawRidersData = getRidersData(); 
+
     let activeRiders = 0;
     let pendingRequests = 0;
     let todayAssignments = 0;
@@ -158,92 +165,99 @@ function calculateDashboardStatistics() {
     let totalRequests = 0;
     let completedRequests = 0;
 
-    // Get active riders count with error handling
+    // Calculate active riders count
     try {
-      activeRiders = getActiveRidersCount();
+      // getActiveRidersCount uses getRidersData() internally.
+      // If rawRidersData was fetched above, pass it to an optimized getActiveRidersCount if available.
+      activeRiders = getActiveRidersCount(); 
       console.log(`✅ Active riders: ${activeRiders}`);
     } catch (error) {
       console.error('❌ Error getting active riders count:', error);
-      activeRiders = 0;
+      activeRiders = 0; // Fallback
     }
 
-    // Get requests data with error handling
+    // Process requests data
     try {
-      const requestsDataObj = getRequestsData();
-      if (requestsDataObj && requestsDataObj.data) {
-        const requests = requestsDataObj.data;
-        const requestsColMap = requestsDataObj.columnMap;
-
+      if (rawRequestsData && rawRequestsData.data) {
+        const requests = rawRequestsData.data;
+        const requestsColMap = rawRequestsData.columnMap;
         totalRequests = requests.length;
-        
-        completedRequests = requests.filter(row => {
-          try {
-            return getColumnValue(row, requestsColMap, CONFIG.columns.requests.status) === 'Completed';
-          } catch (e) {
-            return false;
-          }
-        }).length;
-        
+
+        completedRequests = requests.filter(row =>
+          getColumnValue(row, requestsColMap, CONFIG.columns.requests.status) === 'Completed'
+        ).length;
+
         pendingRequests = requests.filter(row => {
-          try {
-            const status = getColumnValue(row, requestsColMap, CONFIG.columns.requests.status);
-            return ['New', 'Pending'].includes(status);
-          } catch (e) {
-            return false;
-          }
+          const status = getColumnValue(row, requestsColMap, CONFIG.columns.requests.status);
+          return ['New', 'Pending'].includes(status);
         }).length;
-        
         console.log(`✅ Requests stats - Total: ${totalRequests}, Completed: ${completedRequests}, Pending: ${pendingRequests}`);
+      } else {
+        console.warn('⚠️ No raw requests data found for statistics.');
       }
     } catch (error) {
-      console.error('❌ Error processing requests data:', error);
+      console.error('❌ Error processing requests data for statistics:', error);
     }
 
-    // Get assignments data with error handling
+    // Process assignments data
     try {
-      const assignmentsDataObj = getAssignmentsData();
-      if (assignmentsDataObj && assignmentsDataObj.data) {
-        const assignments = assignmentsDataObj.data;
-        const assignmentsColMap = assignmentsDataObj.columnMap;
+      if (rawAssignmentsData && rawAssignmentsData.data) {
+        const assignments = rawAssignmentsData.data;
+        const assignmentsColMap = rawAssignmentsData.columnMap;
 
         const today = new Date();
-        const todayMillis = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-        const weekFromNowMillis = todayMillis + (7 * 24 * 60 * 60 * 1000);
+        today.setHours(0, 0, 0, 0); // Normalize today's date
+
+        const weekFromNow = new Date(today);
+        weekFromNow.setDate(today.getDate() + 7); // End of the 7-day window
 
         assignments.forEach(row => {
-          try {
-            const eventDate = getColumnValue(row, assignmentsColMap, CONFIG.columns.assignments.eventDate);
-            const riderName = getColumnValue(row, assignmentsColMap, CONFIG.columns.assignments.riderName);
-            const status = getColumnValue(row, assignmentsColMap, CONFIG.columns.assignments.status);
-            
-            // Only count assignments with riders and not cancelled/completed
-            if (!riderName || ['Cancelled', 'Completed', 'No Show'].includes(status)) {
-              return;
-            }
-            
-            if (eventDate instanceof Date && !isNaN(eventDate.getTime())) {
-              const eventDateMillis = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()).getTime();
+          const eventDateValue = getColumnValue(row, assignmentsColMap, CONFIG.columns.assignments.eventDate);
+          const riderName = getColumnValue(row, assignmentsColMap, CONFIG.columns.assignments.riderName);
+          const status = getColumnValue(row, assignmentsColMap, CONFIG.columns.assignments.status);
 
-              if (eventDateMillis === todayMillis) {
+          if (!riderName || ['Cancelled', 'Completed', 'No Show'].includes(status)) {
+            return; // Skip if no rider or terminal status
+          }
+
+          if (eventDateValue) {
+            let eventDate;
+            // Handle different raw date types (Date object, ISO string, or number/serial)
+            if (eventDateValue instanceof Date) {
+              eventDate = eventDateValue;
+            } else if (typeof eventDateValue === 'string' && eventDateValue.includes('T')) {
+              eventDate = new Date(eventDateValue);
+            } else if (typeof eventDateValue === 'number') {
+              // Assuming Excel serial date if it's a number; convert to Date
+              eventDate = new Date((eventDateValue - 25569) * 86400 * 1000);
+            } else {
+              // Try to parse if it's a simple date string, might fail for ambiguous formats
+              eventDate = new Date(eventDateValue); 
+            }
+
+            if (eventDate && !isNaN(eventDate.getTime())) {
+              const normalizedEventDate = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+              
+              if (normalizedEventDate.getTime() === today.getTime()) {
                 todayAssignments++;
               }
-              if (eventDateMillis >= todayMillis && eventDateMillis <= weekFromNowMillis) {
+              // Check if the event date is within the 7-day window (inclusive of today, exclusive of the 8th day)
+              if (normalizedEventDate.getTime() >= today.getTime() && normalizedEventDate.getTime() < weekFromNow.getTime()) {
                 weekAssignments++;
               }
             }
-          } catch (e) {
-            // Skip invalid rows
           }
         });
-        
-        console.log(`✅ Assignment stats - Today: ${todayAssignments}, Week: ${weekAssignments}`);
+        console.log(`✅ Assignment stats - Today: ${todayAssignments}, This week (next 7 days): ${weekAssignments}`);
+      } else {
+        console.warn('⚠️ No raw assignments data found for statistics.');
       }
     } catch (error) {
-      console.error('❌ Error processing assignments data:', error);
+      console.error('❌ Error processing assignments data for statistics:', error);
     }
 
     const stats = {
-      activeRiders: activeRiders,
+      activeRiders,
       pendingRequests: pendingRequests,
       todayAssignments: todayAssignments,
       weekAssignments: weekAssignments,
@@ -289,8 +303,10 @@ function updateRequestsDisplay(filterStatus) {
     // Clear previous requests
     dashSheet.getRange(startRow, 1, maxDisplayRows, 11).clearContent().clearFormat();
 
-    // Get requests data
-    const requests = getFilteredRequestsForWebApp(filterStatus);
+    // Get raw requests data once
+    const rawRequestsData = getRequestsData();
+    // Pass raw data to the filtering and formatting function
+    const requests = getFilteredRequestsForWebApp(rawRequestsData, filterStatus);
 
     if (requests.length === 0) {
       dashSheet.getRange(startRow, 1).setValue('No requests found for this filter.').setFontStyle('italic');
@@ -345,71 +361,64 @@ function updateRequestsDisplay(filterStatus) {
  * @param {string} statusFilter The status to filter requests by ('All', 'New', etc.).
  * @returns {Array<Object>} An array of formatted request objects.
  */
-function getFilteredRequestsForWebApp(statusFilter = 'All') {
+function getFilteredRequestsForWebApp(rawRequestsData, statusFilter = 'All') {
   try {
     console.log(`📋 Getting filtered requests for: ${statusFilter}`);
 
-    // getRequestsData already applies formatting and caching
-    const requestsData = getRequestsData(); 
-    const requests = requestsData.data;
-    const headers = requestsData.headers;
-    const columnMap = requestsData.columnMap;
-
-    if (!requests || requests.length === 0) {
-      console.log('❌ No raw requests data.');
+    if (!rawRequestsData || !rawRequestsData.data || rawRequestsData.data.length === 0) {
+      console.log('❌ No raw requests data provided to getFilteredRequestsForWebApp.');
       return [];
     }
 
+    const requests = rawRequestsData.data;
+    const columnMap = rawRequestsData.columnMap;
+
     const filteredRequests = requests.filter(rowArray => {
-      // Ensure the row is a valid array and has content
       if (!Array.isArray(rowArray) || rowArray.filter(cell => cell !== '').length === 0) {
         return false;
       }
-      
       const requestId = getColumnValue(rowArray, columnMap, CONFIG.columns.requests.id);
-      if (!requestId) return false; // Must have a Request ID
+      if (!requestId) return false;
 
       const status = getColumnValue(rowArray, columnMap, CONFIG.columns.requests.status);
-
-      // Apply status filter
       if (statusFilter !== 'All') {
         return (status || 'New') === statusFilter;
       }
       return true;
     }).map(rowArray => {
-      // Map row array to object using the columnMap for safe access
       const obj = {};
-      for (const key in columnMap) {
-          if (Object.prototype.hasOwnProperty.call(columnMap, key)) {
-              obj[key] = rowArray[columnMap[key]];
-          }
+      // Create an object from the row array using the column map
+      for (const header in columnMap) {
+        if (Object.prototype.hasOwnProperty.call(columnMap, header)) {
+          obj[header] = rowArray[columnMap[header]];
+        }
       }
 
-      // Explicitly pull out and format required fields (redundant due to applyTimeFormatting, but explicit)
+      // Apply formatting functions from Formatting.js
       return {
-          id: obj[CONFIG.columns.requests.id] || '', 
-          requestId: obj[CONFIG.columns.requests.id] || '',
-          date: formatDateForDisplay(obj[CONFIG.columns.requests.date]),
-          requesterName: obj[CONFIG.columns.requests.requesterName] || '',
-          requesterContact: obj[CONFIG.columns.requests.requesterContact] || '',
-          requestType: obj[CONFIG.columns.requests.type] || '',
-          eventDate: formatDateForDisplay(obj[CONFIG.columns.requests.eventDate]),
-          startTime: formatTimeForDisplay(obj[CONFIG.columns.requests.startTime]),
-          endTime: formatTimeForDisplay(obj[CONFIG.columns.requests.endTime]),
-          startLocation: obj[CONFIG.columns.requests.startLocation] || '',
-          endLocation: obj[CONFIG.columns.requests.endLocation] || '',
-          secondaryEndLocation: obj[CONFIG.columns.requests.secondaryLocation] || '',
-          ridersNeeded: obj[CONFIG.columns.requests.ridersNeeded] || 0,
-          specialRequirements: obj[CONFIG.columns.requests.requirements] || '',
-          status: obj[CONFIG.columns.requests.status] || 'New',
-          notes: obj[CONFIG.columns.requests.notes] || '',
-          ridersAssigned: obj[CONFIG.columns.requests.ridersAssigned] || '',
-          courtesy: obj[CONFIG.columns.requests.courtesy] || '',
-          lastUpdated: formatDateTimeForDisplay(obj[CONFIG.columns.requests.lastUpdated]) || ''
+        id: obj[CONFIG.columns.requests.id] || '',
+        requestId: obj[CONFIG.columns.requests.id] || '',
+        date: formatDateForDisplay(obj[CONFIG.columns.requests.date]),
+        requesterName: obj[CONFIG.columns.requests.requesterName] || '',
+        requesterContact: obj[CONFIG.columns.requests.requesterContact] || '',
+        requestType: obj[CONFIG.columns.requests.type] || '',
+        eventDate: formatDateForDisplay(obj[CONFIG.columns.requests.eventDate]),
+        startTime: formatTimeForDisplay(obj[CONFIG.columns.requests.startTime]),
+        endTime: formatTimeForDisplay(obj[CONFIG.columns.requests.endTime]),
+        startLocation: obj[CONFIG.columns.requests.startLocation] || '',
+        endLocation: obj[CONFIG.columns.requests.endLocation] || '',
+        secondaryEndLocation: obj[CONFIG.columns.requests.secondaryLocation] || '',
+        ridersNeeded: obj[CONFIG.columns.requests.ridersNeeded] || 0,
+        specialRequirements: obj[CONFIG.columns.requests.requirements] || '',
+        status: obj[CONFIG.columns.requests.status] || 'New',
+        notes: obj[CONFIG.columns.requests.notes] || '',
+        ridersAssigned: obj[CONFIG.columns.requests.ridersAssigned] || '', // This might need special handling if it's a list
+        courtesy: obj[CONFIG.columns.requests.courtesy] || '',
+        lastUpdated: formatDateTimeForDisplay(obj[CONFIG.columns.requests.lastUpdated]) || ''
       };
     });
 
-    console.log(`✅ Returning ${filteredRequests.length} filtered requests`);
+    console.log(`✅ Returning ${filteredRequests.length} filtered requests for status: ${statusFilter}`);
     return filteredRequests;
 
   } catch (error) {
@@ -422,45 +431,68 @@ function getFilteredRequestsForWebApp(statusFilter = 'All') {
  * Gets requests data with robust ID, Event Date, and Start Time formatting.
  * Used internally, often by dashboard display functions that need prepared values.
  */
-function getFormattedRequestsForDashboard() {
+function getFormattedRequestsForDashboard(rawRequestsData) {
   try {
-    const requestsData = getRequestsData(); // Already returns formatted data
+    if (!rawRequestsData || !rawRequestsData.data || rawRequestsData.data.length === 0) {
+      console.log('❌ No raw requests data provided to getFormattedRequestsForDashboard.');
+      return [];
+    }
 
-    if (!requestsData || requestsData.data.length === 0) return [];
+    const requests = rawRequestsData.data;
+    const columnMap = rawRequestsData.columnMap;
 
     // Filter out rows without a Request ID (likely empty/partial rows)
-    const cleanedRequests = requestsData.data.filter(row => {
-      const requestId = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+    const cleanedRequests = requests.filter(rowArray => {
+      const requestId = getColumnValue(rowArray, columnMap, CONFIG.columns.requests.id);
       return requestId && String(requestId).trim().length > 0;
     });
 
-    const mappedRequests = cleanedRequests.map(row => {
-      // `getColumnValue` will return already formatted values due to `applyTimeFormatting` in `getSheetData`
+    const mappedRequests = cleanedRequests.map(rowArray => {
+      const obj = {};
+      // Create an object from the row array using the column map
+      for (const header in columnMap) {
+        if (Object.prototype.hasOwnProperty.call(columnMap, header)) {
+          obj[header] = rowArray[columnMap[header]];
+        }
+      }
+      
+      // Apply formatting functions from Formatting.js
       return {
-        requestId: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id) || '',
-        date: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.date) || '',
-        requesterName: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requesterName) || '',
-        requestType: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type) || '',
-        eventDate: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate) || '',
-        startTime: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime) || '',
-        endTime: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endTime) || '',
-        startLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startLocation) || '',
-        endLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endLocation) || '',
-        ridersNeeded: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded) || 0,
-        status: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status) || 'New',
-        notes: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.notes) || '',
-        ridersAssigned: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || ''
+        requestId: obj[CONFIG.columns.requests.id] || '',
+        date: formatDateForDisplay(obj[CONFIG.columns.requests.date]),
+        requesterName: obj[CONFIG.columns.requests.requesterName] || '',
+        requestType: obj[CONFIG.columns.requests.type] || '',
+        eventDate: formatDateForDisplay(obj[CONFIG.columns.requests.eventDate]),
+        startTime: formatTimeForDisplay(obj[CONFIG.columns.requests.startTime]),
+        endTime: formatTimeForDisplay(obj[CONFIG.columns.requests.endTime]),
+        startLocation: obj[CONFIG.columns.requests.startLocation] || '',
+        endLocation: obj[CONFIG.columns.requests.endLocation] || '',
+        ridersNeeded: obj[CONFIG.columns.requests.ridersNeeded] || 0,
+        status: obj[CONFIG.columns.requests.status] || 'New',
+        notes: obj[CONFIG.columns.requests.notes] || '',
+        ridersAssigned: obj[CONFIG.columns.requests.ridersAssigned] || '' // May need special handling
       };
     }).sort((a, b) => {
-        // Sort by event date, most recent first (requires valid date strings)
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
-          return 0; // Don't sort if dates are invalid
-        }
-        return dateB.getTime() - dateA.getTime();
+      // Sort by event date, most recent first.
+      // Need to parse formatted dates back to Date objects for reliable sorting.
+      let dateA, dateB;
+      try {
+        // Assuming formatDateForDisplay produces a format parseable by new Date()
+        // e.g., "MM/DD/YYYY" or "ShortMonth DD, YYYY". If not, this parsing needs adjustment.
+        dateA = new Date(a.eventDate); 
+        dateB = new Date(b.eventDate);
+      } catch (e) {
+        // If parsing fails, don't sort these elements relative to each other
+        return 0;
+      }
+
+      if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) {
+        return 0; // Don't sort if dates are invalid after parsing
+      }
+      return dateB.getTime() - dateA.getTime(); // Descending order
     });
 
+    console.log(`✅ Returning ${mappedRequests.length} formatted and sorted requests for dashboard.`);
     return mappedRequests;
 
   } catch (error) {
@@ -487,6 +519,10 @@ function updateRiderScheduleSection() {
       .setBackground('#f2f2f2')
       .setHorizontalAlignment('center');
 
+    // Fetch raw data once
+    const rawAssignmentsData = getAssignmentsData();
+    const rawRidersData = getRidersData(); // getActiveRiders also uses this
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -499,8 +535,9 @@ function updateRiderScheduleSection() {
 
     const headerRow = ['Rider'].concat(
       weekDays.map(day => {
-        const dayName = day.toLocaleDateString('en-US', { weekday: 'short' });
-        const monthDay = day.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+        // Use formatting functions for header display
+        const dayName = formatDateForDisplay(day).split(',')[0]; // e.g., "Mon" from "Mon, Jan 1"
+        const monthDay = `${formatDateForDisplay(day).split(' ')[1]} ${formatDateForDisplay(day).split(' ')[2].replace(',', '')}`; // "Jan 1"
         return `${dayName}\n${monthDay}`;
       })
     );
@@ -519,10 +556,11 @@ function updateRiderScheduleSection() {
     }
     dashSheet.setRowHeight(startRow + 1, 35);
 
-    const activeRidersWithUpcomingAssignments = getAssignedRidersForUpcomingWeek(weekDays);
+    // Pass raw data to helper functions
+    const activeRidersWithUpcomingAssignments = getAssignedRidersForUpcomingWeek(rawRidersData, rawAssignmentsData, weekDays);
 
     if (activeRidersWithUpcomingAssignments.length > 0) {
-      const scheduleGrid = buildCompactRiderScheduleGrid(activeRidersWithUpcomingAssignments, weekDays);
+      const scheduleGrid = buildCompactRiderScheduleGrid(activeRidersWithUpcomingAssignments, rawAssignmentsData, rawRidersData.columnMap, weekDays);
 
       if (scheduleGrid.length > 0) {
         const dataRange = dashSheet.getRange(startRow + 2, startCol, scheduleGrid.length, headerRow.length);
@@ -562,17 +600,22 @@ function updateRiderScheduleSection() {
 
 /**
  * Get active riders who have at least one assignment in the specified week.
+ * @param {Object} rawRidersData Raw data object for riders.
+ * @param {Object} rawAssignmentsData Raw data object for assignments.
  * @param {Date[]} weekDays An array of Date objects representing the days of the week to check.
  * @returns {any[][]} An array of rider data rows who have assignments in the upcoming week.
  */
-function getAssignedRidersForUpcomingWeek(weekDays) {
-  const allActiveRiders = getActiveRiders();
-  const ridersData = getRidersData();
+function getAssignedRidersForUpcomingWeek(rawRidersData, rawAssignmentsData, weekDays) {
+  // Use an optimized getActiveRiders that can accept rawRidersData if available,
+  // or ensure getActiveRiders uses its own efficient fetch if rawRidersData is not passed.
+  const allActiveRiders = getActiveRiders(rawRidersData); // Modify getActiveRiders to accept optional raw data
+  const ridersColMap = rawRidersData.columnMap;
 
   const assignedRiders = allActiveRiders.filter(riderRow => {
-    const riderName = getColumnValue(riderRow, ridersData.columnMap, CONFIG.columns.riders.name);
+    const riderName = getColumnValue(riderRow, ridersColMap, CONFIG.columns.riders.name);
     return weekDays.some(day => {
-      const assignments = getRiderAssignmentsForDate(riderName, day);
+      // Pass rawAssignmentsData to getRiderAssignmentsForDate
+      const assignments = getRiderAssignmentsForDate(riderName, day, rawAssignmentsData);
       return assignments.length > 0;
     });
   });
@@ -583,38 +626,36 @@ function getAssignedRidersForUpcomingWeek(weekDays) {
 /**
  * Builds a compact rider schedule grid for dashboard display.
  * Displays checkmark for single assignment, count for multiple assignments on a day.
- * @param {Array<Object>} activeRiders An array of rider objects.
+ * @param {Array<Object>} activeRiders An array of rider data rows.
+ * @param {Object} rawAssignmentsData Raw data object for assignments.
+ * @param {Object} ridersColMap Column map for riders data.
  * @param {Date[]} weekDays An array of Date objects for the next 7 days.
  * @returns {Array<Array<string>>} The schedule grid data for display.
  */
-function buildCompactRiderScheduleGrid(activeRiders, weekDays) {
+function buildCompactRiderScheduleGrid(activeRiders, rawAssignmentsData, ridersColMap, weekDays) {
   const scheduleGrid = [];
-  const ridersData = getRidersData(); // Fetch once outside the loop
 
   activeRiders.forEach(riderRow => {
-    const riderName = getColumnValue(riderRow, ridersData.columnMap, CONFIG.columns.riders.name);
+    const riderName = getColumnValue(riderRow, ridersColMap, CONFIG.columns.riders.name);
     
-    // Use shorter rider name format (remove titles for space)
     const shortRiderName = riderName.replace(/^(Dep\.|Sgt\.|Lt\.|Capt\.)\s+/i, '');
-
     const scheduleRow = [shortRiderName];
 
     weekDays.forEach(day => {
-      const assignments = getRiderAssignmentsForDate(riderName, day);
+      // Pass rawAssignmentsData to getRiderAssignmentsForDate
+      const assignments = getRiderAssignmentsForDate(riderName, day, rawAssignmentsData);
       const assignmentCount = assignments.length;
       
       if (assignmentCount === 0) {
         scheduleRow.push('');
       } else if (assignmentCount === 1) {
-        scheduleRow.push('✓');
+        scheduleRow.push('✓'); // Checkmark for single assignment
       } else {
-        scheduleRow.push(`${assignmentCount}`);
+        scheduleRow.push(String(assignmentCount)); // Count for multiple assignments
       }
     });
-
     scheduleGrid.push(scheduleRow);
   });
-
   return scheduleGrid;
 }
 

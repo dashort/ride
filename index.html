@@ -290,15 +290,9 @@
         </div>
     </header>
 
-    <div class="container">
-        <nav class="navigation">
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button active">📊 Dashboard</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button">📋 Requests</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button">🏍️ Assignments</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button">📱 Notifications</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button">📊 Reports</a>
-        </nav>
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
 
+    <div class="container">
         <div class="dashboard-grid">
             <!-- Statistics Card -->
             <div class="card">
@@ -387,181 +381,43 @@
     });
 
     function initializeDashboard() {
-        console.log('🔄 Initializing dashboard...');
-        
-        // Load user data first, then load everything else
-        loadUserDataSafely()
-            .then(() => {
-                console.log('✅ User data loaded, loading dashboard data...');
-                return Promise.all([
-                    loadDashboardStatsPromise(),
-                    loadRecentRequestsPromise(),
-                    loadUpcomingAssignmentsPromise()
-                ]);
-            })
-            .then(() => {
-                console.log('✅ All dashboard data loaded successfully');
-            })
-            .catch(error => {
-                console.error('❌ Dashboard initialization failed:', error);
-                setFallbackValues();
-            });
+        console.log('🔄 Initializing dashboard with consolidated data call...');
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handleDashboardDataSuccess)
+                .withFailureHandler(handleDashboardDataFailure)
+                .getPageDataForDashboard();
+        } else {
+            console.log('⚠️ Google Apps Script not available, using fallback data for dashboard.');
+            handleDashboardDataFailure({ message: "Google Apps Script not available." });
+        }
     }
 
-    // Convert callback-based functions to Promise-based
-    function loadUserDataSafely() {
-        return new Promise((resolve, reject) => {
-            try {
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler((user) => {
-                            console.log('✅ User data loaded:', user);
-                            handleUserDataSafely(user);
-                            resolve(user);
-                        })
-                        .withFailureHandler((error) => {
-                            console.error('❌ Error loading user:', error);
-                            const fallbackUser = {
-                                name: 'System User',
-                                email: 'user@system.com',
-                                roles: ['admin'],
-                                permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
-                            };
-                            handleUserDataSafely(fallbackUser);
-                            resolve(fallbackUser);
-                        })
-                        .getCurrentUser();
-                } else {
-                    console.log('⚠️ Google Apps Script not available, using fallback user');
-                    const fallbackUser = {
-                        name: 'System User',
-                        email: 'user@system.com',
-                        roles: ['admin'],
-                        permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
-                    };
-                    handleUserDataSafely(fallbackUser);
-                    resolve(fallbackUser);
-                }
-            } catch (error) {
-                console.error('❌ Exception in loadUserDataSafely:', error);
-                reject(error);
-            }
-        });
+    function handleDashboardDataSuccess(data) {
+        if (data && data.success) {
+            console.log('✅ Dashboard data loaded successfully:', data);
+            // Destructure and update UI components
+            handleUserDataSafely(data.user); // Processes user info and permissions
+            updateStats(data.stats);
+            updateRecentRequests(data.recentRequests);
+            updateUpcomingAssignments(data.upcomingAssignments);
+        } else {
+            console.error('❌ Failed to load dashboard data or success flag false:', data ? data.error : 'No data returned');
+            handleDashboardDataFailure(data || { message: "Received success:false or no data." });
+        }
     }
 
-    function loadDashboardStatsPromise() {
-        return new Promise((resolve, reject) => {
-            try {
-                console.log('📊 Loading dashboard stats...');
-                
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler((stats) => {
-                            console.log('✅ Stats loaded:', stats);
-                            updateStats(stats);
-                            resolve(stats);
-                        })
-                        .withFailureHandler((error) => {
-                            console.error('❌ Error loading stats:', error);
-                            const fallbackStats = {
-                                activeRiders: 0,
-                                pendingRequests: 0,
-                                todayAssignments: 0,
-                                weekAssignments: 0
-                            };
-                            updateStats(fallbackStats);
-                            resolve(fallbackStats);
-                        })
-                        .calculateDashboardStatistics();
-                } else {
-                    console.log('⚠️ Google Apps Script not available for stats');
-                    const fallbackStats = {
-                        activeRiders: 0,
-                        pendingRequests: 0,
-                        todayAssignments: 0,
-                        weekAssignments: 0
-                    };
-                    updateStats(fallbackStats);
-                    resolve(fallbackStats);
-                }
-            } catch (error) {
-                console.error('❌ Exception in loadDashboardStatsPromise:', error);
-                reject(error);
-            }
-        });
-    }
-
-    function loadRecentRequestsPromise() {
-        return new Promise((resolve, reject) => {
-            try {
-                console.log('📋 Loading recent requests...');
-                
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler((requests) => {
-                            console.log('✅ Recent requests loaded:', requests);
-                            updateRecentRequests(requests);
-                            resolve(requests);
-                        })
-                        .withFailureHandler((error) => {
-                            console.error('❌ Error loading recent requests:', error);
-                            updateRecentRequests([]);
-                            resolve([]);
-                        })
-                        .getRecentRequestsForWebApp(10);
-                } else {
-                    console.log('⚠️ Google Apps Script not available for recent requests');
-                    updateRecentRequests([]);
-                    resolve([]);
-                }
-            } catch (error) {
-                console.error('❌ Exception in loadRecentRequestsPromise:', error);
-                updateRecentRequests([]);
-                resolve([]);
-            }
-        });
-    }
-
-    function loadUpcomingAssignmentsPromise() {
-        return new Promise((resolve, reject) => {
-            try {
-                console.log('🏍️ Loading upcoming assignments...');
-                
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler((assignments) => {
-                            console.log('✅ Assignments loaded:', assignments);
-                            updateUpcomingAssignments(assignments);
-                            resolve(assignments);
-                        })
-                        .withFailureHandler((error) => {
-                            console.error('❌ Error loading assignments, trying backup method:', error);
-                            // Try backup method
-                            google.script.run
-                                .withSuccessHandler((assignments) => {
-                                    console.log('✅ Assignments loaded via backup:', assignments);
-                                    updateUpcomingAssignments(assignments);
-                                    resolve(assignments);
-                                })
-                                .withFailureHandler((backupError) => {
-                                    console.error('❌ Backup assignment loading also failed:', backupError);
-                                    updateUpcomingAssignments([]);
-                                    resolve([]);
-                                })
-                                .getAllActiveAssignmentsForWebApp();
-                        })
-                        .getUpcomingAssignmentsForWebApp(app.user || {roles: ['admin']});
-                } else {
-                    console.log('⚠️ Google Apps Script not available for assignments');
-                    updateUpcomingAssignments([]);
-                    resolve([]);
-                }
-            } catch (error) {
-                console.error('❌ Exception in loadUpcomingAssignmentsPromise:', error);
-                updateUpcomingAssignments([]);
-                resolve([]);
-            }
-        });
+    function handleDashboardDataFailure(error) {
+        console.error('❌ Error loading dashboard data:', error.message || error);
+        // Attempt to load minimal user data for UI consistency
+        const fallbackUser = (error && error.user) ? error.user : {
+            name: 'System User',
+            email: 'user@system.com',
+            roles: ['admin'], // Default to admin to show most UI elements
+            permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+        };
+        handleUserDataSafely(fallbackUser);
+        setFallbackValues(); // Set fallback for stats, requests, assignments
     }
 
     function handleUserDataSafely(user) {

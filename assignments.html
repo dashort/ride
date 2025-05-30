@@ -441,17 +441,9 @@
         </div>
     </header>
 
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
     <div class="container">
-        <nav class="navigation">
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button">📊 Dashboard</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button">📋 Requests</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button active">🏍️ Assignments</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button" id="notificationsLink">📱 Notifications</a>
-            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button" id="reportsLink">📊 Reports</a>
-        </nav>
-        
-
-
         <div class="assignments-layout">
             <!-- Requests Panel -->
             <div class="requests-panel">
@@ -514,208 +506,70 @@
             
             // Check if specific request was passed in URL
             var urlParams = new URLSearchParams(window.location.search);
-            var requestId = urlParams.get('requestId');
-            if (requestId) {
-                setTimeout(function() { selectRequestById(requestId); }, 2000);
+            var requestIdToLoad = urlParams.get('requestId'); // Renamed to avoid conflict
+            // The actual loading of this requestId will be handled by getPageDataForAssignments
+        });
+
+        function loadAllData() {
+            console.log('📊 Starting consolidated data loading for assignments page...');
+            var urlParams = new URLSearchParams(window.location.search);
+            var requestIdToLoad = urlParams.get('requestId');
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleAssignmentsDataSuccess)
+                    .withFailureHandler(handleAssignmentsDataFailure)
+                    .getPageDataForAssignments(requestIdToLoad);
+            } else {
+                console.log('⚠️ Google Apps Script not available for assignments page.');
+                handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
             }
-        });
-
-function loadRequestsSimple() {
-    return new Promise(function(resolve) {
-        console.log('📋 Loading requests (simple approach)...');
-        
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(requests) {
-                    console.log('✅ Request function succeeded:', requests);
-                    handleRequestsLoaded(requests);
-                    resolve();
-                })
-                .withFailureHandler(function(error) {
-                    console.log('❌ Request function failed:', error);
-                    handleRequestsLoaded([]);
-                    resolve();
-                })
-                .getFilteredRequestsForWebApp('All'); // ← Use the original working function
-        } else {
-            console.log('⚠️ Google Apps Script not available');
-            handleRequestsLoaded([]);
-            resolve();
         }
-    });
-}
 
-function loadRidersSimple() {
-    return new Promise(function(resolve) {
-        console.log('🏍️ Loading riders (simple approach)...');
-        
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(riders) {
-                    console.log('✅ Rider function succeeded:', riders);
-                    handleRidersLoaded(riders);
-                    resolve();
-                })
-                .withFailureHandler(function(error) {
-                    console.log('❌ Rider function failed:', error);
-                    handleRidersLoaded([]);
-                    resolve();
-                })
-                .getActiveRidersForWebApp(); // ← Use the original working function
-        } else {
-            console.log('⚠️ Google Apps Script not available');
-            handleRidersLoaded([]);
-            resolve();
-        }
-    });
-}
+        function handleAssignmentsDataSuccess(data) {
+            if (data && data.success) {
+                console.log('✅ Assignments page data loaded successfully:', data);
+                handleUserData(data.user); // Processes user info and permissions
+                handleRequestsLoaded(data.requests);
+                handleRidersLoaded(data.riders);
 
-
-
-function loadAllData() {
-    console.log('📊 Starting simplified data loading...');
-    
-    // Step 1: Load user
-    loadUserData()
-        .then(function() {
-            console.log('✅ User loaded, now loading requests...');
-            return loadRequestsSimple();
-        })
-        .then(function() {
-            console.log('✅ Requests loaded, now loading riders...');  
-            return loadRidersSimple();
-        })
-        .then(function() {
-            console.log('✅ All data loaded successfully');
-        })
-        .catch(function(error) {
-            console.error('❌ Data loading failed:', error);
-            handleLoadingTimeout();
-        });
-}
-
-        function loadUserData() {
-            return new Promise(function(resolve, reject) {
-                try {
-                    if (typeof google !== 'undefined' && google.script && google.script.run) {
-                        google.script.run
-                            .withSuccessHandler(function(user) {
-                                console.log('✅ User data loaded:', user);
-                                handleUserData(user);
-                                resolve(user);
-                            })
-                            .withFailureHandler(function(error) {
-                                console.error('❌ Error loading user:', error);
-                                var fallbackUser = {
-                                    name: 'System User',
-                                    email: 'user@system.com',
-                                    roles: ['admin'],
-                                    permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
-                                };
-                                handleUserData(fallbackUser);
-                                resolve(fallbackUser);
-                            })
-                            .getCurrentUser();
-                    } else {
-                        console.log('⚠️ Google Apps Script not available');
-                        var fallbackUser = {
-                            name: 'System User',
-                            roles: ['admin'],
-                            permissions: ['assign_riders']
-                        };
-                        handleUserData(fallbackUser);
-                        resolve(fallbackUser);
-                    }
-                } catch (error) {
-                    console.error('❌ Exception in loadUserData:', error);
-                    reject(error);
+                if (data.initialRequestDetails) {
+                    // If a specific request's details were pre-loaded, select it.
+                    // We need to make sure currentRequests is populated before calling selectRequest.
+                    // A small timeout can help, or a more robust check.
+                    setTimeout(function() {
+                         const preloadedRequestId = data.initialRequestDetails.id || data.initialRequestDetails.requestId;
+                         if (preloadedRequestId) {
+                            console.log('Attempting to pre-select request:', preloadedRequestId);
+                            selectRequest(preloadedRequestId, true); // Pass a flag to indicate it's a pre-selection
+                         }
+                    }, 500); // Delay to allow initial rendering from handleRequestsLoaded
+                } else {
+                     var urlParams = new URLSearchParams(window.location.search);
+                     var requestIdFromUrl = urlParams.get('requestId');
+                     if (requestIdFromUrl) {
+                         // Fallback if initialRequestDetails was not populated but requestId was in URL
+                         console.log('Attempting to select request from URL param (fallback):', requestIdFromUrl);
+                         setTimeout(function() { selectRequest(requestIdFromUrl, true); }, 500);
+                     }
                 }
-            });
+            } else {
+                console.error('❌ Failed to load assignments page data:', data ? data.error : 'No data returned');
+                handleAssignmentsDataFailure(data || { message: "Received success:false or no data." });
+            }
         }
 
-function loadRequestsPromise() {
-    return new Promise(function(resolve, reject) {
-        try {
-            console.log('📋 Loading requests for assignments page...');
-            
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(requests) {
-                        console.log('✅ Requests loaded:', requests);
-                        handleRequestsLoaded(requests);
-                        resolve(requests);
-                    })
-                    .withFailureHandler(function(error) {
-                        console.error('❌ Error loading requests:', error);
-                        // Try fallback method
-                        google.script.run
-                            .withSuccessHandler(function(fallbackRequests) {
-                                console.log('✅ Requests loaded via fallback:', fallbackRequests);
-                                handleRequestsLoaded(fallbackRequests);
-                                resolve(fallbackRequests);
-                            })
-                            .withFailureHandler(function(fallbackError) {
-                                console.error('❌ Fallback requests loading failed:', fallbackError);
-                                handleRequestsLoaded([]);
-                                resolve([]);
-                            })
-                            .getFilteredRequestsForWebApp('All');
-                    })
-                    .getFilteredRequestsForAssignments(app.user || {roles: ['admin']});
-            } else {
-                console.log('⚠️ Google Apps Script not available for requests');
-                handleRequestsLoaded([]);
-                resolve([]);
-            }
-        } catch (error) {
-            console.error('❌ Exception in loadRequestsPromise:', error);
-            handleRequestsLoaded([]);
-            resolve([]);
+        function handleAssignmentsDataFailure(error) {
+            console.error('❌ Error loading assignments page data:', error.message || error);
+            const fallbackUser = (error && error.user) ? error.user : {
+                name: 'System User',
+                email: 'user@system.com',
+                roles: ['admin'],
+                permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+            };
+            handleUserData(fallbackUser); // Display user info if available
+            handleLoadingTimeout(); // Generic timeout handler for requests/riders
         }
-    });
-}
-
-function loadActiveRidersPromise() {
-    return new Promise(function(resolve, reject) {
-        try {
-            console.log('🏍️ Loading active riders...');
-            
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(riders) {
-                        console.log('✅ Riders loaded:', riders);
-                        handleRidersLoaded(riders);
-                        resolve(riders);
-                    })
-                    .withFailureHandler(function(error) {
-                        console.error('❌ Error loading riders:', error);
-                        // Try fallback method
-                        google.script.run
-                            .withSuccessHandler(function(fallbackRiders) {
-                                console.log('✅ Riders loaded via fallback:', fallbackRiders);
-                                handleRidersLoaded(fallbackRiders);
-                                resolve(fallbackRiders);
-                            })
-                            .withFailureHandler(function(fallbackError) {
-                                console.error('❌ Fallback riders loading failed:', fallbackError);
-                                handleRidersLoaded([]);
-                                resolve([]);
-                            })
-                            .getActiveRidersForWebApp();
-                    })
-                    .getActiveRidersForAssignments();
-            } else {
-                console.log('⚠️ Google Apps Script not available for riders');
-                handleRidersLoaded([]);
-                resolve([]);
-            }
-        } catch (error) {
-            console.error('❌ Exception in loadActiveRidersPromise:', error);
-            handleRidersLoaded([]);
-            resolve([]);
-        }
-    });
-}
 
         function handleUserData(user) {
             console.log('👤 User data loaded:', user);

@@ -784,3 +784,274 @@ function debugAssignmentsPageData() {
     return { error: error.message };
   }
 }
+
+/**
+ * NEW WRAPPER FUNCTIONS FOR CONSOLIDATED CLIENT-SIDE DATA REQUESTS
+ */
+
+// For index.html (Dashboard)
+function getPageDataForDashboard() {
+  try {
+    const user = getCurrentUser(); // From AuthService.js or Code.js
+    const stats = calculateDashboardStatistics(); // From Dashboard.js
+
+    // For recent requests:
+    // calculateDashboardStatistics fetches rawRequestsData.
+    // We need to pass this to getFilteredRequestsForWebApp if we want to avoid a second fetch.
+    // However, calculateDashboardStatistics doesn't return the raw data directly.
+    // Option 1: Modify calculateDashboardStatistics to return raw data (more invasive).
+    // Option 2: Fetch rawRequestsData again here (less invasive for now).
+    // Option 3: Create a new function in Dashboard.js that gives raw requests and then pass it around.
+
+    // Let's go with Option 2 for now to minimize changes to existing optimized functions in Dashboard.js,
+    // but acknowledge this isn't perfectly optimal if calculateDashboardStatistics already has the data.
+    // A future optimization could be to have a core data fetching function that calculateDashboardStatistics
+    // and this function both use.
+    
+    const rawRequests = getRequestsData(); // Fetch raw requests
+    let recentRequests = [];
+    if (rawRequests && rawRequests.data) {
+      // Use the existing getFilteredRequestsForWebApp from Dashboard.js
+      // It expects rawRequestsData object and a filter.
+      // To get "recent", we'll take all, then sort and slice.
+      const allFormattedRequests = getFilteredRequestsForWebApp(rawRequests, 'All'); 
+      
+      // Sort by date (assuming 'date' field is sortable after formatting or use raw date before formatting)
+      // For simplicity, if formatted date is "MM/DD/YYYY", new Date() can parse it.
+      // Otherwise, it's better to sort raw data then format.
+      // Let's assume getFilteredRequestsForWebApp returns objects with a 'date' field that is display-formatted
+      // and also a raw date field if possible, or we sort based on the formatted date string (less reliable).
+      // Given the previous refactor, getFilteredRequestsForWebApp formats dates.
+      // Sorting by formatted date strings like "ShortMonth DD, YYYY" can be tricky.
+      // It's better if getFilteredRequestsForWebApp could also return a raw sortable date.
+      // For now, we'll sort by the formatted date, which might not be perfectly chronological
+      // if date formats vary wildly.
+      try {
+        recentRequests = allFormattedRequests.sort((a, b) => {
+          // Assuming 'date' field is something like "Jan 01, 2024" or "MM/DD/YYYY"
+          // This sort is imperfect for string dates but a common approach.
+          return new Date(b.date) - new Date(a.date); 
+        }).slice(0, 10);
+      } catch (e) {
+        console.error("Error sorting recent requests: ", e);
+        recentRequests = allFormattedRequests.slice(0, 10); // Fallback to unsorted slice
+      }
+    }
+    
+    // For upcoming assignments:
+    // getUpcomingAssignmentsForWebApp is already in WebAppService.js
+    // It takes a user object, which we have.
+    const upcomingAssignments = getUpcomingAssignmentsForWebApp(user);
+
+    return {
+      success: true,
+      user: user,
+      stats: stats,
+      recentRequests: recentRequests,
+      upcomingAssignments: upcomingAssignments
+    };
+  } catch (error) {
+    logError('Error in getPageDataForDashboard', error);
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(), // Still return user if possible
+      stats: { activeRiders: 0, pendingRequests: 0, todayAssignments: 0, weekAssignments: 0, totalRequests: 0, completedRequests: 0 },
+      recentRequests: [],
+      upcomingAssignments: []
+    };
+  }
+}
+
+
+// For assignments.html (Assignments Page)
+function getPageDataForAssignments(requestId = null) {
+  try {
+    const user = getCurrentUser();
+    // These functions are already in WebAppService.js
+    const assignableRequests = getFilteredRequestsForAssignments(user); 
+    const activeRiders = getActiveRidersForAssignments();
+    
+    let requestDetails = null;
+    if (requestId) {
+      // getEscortDetailsForAssignment is in WebAppService.js
+      // It fetches request details and active riders again.
+      // We can optimize by passing activeRiders if the function is refactored,
+      // or call it as is. For now, call as is.
+      try {
+        const escortDetails = getEscortDetailsForAssignment(requestId);
+        requestDetails = escortDetails.request; 
+        // We already have activeRiders, so escortDetails.riders is redundant here.
+      } catch (e) {
+        logError(`Failed to get details for initial requestId ${requestId} in getPageDataForAssignments`, e);
+        // Continue without pre-loaded details if specific request fails
+      }
+    }
+
+    return {
+      success: true,
+      user: user,
+      requests: assignableRequests,
+      riders: activeRiders,
+      initialRequestDetails: requestDetails // For pre-populating if requestId was passed
+    };
+  } catch (error) {
+    logError('Error in getPageDataForAssignments', error);
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(),
+      requests: [],
+      riders: [],
+      initialRequestDetails: null
+    };
+  }
+}
+
+// For requests.html (Requests Page)
+function getPageDataForRequests(filter = 'All') {
+  try {
+    const user = getCurrentUser();
+    // getFilteredRequestsForWebApp is in Dashboard.js, ensure it's accessible
+    // or move/copy a version to WebAppService or Code.js if preferred.
+    // Assuming it's globally accessible for now.
+    // It needs raw data.
+    const rawRequests = getRequestsData();
+    const requests = getFilteredRequestsForWebApp(rawRequests, filter);
+
+    return {
+      success: true,
+      user: user,
+      requests: requests
+    };
+  } catch (error) {
+    logError('Error in getPageDataForRequests', error);
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(),
+      requests: []
+    };
+  }
+}
+
+// For notifications.html
+function getPageDataForNotifications(userRoles = ['admin']) { // Pass user roles for filtering if needed
+  try {
+    const user = getCurrentUser();
+    // getAllAssignmentsForNotifications should be created or verified.
+    // Let's assume it exists in this file or is globally available.
+    // If it doesn't exist, we'll need to define it.
+    // For now, let's assume a function that gets all assignments suitable for notification.
+    let assignments = [];
+    if (typeof getAllAssignmentsForNotifications === "function") {
+        assignments = getAllAssignmentsForNotifications();
+    } else {
+        // Fallback or placeholder if the function isn't defined yet.
+        // This would ideally fetch all assignments and format them appropriately.
+        const rawAssignments = getAssignmentsData();
+        if (rawAssignments && rawAssignments.data) {
+            assignments = rawAssignments.data.map((row, index) => { // Basic mapping
+                const colMap = rawAssignments.columnMap;
+                return {
+                    id: getColumnValue(row, colMap, CONFIG.columns.assignments.id) || `TEMP_ID_${index}`,
+                    requestId: getColumnValue(row, colMap, CONFIG.columns.assignments.requestId),
+                    riderName: getColumnValue(row, colMap, CONFIG.columns.assignments.riderName),
+                    riderPhone: getColumnValue(row, colMap, CONFIG.columns.riders.phone), // This might need a join or separate fetch
+                    riderEmail: getColumnValue(row, colMap, CONFIG.columns.riders.email), // Ditto
+                    eventDate: formatDateForDisplay(getColumnValue(row, colMap, CONFIG.columns.assignments.eventDate)),
+                    startTime: formatTimeForDisplay(getColumnValue(row, colMap, CONFIG.columns.assignments.startTime)),
+                    startLocation: getColumnValue(row, colMap, CONFIG.columns.assignments.startLocation),
+                    notificationStatus: getColumnValue(row, colMap, CONFIG.columns.assignments.notificationStatus) || 'none',
+                    lastNotified: getColumnValue(row, colMap, CONFIG.columns.assignments.lastNotifiedDate)
+                };
+            });
+        }
+         logWarn("Used fallback data for getAllAssignmentsForNotifications in getPageDataForNotifications");
+    }
+
+    // Calculate stats based on the fetched assignments
+    const stats = calculateStatsFromAssignmentsData(assignments); // Ensure this helper is available
+
+    return {
+      success: true,
+      user: user,
+      assignments: assignments,
+      stats: stats
+    };
+  } catch (error) {
+    logError('Error in getPageDataForNotifications', error);
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(),
+      assignments: [],
+      stats: { totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 }
+    };
+  }
+}
+
+// For reports.html
+function getPageDataForReports(filters) {
+  try {
+    const user = getCurrentUser();
+    // generateReportData is already designed to fetch data based on filters.
+    const reportData = generateReportData(filters); // Assuming this is in Reports.js or global
+
+    return {
+      success: true,
+      user: user,
+      reportData: reportData
+    };
+  } catch (error) {
+    logError('Error in getPageDataForReports', error);
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(),
+      reportData: null // Or some default/empty report structure
+    };
+  }
+}
+
+// Helper function (ensure it's defined, possibly move from notifications.html or make global)
+// This is a placeholder, actual implementation might be more complex or reside elsewhere.
+function calculateStatsFromAssignmentsData(assignments) {
+    if (!assignments || !Array.isArray(assignments)) {
+        return { totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 };
+    }
+    const todayStr = new Date().toDateString();
+    let pending = 0;
+    let smsTodayCount = 0;
+    let emailTodayCount = 0;
+    assignments.forEach(asm => {
+        if (!asm.notificationStatus || asm.notificationStatus === 'none') {
+            pending++;
+        }
+        if (asm.lastNotified) {
+            const notifiedDate = new Date(asm.lastNotified);
+            if (notifiedDate.toDateString() === todayStr) {
+                if (asm.notificationStatus === 'sms_sent' || asm.notificationStatus === 'both_sent') smsTodayCount++;
+                if (asm.notificationStatus === 'email_sent' || asm.notificationStatus === 'both_sent') emailTodayCount++;
+            }
+        }
+    });
+    return {
+        totalAssignments: assignments.length,
+        pendingNotifications: pending,
+        smsToday: smsTodayCount,
+        emailToday: emailTodayCount
+    };
+}
+
+// Ensure getCurrentUser is available (e.g., from AuthService.js or Code.js)
+// Ensure calculateDashboardStatistics is available (from Dashboard.js)
+// Ensure getFilteredRequestsForWebApp is available (from Dashboard.js)
+// Ensure getRequestsData is available (from DataService.js)
+// Ensure getAssignmentsData is available (from DataService.js)
+// Ensure formatDateForDisplay, formatTimeForDisplay are available (from Formatting.js)
+// Ensure getColumnValue is available (from SheetUtils.js)
+// Ensure CONFIG is available
+// Ensure logError, logWarn are available (from Logger.js or Code.js)
+// Ensure generateReportData is available (from Reports.js or Code.js)
+// Ensure getAllAssignmentsForNotifications is defined (expected in WebAppService.js or DataService.js)

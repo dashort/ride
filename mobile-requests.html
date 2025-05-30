@@ -339,6 +339,8 @@
     <div class="mobile-header">
         <h1>🏍️ Escort Requests</h1>
     </div>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
     
     <div class="mobile-controls">
         <div class="filter-section">
@@ -452,27 +454,45 @@
             
             const filter = document.getElementById('mobileStatusFilter').value;
             
-            google.script.run
-                .withSuccessHandler(handleMobileSuccess)
-                .withFailureHandler(handleMobileError)
-                .getFilteredRequestsForWebApp(filter);
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleMobilePageDataSuccess) // Changed
+                    .withFailureHandler(handleMobilePageDataError)   // Changed
+                    .getPageDataForRequests(filter); // Use the same wrapper as requests.html
+            } else {
+                console.log('⚠️ Google Apps Script not available for mobile requests page.');
+                handleMobilePageDataError({ message: "Google Apps Script not available." });
+            }
         }
         
-        function handleMobileSuccess(requests) {
+        function handleMobilePageDataSuccess(data) { // Changed
             isLoading = false;
             hideMobileLoading();
             
-            if (!requests || !Array.isArray(requests)) {
-                showMobileError('Invalid data received from server');
-                return;
+            if (data && data.success) {
+                console.log('✅ Mobile requests page data loaded:', data);
+                // data.user could be stored if needed: let currentUser = data.user;
+                
+                const requests = data.requests;
+                if (!requests || !Array.isArray(requests)) {
+                    showMobileError('Invalid requests data received from server');
+                    mobileAllRequests = [];
+                } else {
+                    mobileAllRequests = requests;
+                }
+
+                displayMobileRequests(mobileAllRequests);
+                updateMobileStats(mobileAllRequests);
+
+            } else {
+                showMobileError('Failed to load mobile requests: ' + (data ? data.error : 'Unknown error'));
+                mobileAllRequests = [];
+                displayMobileRequests([]);
+                updateMobileStats([]);
             }
-            
-            mobileAllRequests = requests;
-            displayMobileRequests(requests);
-            updateMobileStats(requests);
         }
         
-        function handleMobileError(error) {
+        function handleMobilePageDataError(error) { // Changed
             isLoading = false;
             hideMobileLoading();
             showMobileError('Error loading requests: ' + (error.message || error));

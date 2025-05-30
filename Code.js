@@ -526,6 +526,34 @@ function showQuickAssignDialog() {
 }
 
 
+// ===== NAVIGATION HELPER =====
+/**
+ * Fetches the HTML content of the shared navigation menu.
+ * @param {string} [currentPage=''] The name of the current page (e.g., 'dashboard', 'requests') to set the active link.
+ * @return {string} The HTML content of the navigation menu.
+ */
+function getNavigationHtml(currentPage = '') {
+  try {
+    let navHtml = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+    
+    // Logic to set the 'active' class - can be enhanced later
+    // For now, a simple string replacement based on data-page attribute.
+    if (currentPage) {
+      const activeMarker = `data-page="${currentPage}"`;
+      const replaceString = `class="nav-button active" data-page="${currentPage}"`;
+      // Ensure we only replace if the class="nav-button" is also present to avoid mangling other attributes.
+      navHtml = navHtml.replace(
+        new RegExp(`class="nav-button" ${activeMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), 
+        replaceString
+      );
+    }
+    return navHtml;
+  } catch (error) {
+    logError('Error getting navigation HTML', error);
+    return '<!-- Navigation Load Error -->'; // Fallback
+  }
+}
+
 // ===== WEB APP ENTRY POINTS (DO NOT EDIT FUNCTION NAMES)=====
 
 /**
@@ -534,48 +562,62 @@ function showQuickAssignDialog() {
  */
 function doGet(e) {
   try {
-    const page = e.parameter.page || 'dashboard';
-    console.log(`Loading page: ${page}`);
+    const pageName = e.parameter.page || 'dashboard'; // Use pageName to avoid conflict with HtmlOutput variable
+    console.log(`Loading page: ${pageName}`);
     
-    // User is retrieved in JS, no need to pass to HTML directly
-    // const user = getCurrentUser(); 
+    const navigationMenuHtml = getNavigationHtml(pageName);
+    let pageFileName = '';
+    let pageTitle = 'Motorcycle Escort Management'; // Default title
 
-    switch(page) {
+    switch(pageName) {
       case 'dashboard':
-        return HtmlService.createHtmlOutputFromFile('index')
-          .setTitle('Rider Integration & Deployment Engine')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-          
+        pageFileName = 'index'; // Assumes index.html is the dashboard
+        pageTitle = 'Dashboard - Escort Management';
+        break;
       case 'requests':
-        return HtmlService.createHtmlOutputFromFile('requests')
-          .setTitle('Requests - Escort Management')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
+        pageFileName = 'requests';
+        pageTitle = 'Requests - Escort Management';
+        break;
       case 'assignments':
-        // If it's a sidebar request for Google Sheets directly (not part of web app)
-        if (e.parameter.mode === 'sidebar') {
+        if (e.parameter.mode === 'sidebar') { // Sidebar is a special case, might not need main nav
           return renderEscortSidebarForWebApp();
         }
-        return HtmlService.createHtmlOutputFromFile('assignments')
-          .setTitle('Assignments - Escort Management')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
+        pageFileName = 'assignments';
+        pageTitle = 'Assignments - Escort Management';
+        break;
       case 'notifications':
-        return HtmlService.createHtmlOutputFromFile('notifications')
-          .setTitle('Notifications - Escort Management')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
+        pageFileName = 'notifications';
+        pageTitle = 'Notifications - Escort Management';
+        break;
       case 'reports':
-        return HtmlService.createHtmlOutputFromFile('reports')
-          .setTitle('Reports - Escort Management')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
+        pageFileName = 'reports';
+        pageTitle = 'Reports - Escort Management';
+        break;
+      // Handle mobile pages if they should also get the standard navigation
+      case 'mobile-requests': // Example if mobile-requests is a full page
+        pageFileName = 'mobile-requests';
+        pageTitle = 'Mobile Requests - Escort Management';
+        break;
       default:
-        // Fallback to dashboard if page is not recognized
-        return HtmlService.createHtmlOutputFromFile('index')
-          .setTitle('Rider Integration & Deployment Engine')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        pageFileName = 'index'; // Fallback to dashboard
+        pageTitle = 'Dashboard - Escort Management';
     }
+
+    if (!pageFileName) { // Should not happen with default case, but good practice
+        throw new Error("Page not found and no default specified.");
+    }
+
+    let htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
+    let pageContent = htmlOutput.getContent();
+    
+    // Inject navigation menu using placeholder
+    pageContent = pageContent.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationMenuHtml);
+    htmlOutput.setContent(pageContent);
+    
+    return htmlOutput
+      .setTitle(pageTitle)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      
   } catch (error) {
     logError('doGet error', error);
     return HtmlService.createHtmlOutput(`
