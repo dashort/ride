@@ -205,66 +205,81 @@ function createMenu() {
     .addToUi();
 }
 
+// Replace the getNavigationHtml function in Code.js with this simpler version
+
 /**
  * Fetches the HTML content of the shared navigation menu.
- * @param {string} [currentPage=''] The name of the current page (e.g., 'dashboard', 'requests') - now handled by client-side JS.
+ * @param {string} [currentPage=''] The name of the current page to set as active.
  * @return {string} The HTML content of the navigation menu.
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    const navHtml = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+    console.log(`🧭 Getting navigation HTML for page: ${currentPage}`);
+    
+    // Get the base navigation HTML
+    let navHtml = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+    
+    // If we have a current page, add the active class
+    if (currentPage) {
+      // Replace the specific nav button with active class
+      const pattern = new RegExp(`(<a[^>]*data-page="${currentPage}"[^>]*class="[^"]*)(")`, 'i');
+      navHtml = navHtml.replace(pattern, '$1 active$2');
+    }
+    
+    console.log(`✅ Navigation HTML generated (${navHtml.length} chars)`);
     return navHtml;
+    
   } catch (error) {
     logError('Error getting navigation HTML', error);
+    console.error('❌ Navigation error:', error);
+    
+    // Return a simple fallback navigation
     return `
       <style>
-        .navigation {
-          display: flex;
-          gap: 1rem;
-          margin: 2rem auto;
-          padding: 0 2rem;
-          flex-wrap: wrap;
-          justify-content: center;
-          align-items: center;
-          max-width: 1200px;
-        }
-        .nav-button {
-          padding: 0.75rem 1.5rem;
-          background: rgba(255, 255, 255, 0.9);
-          border: none;
-          border-radius: 25px;
-          color: #2c3e50;
-          text-decoration: none;
-          font-weight: 600;
-          transition: all 0.3s ease;
-          cursor: pointer;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        .nav-button:hover, .nav-button.active {
-          background: #3498db;
-          color: white;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-        }
+        .navigation { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; justify-content: center; padding: 1rem 0; }
+        .nav-button { padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; }
+        .nav-button:hover, .nav-button.active { background: #3498db; color: white; transform: translateY(-2px); }
       </style>
       <nav class="navigation">
-        <a href="#" class="nav-button" onclick="navigateToPage('dashboard')">📊 Dashboard</a>
-        <a href="#" class="nav-button" onclick="navigateToPage('requests')">📋 Requests</a>
-        <a href="#" class="nav-button" onclick="navigateToPage('assignments')">🏍️ Assignments</a>
-        <a href="#" class="nav-button" onclick="navigateToPage('notifications')">📱 Notifications</a>
-        <a href="#" class="nav-button" onclick="navigateToPage('reports')">📊 Reports</a>
+        <a href="?page=dashboard" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
+        <a href="?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
+        <a href="?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}">🏍️ Assignments</a>
+        <a href="?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}">📱 Notifications</a>
+        <a href="?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}">📊 Reports</a>
       </nav>
-      <script>
-        function navigateToPage(page) {
-          const baseUrl = window.location.href.split('?')[0];
-          if (page === 'dashboard') {
-            window.location.href = baseUrl;
-          } else {
-            window.location.href = baseUrl + '?page=' + page;
-          }
-        }
-      </script>
-    `; // Fallback navigation
+    `;
+  }
+}
+
+/**
+ * Debug function to test navigation system
+ */
+function testNavigation() {
+  try {
+    console.log('=== NAVIGATION TEST ===');
+    
+    const pages = ['dashboard', 'requests', 'assignments', 'notifications', 'reports'];
+    
+    pages.forEach(page => {
+      const navHtml = getNavigationHtml(page);
+      const hasActive = navHtml.includes('active');
+      console.log(`${page}: Active class found = ${hasActive}`);
+    });
+    
+    // Test if _navigation.html file exists and can be read
+    try {
+      const navFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+      console.log(`Navigation file size: ${navFile.length} characters`);
+      console.log('Navigation file preview:', navFile.substring(0, 200));
+    } catch (fileError) {
+      console.error('Cannot read _navigation.html file:', fileError);
+    }
+    
+    return { success: true, message: 'Navigation test completed - check logs' };
+    
+  } catch (error) {
+    console.error('Navigation test error:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -502,173 +517,145 @@ function getNavigationHtml(currentPage = '') {
   }
 }
 
-// ===== WEB APP ENTRY POINTS (DO NOT EDIT FUNCTION NAMES)=====
-/**
- * Force injection doGet - bypasses placeholder issues
- */
+// Add this to your Code.js to force proper routing
 function doGet(e) {
+  // Add explicit logging
+  console.log('🚀 doGet called with URL:', e.parameter);
+  console.log('🌐 Script URL context');
+    console.log('Request parameters:', JSON.stringify(e));
+  console.log('Request source:', e.source || 'unknown');
+  
   try {
     const page = e.parameter.page || 'dashboard';
-    console.log(`Loading page: ${page}`);
     
-    // Determine file to load
-    let pageFileName = 'index';
-    switch(page) {
-      case 'requests': pageFileName = 'requests'; break;
-      case 'assignments': pageFileName = 'assignments'; break;
-      case 'notifications': pageFileName = 'notifications'; break;
-      case 'reports': pageFileName = 'reports'; break;
-    }
+    // Your existing doGet logic here...
+    // But add this at the very beginning:
     
-    console.log(`Loading HTML file: ${pageFileName}`);
+    // Force proper content type and headers
+    const output = HtmlService.createHtmlOutputFromFile(getPageFile(page));
+    output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    output.addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
     
-    // Get navigation HTML from _navigation.html file
-    const navigationHtml = getNavigationHtml(page);
+    return output;
     
-    // Get page content
-    const htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
-    let pageContent = htmlOutput.getContent();
-    
-    console.log(`Original content length: ${pageContent.length}`);
-    
-    // Try multiple injection strategies
-    let injected = false;
-    
-    // Strategy 1: Look for placeholder (any variation)
-    const placeholders = [
-      '<!--NAVIGATION_MENU_PLACEHOLDER-->',
-      '<!-- NAVIGATION_MENU_PLACEHOLDER -->',
-      '<!--navigation_menu_placeholder-->',
-      '<!--NAVIGATION_PLACEHOLDER-->'
-    ];
-    
-    for (const placeholder of placeholders) {
-      if (pageContent.includes(placeholder)) {
-        pageContent = pageContent.replace(placeholder, navigationHtml);
-        console.log(`✅ Injected via placeholder: ${placeholder}`);
-        injected = true;
-        break;
-      }
-    }
-    
-    // Strategy 2: Inject after </header>
-    if (!injected && pageContent.includes('</header>')) {
-      pageContent = pageContent.replace('</header>', '</header>\n' + navigationHtml);
-      console.log('✅ Injected after </header>');
-      injected = true;
-    }
-    
-    // Strategy 3: Inject after opening <body>
-    if (!injected && pageContent.includes('<body>')) {
-      pageContent = pageContent.replace('<body>', '<body>\n' + navigationHtml);
-      console.log('✅ Injected after <body>');
-      injected = true;
-    }
-    
-    // Strategy 4: Inject at start of container
-    if (!injected && pageContent.includes('<div class="container">')) {
-      pageContent = pageContent.replace('<div class="container">', navigationHtml + '\n<div class="container">');
-      console.log('✅ Injected before container');
-      injected = true;
-    }
-    
-    if (!injected) {
-      console.log('❌ No injection point found, adding navigation at end of body');
-      // Fallback: inject before closing body tag
-      if (pageContent.includes('</body>')) {
-        pageContent = pageContent.replace('</body>', navigationHtml + '\n</body>');
-        console.log('✅ Injected before </body> as fallback');
-      }
-    }
-    
-    console.log(`Final content length: ${pageContent.length}`);
-    
-    return HtmlService.createHtmlOutput(pageContent)
-      .setTitle(`${page.charAt(0).toUpperCase() + page.slice(1)} - Motorcycle Escort Management`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      
   } catch (error) {
-    console.error(`❌ doGet error: ${error.message}`);
-    logError('doGet error', error);
-    
-    return HtmlService.createHtmlOutput(`
-      <html><body style="font-family: Arial; padding: 20px;">
-        <h1>⚠️ Error Loading Page</h1>
-        <p>Error: ${error.message}</p>
-        <p><a href="?" style="color: #3498db;">Return to Dashboard</a></p>
-        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page || 'dashboard'}</p>
-      </body></html>
-    `);
+    console.error('❌ doGet error:', error);
+    return HtmlService.createHtmlOutput(`Error: ${error.message}`);
   }
 }
 
-/**
- * Remove this function - it's replaced by the consolidated doGet above
- * DELETE THE getNavigationHtml FUNCTION since it's now integrated
- */
+function getPageFile(page) {
+  const pageMap = {
+    'dashboard': 'index',
+    'requests': 'requests', 
+    'assignments': 'assignments',
+    'notifications': 'notifications',
+    'reports': 'reports'
+  };
+  return pageMap[page] || 'index';
+}
+// Add this function to test doGet
+function testDoGet() {
+  const testEvent = { parameter: { page: 'dashboard' } };
+  const result = doGet(testEvent);
+  console.log('doGet test result:', result);
+  return result;
+}
 
-/**
- * Handles HTTP POST requests, serving as an API endpoint for the web app.
- */
-function doPost(e) {
+function doGet(e) {
   try {
-    const action = e.parameter.action;
-    const data = JSON.parse(e.parameter.data || '{}');
+    const pageName = e.parameter.page || 'dashboard'; // Default to dashboard
+    console.log(`🌐 Loading page: ${pageName}`);
     
-    console.log(`doPost action: ${action}`);
+    // Get navigation HTML with current page for active state
+    const navigationMenuHtml = getNavigationHtml(pageName);
     
-    let result = {};
-    
-    switch (action) {
-      case 'createRequest':
-        // Assuming createRequestFromWebApp is defined elsewhere or doesn't exist
-        // result = createRequestFromWebApp(data);
-        throw new Error('createRequest action not implemented in this version.');
-        
-      case 'updateRequestStatus':
-        // Assuming updateRequestStatusFromWebApp is defined elsewhere or doesn't exist
-        // result = updateRequestStatusFromWebApp(data.requestId, data.status);
-        throw new Error('updateRequestStatus action not implemented in this version.');
-        
-      case 'assignRiders':
-        result = processAssignmentAndPopulate(data.requestId, data.selectedRiders);
+    let pageFileName = '';
+    let pageTitle = 'Motorcycle Escort Management';
+
+    // Route to appropriate HTML file
+    switch(pageName) {
+      case 'dashboard':
+        pageFileName = 'index';
+        pageTitle = 'Dashboard - Escort Management';
         break;
-        
-      case 'sendNotification':
-        result = sendAssignmentNotification(data.assignmentId, data.notificationType);
+      case 'requests':
+        pageFileName = 'requests';
+        pageTitle = 'Requests - Escort Management';
         break;
-        
-      case 'bulkNotification':
-        result = sendBulkNotificationsByTimeframe(data.filter, data.type); // Fixed: data.filter and data.type
+      case 'assignments':
+        if (e.parameter.mode === 'sidebar') {
+          return renderEscortSidebarForWebApp();
+        }
+        pageFileName = 'assignments';
+        pageTitle = 'Assignments - Escort Management';
         break;
-        
-      case 'generateReport':
-        result = generateReportData(data.filters);
+      case 'notifications':
+        pageFileName = 'notifications';
+        pageTitle = 'Notifications - Escort Management';
         break;
-        
+      case 'reports':
+        pageFileName = 'reports';
+        pageTitle = 'Reports - Escort Management';
+        break;
       default:
-        throw new Error(`Unknown action: ${action}`);
+        pageFileName = 'index';
+        pageTitle = 'Dashboard - Escort Management';
+        console.log(`⚠️ Unknown page '${pageName}', defaulting to dashboard`);
+    }
+
+    console.log(`📄 Loading HTML file: ${pageFileName}`);
+
+    // Create HTML output from file
+    let htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
+    let pageContent = htmlOutput.getContent();
+    
+    // Debug logging
+    const hasPlaceholder = pageContent.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+    console.log(`🔍 Placeholder found in ${pageFileName}: ${hasPlaceholder}`);
+    
+    if (!hasPlaceholder) {
+      console.log(`⚠️ WARNING: Navigation placeholder missing in ${pageFileName}.html`);
     }
     
-    // Return standard success response
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        data: result,
-        timestamp: new Date().toISOString()
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    // Inject navigation menu
+    pageContent = pageContent.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationMenuHtml);
+    
+    // Verify injection worked
+    const hasNavigation = pageContent.includes('<nav class="navigation">');
+    console.log(`✅ Navigation injected successfully: ${hasNavigation}`);
+    
+    htmlOutput.setContent(pageContent);
+    
+    return htmlOutput
+      .setTitle(pageTitle)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       
   } catch (error) {
-    logError('doPost error', error);
-    // Return standard error response
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: false,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    logError('doGet error', error);
+    console.error(`❌ Error in doGet for page '${e.parameter.page}':`, error);
+    
+    return HtmlService.createHtmlOutput(`
+      <html>
+        <head>
+          <title>Error - Escort Management</title>
+          <style>
+            body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+            .error-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .error-title { color: #e74c3c; margin-bottom: 1rem; }
+            .back-link { color: #3498db; text-decoration: none; }
+          </style>
+        </head>
+        <body>
+          <div class="error-container">
+            <h1 class="error-title">⚠️ Error Loading Page</h1>
+            <p><strong>Error:</strong> ${error.message}</p>
+            <p><strong>Requested Page:</strong> ${e.parameter.page || 'none'}</p>
+            <p><a href="?" class="back-link">← Return to Dashboard</a></p>
+          </div>
+        </body>
+      </html>
+    `).setTitle('Error - Escort Management');
   }
 }
 
