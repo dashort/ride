@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escort Requests - Motorcycle Escort Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        
+        .header {
+            background-color: #2c5aa0;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .controls {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+        }
+        
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        select, button {
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        button {
+            background-color: #2c5aa0;
+            color: white;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #1e3f73;
+        }
+        
+        .btn-success {
+            background-color: #28a745;
+        }
+        
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        
+        .stats {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            min-width: 60px;
+        }
+        
+        .status-new { background-color: #cce5ff; color: #0066cc; }
+        .status-pending { background-color: #fff2cc; color: #cc6600; }
+        .status-assigned { background-color: #d4edda; color: #155724; }
+        .status-unassigned { background-color: #f8d7da; color: #721c24; }
+        .status-in-progress { background-color: #e2e3ff; color: #383d41; }
+        .status-completed { background-color: #d1ecf1; color: #0c5460; }
+        .status-cancelled { background-color: #e2e2e2; color: #6c757d; }
+        
+        .request-id {
+            font-weight: bold;
+            color: #2c5aa0;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        
+        .request-id:hover {
+            color: #1e3f73;
+        }
+        
+        .notes {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .notes:hover {
+            white-space: normal;
+            overflow: visible;
+            background-color: #fffacd;
+            cursor: help;
+        }
+        
+        .loading, .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            background-color: #2c5aa0;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            margin: 0;
+            font-size: 20px;
+        }
+        
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .close:hover {
+            opacity: 0.7;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #2c5aa0;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(44, 90, 160, 0.2);
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background-color: #2c5aa0;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #1e3f73;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2c5aa0;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .add-request-btn {
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏍️ Escort Requests</h1>
+    </div>
+    
+    <div class="controls">
+        <div class="filter-row">
+            <label><strong>Filter:</strong></label>
+            <select id="statusFilter">
+                <option value="All">All Requests</option>
+                <option value="New">New</option>
+                <option value="Pending">Pending</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Unassigned">Unassigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+            <button onclick="loadRequests()">🔄 Refresh</button>
+            <button onclick="exportToCSV()">📊 Export</button>
+            <button class="btn-success add-request-btn" onclick="openNewRequestForm()">➕ Add New Request</button>
+        </div>
+        <div class="stats" id="statsDisplay">Loading...</div>
+    </div>
+    
+    <div class="table-container">
+        <div id="loadingDiv" class="loading">
+            🔄 Loading requests...
+        </div>
+        
+        <div id="errorDiv" class="error" style="display: none;">
+        </div>
+        
+        <div id="tableDiv" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Request ID</th>
+                        <th>Event Date</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Requester</th>
+                        <th>Type</th>
+                        <th>Start Location</th>
+                        <th>End Location</th>
+                        <th>Riders Needed</th>
+                        <th>Status</th>
+                        <th>Assigned</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody id="requestsBody">
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="noDataDiv" class="no-data" style="display: none;">
+            📋 No requests found for the selected filter.
+        </div>
+    </div>
+
+    <!-- Edit Request Modal -->
+    <div id="editRequestModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Edit Request</h2>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editRequestForm">
+                    <input type="hidden" id="editRequestId" />
+                    
+                    <div class="form-grid">
+                        <div>
+                            <div class="form-group">
+                                <label for="editRequesterName">Requester Name *</label>
+                                <input type="text" id="editRequesterName" required />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editRequesterContact">Requester Contact</label>
+                                <input type="text" id="editRequesterContact" />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editRequestType">Request Type *</label>
+                                <select id="editRequestType" required>
+                                    <option value="">Select Type</option>
+                                    <option value="Wedding">Wedding</option>
+                                    <option value="Funeral">Funeral</option>  
+                                    <option value="Float Movement">Float Movement</option>
+                                    <option value="VIP">VIP</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editEventDate">Event Date *</label>
+                                <input type="date" id="editEventDate" required />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editStartTime">Start Time *</label>
+                                <input type="time" id="editStartTime" required />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editEndTime">End Time</label>
+                                <input type="time" id="editEndTime" />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="form-group">
+                                <label for="editStartLocation">Start Location *</label>
+                                <input type="text" id="editStartLocation" required />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editEndLocation">End Location *</label>
+                                <input type="text" id="editEndLocation" required />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editSecondaryLocation">Secondary End Location</label>
+                                <input type="text" id="editSecondaryLocation" />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editRidersNeeded">Riders Needed *</label>
+                                <input type="number" id="editRidersNeeded" min="1" max="10" required />
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editStatus">Status</label>
+                                <select id="editStatus">
+                                    <option value="New">New</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Assigned">Assigned</option>
+                                    <option value="Unassigned">Unassigned</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="editCourtesy">Courtesy Request</label>
+                                <label style="display: flex; align-items: center; margin-top: 5px;">
+                                    <input type="checkbox" id="editCourtesy" style="margin-right: 8px;" />
+                                    Yes, this is a courtesy request
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editSpecialRequirements">Special Requirements</label>
+                        <textarea id="editSpecialRequirements" placeholder="Enter any special requirements or notes..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editNotes">Notes</label>
+                        <textarea id="editNotes" placeholder="Additional notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
+                <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveRequest()">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        let allRequests = [];
+        let currentEditingRequest = null;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRequests();
+            document.getElementById('statusFilter').addEventListener('change', loadRequests);
+        });
+        
+        function loadRequests() {
+            showLoading();
+            
+            const filter = document.getElementById('statusFilter').value;
+            
+            google.script.run
+                .withSuccessHandler(handleSuccess)
+                .withFailureHandler(handleError)
+                .getFilteredRequestsForWebApp(filter);
+        }
+        
+        function handleSuccess(requests) {
+            hideLoading();
+            
+            if (!requests || !Array.isArray(requests)) {
+                showError('Invalid data received from server');
+                return;
+            }
+            
+            if (requests.length === 0) {
+                showNoData();
+                updateStats([]);
+                return;
+            }
+            
+            allRequests = requests;
+            displayRequests(requests);
+            updateStats(requests);
+            showTable();
+        }
+        
+        function handleError(error) {
+            hideLoading();
+            showError('Error loading requests: ' + (error.message || error));
+            console.error('Load error:', error);
+        }
+        
+        function displayRequests(requests) {
+            const tbody = document.getElementById('requestsBody');
+            tbody.innerHTML = '';
+            
+            requests.forEach(request => {
+                const row = document.createElement('tr');
+                
+                // Format assigned riders
+                const assigned = request.ridersAssigned ? 
+                    request.ridersAssigned.split(',').map(r => r.trim()).filter(r => r).join(', ') : 
+                    '';
+                
+                // Status class
+                const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
+                
+                row.innerHTML = `
+                    <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
+                    <td>${request.eventDate || ''}</td>
+                    <td>${request.startTime || ''}</td>
+                    <td>${request.endTime || ''}</td>
+                    <td>${request.requesterName || ''}</td>
+                    <td>${request.requestType || ''}</td>
+                    <td>${request.startLocation || ''}</td>
+                    <td>${request.endLocation || ''}</td>
+                    <td style="text-align: center;">${request.ridersNeeded || 0}</td>
+                    <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
+                    <td>${assigned}</td>
+                    <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        function openEditModal(requestId) {
+            console.log('Opening edit modal for request:', requestId);
+            
+            // Find the request data
+            const request = allRequests.find(r => r.requestId === requestId);
+            if (!request) {
+                alert('Request not found: ' + requestId);
+                return;
+            }
+            
+            currentEditingRequest = request;
+            
+            // Populate form fields
+            document.getElementById('editRequestId').value = request.requestId || '';
+            document.getElementById('editRequesterName').value = request.requesterName || '';
+            document.getElementById('editRequesterContact').value = request.requesterContact || '';
+            document.getElementById('editRequestType').value = request.requestType || '';
+            document.getElementById('editEventDate').value = formatDateForInput(request.eventDate) || '';
+            document.getElementById('editStartTime').value = formatTimeForInput(request.startTime) || '';
+            document.getElementById('editEndTime').value = formatTimeForInput(request.endTime) || '';
+            document.getElementById('editStartLocation').value = request.startLocation || '';
+            document.getElementById('editEndLocation').value = request.endLocation || '';
+            document.getElementById('editSecondaryLocation').value = request.secondaryEndLocation || '';
+            document.getElementById('editRidersNeeded').value = request.ridersNeeded || 1;
+            document.getElementById('editStatus').value = request.status || 'New';
+            document.getElementById('editCourtesy').checked = (request.courtesy === 'Yes' || request.courtesy === 'TRUE' || request.courtesy === true);
+            document.getElementById('editSpecialRequirements').value = request.specialRequirements || '';
+            document.getElementById('editNotes').value = request.notes || '';
+            
+            // Update modal title
+            document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
+            
+            // Show modal
+            document.getElementById('editRequestModal').style.display = 'block';
+        }
+        
+        function openNewRequestForm() {
+            currentEditingRequest = null;
+            
+            // Clear all form fields
+            document.getElementById('editRequestForm').reset();
+            document.getElementById('editRequestId').value = '';
+            
+            // Set default values
+            document.getElementById('editStatus').value = 'New';
+            document.getElementById('editRidersNeeded').value = 1;
+            
+            // Update modal title
+            document.getElementById('modalTitle').textContent = 'Add New Request';
+            
+            // Hide delete button for new requests
+            document.getElementById('deleteBtn').style.display = 'none';
+            
+            // Show modal
+            document.getElementById('editRequestModal').style.display = 'block';
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editRequestModal').style.display = 'none';
+            currentEditingRequest = null;
+            
+            // Show delete button again
+            document.getElementById('deleteBtn').style.display = 'inline-block';
+        }
+        
+        function saveRequest() {
+            // Validate required fields
+            const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
+            
+            for (const fieldId of requiredFields) {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    alert(`Please fill in the required field: ${field.previousElementSibling.textContent}`);
+                    field.focus();
+                    return;
+                }
+            }
+            
+            // Collect form data
+            const requestData = {
+                requestId: document.getElementById('editRequestId').value,
+                requesterName: document.getElementById('editRequesterName').value.trim(),
+                requesterContact: document.getElementById('editRequesterContact').value.trim(),
+                requestType: document.getElementById('editRequestType').value,
+                eventDate: document.getElementById('editEventDate').value,
+                startTime: document.getElementById('editStartTime').value,
+                endTime: document.getElementById('editEndTime').value,
+                startLocation: document.getElementById('editStartLocation').value.trim(),
+                endLocation: document.getElementById('editEndLocation').value.trim(),
+                secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
+                ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
+                status: document.getElementById('editStatus').value,
+                courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
+                specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
+                notes: document.getElementById('editNotes').value.trim()
+            };
+            
+            console.log('Saving request data:', requestData);
+            
+            showLoadingOverlay();
+            
+            const isNewRequest = !currentEditingRequest;
+            const functionName = isNewRequest ? 'createNewRequest' : 'updateExistingRequest';
+            
+            google.script.run
+                .withSuccessHandler((result) => {
+                    hideLoadingOverlay();
+                    if (result.success) {
+                        alert(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
+                        closeEditModal();
+                        loadRequests(); // Refresh the list
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                })
+                .withFailureHandler((error) => {
+                    hideLoadingOverlay();
+                    alert('Error saving request: ' + error.message);
+                })
+                [functionName](requestData);
+        }
+        
+        function deleteRequest() {
+            if (!currentEditingRequest) {
+                alert('No request selected for deletion');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete request ${currentEditingRequest.requestId}?\n\nThis action cannot be undone.`)) {
+                return;
+            }
+            
+            showLoadingOverlay();
+            
+            google.script.run
+                .withSuccessHandler((result) => {
+                    hideLoadingOverlay();
+                    if (result.success) {
+                        alert('Request deleted successfully!');
+                        closeEditModal();
+                        loadRequests(); // Refresh the list
+                    } else {
+                        alert('Error deleting request: ' + result.message);
+                    }
+                })
+                .withFailureHandler((error) => {
+                    hideLoadingOverlay();
+                    alert('Error deleting request: ' + error.message);
+                })
+                .deleteRequest(currentEditingRequest.requestId);
+        }
+        
+        // Utility functions
+        function formatDateForInput(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                return date.toISOString().split('T')[0];
+            } catch (e) {
+                return '';
+            }
+        }
+        
+        function formatTimeForInput(timeStr) {
+            if (!timeStr) return '';
+            try {
+                // Handle various time formats
+                const cleanTime = timeStr.replace(/[^0-9:APM]/gi, '');
+                if (cleanTime.includes(':')) {
+                    const parts = cleanTime.split(':');
+                    let hours = parseInt(parts[0]);
+                    const minutes = parts[1] ? parseInt(parts[1].replace(/[^0-9]/g, '')) : 0;
+                    
+                    // Handle AM/PM
+                    if (cleanTime.toUpperCase().includes('PM') && hours < 12) {
+                        hours += 12;
+                    } else if (cleanTime.toUpperCase().includes('AM') && hours === 12) {
+                        hours = 0;
+                    }
+                    
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                }
+                return '';
+            } catch (e) {
+                return '';
+            }
+        }
+        
+        function showLoadingOverlay() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        
+        function hideLoadingOverlay() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('editRequestModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        }
+        
+        // Existing functions (keep these unchanged)
+        function updateStats(requests) {
+            const total = requests.length;
+            const assigned = requests.filter(r => r.status === 'Assigned').length;
+            const pending = requests.filter(r => r.status === 'Pending').length;
+            const newRequests = requests.filter(r => r.status === 'New').length;
+            
+            document.getElementById('statsDisplay').innerHTML = 
+                `Total: ${total} | New: ${newRequests} | Pending: ${pending} | Assigned: ${assigned}`;
+        }
+        
+        function showLoading() {
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('tableDiv').style.display = 'none';
+            document.getElementById('noDataDiv').style.display = 'none';
+            document.getElementById('errorDiv').style.display = 'none';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loadingDiv').style.display = 'none';
+        }
+        
+        function showTable() {
+            document.getElementById('tableDiv').style.display = 'block';
+            document.getElementById('noDataDiv').style.display = 'none';
+            document.getElementById('errorDiv').style.display = 'none';
+        }
+        
+        function showNoData() {
+            document.getElementById('noDataDiv').style.display = 'block';
+            document.getElementById('tableDiv').style.display = 'none';
+            document.getElementById('errorDiv').style.display = 'none';
+        }
+        
+        function showError(message) {
+            document.getElementById('errorDiv').innerHTML = message;
+            document.getElementById('errorDiv').style.display = 'block';
+            document.getElementById('tableDiv').style.display = 'none';
+            document.getElementById('noDataDiv').style.display = 'none';
+        }
+        
+        function exportToCSV() {
+            if (!allRequests || allRequests.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            const headers = ['Request ID', 'Event Date', 'Start Time', 'End Time', 'Requester', 'Type', 
+                           'Start Location', 'End Location', 'Riders Needed', 'Status', 'Assigned', 'Notes'];
+            
+            const csvRows = [headers.join(',')];
+            
+            allRequests.forEach(req => {
+                const row = [
+                    req.requestId || '',
+                    req.eventDate || '',
+                    req.startTime || '',
+                    req.endTime || '',
+                    req.requesterName || '',
+                    req.requestType || '',
+                    req.startLocation || '',
+                    req.endLocation || '',
+                    req.ridersNeeded || '',
+                    req.status || '',
+                    req.ridersAssigned || '',
+                    `"${(req.notes || '').replace(/"/g, '""')}"`
+                ];
+                csvRows.push(row.join(','));
+            });
+            
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `escort_requests_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

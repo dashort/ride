@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Motorcycle Escort Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 25px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.2);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 0.5rem;
+        }
+
+        .request-list, .assignments-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .request-item, .assignment-item {
+            padding: 1rem;
+            border-bottom: 1px solid #ecf0f1;
+            transition: background-color 0.2s ease;
+        }
+
+        .request-item:hover, .assignment-item:hover {
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .request-item:last-child, .assignment-item:last-child {
+            border-bottom: none;
+        }
+
+        .request-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .request-info h4 {
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+
+        .request-meta {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-new { background: #fff3cd; color: #856404; }
+        .status-pending { background: #d4edda; color: #155724; }
+        .status-assigned { background: #cce5ff; color: #004085; }
+        .status-unassigned { background: #ffeaa7; color: #b45f06; }
+        .status-completed { background: #d1ecf1; color: #0c5460; }
+
+        .assignment-item {
+            border-left: 4px solid #3498db;
+            background: rgba(52, 152, 219, 0.05);
+            margin-bottom: 0.5rem;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .assignment-time {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .assignment-details {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 0.25rem;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .action-button {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.4rem;
+            }
+
+            .navigation {
+                flex-direction: column;
+            }
+
+            .quick-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div>
+                <div id="userName">Loading...</div>
+                <div id="userRole">User</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="navigation">
+            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button active">📊 Dashboard</a>
+            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button">📋 Requests</a>
+            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button">🏍️ Assignments</a>
+            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button">📱 Notifications</a>
+            <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button">📊 Reports</a>
+        </nav>
+
+        <div class="dashboard-grid">
+            <!-- Statistics Card -->
+            <div class="card">
+                <h3>📊 System Overview</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-number" id="activeRiders">-</span>
+                        <div class="stat-label">Active Riders</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="pendingRequests">-</span>
+                        <div class="stat-label">Pending Requests</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="todayAssignments">-</span>
+                        <div class="stat-label">Today's Assignments</div>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number" id="weekAssignments">-</span>
+                        <div class="stat-label">This Week</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Requests -->
+            <div class="card">
+                <h3>📋 Recent Requests</h3>
+                <div class="request-list" id="recentRequestsList">
+                    <div class="loading">Loading recent requests...</div>
+                </div>
+            </div>
+
+            <!-- Upcoming Assignments -->
+            <div class="card">
+                <h3>🏍️ Upcoming Assignments</h3>
+                <div class="assignments-list" id="upcomingAssignmentsList">
+                    <div class="loading">Loading assignments...</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h3>⚡ Quick Actions</h3>
+                <div class="quick-actions">
+                    <button class="action-button" onclick="createNewRequest()" id="newRequestBtn">
+                        ➕ New Request
+                    </button>
+                    <button class="action-button" onclick="openAssignments()" id="assignRidersBtn">
+                        🏍️ Assign Riders
+                    </button>
+                    <button class="action-button" onclick="sendBulkNotifications()" id="notificationsBtn">
+                        📱 Send Notifications
+                    </button>
+                    <button class="action-button" onclick="refreshDashboard()">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+<script>
+    // Global app state
+    let app = {
+        user: null,
+        isOnline: navigator.onLine,
+        loadingTimeout: 15000 // 15 second timeout
+    };
+
+    // Initialize the dashboard
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🚀 Dashboard loading...');
+        
+        // Set loading timeouts to prevent infinite loading states
+        setTimeout(() => {
+            if (document.getElementById('activeRiders').textContent === '-') {
+                console.log('⚠️ Loading timeout - setting fallback values');
+                setFallbackValues();
+            }
+        }, app.loadingTimeout);
+        
+        // Load data with proper error handling
+        initializeDashboard();
+    });
+
+    function initializeDashboard() {
+        console.log('🔄 Initializing dashboard...');
+        
+        // Load user data first, then load everything else
+        loadUserDataSafely()
+            .then(() => {
+                console.log('✅ User data loaded, loading dashboard data...');
+                return Promise.all([
+                    loadDashboardStatsPromise(),
+                    loadRecentRequestsPromise(),
+                    loadUpcomingAssignmentsPromise()
+                ]);
+            })
+            .then(() => {
+                console.log('✅ All dashboard data loaded successfully');
+            })
+            .catch(error => {
+                console.error('❌ Dashboard initialization failed:', error);
+                setFallbackValues();
+            });
+    }
+
+    // Convert callback-based functions to Promise-based
+    function loadUserDataSafely() {
+        return new Promise((resolve, reject) => {
+            try {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler((user) => {
+                            console.log('✅ User data loaded:', user);
+                            handleUserDataSafely(user);
+                            resolve(user);
+                        })
+                        .withFailureHandler((error) => {
+                            console.error('❌ Error loading user:', error);
+                            const fallbackUser = {
+                                name: 'System User',
+                                email: 'user@system.com',
+                                roles: ['admin'],
+                                permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+                            };
+                            handleUserDataSafely(fallbackUser);
+                            resolve(fallbackUser);
+                        })
+                        .getCurrentUser();
+                } else {
+                    console.log('⚠️ Google Apps Script not available, using fallback user');
+                    const fallbackUser = {
+                        name: 'System User',
+                        email: 'user@system.com',
+                        roles: ['admin'],
+                        permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+                    };
+                    handleUserDataSafely(fallbackUser);
+                    resolve(fallbackUser);
+                }
+            } catch (error) {
+                console.error('❌ Exception in loadUserDataSafely:', error);
+                reject(error);
+            }
+        });
+    }
+
+    function loadDashboardStatsPromise() {
+        return new Promise((resolve, reject) => {
+            try {
+                console.log('📊 Loading dashboard stats...');
+                
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler((stats) => {
+                            console.log('✅ Stats loaded:', stats);
+                            updateStats(stats);
+                            resolve(stats);
+                        })
+                        .withFailureHandler((error) => {
+                            console.error('❌ Error loading stats:', error);
+                            const fallbackStats = {
+                                activeRiders: 0,
+                                pendingRequests: 0,
+                                todayAssignments: 0,
+                                weekAssignments: 0
+                            };
+                            updateStats(fallbackStats);
+                            resolve(fallbackStats);
+                        })
+                        .calculateDashboardStatistics();
+                } else {
+                    console.log('⚠️ Google Apps Script not available for stats');
+                    const fallbackStats = {
+                        activeRiders: 0,
+                        pendingRequests: 0,
+                        todayAssignments: 0,
+                        weekAssignments: 0
+                    };
+                    updateStats(fallbackStats);
+                    resolve(fallbackStats);
+                }
+            } catch (error) {
+                console.error('❌ Exception in loadDashboardStatsPromise:', error);
+                reject(error);
+            }
+        });
+    }
+
+    function loadRecentRequestsPromise() {
+        return new Promise((resolve, reject) => {
+            try {
+                console.log('📋 Loading recent requests...');
+                
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler((requests) => {
+                            console.log('✅ Recent requests loaded:', requests);
+                            updateRecentRequests(requests);
+                            resolve(requests);
+                        })
+                        .withFailureHandler((error) => {
+                            console.error('❌ Error loading recent requests:', error);
+                            updateRecentRequests([]);
+                            resolve([]);
+                        })
+                        .getRecentRequestsForWebApp(10);
+                } else {
+                    console.log('⚠️ Google Apps Script not available for recent requests');
+                    updateRecentRequests([]);
+                    resolve([]);
+                }
+            } catch (error) {
+                console.error('❌ Exception in loadRecentRequestsPromise:', error);
+                updateRecentRequests([]);
+                resolve([]);
+            }
+        });
+    }
+
+    function loadUpcomingAssignmentsPromise() {
+        return new Promise((resolve, reject) => {
+            try {
+                console.log('🏍️ Loading upcoming assignments...');
+                
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler((assignments) => {
+                            console.log('✅ Assignments loaded:', assignments);
+                            updateUpcomingAssignments(assignments);
+                            resolve(assignments);
+                        })
+                        .withFailureHandler((error) => {
+                            console.error('❌ Error loading assignments, trying backup method:', error);
+                            // Try backup method
+                            google.script.run
+                                .withSuccessHandler((assignments) => {
+                                    console.log('✅ Assignments loaded via backup:', assignments);
+                                    updateUpcomingAssignments(assignments);
+                                    resolve(assignments);
+                                })
+                                .withFailureHandler((backupError) => {
+                                    console.error('❌ Backup assignment loading also failed:', backupError);
+                                    updateUpcomingAssignments([]);
+                                    resolve([]);
+                                })
+                                .getAllActiveAssignmentsForWebApp();
+                        })
+                        .getUpcomingAssignmentsForWebApp(app.user || {roles: ['admin']});
+                } else {
+                    console.log('⚠️ Google Apps Script not available for assignments');
+                    updateUpcomingAssignments([]);
+                    resolve([]);
+                }
+            } catch (error) {
+                console.error('❌ Exception in loadUpcomingAssignmentsPromise:', error);
+                updateUpcomingAssignments([]);
+                resolve([]);
+            }
+        });
+    }
+
+    function handleUserDataSafely(user) {
+        console.log('👤 Handling user data:', user);
+        app.user = user;
+        
+        setTimeout(() => {
+            updateUserInfoSafely(user);
+            updatePermissionBasedUI(user);
+        }, 100);
+    }
+
+    function updateUserInfoSafely(user) {
+        try {
+            const safeUpdate = (id, value, property = 'textContent') => {
+                try {
+                    const element = document.getElementById(id);
+                    if (element && element[property] !== undefined) {
+                        element[property] = value;
+                        console.log(`✅ Updated ${id}: ${value}`);
+                    } else {
+                        console.log(`⚠️ Element ${id} not found or ${property} not available`);
+                    }
+                } catch (e) {
+                    console.log(`❌ Error updating ${id}:`, e.message);
+                }
+            };
+
+            safeUpdate('userName', user.name || 'User');
+            safeUpdate('userRole', (user.roles || ['user']).join(', '));
+            safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
+        } catch (error) {
+            console.log('❌ Error in updateUserInfoSafely:', error);
+        }
+    }
+
+    function updatePermissionBasedUI(user) {
+        try {
+            const permissions = user.permissions || [];
+            
+            const hideIfNoPermission = (elementId, permission) => {
+                const element = document.getElementById(elementId);
+                if (element && !permissions.includes(permission)) {
+                    element.style.display = 'none';
+                } else if (element) {
+                    element.style.display = '';
+                }
+            };
+
+            hideIfNoPermission('newRequestBtn', 'create_request');
+            hideIfNoPermission('assignRidersBtn', 'assign_riders');
+            hideIfNoPermission('notificationsBtn', 'send_notifications');
+        } catch (error) {
+            console.log('❌ Error in updatePermissionBasedUI:', error);
+        }
+    }
+
+    function updateStats(stats) {
+        console.log('📊 Updating stats display:', stats);
+        
+        const safeUpdateStat = (id, value) => {
+            try {
+                const element = document.getElementById(id);
+                if (element) {
+                    const displayValue = (value !== undefined && value !== null) ? value : 0;
+                    element.textContent = displayValue;
+                    console.log(`✅ Updated stat ${id}: ${displayValue}`);
+                } else {
+                    console.log(`⚠️ Stat element ${id} not found`);
+                }
+            } catch (e) {
+                console.log(`❌ Error updating stat ${id}:`, e.message);
+            }
+        };
+
+        safeUpdateStat('activeRiders', stats.activeRiders);
+        safeUpdateStat('pendingRequests', stats.pendingRequests);
+        safeUpdateStat('todayAssignments', stats.todayAssignments);
+        safeUpdateStat('weekAssignments', stats.weekAssignments);
+    }
+
+    function updateRecentRequests(requests) {
+        console.log('📋 Updating recent requests:', requests);
+        const container = document.getElementById('recentRequestsList');
+        
+        if (!container) {
+            console.error('❌ Recent requests container not found');
+            return;
+        }
+        
+        if (!requests || requests.length === 0) {
+            container.innerHTML = `
+                <div class="empty-message">
+                    <p>No recent requests found</p>
+                    <p style="font-size: 0.8rem; margin-top: 0.5rem;">New requests will appear here</p>
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            container.innerHTML = requests.map(request => `
+                <div class="request-item">
+                    <div class="request-info">
+                        <h4>${request.id || 'Unknown'} - ${request.requesterName || 'Unknown Requester'}</h4>
+                        <div class="request-meta">
+                            ${request.type || 'Unknown Type'} • ${request.eventDate || 'No Date'}
+                        </div>
+                    </div>
+                    <span class="status-badge status-${(request.status || 'new').toLowerCase().replace(' ', '-')}">
+                        ${request.status || 'New'}
+                    </span>
+                </div>
+            `).join('');
+            
+            console.log('✅ Recent requests updated successfully');
+        } catch (error) {
+            console.error('❌ Error updating recent requests HTML:', error);
+            container.innerHTML = '<div class="empty-message"><p>Error loading recent requests</p></div>';
+        }
+    }
+
+    function updateUpcomingAssignments(assignments) {
+        console.log('🏍️ Updating upcoming assignments:', assignments);
+        const container = document.getElementById('upcomingAssignmentsList');
+        
+        if (!container) {
+            console.error('❌ Upcoming assignments container not found');
+            return;
+        }
+        
+        // Handle different data formats
+        let assignmentsArray = [];
+        if (Array.isArray(assignments)) {
+            assignmentsArray = assignments;
+        } else if (assignments && assignments.assignments && Array.isArray(assignments.assignments)) {
+            assignmentsArray = assignments.assignments;
+        } else if (assignments && typeof assignments === 'object' && assignments.length !== undefined) {
+            assignmentsArray = Array.from(assignments);
+        }
+        
+        console.log('📊 Processing', assignmentsArray.length, 'assignments');
+        
+        if (assignmentsArray.length === 0) {
+            container.innerHTML = `
+                <div class="empty-message">
+                    <p>No upcoming assignments</p>
+                    <p style="font-size: 0.8rem; margin-top: 0.5rem;">Scheduled assignments will appear here</p>
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            container.innerHTML = assignmentsArray.map(assignment => {
+                const assignmentId = assignment.assignmentId || assignment.id || 'Unknown';
+                const requestId = assignment.requestId || assignment.request_id || 'Unknown';
+                const riderName = assignment.riderName || assignment.rider_name || assignment.name || 'Unknown Rider';
+                const eventDate = assignment.eventDate || assignment.event_date || 'No Date';
+                const startTime = assignment.startTime || assignment.start_time || 'No Time';
+                const startLocation = assignment.startLocation || assignment.start_location || assignment.location || 'Location TBD';
+                
+                return `
+                    <div class="assignment-item">
+                        <div class="assignment-time">
+                            ${eventDate} at ${startTime}
+                        </div>
+                        <div class="assignment-details">
+                            ${requestId} • ${riderName}<br>
+                            📍 ${startLocation}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('✅ Upcoming assignments updated successfully');
+        } catch (error) {
+            console.error('❌ Error updating assignments HTML:', error);
+            container.innerHTML = '<div class="empty-message"><p>Error loading assignments</p></div>';
+        }
+    }
+
+    function setFallbackValues() {
+        console.log('⚠️ Setting fallback values due to loading timeout or errors');
+        
+        // Set fallback stats
+        updateStats({
+            activeRiders: 0,
+            pendingRequests: 0,
+            todayAssignments: 0,
+            weekAssignments: 0
+        });
+        
+        // Set fallback messages
+        updateRecentRequests([]);
+        updateUpcomingAssignments([]);
+        
+        // Show error message
+        showMessage('Some dashboard data may not be current. Please try refreshing.', 'warning');
+    }
+
+    // Quick action functions
+    function createNewRequest() {
+        if (confirm('Navigate to Requests page to create a new request?')) {
+            window.location.href = '?page=requests&action=create';
+        }
+    }
+
+    function openAssignments() {
+        window.location.href = '?page=assignments';
+    }
+
+    function sendBulkNotifications() {
+        if (confirm('This will send notifications to all pending assignments. Continue?')) {
+            showMessage('Notification feature will be available soon!', 'info');
+        }
+    }
+
+    function refreshDashboard() {
+        showMessage('Refreshing dashboard...', 'info');
+        
+        // Reset all displays to loading state
+        document.getElementById('activeRiders').textContent = '-';
+        document.getElementById('pendingRequests').textContent = '-';
+        document.getElementById('todayAssignments').textContent = '-';
+        document.getElementById('weekAssignments').textContent = '-';
+        
+        document.getElementById('recentRequestsList').innerHTML = '<div class="loading">Loading recent requests...</div>';
+        document.getElementById('upcomingAssignmentsList').innerHTML = '<div class="loading">Loading assignments...</div>';
+        
+        // Reload all data
+        initializeDashboard();
+        
+        setTimeout(() => {
+            showMessage('Dashboard refreshed!', 'success');
+        }, 2000);
+    }
+
+    // Utility functions
+    function showMessage(message, type = 'info') {
+        const colors = {
+            success: '#27ae60',
+            error: '#e74c3c',
+            info: '#3498db',
+            warning: '#f39c12'
+        };
+
+        const messageDiv = document.createElement('div');
+        messageDiv.style.position = 'fixed';
+        messageDiv.style.top = '20px';
+        messageDiv.style.right = '20px';
+        messageDiv.style.background = colors[type] || colors.info;
+        messageDiv.style.color = 'white';
+        messageDiv.style.padding = '1rem';
+        messageDiv.style.borderRadius = '5px';
+        messageDiv.style.zIndex = '9999';
+        messageDiv.style.maxWidth = '300px';
+        messageDiv.textContent = message;
+        
+        document.body.appendChild(messageDiv);
+        
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 3000);
+    }
+
+    // Network status monitoring
+    window.addEventListener('online', () => {
+        app.isOnline = true;
+        showMessage('Connection restored', 'success');
+        refreshDashboard();
+    });
+
+    window.addEventListener('offline', () => {
+        app.isOnline = false;
+        showMessage('Connection lost - some features may not work', 'warning');
+    });
+
+    // Debug mode - remove this in production
+    if (window.location.search.includes('debug=true')) {
+        window.app = app;
+        console.log('🐛 Debug mode enabled. Access app state via window.app');
+        
+        // Add debug button
+        setTimeout(() => {
+            const debugBtn = document.createElement('button');
+            debugBtn.textContent = '🐛 Debug Dashboard';
+            debugBtn.style.position = 'fixed';
+            debugBtn.style.bottom = '20px';
+            debugBtn.style.right = '20px';
+            debugBtn.style.zIndex = '9999';
+            debugBtn.onclick = () => {
+                console.log('=== DEBUG INFO ===');
+                console.log('App state:', app);
+                console.log('User:', app.user);
+                console.log('Online:', app.isOnline);
+                
+                // Test server connection
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(result => console.log('Server test success:', result))
+                        .withFailureHandler(error => console.log('Server test failed:', error))
+                        .getCurrentUser();
+                }
+            };
+            document.body.appendChild(debugBtn);
+        }, 1000);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Motorcycle Escort Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 25px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .notifications-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+        }
+
+        .stat-card.success {
+            border-left-color: #27ae60;
+        }
+
+        .stat-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .stat-card.danger {
+            border-left-color: #e74c3c;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            display: block;
+        }
+
+        .stat-card.success .stat-number {
+            color: #27ae60;
+        }
+
+        .stat-card.warning .stat-number {
+            color: #f39c12;
+        }
+
+        .stat-card.danger .stat-number {
+            color: #e74c3c;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .bulk-actions {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .bulk-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .bulk-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-bulk {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-sms {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-email {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-both {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .btn-refresh {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-reminder {
+            background: #e67e22;
+            color: white;
+        }
+
+        .btn-bulk:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .filter-section {
+            background: #ecf0f1;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 100px;
+        }
+
+        .filter-select {
+            padding: 0.5rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.5rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+            outline: none;
+        }
+
+        .notifications-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .assignment-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .assignment-item {
+            padding: 1rem;
+            border: 1px solid #ecf0f1;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .assignment-item:hover {
+            background: rgba(52, 152, 219, 0.05);
+            border-color: #3498db;
+        }
+
+        .assignment-item.selected {
+            background: rgba(52, 152, 219, 0.1);
+            border-color: #3498db;
+            border-width: 2px;
+        }
+
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .assignment-id {
+            font-weight: bold;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .select-checkbox {
+            margin-right: 0.5rem;
+        }
+
+        .notification-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-sms_sent {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-email_sent {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-both_sent {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-none {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .assignment-details {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 0.5rem;
+        }
+
+        .assignment-rider {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .notification-history {
+            font-size: 0.8rem;
+            color: #95a5a6;
+            font-style: italic;
+            margin-top: 0.25rem;
+        }
+
+        .assignment-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #7f8c8d;
+        }
+
+        .bulk-selection {
+            background: #e8f5e8;
+            border: 1px solid #27ae60;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .bulk-selection.show {
+            display: block;
+        }
+
+        .bulk-selection-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .count-badge {
+            background: #3498db;
+            color: white;
+            border-radius: 15px;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1024px) {
+            .notifications-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .bulk-buttons, .bulk-selection-actions {
+                flex-direction: column;
+            }
+
+            .assignment-actions {
+                flex-direction: column;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div>
+                <div class="user-name" id="userName">Loading...</div>
+                <div class="user-role" id="userRole">User</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <nav class="navigation">
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec" class="nav-button">📊 Dashboard</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=requests" class="nav-button">📋 Requests</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=assignments" class="nav-button">🏍️ Assignments</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=notifications" class="nav-button active">📱 Notifications</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=reports" class="nav-button">📊 Reports</a>
+        </nav>
+
+        <div class="notifications-header">
+            <h2 class="page-title">📱 Notifications Center</h2>
+            
+            <!-- Statistics Grid -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <span class="stat-number" id="totalAssignments">-</span>
+                    <div class="stat-label">Total Assignments</div>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-number" id="pendingNotifications">-</span>
+                    <div class="stat-label">Never Notified</div>
+                </div>
+                <div class="stat-card success">
+                    <span class="stat-number" id="smsToday">-</span>
+                    <div class="stat-label">SMS Sent Today</div>
+                </div>
+                <div class="stat-card success">
+                    <span class="stat-number" id="emailToday">-</span>
+                    <div class="stat-label">Emails Sent Today</div>
+                </div>
+            </div>
+
+            <!-- Bulk Actions -->
+            <div class="bulk-actions">
+                <div class="bulk-title">📨 Bulk Notification Actions</div>
+                <div class="bulk-buttons">
+                    <button class="btn-bulk btn-sms" onclick="sendBulkNotifications('SMS', 'all')">
+                        📱 Send SMS to All Assignments
+                    </button>
+                    <button class="btn-bulk btn-email" onclick="sendBulkNotifications('Email', 'all')">
+                        📧 Send Email to All Assignments
+                    </button>
+                    <button class="btn-bulk btn-both" onclick="sendBulkNotifications('Both', 'today')">
+                        📨 Notify Today's Assignments
+                    </button>
+                    <button class="btn-bulk btn-reminder" onclick="sendBulkNotifications('Both', 'pending')">
+                        🔔 Send Reminders to Pending
+                    </button>
+                    <button class="btn-bulk btn-refresh" onclick="refreshNotifications()">
+                        🔄 Refresh Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <span class="filter-label">Filter by:</span>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Notification Statuses</option>
+                        <option value="pending">Never Notified</option>
+                        <option value="sms_sent">SMS Sent</option>
+                        <option value="email_sent">Email Sent</option>
+                        <option value="both_sent">Both Sent</option>
+                    </select>
+                    
+                    <select class="filter-select" id="timeFilter">
+                        <option value="">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="week">This Week</option>
+                        <option value="overdue">Overdue</option>
+                    </select>
+                    
+                    <input type="text" class="search-box" placeholder="🔍 Search riders, requests, locations..." id="searchBox">
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Selection Controls -->
+        <div class="bulk-selection" id="bulkSelectionPanel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Selected: <span class="count-badge" id="selectedCount">0</span> assignments</span>
+                <button class="btn" style="background: #e74c3c; color: white;" onclick="clearSelection()">
+                    Clear Selection
+                </button>
+            </div>
+            <div class="bulk-selection-actions">
+                <button class="btn btn-sms" onclick="sendToSelected('SMS')">
+                    📱 Send SMS to Selected
+                </button>
+                <button class="btn btn-email" onclick="sendToSelected('Email')">
+                    📧 Send Email to Selected
+                </button>
+                <button class="btn btn-both" onclick="sendToSelected('Both')">
+                    📨 Send Both to Selected
+                </button>
+            </div>
+        </div>
+
+        <div class="notifications-layout">
+            <!-- All Assignments -->
+            <div class="card">
+                <h3 class="card-title">
+                    📋 All Assignments 
+                    <button class="btn" style="background: #95a5a6; color: white; font-size: 0.7rem;" onclick="toggleSelectAll()">
+                        Select All
+                    </button>
+                </h3>
+                <div id="allAssignmentsList" class="assignment-list">
+                    <div class="loading">Loading all assignments...</div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <h3 class="card-title">📤 Recent Notification Activity</h3>
+                <div id="recentActivityList" class="assignment-list">
+                    <div class="loading">Loading recent activity...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let app = {
+            user: null,
+            assignments: [],
+            filteredAssignments: [],
+            selectedAssignments: new Set(),
+            stats: {},
+            isOnline: navigator.onLine
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Notifications page loading...');
+            loadUserData();
+            loadNotificationData();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Filter events
+            const statusFilter = document.getElementById('statusFilter');
+            const timeFilter = document.getElementById('timeFilter');
+            const searchBox = document.getElementById('searchBox');
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', applyFilters);
+            }
+            if (timeFilter) {
+                timeFilter.addEventListener('change', applyFilters);
+            }
+            if (searchBox) {
+                searchBox.addEventListener('input', debounce(applyFilters, 300));
+                searchBox.addEventListener('keyup', function(e) {
+                    if (e.key === 'Enter') {
+                        applyFilters();
+                    }
+                });
+                searchBox.addEventListener('search', applyFilters);
+            }
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function loadUserData() {
+            console.log('Loading user data...');
+            try {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    console.log('Google Apps Script not available, using fallback user data');
+                    handleUserData({
+                        name: 'System User',
+                        roles: ['admin'],
+                        permissions: ['send_notifications']
+                    });
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(handleUserData)
+                    .withFailureHandler((error) => {
+                        console.error('Error loading user:', error);
+                        handleUserData({
+                            name: 'System User',
+                            roles: ['admin'],
+                            permissions: ['send_notifications']
+                        });
+                    })
+                    .getCurrentUser();
+            } catch (error) {
+                console.error('Error in loadUserData:', error);
+                handleUserData({
+                    name: 'System User',
+                    roles: ['admin'], 
+                    permissions: ['send_notifications']
+                });
+            }
+        }
+
+        function handleUserData(user) {
+            console.log('User data loaded:', user);
+            app.user = user;
+            
+            setTimeout(() => {
+                updateUserInfoSafely(user);
+            }, 100);
+        }
+
+        function updateUserInfoSafely(user) {
+            try {
+                const safeUpdate = (id, value) => {
+                    try {
+                        const element = document.getElementById(id);
+                        if (element && element.textContent !== undefined) {
+                            element.textContent = value;
+                            console.log(`✅ Updated ${id}: ${value}`);
+                        }
+                    } catch (e) {
+                        console.log(`❌ Error updating ${id}:`, e.message);
+                    }
+                };
+
+                safeUpdate('userName', user.name || 'User');
+                safeUpdate('userRole', (user.roles || ['user']).join(', '));
+                safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
+            } catch (error) {
+                console.log('Error in updateUserInfoSafely:', error);
+            }
+        }
+
+        // Replace the entire loadNotificationData function in notifications.html
+
+function loadNotificationData() {
+    console.log('🔄 Loading notification data using working functions...');
+    loadNotificationStatsWorking();
+    loadAssignmentsWorking();
+}
+
+function loadNotificationStatsWorking() {
+    console.log('📊 Loading notification statistics using working method...');
+    try {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Use the same function that works on assignments page
+            google.script.run
+                .withSuccessHandler((requests) => {
+                    console.log('✅ Stats data loaded successfully:', requests);
+                    
+                    // Calculate basic stats from requests data
+                    const stats = {
+                        totalAssignments: requests ? requests.length : 0,
+                        pendingNotifications: requests ? requests.filter(r => r.status === 'Assigned').length : 0,
+                        smsToday: 0, // Will be 0 for now until we get notification data working
+                        emailToday: 0
+                    };
+                    
+                    console.log('📊 Calculated stats:', stats);
+                    updateStats(stats);
+                })
+                .withFailureHandler((error) => {
+                    console.error('❌ Error loading stats:', error);
+                    updateStats({
+                        totalAssignments: 0,
+                        pendingNotifications: 0,
+                        smsToday: 0,
+                        emailToday: 0
+                    });
+                })
+                .getFilteredRequestsForWebApp('All'); // Use the working function from assignments
+        } else {
+            console.log('⚠️ Google Apps Script not available for stats');
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+        }
+    } catch (error) {
+        console.error('❌ Exception in loadNotificationStatsWorking:', error);
+        updateStats({
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        });
+    }
+}
+
+function loadAssignmentsWorking() {
+    console.log('📋 Loading real assignments for notifications...');
+    
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.log('⚠️ Google Apps Script not available');
+        handleAssignmentsLoaded([]);
+        return;
+    }
+    
+    try {
+        // Get actual assignments with real assignment IDs
+        google.script.run
+            .withSuccessHandler((assignments) => {
+                console.log('✅ Real assignments loaded successfully');
+                console.log('Assignment count:', assignments ? assignments.length : 0);
+                
+                if (assignments && assignments.length > 0) {
+                    console.log('Sample real assignment:', assignments[0]);
+                    console.log('Real assignment ID:', assignments[0].id);
+                    
+                    // Use the assignments directly - they already have real IDs
+                    handleAssignmentsLoaded(assignments);
+                } else {
+                    console.log('⚠️ No assignments data received');
+                    handleAssignmentsLoaded([]);
+                }
+            })
+            .withFailureHandler((error) => {
+                console.error('❌ Error loading real assignments:', error);
+                handleAssignmentsLoaded([]);
+            })
+            .getAllAssignmentsForNotifications(); // Use the real assignments function
+    } catch (error) {
+        console.error('❌ Exception in loadAssignmentsWorking:', error);
+        handleAssignmentsLoaded([]);
+    }
+}
+
+
+
+
+function loadNotificationStats() {
+    console.log('📊 Loading notification statistics...');
+    try {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Load assignments data for calculating stats
+            google.script.run
+                .withSuccessHandler((assignments) => {
+                    console.log('✅ Assignments loaded for stats calculation:', assignments);
+                    
+                    // Calculate stats from actual assignments data
+                    const stats = calculateStatsFromAssignmentsData(assignments);
+                    console.log('📊 Calculated stats:', stats);
+                    
+                    updateStats(stats);
+                })
+                .withFailureHandler((error) => {
+                    console.error('❌ Error loading assignments for stats:', error);
+                    updateStats({
+                        totalAssignments: 0,
+                        pendingNotifications: 0,
+                        smsToday: 0,
+                        emailToday: 0
+                    });
+                })
+                .getAllAssignmentsForNotifications(); // Use assignments data
+        } else {
+            console.log('⚠️ Google Apps Script not available for stats');
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+        }
+    } catch (error) {
+        console.error('❌ Exception in loadNotificationStats:', error);
+        updateStats({
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        });
+    }
+}
+// Add this helper function to notifications.html
+
+function calculateStatsFromAssignmentsData(assignments) {
+    if (!assignments || !Array.isArray(assignments)) {
+        return {
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        };
+    }
+    
+    const today = new Date();
+    const todayStr = today.toDateString();
+    
+    let totalAssignments = assignments.length;
+    let pendingNotifications = 0;
+    let smsToday = 0;
+    let emailToday = 0;
+    
+    assignments.forEach(assignment => {
+        // Count pending notifications (not yet notified)
+        if (!assignment.notificationStatus || assignment.notificationStatus === 'none') {
+            pendingNotifications++;
+        }
+        
+        // Count today's notifications
+        if (assignment.lastNotified) {
+            const notifiedDate = new Date(assignment.lastNotified);
+            if (notifiedDate.toDateString() === todayStr) {
+                if (assignment.notificationStatus === 'sms_sent' || assignment.notificationStatus === 'both_sent') {
+                    smsToday++;
+                }
+                if (assignment.notificationStatus === 'email_sent' || assignment.notificationStatus === 'both_sent') {
+                    emailToday++;
+                }
+            }
+        }
+    });
+    
+    return {
+        totalAssignments: totalAssignments,
+        pendingNotifications: pendingNotifications,
+        smsToday: smsToday,
+        emailToday: emailToday
+    };
+}
+
+function loadAssignments() {
+    console.log('📋 Loading assignments for notifications...');
+    
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.log('⚠️ Google Apps Script not available');
+        handleAssignmentsLoaded([]);
+        return;
+    }
+    
+    try {
+        // Use the same function that works on assignments page
+        google.script.run
+            .withSuccessHandler((assignments) => {
+                console.log('✅ Assignments loaded successfully for notifications');
+                
+                // Convert assignments to notification format
+                const notificationAssignments = convertAssignmentsToNotificationFormat(assignments);
+                handleAssignmentsLoaded(notificationAssignments);
+            })
+            .withFailureHandler((error) => {
+                console.error('❌ Error loading assignments:', error);
+                handleAssignmentsLoaded([]);
+            })
+            .getFilteredRequestsForAssignments({roles: ['admin']});
+    } catch (error) {
+        console.error('❌ Exception in loadAssignments:', error);
+        handleAssignmentsLoaded([]);
+    }
+}
+function processAssignmentsForNotifications(assignments) {
+    if (!assignments || !Array.isArray(assignments)) {
+        console.log('⚠️ No assignments data to process');
+        return [];
+    }
+    
+    console.log(`📋 Processing ${assignments.length} assignments for notifications`);
+    
+    return assignments.map((assignment, index) => {
+        // Log first few assignments for debugging
+        if (index < 3) {
+            console.log(`Assignment ${index}:`, assignment);
+        }
+        
+        return {
+            id: assignment.id || assignment.assignmentId || `ASG-${index}`,
+            requestId: assignment.requestId || assignment.request_id || 'Unknown Request',
+            riderName: assignment.riderName || assignment.rider_name || 'Unknown Rider',
+            riderPhone: assignment.riderPhone || assignment.rider_phone || 'N/A',
+            riderEmail: assignment.riderEmail || assignment.rider_email || 'N/A',
+            riderCarrier: assignment.riderCarrier || assignment.rider_carrier || 'N/A',
+            eventDate: assignment.eventDate || assignment.event_date || 'No Date',
+            startTime: assignment.startTime || assignment.start_time || 'No Time',
+            endTime: assignment.endTime || assignment.end_time || '',
+            startLocation: assignment.startLocation || assignment.start_location || 'Location TBD',
+            endLocation: assignment.endLocation || assignment.end_location || '',
+            notificationStatus: assignment.notificationStatus || 'none',
+            lastNotified: assignment.lastNotified || null
+        };
+    }).filter(assignment => assignment.riderName !== 'Unknown Rider'); // Filter out assignments without riders
+}
+
+        function updateStats(stats) {
+            console.log('📊 Updating stats:', stats);
+            app.stats = stats;
+            
+            const safeUpdateStat = (id, value) => {
+                try {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value || 0;
+                    }
+                } catch (e) {
+                    console.log(`❌ Error updating stat ${id}:`, e.message);
+                }
+            };
+
+            safeUpdateStat('totalAssignments', stats.totalAssignments);
+            safeUpdateStat('pendingNotifications', stats.pendingNotifications);
+            safeUpdateStat('smsToday', stats.smsToday);
+            safeUpdateStat('emailToday', stats.emailToday);
+            
+            if (stats && stats.assignments) {
+                console.log(`🔍 Assignments found in stats: ${stats.assignments.length}`);
+                if (Array.isArray(stats.assignments) && stats.assignments.length > 0) {
+                    handleAssignmentsLoaded(stats.assignments);
+                    showMessage(`✅ Auto-loaded ${stats.assignments.length} assignments via stats!`, 'success');
+                }
+            }
+        }
+
+        function handleAssignmentsLoaded(assignments) {
+            console.log('Assignments loaded:', assignments);
+            
+            if (assignments === null || assignments === undefined) {
+                console.log('⚠️ Server returned null/undefined');
+                assignments = [];
+            }
+            
+            app.assignments = Array.isArray(assignments) ? assignments : [];
+            app.filteredAssignments = [...app.assignments];
+            
+            console.log('Stored assignments count:', app.assignments.length);
+            
+            setTimeout(() => {
+                renderAllAssignments();
+                renderRecentActivity();
+                console.log('✅ Assignment rendering complete');
+            }, 100);
+        }
+
+        function applyFilters() {
+            console.log('Applying filters...');
+            
+            const statusFilterEl = document.getElementById('statusFilter');
+            const timeFilterEl = document.getElementById('timeFilter');
+            const searchBoxEl = document.getElementById('searchBox');
+            
+            const statusFilter = statusFilterEl ? statusFilterEl.value : '';
+            const timeFilter = timeFilterEl ? timeFilterEl.value : '';
+            const searchTerm = searchBoxEl ? searchBoxEl.value.toLowerCase().trim() : '';
+
+            console.log('Filters:', { statusFilter, timeFilter, searchTerm });
+            
+            if (app.assignments.length === 0) {
+                console.log('No assignments to filter!');
+                return;
+            }
+
+            app.filteredAssignments = app.assignments.filter(assignment => {
+                // Status filter
+                const currentStatus = assignment.notificationStatus || 'none';
+                const matchesStatus = !statusFilter || 
+                    (statusFilter === 'pending' && currentStatus === 'none') ||
+                    currentStatus === statusFilter;
+
+                // Time filter
+                let matchesTime = true;
+                if (timeFilter && assignment.eventDate) {
+                    try {
+                        const eventDate = new Date(assignment.eventDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        switch (timeFilter) {
+                            case 'today':
+                                matchesTime = eventDate.toDateString() === today.toDateString();
+                                break;
+                            case 'tomorrow':
+                                const tomorrow = new Date(today);
+                                tomorrow.setDate(today.getDate() + 1);
+                                matchesTime = eventDate.toDateString() === tomorrow.toDateString();
+                                break;
+                            case 'week':
+                                const weekLater = new Date(today);
+                                weekLater.setDate(today.getDate() + 7);
+                                matchesTime = eventDate >= today && eventDate <= weekLater;
+                                break;
+                            case 'overdue':
+                                matchesTime = eventDate < today;
+                                break;
+                        }
+                    } catch (e) {
+                        console.log('Date parsing error for:', assignment.eventDate);
+                        matchesTime = true;
+                    }
+                }
+
+                // Search filter
+                let matchesSearch = true;
+                if (searchTerm) {
+                    const searchableFields = [
+                        assignment.riderName,
+                        assignment.requestId, 
+                        assignment.startLocation,
+                        assignment.endLocation,
+                        assignment.riderPhone,
+                        assignment.riderEmail
+                    ];
+                    
+                    matchesSearch = searchableFields.some(field => {
+                        if (!field) return false;
+                        return String(field).toLowerCase().includes(searchTerm);
+                    });
+                }
+
+                return matchesStatus && matchesTime && matchesSearch;
+            });
+
+            console.log(`Filtered result: ${app.filteredAssignments.length} assignments from ${app.assignments.length} total`);
+            
+            app.selectedAssignments.clear();
+            updateSelectionUI();
+            renderAllAssignments();
+        }
+
+        function renderAllAssignments() {
+            console.log('Rendering assignments count:', app.filteredAssignments.length);
+            
+            const container = document.getElementById('allAssignmentsList');
+            
+            if (!container) {
+                console.error('Container element not found!');
+                return;
+            }
+            
+            if (app.filteredAssignments.length === 0) {
+                const hasFilters = document.getElementById('statusFilter').value || 
+                                 document.getElementById('timeFilter').value || 
+                                 document.getElementById('searchBox').value.trim();
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>${hasFilters ? 'No Matching Assignments' : 'No Assignments Found'}</h3>
+                        <p>${hasFilters ? 'Try adjusting your filters or search terms' : 'No assignments available'}</p>
+                        ${hasFilters ? '<button class="btn" style="background: #95a5a6; color: white; margin-top: 1rem;" onclick="clearAllFilters()">Clear All Filters</button>' : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = app.filteredAssignments.map((assignment, index) => {
+                const isSelected = app.selectedAssignments.has(assignment.id);
+                const notificationStatus = assignment.notificationStatus || 'none';
+                const lastNotified = assignment.lastNotified ? new Date(assignment.lastNotified).toLocaleString() : 'Never';
+                
+                const riderName = assignment.riderName || assignment.rider_name || assignment.name || 'Unknown Rider';
+                const requestId = assignment.requestId || assignment.request_id || assignment.id || 'Unknown ID';
+                const riderPhone = assignment.riderPhone || assignment.rider_phone || assignment.phone || 'N/A';
+                const riderEmail = assignment.riderEmail || assignment.rider_email || assignment.email || 'N/A';
+                const eventDate = assignment.eventDate || assignment.event_date || 'N/A';
+                const startTime = assignment.startTime || assignment.start_time || 'N/A';
+                const startLocation = assignment.startLocation || assignment.start_location || 'N/A';
+                const endLocation = assignment.endLocation || assignment.end_location || '';
+                
+                return `
+                    <div class="assignment-item ${isSelected ? 'selected' : ''}" data-assignment-id="${assignment.id}">
+                        <div class="assignment-header">
+                            <div class="assignment-id">
+                                <input type="checkbox" class="select-checkbox" 
+                                       ${isSelected ? 'checked' : ''} 
+                                       onchange="toggleAssignmentSelection('${assignment.id}')">
+                                ${requestId} - ${riderName}
+                            </div>
+                            <span class="notification-status status-${notificationStatus}">
+                                ${notificationStatus === 'none' ? 'Never Notified' : 
+                                  notificationStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                        </div>
+                        <div class="assignment-details">
+                            <div class="assignment-rider">📞 ${riderPhone} | 📧 ${riderEmail}</div>
+                            📅 ${eventDate} at ${startTime}<br>
+                            📍 ${startLocation}
+                            ${endLocation ? ' → ' + endLocation : ''}
+                        </div>
+                        <div class="notification-history">
+                            Last notification: ${lastNotified}
+                        </div>
+                        <div class="assignment-actions">
+                            <button class="btn btn-sms" onclick="sendIndividualNotification('${assignment.id}', 'SMS')">
+                                📱 SMS
+                            </button>
+                            <button class="btn btn-email" onclick="sendIndividualNotification('${assignment.id}', 'Email')">
+                                📧 Email
+                            </button>
+                            <button class="btn btn-both" onclick="sendIndividualNotification('${assignment.id}', 'Both')">
+                                📨 Both
+                            </button>
+                            <button class="btn" style="background: #f39c12; color: white;" onclick="sendReminder('${assignment.id}')">
+                                🔔 Reminder
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('✅ Assignments rendered successfully');
+        }
+
+        function renderRecentActivity() {
+            const container = document.getElementById('recentActivityList');
+            
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            
+            const recentActivity = app.assignments
+                .filter(assignment => assignment.lastNotified && new Date(assignment.lastNotified) > weekAgo)
+                .sort((a, b) => new Date(b.lastNotified) - new Date(a.lastNotified))
+                .slice(0, 10);
+
+            if (recentActivity.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Recent Activity</h3>
+                        <p>Recent notifications will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = recentActivity.map(assignment => `
+                <div class="assignment-item">
+                    <div class="assignment-header">
+                        <span class="assignment-id">${assignment.requestId} - ${assignment.riderName}</span>
+                        <span class="notification-status status-${assignment.notificationStatus}">
+                            ${assignment.notificationStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                    </div>
+                    <div class="assignment-details">
+                        📅 ${assignment.eventDate} at ${assignment.startTime}<br>
+                        📍 ${assignment.startLocation}
+                    </div>
+                    <div class="notification-history">
+                        Sent: ${new Date(assignment.lastNotified).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleAssignmentSelection(assignmentId) {
+            if (app.selectedAssignments.has(assignmentId)) {
+                app.selectedAssignments.delete(assignmentId);
+            } else {
+                app.selectedAssignments.add(assignmentId);
+            }
+            
+            updateSelectionUI();
+        }
+
+        function toggleSelectAll() {
+            if (app.selectedAssignments.size === app.filteredAssignments.length) {
+                app.selectedAssignments.clear();
+            } else {
+                app.selectedAssignments.clear();
+                app.filteredAssignments.forEach(assignment => {
+                    app.selectedAssignments.add(assignment.id);
+                });
+            }
+            
+            updateSelectionUI();
+            renderAllAssignments();
+        }
+
+        function clearSelection() {
+            app.selectedAssignments.clear();
+            updateSelectionUI();
+            renderAllAssignments();
+        }
+
+        function updateSelectionUI() {
+            const panel = document.getElementById('bulkSelectionPanel');
+            const countElement = document.getElementById('selectedCount');
+            
+            if (app.selectedAssignments.size > 0) {
+                panel.classList.add('show');
+                countElement.textContent = app.selectedAssignments.size;
+            } else {
+                panel.classList.remove('show');
+            }
+        }
+
+        function sendIndividualNotification(assignmentId, type) {
+            const assignment = app.assignments.find(a => a.id === assignmentId);
+            if (!assignment) {
+                showError('Assignment not found');
+                return;
+            }
+
+            const confirmMessage = assignment.notificationStatus && assignment.notificationStatus !== 'none' 
+                ? `Re-send ${type} notification to ${assignment.riderName}?\n\nNote: This rider was previously notified.`
+                : `Send ${type} notification to ${assignment.riderName}?`;
+
+            if (confirm(confirmMessage)) {
+                showLoading(`Sending ${type} notification...`);
+
+                try {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            hideLoading();
+                            if (result.success) {
+                                showSuccess(`${type} notification sent successfully!`);
+                                setTimeout(loadNotificationData, 1000);
+                            } else {
+                                showError('Failed to send notification: ' + result.message);
+                            }
+                        })
+                        .withFailureHandler((error) => {
+                            hideLoading();
+                            showError('Error sending notification: ' + error.message);
+                        })
+                        .sendAssignmentNotification(assignmentId, type);
+                } catch (error) {
+                    hideLoading();
+                    showError('Error: ' + error.message);
+                }
+            }
+        }
+
+        function sendReminder(assignmentId) {
+            sendIndividualNotification(assignmentId, 'Both');
+        }
+
+        function sendToSelected(type) {
+            if (app.selectedAssignments.size === 0) {
+                showError('No assignments selected');
+                return;
+            }
+
+            const selectedIds = Array.from(app.selectedAssignments);
+            const selectedAssignments = app.assignments.filter(a => selectedIds.includes(a.id));
+            
+            const previouslyNotified = selectedAssignments.filter(a => a.notificationStatus && a.notificationStatus !== 'none').length;
+            const neverNotified = selectedAssignments.length - previouslyNotified;
+            
+            let confirmMessage = `Send ${type} notifications to ${selectedAssignments.length} selected assignment(s)?`;
+            
+            if (previouslyNotified > 0) {
+                confirmMessage += `\n\nNote: ${previouslyNotified} rider(s) have been previously notified and ${neverNotified} have never been notified.`;
+            }
+
+            if (confirm(confirmMessage)) {
+                showLoading(`Sending ${type} notifications to ${selectedAssignments.length} assignments...`);
+
+                try {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            hideLoading();
+                            showBulkResult(result);
+                            app.selectedAssignments.clear();
+                            updateSelectionUI();
+                            setTimeout(loadNotificationData, 2000);
+                        })
+                        .withFailureHandler((error) => {
+                            hideLoading();
+                            showError('Bulk notification error: ' + error.message);
+                        })
+                        .sendBulkNotificationsToSelected(selectedIds, type);
+                } catch (error) {
+                    hideLoading();
+                    showError('Error: ' + error.message);
+                }
+            }
+        }
+
+        function sendBulkNotifications(type, filter) {
+            let targetAssignments = [];
+            let description = '';
+            
+            switch (filter) {
+                case 'all':
+                    targetAssignments = app.assignments;
+                    description = 'all assignments';
+                    break;
+                case 'pending':
+                    targetAssignments = app.assignments.filter(a => !a.notificationStatus || a.notificationStatus === 'none');
+                    description = 'assignments that have never been notified';
+                    break;
+                case 'today':
+                    const today = new Date().toDateString();
+                    targetAssignments = app.assignments.filter(a => new Date(a.eventDate).toDateString() === today);
+                    description = "today's assignments";
+                    break;
+            }
+
+            if (targetAssignments.length === 0) {
+                showError(`No assignments found for ${filter} filter`);
+                return;
+            }
+
+            const confirmMessage = `Send ${type} notifications to ${targetAssignments.length} ${description}?`;
+
+            if (confirm(confirmMessage)) {
+                showLoading(`Sending bulk ${type} notifications...`);
+
+                try {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            hideLoading();
+                            showBulkResult(result);
+                            setTimeout(loadNotificationData, 2000);
+                        })
+                        .withFailureHandler((error) => {
+                            hideLoading();
+                            showError('Bulk notification error: ' + error.message);
+                        })
+                        .sendBulkNotificationsByTimeframe(filter, type);
+                } catch (error) {
+                    hideLoading();
+                    showError('Error: ' + error.message);
+                }
+            }
+        }
+
+        function showBulkResult(result) {
+            const message = `Bulk Notification Results:
+
+✅ Successful: ${result.successful || 0}
+❌ Failed: ${result.failed || 0}
+🔄 Re-notifications: ${result.renotifications || 0}
+
+${result.message || 'Completed'}`;
+            
+            alert(message);
+        }
+
+        function clearAllFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('timeFilter').value = '';
+            document.getElementById('searchBox').value = '';
+            applyFilters();
+        }
+
+        function refreshNotifications() {
+            showMessage('Refreshing notifications...', 'info');
+            app.selectedAssignments.clear();
+            updateSelectionUI();
+            loadNotificationData();
+        }
+
+        // Utility functions
+        function showLoading(message = 'Loading...') {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.innerHTML = `
+                <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                           background: rgba(255, 255, 255, 0.95); padding: 2rem; border-radius: 10px; 
+                           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); z-index: 9999;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">📱</div>
+                        <div>${message}</div>
+                    </div>
+                </div>
+            `;
+            loadingDiv.id = 'loading-overlay';
+            document.body.appendChild(loadingDiv);
+        }
+
+        function hideLoading() {
+            const loading = document.getElementById('loading-overlay');
+            if (loading) loading.remove();
+        }
+
+        function showSuccess(message) {
+            showNotification(message, '#27ae60');
+        }
+
+        function showError(message) {
+            showNotification('Error: ' + message, '#e74c3c');
+        }
+
+        function showMessage(message, type = 'info') {
+            const colors = {
+                success: '#27ae60',
+                error: '#e74c3c',
+                info: '#3498db',
+                warning: '#f39c12'
+            };
+            showNotification(message, colors[type] || colors.info);
+        }
+
+        function showNotification(message, color) {
+            const notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.background = color;
+            notification.style.color = 'white';
+            notification.style.padding = '1rem';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '9999';
+            notification.style.maxWidth = '300px';
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

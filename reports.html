@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Motorcycle Escort Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 25px;
+            color: #2c3e50;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .reports-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .date-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .date-input {
+            padding: 0.75rem;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .date-input:focus {
+            border-color: #3498db;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .reports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .report-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .report-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .report-title {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-bottom: 1rem;
+            position: relative;
+        }
+
+        .chart-placeholder {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+
+        .stats-table th,
+        .stats-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .stats-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .stats-table tr:hover {
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+        }
+
+        .summary-card.success {
+            border-left-color: #27ae60;
+        }
+
+        .summary-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .summary-card.danger {
+            border-left-color: #e74c3c;
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            font-weight: 600;
+            color: #495057;
+            min-width: 100px;
+        }
+
+        .filter-select {
+            padding: 0.5rem;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .export-section {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #7f8c8d;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: #7f8c8d;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .reports-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .date-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .export-section {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+    <h1>🏍️ Motorcycle Escort Management</h1>
+    
+    <!-- SIMPLIFIED USER INFO -->
+    <div class="user-info">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-details">
+            <div class="user-name" id="userName">Loading...</div>
+            <div class="user-role" id="userRole">User</div>
+        </div>
+    </div>
+</header>
+
+    <div class="container">
+         <nav class="navigation">
+    <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button active">📊 Dashboard</a>
+    <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button">📋 Requests</a>
+    <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button">🏍️ Assignments</a>
+    <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button">📱 Notifications</a>
+    <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button">📊 Reports</a>
+</nav>
+
+        <div class="reports-header">
+            <h2 class="page-title">📊 Reports & Analytics</h2>
+            
+            <div class="date-controls">
+                <label style="font-weight: 600;">Report Period:</label>
+                <input type="date" class="date-input" id="startDate" value="">
+                <span>to</span>
+                <input type="date" class="date-input" id="endDate" value="">
+                
+                <select class="date-input" id="quickPeriod">
+                    <option value="">Custom Range</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="quarter">This Quarter</option>
+                    <option value="year">This Year</option>
+                </select>
+                
+                <button class="btn btn-primary" onclick="generateReports()">
+                    📊 Generate Reports
+                </button>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-row">
+                    <span class="filter-label">Request Type:</span>
+                    <select class="filter-select" id="requestTypeFilter">
+                        <option value="">All Types</option>
+                        <option value="Wedding">Wedding</option>
+                        <option value="Funeral">Funeral</option>
+                        <option value="Float Movement">Float Movement</option>
+                        <option value="VIP">VIP</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    
+                    <span class="filter-label">Status:</span>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="In Progress">In Progress</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Statistics -->
+        <div class="summary-grid" id="summaryStats">
+            <div class="summary-card">
+                <div class="metric-value" id="totalRequests">-</div>
+                <div class="metric-label">Total Requests</div>
+            </div>
+            <div class="summary-card success">
+                <div class="metric-value" id="completedRequests">-</div>
+                <div class="metric-label">Completed</div>
+            </div>
+            <div class="summary-card warning">
+                <div class="metric-value" id="activeRiders">-</div>
+                <div class="metric-label">Active Riders</div>
+            </div>
+            <div class="summary-card danger">
+                <div class="metric-value" id="avgResponseTime">-</div>
+                <div class="metric-label">Avg Response Time</div>
+            </div>
+        </div>
+
+        <!-- Charts and Reports Grid -->
+        <div class="reports-grid">
+            <!-- Request Volume Chart -->
+            <div class="report-card">
+                <h3 class="report-title">📈 Request Volume Over Time</h3>
+                <div class="chart-container">
+                    <div class="chart-placeholder" id="requestVolumeChart">
+                        Request volume chart will appear here
+                    </div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportChart('requestVolume')">
+                        📥 Export Chart
+                    </button>
+                </div>
+            </div>
+
+            <!-- Request Types Distribution -->
+            <div class="report-card">
+                <h3 class="report-title">🥧 Request Types Distribution</h3>
+                <div class="chart-container">
+                    <div class="chart-placeholder" id="requestTypesChart">
+                        Request types pie chart will appear here
+                    </div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportChart('requestTypes')">
+                        📥 Export Chart
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rider Performance -->
+            <div class="report-card">
+                <h3 class="report-title">🏍️ Rider Performance</h3>
+                <div id="riderPerformanceTable">
+                    <div class="loading">Loading rider performance data...</div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportTable('riderPerformance')">
+                        📥 Export Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Monthly Trends -->
+            <div class="report-card">
+                <h3 class="report-title">📅 Monthly Trends</h3>
+                <div class="chart-container">
+                    <div class="chart-placeholder" id="monthlyTrendsChart">
+                        Monthly trends chart will appear here
+                    </div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportChart('monthlyTrends')">
+                        📥 Export Chart
+                    </button>
+                </div>
+            </div>
+
+            <!-- Response Time Analysis -->
+            <div class="report-card">
+                <h3 class="report-title">⏱️ Response Time Analysis</h3>
+                <div id="responseTimeAnalysis">
+                    <div class="loading">Loading response time data...</div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportTable('responseTime')">
+                        📥 Export Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- Location Hotspots -->
+            <div class="report-card">
+                <h3 class="report-title">📍 Popular Locations</h3>
+                <div id="locationHotspots">
+                    <div class="loading">Loading location data...</div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportTable('locations')">
+                        📥 Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comprehensive Export Section -->
+        <div class="report-card" style="grid-column: 1 / -1;">
+            <h3 class="report-title">📋 Comprehensive Reports</h3>
+            <p style="margin-bottom: 1.5rem; color: #7f8c8d;">
+                Generate detailed reports for management review and record keeping.
+            </p>
+            
+            <div class="export-section">
+                <button class="btn btn-primary" onclick="generateComprehensiveReport('summary')">
+                    📊 Executive Summary
+                </button>
+                <button class="btn btn-primary" onclick="generateComprehensiveReport('detailed')">
+                    📋 Detailed Report
+                </button>
+                <button class="btn btn-primary" onclick="generateComprehensiveReport('rider')">
+                    🏍️ Rider Activity Report
+                </button>
+                <button class="btn btn-primary" onclick="generateComprehensiveReport('financial')">
+                    💰 Cost Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let reportData = {};
+        let currentPeriod = { start: null, end: null };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            setDefaultDates();
+            setupEventListeners();
+            generateReports();
+        });
+
+        <!-- ADD THIS JAVASCRIPT TO YOUR ASSIGNMENTS.HTML -->
+<!-- Place this in the <script> section at the bottom of your assignments.html -->
+<script>
+// Global user state
+let currentUser = null;
+let userDropdownOpen = false;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadUserStatus();
+    setupUserStatusListeners();
+    // ... your other initialization code
+});
+
+function setupUserStatusListeners() {
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.user-status') && userDropdownOpen) {
+            closeUserDropdown();
+        }
+    });
+
+    // Handle escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && userDropdownOpen) {
+            closeUserDropdown();
+        }
+    });
+}
+
+function loadUserStatus() {
+    console.log('Loading user status...');
+    
+    google.script.run
+        .withSuccessHandler(handleUserStatusLoaded)
+        .withFailureHandler(handleUserStatusError)
+        .getCurrentUser();
+}
+
+function handleUserStatusLoaded(user) {
+    console.log('User status loaded:', user);
+    currentUser = user;
+    updateUserInterface(user);
+    
+    // Show sign-in prompt for anonymous users
+    if (user.email === 'anonymous@system.com') {
+        showSignInPrompt();
+    } else {
+        hideSignInPrompt();
+    }
+}
+
+function handleUserStatusError(error) {
+    console.error('Error loading user status:', error);
+    
+    // Fallback to anonymous user
+    const fallbackUser = {
+        email: 'anonymous@system.com',
+        name: 'Anonymous User',
+        roles: ['rider'],
+        permissions: ['view']
+    };
+    
+    handleUserStatusLoaded(fallbackUser);
+}
+
+function updateUserInterface(user) {
+    const isSignedIn = user.email !== 'anonymous@system.com';
+    
+    // Update avatar
+    const avatar = document.getElementById('userAvatar');
+    avatar.textContent = user.name ? user.name.charAt(0).toUpperCase() : '?';
+    avatar.className = `user-avatar ${isSignedIn ? 'signed-in' : 'anonymous'}`;
+    
+    // Update user name
+    const userName = document.getElementById('userName');
+    userName.textContent = user.name || 'Anonymous User';
+    userName.className = 'user-name';
+    
+    // Update status
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    
+    if (isSignedIn) {
+        statusIndicator.className = 'status-indicator status-signed-in';
+        statusText.textContent = 'Signed In';
+    } else {
+        statusIndicator.className = 'status-indicator status-anonymous';
+        statusText.textContent = 'Anonymous Access';
+    }
+    
+    // Update roles
+    const userRoles = document.getElementById('userRoles');
+    if (user.roles && user.roles.length > 0) {
+        userRoles.textContent = user.roles.join(', ').toUpperCase();
+    } else {
+        userRoles.textContent = '';
+    }
+    
+    // Update dropdown
+    updateUserDropdown(user);
+    
+    // Handle navigation permissions
+    updateNavigationPermissions(user);
+}
+
+function updateUserDropdown(user) {
+    const isSignedIn = user.email !== 'anonymous@system.com';
+    
+    document.getElementById('dropdownEmail').textContent = user.email || 'Not signed in';
+    document.getElementById('dropdownStatus').textContent = isSignedIn ? 'Signed In' : 'Anonymous Access';
+    document.getElementById('dropdownRoles').textContent = user.roles ? user.roles.join(', ') : 'None';
+    
+    // Update permissions list
+    const permissionsList = document.getElementById('permissionsList');
+    permissionsList.innerHTML = '';
+    
+    if (user.permissions && user.permissions.length > 0) {
+        user.permissions.forEach(permission => {
+            const tag = document.createElement('span');
+            tag.className = 'permission-tag';
+            tag.textContent = permission.replace('_', ' ');
+            
+            // Add role-specific styling
+            if (user.roles.includes('admin')) {
+                tag.classList.add('admin');
+            } else if (user.roles.includes('dispatcher')) {
+                tag.classList.add('dispatcher');
+            }
+            
+            permissionsList.appendChild(tag);
+        });
+    }
+}
+
+function updateNavigationPermissions(user) {
+    const permissions = user.permissions || [];
+    
+    // Hide/show navigation links based on permissions
+    const notificationsLink = document.querySelector('a[href*="notifications"]');
+    const reportsLink = document.querySelector('a[href*="reports"]');
+    
+    if (notificationsLink) {
+        notificationsLink.style.display = permissions.includes('send_notifications') ? 'inline-flex' : 'none';
+    }
+    
+    if (reportsLink) {
+        reportsLink.style.display = permissions.includes('view_reports') ? 'inline-flex' : 'none';
+    }
+}
+
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    
+    if (userDropdownOpen) {
+        closeUserDropdown();
+    } else {
+        dropdown.classList.add('show');
+        userDropdownOpen = true;
+    }
+}
+
+function closeUserDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    dropdown.classList.remove('show');
+    userDropdownOpen = false;
+}
+
+function showSignInPrompt() {
+    const prompt = document.getElementById('signinPrompt');
+    prompt.classList.add('show');
+}
+
+function hideSignInPrompt() {
+    const prompt = document.getElementById('signinPrompt');
+    prompt.classList.remove('show');
+}
+
+function closeSignInPrompt() {
+    hideSignInPrompt();
+}
+
+function promptSignIn() {
+    const message = `To access full features, please sign in to your Google account:
+
+1. Open a new tab and go to: accounts.google.com
+2. Sign in with your department Google account
+3. Return to this tab and click "Refresh Status"
+
+This will give you access to all features based on your role.`;
+    
+    if (confirm(message)) {
+        window.open('https://accounts.google.com/signin', '_blank');
+    }
+}
+
+function refreshUserStatus() {
+    // Show loading state
+    document.getElementById('userName').textContent = 'Refreshing...';
+    document.getElementById('statusText').textContent = 'Checking...';
+    
+    // Close dropdown
+    closeUserDropdown();
+    
+    // Reload user status
+    setTimeout(loadUserStatus, 500);
+}
+
+function signOut() {
+    if (confirm('Sign out of your Google account? This will redirect you to Google sign-out.')) {
+        window.open('https://accounts.google.com/logout', '_blank');
+        
+        // Update UI to show anonymous state
+        setTimeout(() => {
+            const anonymousUser = {
+                email: 'anonymous@system.com',
+                name: 'Anonymous User',
+                roles: ['rider'],
+                permissions: ['view']
+            };
+            handleUserStatusLoaded(anonymousUser);
+        }, 1000);
+    }
+}
+// Client-side permission handling (replaces server-side <? ?> tags)
+document.addEventListener('DOMContentLoaded', () => {
+    loadUserPermissions();
+});
+
+function loadUserPermissions() {
+    google.script.run
+        .withSuccessHandler(handleUserPermissions)
+        .withFailureHandler((error) => {
+            console.error('Error loading user permissions:', error);
+            // Show all links if we can't load permissions
+            showAllNavigationLinks();
+        })
+        .getCurrentUser();
+}
+
+function handleUserPermissions(user) {
+    console.log('User permissions loaded:', user);
+    
+    // Get navigation links
+    const notificationsLink = document.getElementById('notificationsLink');
+    const reportsLink = document.getElementById('reportsLink');
+    
+    // Show/hide based on permissions
+    if (user.permissions && user.permissions.includes('send_notifications')) {
+        if (notificationsLink) notificationsLink.style.display = 'inline-flex';
+    } else {
+        if (notificationsLink) notificationsLink.style.display = 'none';
+    }
+    
+    if (user.permissions && user.permissions.includes('view_reports')) {
+        if (reportsLink) reportsLink.style.display = 'inline-flex';
+    } else {
+        if (reportsLink) reportsLink.style.display = 'none';
+    }
+    
+    // Update user info if there's a user info section
+    updateUserInfo(user);
+}
+
+function showAllNavigationLinks() {
+    // Fallback: show all links if permission loading fails
+    const notificationsLink = document.getElementById('notificationsLink');
+    const reportsLink = document.getElementById('reportsLink');
+    
+    if (notificationsLink) notificationsLink.style.display = 'inline-flex';
+    if (reportsLink) reportsLink.style.display = 'inline-flex';
+}
+
+function updateUserInfo(user) {
+    // Update user info in header if it exists
+    const userNameElement = document.querySelector('.user-info div');
+    if (userNameElement && user.name) {
+        userNameElement.textContent = user.name;
+    }
+}
+</script>
+
+        function setDefaultDates() {
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+
+            document.getElementById('startDate').value = formatDateForInput(thirtyDaysAgo);
+            document.getElementById('endDate').value = formatDateForInput(today);
+        }
+
+        function setupEventListeners() {
+            // Quick period selector
+            document.getElementById('quickPeriod').addEventListener('change', (e) => {
+                if (e.target.value) {
+                    setQuickPeriod(e.target.value);
+                }
+            });
+
+            // Date inputs
+            document.getElementById('startDate').addEventListener('change', updatePeriod);
+            document.getElementById('endDate').addEventListener('change', updatePeriod);
+        }
+
+        function setQuickPeriod(period) {
+            const today = new Date();
+            let startDate, endDate = new Date(today);
+
+            switch (period) {
+                case 'today':
+                    startDate = new Date(today);
+                    break;
+                case 'week':
+                    startDate = new Date(today);
+                    startDate.setDate(today.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate = new Date(today);
+                    startDate.setMonth(today.getMonth() - 1);
+                    break;
+                case 'quarter':
+                    startDate = new Date(today);
+                    startDate.setMonth(today.getMonth() - 3);
+                    break;
+                case 'year':
+                    startDate = new Date(today);
+                    startDate.setFullYear(today.getFullYear() - 1);
+                    break;
+            }
+
+            document.getElementById('startDate').value = formatDateForInput(startDate);
+            document.getElementById('endDate').value = formatDateForInput(endDate);
+            updatePeriod();
+        }
+
+        function updatePeriod() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            
+            if (startDate && endDate) {
+                currentPeriod = { start: startDate, end: endDate };
+            }
+        }
+
+        function generateReports() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const requestType = document.getElementById('requestTypeFilter').value;
+            const status = document.getElementById('statusFilter').value;
+
+            if (!startDate || !endDate) {
+                showError('Please select both start and end dates');
+                return;
+            }
+
+            showLoading('Generating reports...');
+
+            const filters = {
+                startDate: startDate,
+                endDate: endDate,
+                requestType: requestType,
+                status: status
+            };
+
+            google.script.run
+                .withSuccessHandler(handleReportData)
+                .withFailureHandler(handleError)
+                .generateReportData(filters);
+        }
+
+        function handleReportData(data) {
+            hideLoading();
+            reportData = data;
+            
+            updateSummaryStats(data.summary);
+            updateCharts(data.charts);
+            updateTables(data.tables);
+        }
+
+        function updateSummaryStats(summary) {
+            document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
+            document.getElementById('completedRequests').textContent = summary.completedRequests || 0;
+            document.getElementById('activeRiders').textContent = summary.activeRiders || 0;
+            document.getElementById('avgResponseTime').textContent = summary.avgResponseTime || '-';
+        }
+
+        function updateCharts(charts) {
+            // In a real implementation, you would use a charting library like Chart.js
+            // For now, showing placeholder text with data
+            
+            if (charts.requestVolume) {
+                document.getElementById('requestVolumeChart').innerHTML = `
+                    <div style="padding: 2rem; text-align: center;">
+                        <h4>Request Volume Data</h4>
+                        <p>Total: ${charts.requestVolume.total}</p>
+                        <p>Peak Day: ${charts.requestVolume.peakDay}</p>
+                        <p>Trend: ${charts.requestVolume.trend}</p>
+                    </div>
+                `;
+            }
+
+            if (charts.requestTypes) {
+                document.getElementById('requestTypesChart').innerHTML = `
+                    <div style="padding: 2rem;">
+                        <h4>Request Types</h4>
+                        ${Object.entries(charts.requestTypes).map(([type, count]) => 
+                            `<p>${type}: ${count} (${Math.round(count/charts.total*100)}%)</p>`
+                        ).join('')}
+                    </div>
+                `;
+            }
+
+            if (charts.monthlyTrends) {
+                document.getElementById('monthlyTrendsChart').innerHTML = `
+                    <div style="padding: 2rem; text-align: center;">
+                        <h4>Monthly Trends</h4>
+                        <p>Average per month: ${charts.monthlyTrends.average}</p>
+                        <p>Growth rate: ${charts.monthlyTrends.growth}%</p>
+                    </div>
+                `;
+            }
+        }
+
+        function updateTables(tables) {
+            // Rider Performance Table
+            if (tables.riderPerformance) {
+                const riderTable = `
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Rider</th>
+                                <th>Assignments</th>
+                                <th>Completion Rate</th>
+                                <th>Avg Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tables.riderPerformance.map(rider => `
+                                <tr>
+                                    <td>${rider.name}</td>
+                                    <td>${rider.assignments}</td>
+                                    <td>${rider.completionRate}%</td>
+                                    <td>${rider.rating}/5</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('riderPerformanceTable').innerHTML = riderTable;
+            }
+
+            // Response Time Analysis
+            if (tables.responseTime) {
+                const responseTable = `
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Average Response Time</td><td>${tables.responseTime.average}</td></tr>
+                            <tr><td>Fastest Response</td><td>${tables.responseTime.fastest}</td></tr>
+                            <tr><td>Slowest Response</td><td>${tables.responseTime.slowest}</td></tr>
+                            <tr><td>Within SLA</td>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+        background-color: #f4f4f4;
+      }
+      .section { margin-bottom: 12px; }
+      label { display: block; margin: 4px 0; cursor: pointer; }
+      select, button { width: 100%; box-sizing: border-box; padding: 6px; margin-top: 4px; }
+      #assignBtn {
+        background-color: #007bff; color: white; border: none;
+        border-radius: 4px; padding: 8px; font-size: 14px; cursor: pointer;
+      }
+      #assignBtn:disabled { background-color: #aaa; }
+      #debug {
+        background: #fee; border: 1px solid #f00; padding: 6px;
+        margin-bottom: 12px; font-size: 12px; white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Debug box -->
+    <div id="debug">Loading debug info…</div>
+
+    <div class="section">
+      <label for="requestSelect"><strong>Select Request:</strong></label>
+      <select id="requestSelect">
+        <option value="">-- Select a Request --</option>
+      </select>
+    </div>
+
+    <div id="details" class="section">
+      <!-- Request details here -->
+    </div>
+
+    <div id="riderList" class="section">
+      <!-- Rider checkboxes here -->
+    </div>
+
+    <button id="assignBtn">Assign Selected Riders</button>
+
+    <script>
+      // 1) Injected data
+      const requestsData    = <?= JSON.stringify(requestsData) ?> || [];
+      const requestsHeaders = <?= JSON.stringify(requestsHeaders) ?> || [];
+      const ridersData      = <?= JSON.stringify(ridersData) ?> || [];
+      const ridersHeaders   = <?= JSON.stringify(ridersHeaders) ?> || [];
+
+      // 2) Debug logging
+      console.log('▶ requestsData length:', requestsData.length);
+      console.log('▶ requestsHeaders:', requestsHeaders);
+      console.log('▶ ridersData length:', ridersData.length);
+      console.log('▶ ridersHeaders:', ridersHeaders);
+      
+      // Show sample data
+      if (requestsData.length > 0) {
+        console.log('▶ First request row:', requestsData[0]);
+      }
+      if (ridersData.length > 0) {
+        console.log('▶ First rider row:', ridersData[0]);
+      }
+
+      // 3) Show basic counts in the debug div
+      let debugText = `Requests loaded: ${requestsData.length} rows\n`;
+      debugText += `Riders loaded: ${ridersData.length} rows\n\n`;
+      debugText += `Request Headers: ${requestsHeaders.join(', ')}\n\n`;
+      debugText += `Rider Headers: ${ridersHeaders.join(', ')}\n\n`;
+      
+      if (requestsData.length > 0) {
+        debugText += `First Request: ${JSON.stringify(requestsData[0])}\n\n`;
+      }
+      if (ridersData.length > 0) {
+        debugText += `First Rider: ${JSON.stringify(ridersData[0])}\n\n`;
+      }
+      
+      document.getElementById('debug').textContent = debugText;
+
+      // If either is empty, bail early
+      if (!requestsData.length || !ridersData.length) {
+        document.getElementById('debug').style.background = '#ffd';
+        document.getElementById('debug').style.borderColor = '#cc0';
+        document.getElementById('debug').textContent +=
+          '\n\nOne of the lists is empty—check your data filtering.';
+      }
+
+      // 4) Find column indices using actual headers
+      const reqIdIdx = requestsHeaders.indexOf('Request ID');
+      const reqRequesterIdx = requestsHeaders.indexOf('Requester Name');
+      const reqEventDateIdx = requestsHeaders.indexOf('Event Date');
+      const reqStartTimeIdx = requestsHeaders.indexOf('Start Time');
+      const reqRidersNeededIdx = requestsHeaders.indexOf('Riders Needed');
+      const reqRidersAssignedIdx = requestsHeaders.indexOf('Riders Assigned');
+      
+      // Try multiple possible rider column names
+      const riderJpIdx = ridersHeaders.indexOf('Rider ID') >= 0 ? ridersHeaders.indexOf('Rider ID') : 
+                        ridersHeaders.indexOf('JP Number') >= 0 ? ridersHeaders.indexOf('JP Number') : 0;
+      const riderNameIdx = ridersHeaders.indexOf('Full Name') >= 0 ? ridersHeaders.indexOf('Full Name') :
+                          ridersHeaders.indexOf('Name') >= 0 ? ridersHeaders.indexOf('Name') : 1;
+      
+      console.log('Column indices:');
+      console.log('- Request ID:', reqIdIdx);
+      console.log('- Requester Name:', reqRequesterIdx);
+      console.log('- Rider Name:', riderNameIdx);
+      console.log('- Rider JP:', riderJpIdx);
+
+      // Build request map
+      const reqMap = {};
+      requestsData.forEach(row => {
+        if (reqIdIdx >= 0) {
+          const id = row[reqIdIdx];
+          if (id) {
+            reqMap[id] = row;
+          }
+        }
+      });
+
+      // Build riders array
+      const riders = ridersData.map(row => ({
+        jpNumber: row[riderJpIdx] || row[0] || 'N/A',  // Fallback to first column
+        name: row[riderNameIdx] || row[1] || 'Unknown'  // Fallback to second column
+      }));
+
+      console.log('Built riders array:', riders);
+
+      // 5) DOM refs
+      const selectEl  = document.getElementById('requestSelect');
+      const detailsEl = document.getElementById('details');
+      const riderEl   = document.getElementById('riderList');
+      const assignBtn = document.getElementById('assignBtn');
+
+      // 6) Populate requests dropdown
+      function populateRequests() {
+        console.log('Populating requests dropdown...');
+        let addedCount = 0;
+        
+        requestsData.forEach(row => {
+          if (reqIdIdx >= 0) {
+            const id = row[reqIdIdx];
+            if (id) {
+              const opt = document.createElement('option');
+              opt.value = id;
+              opt.textContent = id;
+              selectEl.appendChild(opt);
+              addedCount++;
+            }
+          }
+        });
+        
+        console.log(`Added ${addedCount} requests to dropdown`);
+        
+        // Update debug with dropdown status
+        document.getElementById('debug').textContent += `\nAdded ${addedCount} requests to dropdown`;
+      }
+
+      // 7) Render details + riders for a given request
+      function render() {
+        const selectedId = selectEl.value;
+        if (!selectedId) {
+          detailsEl.innerHTML = 'Please select a request';
+          riderEl.innerHTML = '';
+          return;
+        }
+        
+        const row = reqMap[selectedId];
+        if (!row) {
+          detailsEl.textContent = 'No request row found for ' + selectedId;
+          riderEl.innerHTML = '';
+          return;
+        }
+
+        // Request details - use safe indexing
+        const requester = reqRequesterIdx >= 0 ? row[reqRequesterIdx] : 'N/A';
+        const eventDate = reqEventDateIdx >= 0 ? row[reqEventDateIdx] : 'N/A';
+        const startTime = reqStartTimeIdx >= 0 ? row[reqStartTimeIdx] : 'N/A';
+        const ridersNeeded = reqRidersNeededIdx >= 0 ? row[reqRidersNeededIdx] : 'N/A';
+        const assignedStr = reqRidersAssignedIdx >= 0 ? (row[reqRidersAssignedIdx] || '') : '';
+        
+        const assignedSet = new Set(
+          String(assignedStr).split(',').map(n=>n.trim()).filter(n=>n)
+        );
+
+        detailsEl.innerHTML = `
+          <strong>Requester:</strong> ${requester}<br>
+          <strong>Date:</strong> ${eventDate}<br>
+          <strong>Time:</strong> ${startTime}<br>
+          <strong>Needed:</strong> ${ridersNeeded}
+        `;
+
+        // Rider checkboxes
+        riderEl.innerHTML = '<strong>Available Riders:</strong><br>';
+        let addedRiders = 0;
+        
+        riders.forEach((r, index) => {
+          if (r.name && r.name !== 'Unknown') {
+            const cb = document.createElement('input');
+            cb.type    = 'checkbox';
+            cb.value   = r.name;
+            cb.id      = 'rider-' + index;
+            cb.checked = assignedSet.has(r.name);
+
+            const lbl = document.createElement('label');
+            lbl.htmlFor = cb.id;
+            lbl.textContent = `${r.name} (${r.jpNumber})`;
+
+            const div = document.createElement('div');
+            div.appendChild(cb);
+            div.appendChild(lbl);
+            riderEl.appendChild(div);
+            addedRiders++;
+          }
+        });
+        
+        console.log(`Added ${addedRiders} rider checkboxes`);
+      }
+
+      // 8) Handle assign click
+      function assignSelected() {
+        assignBtn.disabled = true;
+        assignBtn.textContent = 'Assigning…';
+
+        const checked = Array.from(
+          riderEl.querySelectorAll('input[type=checkbox]:checked')
+        );
+        const selected = checked.map(cb => {
+          const riderIndex = parseInt(cb.id.replace('rider-', ''));
+          const rider = riders[riderIndex];
+          return {
+            name: cb.value,
+            jpNumber: rider ? rider.jpNumber : 'N/A'
+          };
+        });
+
+        console.log('Selected riders for assignment:', selected);
+
+        google.script.run
+          .withSuccessHandler(resp => {
+            assignBtn.disabled = false;
+            assignBtn.textContent = 'Assign Selected Riders';
+            if (resp.success) {
+              alert('Assignment successful!');
+              google.script.host.close();
+            } else {
+              alert('Error: ' + resp.message);
+            }
+          })
+          .withFailureHandler(err => {
+            assignBtn.disabled = false;
+            assignBtn.textContent = 'Assign Selected Riders';
+            alert('Server error: ' + err.message);
+            console.error('Assignment error:', err);
+          })
+          .processAssignmentAndPopulate(selectEl.value, selected);
+      }
+
+      // 9) Wire up events & init
+      selectEl.addEventListener('change', render);
+      assignBtn.addEventListener('click', assignSelected);
+      populateRequests();
+      if (requestsData.length && Object.keys(reqMap).length) {
+        render();
+      }
+    </script>
+  </body>
+</html>

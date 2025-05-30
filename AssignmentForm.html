@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <style>
+        /* Add your CSS styling here */
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { background-color: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        h2 { text-align: center; color: #0056b3; margin-bottom: 25px; }
+        .request-details, .rider-selection { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .request-details p { margin: 5px 0; }
+        .rider-selection label { display: block; margin-bottom: 8px; cursor: pointer; }
+        .rider-selection input[type="checkbox"] { margin-right: 10px; }
+        button { background-color: #007bff; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; box-sizing: border-box; }
+        button:hover { background-color: #0056b3; }
+        .message { margin-top: 20px; padding: 10px; border: 1px solid transparent; border-radius: 5px; text-align: center; }
+        .message.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .message.error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .message.info { background-color: #cce5ff; color: #004085; border-color: #b8daff; }
+        .loading { text-align: center; margin-top: 50px; font-size: 1.2em; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Assign Escort Riders</h2>
+        <div id="loading" class="loading">Loading request details...</div>
+        <div id="formContent" style="display: none;">
+            <div class="request-details">
+                <h3>Request Details</h3>
+                <p><strong>ID:</strong> <span id="requestIdDisplay"></span></p>
+                <p><strong>Requester:</strong> <span id="requesterNameDisplay"></span></p>
+                <p><strong>Event Date:</strong> <span id="eventDateDisplay"></span></p>
+                <p><strong>Time:</strong> <span id="startTimeDisplay"></span></p>
+                <p><strong>Start Location:</strong> <span id="startLocationDisplay"></span></p>
+                <p><strong>End Location:</strong> <span id="endLocationDisplay"></span></p>
+                <p><strong>Riders Needed:</strong> <span id="ridersNeededDisplay"></span></p>
+                <p><strong>Current Status:</strong> <span id="statusDisplay"></span></p>
+            </div>
+
+            <form id="assignmentForm">
+                <div class="rider-selection">
+                    <h3>Available Riders</h3>
+                    <div id="riderCheckboxes"></div>
+                </div>
+                <button type="submit">Assign Riders</button>
+            </form>
+            <div id="message" class="message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentRequestId = '';
+        let currentRiders = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // This injects the server‐side requestId
+            const requestId = '<?= requestId ?>';
+            if (!requestId) {
+                showMessage('error', 'No Request ID provided. Please launch from the spreadsheet.');
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            currentRequestId = requestId;
+            document.getElementById('requestIdDisplay').textContent = requestId;
+
+            google.script.run
+                .withSuccessHandler(renderForm)
+                .withFailureHandler(onFailure)
+                .getEscortDetailsForAssignment(requestId);
+        });
+
+        function renderForm(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('formContent').style.display = 'block';
+
+            if (!data.request) {
+                showMessage('error', 'Request details not found for ID: ' + currentRequestId);
+                return;
+            }
+
+            // Populate the fields
+            document.getElementById('requesterNameDisplay').textContent = data.request.requesterName || 'N/A';
+            document.getElementById('eventDateDisplay').textContent = data.request.eventDate || 'N/A';
+            document.getElementById('startTimeDisplay').textContent = data.request.startTime || 'N/A';
+            document.getElementById('startLocationDisplay').textContent = data.request.startLocation || 'N/A';
+            document.getElementById('endLocationDisplay').textContent = data.request.endLocation || 'N/A';
+            document.getElementById('ridersNeededDisplay').textContent = data.request.ridersNeeded || 'N/A';
+            document.getElementById('statusDisplay').textContent = data.request.status || 'N/A';
+
+            const assignedStr = data.request.ridersAssigned || '';
+            const currentlyAssigned = assignedStr.split(',').map(n=>n.trim()).filter(n=>n);
+
+            const div = document.getElementById('riderCheckboxes');
+            div.innerHTML = '';
+            currentRiders = data.riders;
+
+            data.riders.forEach(rider => {
+                const label = document.createElement('label');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.name = 'selectedRiders[]';
+                cb.value = rider.name;
+                cb.dataset.jpNumber = rider.jpNumber;
+                cb.dataset.phone    = rider.phone;
+                cb.dataset.email    = rider.email;
+                cb.dataset.carrier  = rider.carrier;
+                if (currentlyAssigned.includes(rider.name)) cb.checked = true;
+                label.appendChild(cb);
+                label.appendChild(document.createTextNode(`${rider.name} (${rider.jpNumber})`));
+                div.appendChild(label);
+            });
+
+            document.getElementById('assignmentForm').addEventListener('submit', function(evt) {
+                evt.preventDefault();
+                const checked = Array.from(document.querySelectorAll('input[name="selectedRiders[]"]:checked'));
+                const objs = checked.map(cb => ({
+                    name:     cb.value,
+                    jpNumber: cb.dataset.jpNumber,
+                    phone:    cb.dataset.phone,
+                    email:    cb.dataset.email,
+                    carrier:  cb.dataset.carrier
+                }));
+                showMessage('info', 'Assigning riders…');
+                google.script.run
+                    .withSuccessHandler(onAssignmentSuccess)
+                    .withFailureHandler(onFailure)
+                    .processAssignmentAndPopulate(currentRequestId, objs);
+            });
+        }
+
+        function onAssignmentSuccess(resp) {
+            if (resp.success) {
+                showMessage('success', resp.message);
+                // refresh the sheet dashboard
+                google.script.run.refreshDashboard();
+                // auto-close after 2s
+                setTimeout(()=>google.script.host.close(), 2000);
+            } else {
+                showMessage('error', resp.message);
+            }
+        }
+
+        function onFailure(err) {
+            showMessage('error', 'Error: ' + err.message);
+            console.error(err);
+            google.script.run.refreshDashboard();
+        }
+
+        function showMessage(type, txt) {
+            const msg = document.getElementById('message');
+            msg.className = 'message ' + type;
+            msg.textContent = txt;
+            msg.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

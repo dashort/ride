@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>🏍️ Escort Requests - Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+        
+        .mobile-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .mobile-header h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .mobile-controls {
+            background: white;
+            margin: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .filter-section {
+            margin-bottom: 1rem;
+        }
+        
+        .filter-section label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+        
+        .mobile-select {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            background: white;
+            color: #333;
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23333" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1.5rem;
+        }
+        
+        .mobile-buttons {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .mobile-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover, .btn-primary:active {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-success:hover, .btn-success:active {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .stats-display {
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-align: center;
+        }
+        
+        .requests-container {
+            margin: 1rem;
+        }
+        
+        .request-card {
+            background: white;
+            margin-bottom: 1rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+        
+        .request-card:active {
+            transform: scale(0.98);
+        }
+        
+        .request-header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .request-id {
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .mobile-status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .status-new { background: #fff3cd; color: #856404; }
+        .status-pending { background: #d4edda; color: #155724; }
+        .status-assigned { background: #cce5ff; color: #004085; }
+        .status-unassigned { background: #f8d7da; color: #721c24; }
+        .status-in-progress { background: #e2e3ff; color: #383d41; }
+        .status-completed { background: #d1ecf1; color: #0c5460; }
+        .status-cancelled { background: #e2e2e2; color: #6c757d; }
+        
+        .request-body {
+            padding: 1rem;
+        }
+        
+        .request-detail {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        .detail-icon {
+            font-size: 1.2rem;
+            min-width: 1.5rem;
+            text-align: center;
+            margin-top: 0.1rem;
+        }
+        
+        .detail-content {
+            flex: 1;
+        }
+        
+        .detail-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .detail-value {
+            font-size: 1rem;
+            color: #2c3e50;
+            font-weight: 500;
+            margin-top: 0.2rem;
+        }
+        
+        .riders-info {
+            background: #f8f9fa;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-top: 0.75rem;
+        }
+        
+        .riders-needed {
+            font-weight: bold;
+            color: #e74c3c;
+            font-size: 1.1rem;
+        }
+        
+        .assigned-riders {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #28a745;
+        }
+        
+        .notes-section {
+            background: #fff3cd;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-top: 0.75rem;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .loading-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: white;
+        }
+        
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-state {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            margin: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: white;
+        }
+        
+        .empty-state h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Pull to refresh styles */
+        .pull-refresh {
+            position: relative;
+            transform: translateY(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .pull-refresh.pulling {
+            transform: translateY(60px);
+        }
+        
+        .refresh-indicator {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.9);
+            padding: 1rem;
+            border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        /* Bottom padding for safe area */
+        .bottom-spacer {
+            height: 2rem;
+        }
+        
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* Large text mode */
+        @media (min-resolution: 2dppx) {
+            body {
+                font-size: 18px;
+            }
+            
+            .mobile-btn {
+                padding: 1.25rem;
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-header">
+        <h1>🏍️ Escort Requests</h1>
+    </div>
+    
+    <div class="mobile-controls">
+        <div class="filter-section">
+            <label for="mobileStatusFilter">Filter Requests</label>
+            <select id="mobileStatusFilter" class="mobile-select">
+                <option value="All">All Requests</option>
+                <option value="New">New</option>
+                <option value="Pending">Pending</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Unassigned">Unassigned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+            </select>
+        </div>
+        
+        <div class="mobile-buttons">
+            <button class="mobile-btn btn-primary" onclick="loadMobileRequests()">
+                🔄 Refresh
+            </button>
+            <button class="mobile-btn btn-success" onclick="openMobileNewRequest()">
+                ➕ New Request
+            </button>
+        </div>
+        
+        <div class="stats-display" id="mobileStatsDisplay">
+            Loading stats...
+        </div>
+    </div>
+    
+    <div class="requests-container" id="mobileRequestsContainer">
+        <div class="loading-state" id="mobileLoadingState">
+            <div class="loading-spinner"></div>
+            <div>Loading requests...</div>
+        </div>
+    </div>
+    
+    <div class="bottom-spacer"></div>
+
+    <script>
+        let mobileAllRequests = [];
+        let isLoading = false;
+        let pullStart = 0;
+        let pullDistance = 0;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMobileRequests();
+            setupMobileEventListeners();
+            setupPullToRefresh();
+        });
+        
+        function setupMobileEventListeners() {
+            document.getElementById('mobileStatusFilter').addEventListener('change', loadMobileRequests);
+            
+            // Prevent zoom on double tap
+            document.addEventListener('touchend', function(e) {
+                const now = new Date().getTime();
+                const timesince = now - lastTouch;
+                if (timesince < 500 && timesince > 0) {
+                    e.preventDefault();
+                }
+                lastTouch = now;
+            }, false);
+        }
+        
+        let lastTouch = 0;
+        
+        function setupPullToRefresh() {
+            let startY = 0;
+            let currentY = 0;
+            let isPulling = false;
+            
+            document.addEventListener('touchstart', function(e) {
+                if (window.scrollY === 0) {
+                    startY = e.touches[0].clientY;
+                    isPulling = true;
+                }
+            });
+            
+            document.addEventListener('touchmove', function(e) {
+                if (!isPulling) return;
+                
+                currentY = e.touches[0].clientY;
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > 0 && pullDistance < 100) {
+                    e.preventDefault();
+                    document.body.style.transform = `translateY(${pullDistance * 0.5}px)`;
+                }
+            });
+            
+            document.addEventListener('touchend', function(e) {
+                if (!isPulling) return;
+                
+                const pullDistance = currentY - startY;
+                
+                if (pullDistance > 60) {
+                    loadMobileRequests();
+                }
+                
+                document.body.style.transform = '';
+                isPulling = false;
+            });
+        }
+        
+        function loadMobileRequests() {
+            if (isLoading) return;
+            
+            isLoading = true;
+            showMobileLoading();
+            
+            const filter = document.getElementById('mobileStatusFilter').value;
+            
+            google.script.run
+                .withSuccessHandler(handleMobileSuccess)
+                .withFailureHandler(handleMobileError)
+                .getFilteredRequestsForWebApp(filter);
+        }
+        
+        function handleMobileSuccess(requests) {
+            isLoading = false;
+            hideMobileLoading();
+            
+            if (!requests || !Array.isArray(requests)) {
+                showMobileError('Invalid data received from server');
+                return;
+            }
+            
+            mobileAllRequests = requests;
+            displayMobileRequests(requests);
+            updateMobileStats(requests);
+        }
+        
+        function handleMobileError(error) {
+            isLoading = false;
+            hideMobileLoading();
+            showMobileError('Error loading requests: ' + (error.message || error));
+        }
+        
+        function displayMobileRequests(requests) {
+            const container = document.getElementById('mobileRequestsContainer');
+            
+            if (requests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No requests found</h3>
+                        <p>No requests match the selected filter</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = requests.map(request => {
+                const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
+                const assignedRiders = request.ridersAssigned ? 
+                    request.ridersAssigned.split(',').map(r => r.trim()).filter(r => r) : [];
+                
+                return `
+                    <div class="request-card" onclick="openMobileEditRequest('${request.requestId || ''}')">
+                        <div class="request-header">
+                            <div class="request-id">${request.requestId || ''}</div>
+                            <div class="mobile-status-badge ${statusClass}">${request.status || 'New'}</div>
+                        </div>
+                        <div class="request-body">
+                            <div class="request-detail">
+                                <div class="detail-icon">👤</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Requester</div>
+                                    <div class="detail-value">${request.requesterName || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="request-detail">
+                                <div class="detail-icon">📅</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Event Date & Time</div>
+                                    <div class="detail-value">${request.eventDate || 'No Date'} at ${request.startTime || 'No Time'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="request-detail">
+                                <div class="detail-icon">🏷️</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Type</div>
+                                    <div class="detail-value">${request.requestType || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="request-detail">
+                                <div class="detail-icon">📍</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Route</div>
+                                    <div class="detail-value">${request.startLocation || 'Unknown'} → ${request.endLocation || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="riders-info">
+                                <div class="riders-needed">👥 ${request.ridersNeeded || 0} rider(s) needed</div>
+                                ${assignedRiders.length > 0 ? `
+                                    <div class="assigned-riders">✅ Assigned: ${assignedRiders.join(', ')}</div>
+                                ` : ''}
+                            </div>
+                            
+                            ${request.notes ? `
+                                <div class="notes-section">
+                                    <div class="detail-label">📝 Notes</div>
+                                    <div class="detail-value">${request.notes}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function updateMobileStats(requests) {
+            const total = requests.length;
+            const assigned = requests.filter(r => r.status === 'Assigned').length;
+            const pending = requests.filter(r => r.status === 'Pending').length;
+            const newRequests = requests.filter(r => r.status === 'New').length;
+            
+            document.getElementById('mobileStatsDisplay').innerHTML = 
+                `📊 Total: ${total} | 🆕 New: ${newRequests} | ⏳ Pending: ${pending} | ✅ Assigned: ${assigned}`;
+        }
+        
+        function showMobileLoading() {
+            document.getElementById('mobileLoadingState').style.display = 'block';
+        }
+        
+        function hideMobileLoading() {
+            document.getElementById('mobileLoadingState').style.display = 'none';
+        }
+        
+        function showMobileError(message) {
+            const container = document.getElementById('mobileRequestsContainer');
+            container.innerHTML = `
+                <div class="error-state">
+                    <h3>⚠️ Error</h3>
+                    <p>${message}</p>
+                    <button class="mobile-btn btn-primary" onclick="loadMobileRequests()" style="margin-top: 1rem; width: auto;">
+                        🔄 Try Again
+                    </button>
+                </div>
+            `;
+        }
+        
+        function openMobileEditRequest(requestId) {
+            // For now, show an alert with request info
+            // Later, this could open a mobile-optimized edit form
+            const request = mobileAllRequests.find(r => r.requestId === requestId);
+            if (request) {
+                const message = `Request: ${request.requestId}\n` +
+                               `Requester: ${request.requesterName}\n` +
+                               `Date: ${request.eventDate} at ${request.startTime}\n` +
+                               `Status: ${request.status}\n\n` +
+                               `Tap OK to edit on desktop, or we can add mobile editing later.`;
+                alert(message);
+            }
+        }
+        
+        function openMobileNewRequest() {
+            alert('Mobile request creation coming soon!\n\nFor now, please use the desktop version to create new requests.');
+        }
+        
+        // Add haptic feedback for supported devices
+        function vibrate(pattern = [10]) {
+            if ('vibrate' in navigator) {
+                navigator.vibrate(pattern);
+            }
+        }
+        
+        // Add to every tap/click for better mobile UX
+        document.addEventListener('touchstart', function() {
+            vibrate([5]);
+        });
+    </script>
+</body>
+</html>
