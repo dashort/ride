@@ -204,157 +204,53 @@ function createMenu() {
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();
 }
+
+
+
 /**
- * Handles HTTP GET requests to the web app with mobile detection.
- * @param {Object} e - The request event object
+ * Fetches the HTML content of the shared navigation menu.
+ * @param {string} [currentPage=''] The name of the current page to set the active link.
+ * @return {string} The HTML content of the navigation menu.
  */
-function doGet(e) {
+function getNavigationHtml(currentPage = '') {
   try {
-    // Mobile detection
-    const userAgent = Utilities.getUuid(); // This won't work for user agent, let's use a different approach
-    let isMobile = false;
+    console.log(`Getting navigation HTML for page: ${currentPage}`);
     
-    // Check if mobile is explicitly requested
-    if (e.parameter.mobile === 'true') {
-      isMobile = true;
-    } else if (e.parameter.mobile === 'false') {
-      isMobile = false;
-    } else {
-      // Auto-detect based on common mobile patterns in referrer or other indicators
-      // Since we can't directly access user agent in Apps Script, we'll use URL parameters
-      isMobile = e.parameter.m === '1' || e.parameter.mobile === '1';
-    }
+    // Get the navigation template
+    let navHtml = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
     
-    const page = e.parameter.page || 'dashboard';
-    console.log(`Loading page: ${page}, Mobile: ${isMobile}`);
-    
-    let htmlOutput;
-    
-    switch(page) {
-      case 'dashboard':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-dashboard');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('index');
-        }
-        break;
-          
-      case 'requests':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-requests');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('requests');
-        }
-        break;
-        
-      case 'assignments':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-assignments');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('assignments');
-        }
-        break;
-        
-      case 'notifications':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-notifications');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('notifications');
-        }
-        break;
-        
-      case 'reports':
-        // Reports probably better on desktop for now
-        htmlOutput = HtmlService.createHtmlOutputFromFile('reports');
-        break;
-        
-      default:
-        // Default to dashboard
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-dashboard');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('index');
-        }
-    }
-    
-    // Add mobile detection redirect page if no specific mobile version requested
-    if (!isMobile && !e.parameter.mobile) {
-      // Create a detection page that can redirect to mobile if needed
-      return HtmlService.createHtmlOutput(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Motorcycle Escort Management</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; text-align: center; }
-            .container { max-width: 600px; margin: 50px auto; }
-            .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 18px; }
-            .btn:hover { background: #2980b9; }
-            .mobile-btn { background: #e74c3c; }
-            .mobile-btn:hover { background: #c0392b; }
-            @media (max-width: 768px) {
-              .auto-redirect { display: block; margin-top: 30px; padding: 20px; background: #f39c12; color: white; border-radius: 10px; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>🏍️ Motorcycle Escort Management</h1>
-            <p>Choose your preferred interface:</p>
-            
-            <a href="?mobile=false" class="btn">💻 Desktop Version</a>
-            <a href="?mobile=true" class="btn mobile-btn">📱 Mobile Version</a>
-            
-            <div class="auto-redirect" style="display: none;">
-              <p>📱 Mobile device detected!</p>
-              <p>Redirecting to mobile version in <span id="countdown">3</span> seconds...</p>
-              <a href="?mobile=false">Use desktop version instead</a>
-            </div>
-          </div>
-          
-          <script>
-            // Mobile detection and auto-redirect
-            function isMobileDevice() {
-              return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                     (window.innerWidth <= 768 && window.innerHeight <= 1024);
-            }
-            
-            if (isMobileDevice()) {
-              document.querySelector('.auto-redirect').style.display = 'block';
-              let countdown = 3;
-              const countdownEl = document.getElementById('countdown');
-              
-              const timer = setInterval(() => {
-                countdown--;
-                countdownEl.textContent = countdown;
-                
-                if (countdown <= 0) {
-                  clearInterval(timer);
-                  window.location.href = '?mobile=true&page=${page}';
-                }
-              }, 1000);
-            }
-          </script>
-        </body>
-        </html>
-      `).setTitle('Motorcycle Escort Management - Choose Interface');
-    }
-    
-    return htmlOutput
-      .setTitle(isMobile ? 'Mobile - Escort Management' : 'Motorcycle Escort Management')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    // Apply active class to the current page
+    if (currentPage) {
+      // Create a more specific replacement pattern
+      const pattern = `data-page="${currentPage}"`;
+      const replacement = `data-page="${currentPage}" class="nav-button active"`;
       
+      // Replace class="nav-button" with class="nav-button active" for the matching page
+      navHtml = navHtml.replace(
+        new RegExp(`class="nav-button"\\s+data-page="${currentPage}"`, 'g'),
+        replacement
+      );
+      
+      console.log(`✅ Active class applied for page: ${currentPage}`);
+    }
+    
+    console.log(`Navigation HTML generated (${navHtml.length} chars)`);
+    return navHtml;
+    
   } catch (error) {
-    logError('doGet error', error);
-    return HtmlService.createHtmlOutput(`
-      <html><body style="font-family: Arial; padding: 20px;">
-        <h1>⚠️ Error Loading Page</h1>
-        <p>Error: ${error.message}</p>
-        <p><a href="?" style="color: #3498db;">Return to Home</a></p>
-        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page}, Mobile: ${e.parameter.mobile}</p>
-      </body></html>
-    `);
+    logError('Error getting navigation HTML', error);
+    console.error('Navigation error:', error);
+    
+    // Return a fallback navigation
+    return `
+      <nav class="navigation">
+        <a href="?page=dashboard" class="nav-button">📊 Dashboard</a>
+        <a href="?page=requests" class="nav-button">📋 Requests</a>
+        <a href="?page=assignments" class="nav-button">🏍️ Assignments</a>
+        <a href="?page=notifications" class="nav-button">📱 Notifications</a>
+        <a href="?page=reports" class="nav-button">📊 Reports</a>
+      </nav>
+    `;
   }
 }
 /**
@@ -555,82 +451,109 @@ function getNavigationHtml(currentPage = '') {
 }
 
 // ===== WEB APP ENTRY POINTS (DO NOT EDIT FUNCTION NAMES)=====
-
 /**
- * Handles HTTP GET requests to the web app.
- * Directs to different HTML pages based on the 'page' parameter.
+ * Force injection doGet - bypasses placeholder issues
  */
 function doGet(e) {
   try {
-    const pageName = e.parameter.page || 'dashboard'; // Use pageName to avoid conflict with HtmlOutput variable
-    console.log(`Loading page: ${pageName}`);
+    const page = e.parameter.page || 'dashboard';
+    console.log(`Loading page: ${page}`);
     
-    const navigationMenuHtml = getNavigationHtml(pageName);
-    let pageFileName = '';
-    let pageTitle = 'Motorcycle Escort Management'; // Default title
-
-    switch(pageName) {
-      case 'dashboard':
-        pageFileName = 'index'; // Assumes index.html is the dashboard
-        pageTitle = 'Dashboard - Escort Management';
-        break;
-      case 'requests':
-        pageFileName = 'requests';
-        pageTitle = 'Requests - Escort Management';
-        break;
-      case 'assignments':
-        if (e.parameter.mode === 'sidebar') { // Sidebar is a special case, might not need main nav
-          return renderEscortSidebarForWebApp();
-        }
-        pageFileName = 'assignments';
-        pageTitle = 'Assignments - Escort Management';
-        break;
-      case 'notifications':
-        pageFileName = 'notifications';
-        pageTitle = 'Notifications - Escort Management';
-        break;
-      case 'reports':
-        pageFileName = 'reports';
-        pageTitle = 'Reports - Escort Management';
-        break;
-      // Handle mobile pages if they should also get the standard navigation
-      case 'mobile-requests': // Example if mobile-requests is a full page
-        pageFileName = 'mobile-requests';
-        pageTitle = 'Mobile Requests - Escort Management';
-        break;
-      default:
-        pageFileName = 'index'; // Fallback to dashboard
-        pageTitle = 'Dashboard - Escort Management';
+    // Determine file to load
+    let pageFileName = 'index';
+    switch(page) {
+      case 'requests': pageFileName = 'requests'; break;
+      case 'assignments': pageFileName = 'assignments'; break;
+      case 'notifications': pageFileName = 'notifications'; break;
+      case 'reports': pageFileName = 'reports'; break;
     }
-
-    if (!pageFileName) { // Should not happen with default case, but good practice
-        throw new Error("Page not found and no default specified.");
-    }
-
-    let htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
+    
+    // Create navigation HTML with active page
+    const navigationHtml = `
+<nav class="navigation" style="display: flex; gap: 1rem; margin-bottom: 2rem; padding: 0 2rem; flex-wrap: wrap;">
+  <a href="?page=dashboard" class="nav-button ${page === 'dashboard' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'dashboard' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'dashboard' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📊 Dashboard</a>
+  <a href="?page=requests" class="nav-button ${page === 'requests' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'requests' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'requests' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📋 Requests</a>
+  <a href="?page=assignments" class="nav-button ${page === 'assignments' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'assignments' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'assignments' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">🏍️ Assignments</a>
+  <a href="?page=notifications" class="nav-button ${page === 'notifications' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'notifications' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'notifications' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📱 Notifications</a>
+  <a href="?page=reports" class="nav-button ${page === 'reports' ? 'active' : ''}" style="padding: 0.75rem 1.5rem; background: ${page === 'reports' ? '#3498db' : 'rgba(255,255,255,0.9)'}; color: ${page === 'reports' ? 'white' : '#2c3e50'}; text-decoration: none; border-radius: 25px; font-weight: 600; transition: all 0.3s ease;">📊 Reports</a>
+</nav>
+<style>
+.nav-button:hover { background: #2980b9 !important; color: white !important; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3); }
+</style>`;
+    
+    // Get page content
+    const htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
     let pageContent = htmlOutput.getContent();
     
-    // Inject navigation menu using placeholder
-    pageContent = pageContent.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationMenuHtml);
-    htmlOutput.setContent(pageContent);
+    console.log(`Original content length: ${pageContent.length}`);
     
-    return htmlOutput
-      .setTitle(pageTitle)
+    // Try multiple injection strategies
+    let injected = false;
+    
+    // Strategy 1: Look for placeholder (any variation)
+    const placeholders = [
+      '<!--NAVIGATION_MENU_PLACEHOLDER-->',
+      '<!-- NAVIGATION_MENU_PLACEHOLDER -->',
+      '<!--navigation_menu_placeholder-->',
+      '<!--NAVIGATION_PLACEHOLDER-->'
+    ];
+    
+    for (const placeholder of placeholders) {
+      if (pageContent.includes(placeholder)) {
+        pageContent = pageContent.replace(placeholder, navigationHtml);
+        console.log(`✅ Injected via placeholder: ${placeholder}`);
+        injected = true;
+        break;
+      }
+    }
+    
+    // Strategy 2: Inject after </header>
+    if (!injected && pageContent.includes('</header>')) {
+      pageContent = pageContent.replace('</header>', '</header>\n' + navigationHtml);
+      console.log('✅ Injected after </header>');
+      injected = true;
+    }
+    
+    // Strategy 3: Inject after opening <body>
+    if (!injected && pageContent.includes('<body>')) {
+      pageContent = pageContent.replace('<body>', '<body>\n' + navigationHtml);
+      console.log('✅ Injected after <body>');
+      injected = true;
+    }
+    
+    // Strategy 4: Inject at start of container
+    if (!injected && pageContent.includes('<div class="container">')) {
+      pageContent = pageContent.replace('<div class="container">', navigationHtml + '\n<div class="container">');
+      console.log('✅ Injected before container');
+      injected = true;
+    }
+    
+    if (!injected) {
+      console.log('❌ No injection point found, navigation will not appear');
+    }
+    
+    console.log(`Final content length: ${pageContent.length}`);
+    
+    return HtmlService.createHtmlOutput(pageContent)
+      .setTitle(`${page.charAt(0).toUpperCase() + page.slice(1)} - Motorcycle Escort Management`)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       
   } catch (error) {
-    logError('doGet error', error);
+    console.log(`❌ doGet error: ${error.message}`);
     return HtmlService.createHtmlOutput(`
       <html><body style="font-family: Arial; padding: 20px;">
         <h1>⚠️ Error Loading Page</h1>
         <p>Error: ${error.message}</p>
         <p><a href="?" style="color: #3498db;">Return to Dashboard</a></p>
-        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page}</p>
       </body></html>
     `);
   }
 }
 
+/**
+ * Remove this function - it's replaced by the consolidated doGet above
+ * DELETE THE getNavigationHtml FUNCTION since it's now integrated
+ */
 
 /**
  * Handles HTTP POST requests, serving as an API endpoint for the web app.
@@ -1252,5 +1175,539 @@ function getRecentRequestsForWebApp(limit = 10) {
     console.error('❌ Error getting recent requests:', error);
     logError('Error in getRecentRequestsForWebApp', error);
     return [];
+  }
+}
+// REMOVE FROM HERE! To the very end
+// Add this debug function to your Code.js file temporarily
+
+/**
+ * Debug function to test navigation injection
+ */
+function debugNavigationInjection() {
+  try {
+    console.log('=== NAVIGATION DEBUG START ===');
+    
+    // Test 1: Can we read the navigation file?
+    let navHtml;
+    try {
+      navHtml = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
+      console.log('✅ Navigation file read successfully');
+      console.log('Navigation content length:', navHtml.length);
+      console.log('Navigation content preview:', navHtml.substring(0, 100) + '...');
+    } catch (e) {
+      console.log('❌ Cannot read _navigation.html:', e.message);
+      return;
+    }
+    
+    // Test 2: Can we read a main HTML file?
+    let indexHtml;
+    try {
+      indexHtml = HtmlService.createHtmlOutputFromFile('index').getContent();
+      console.log('✅ Index file read successfully');
+      console.log('Index content length:', indexHtml.length);
+    } catch (e) {
+      console.log('❌ Cannot read index.html:', e.message);
+      return;
+    }
+    
+    // Test 3: Does the placeholder exist in the HTML?
+    const hasPlaceholder = indexHtml.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+    console.log('Has placeholder:', hasPlaceholder);
+    
+    if (hasPlaceholder) {
+      console.log('✅ Placeholder found in index.html');
+      
+      // Test 4: Can we perform the replacement?
+      const newContent = indexHtml.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navHtml);
+      const replacementWorked = newContent !== indexHtml;
+      console.log('Replacement worked:', replacementWorked);
+      
+      if (replacementWorked) {
+        console.log('✅ Replacement successful');
+        console.log('New content length:', newContent.length);
+      } else {
+        console.log('❌ Replacement failed');
+      }
+    } else {
+      console.log('❌ Placeholder NOT found in index.html');
+      console.log('Searching for similar patterns...');
+      
+      // Look for variations
+      const variations = [
+        '<!--NAVIGATION_MENU_PLACEHOLDER-->',
+        '<!-- NAVIGATION_MENU_PLACEHOLDER -->',
+        '<!--navigation_menu_placeholder-->',
+        '<!--NAVIGATION_PLACEHOLDER-->',
+        'NAVIGATION_MENU_PLACEHOLDER'
+      ];
+      
+      variations.forEach(variation => {
+        if (indexHtml.includes(variation)) {
+          console.log(`Found variation: ${variation}`);
+        }
+      });
+      
+      // Show some content around where navigation might be
+      const headerIndex = indexHtml.indexOf('</header>');
+      if (headerIndex !== -1) {
+        const surrounding = indexHtml.substring(headerIndex - 50, headerIndex + 200);
+        console.log('Content around </header>:', surrounding);
+      }
+    }
+    
+    console.log('=== NAVIGATION DEBUG END ===');
+    
+    return {
+      navFileExists: !!navHtml,
+      indexFileExists: !!indexHtml,
+      hasPlaceholder: hasPlaceholder,
+      navContentLength: navHtml ? navHtml.length : 0
+    };
+    
+  } catch (error) {
+    console.log('❌ Debug function error:', error.message);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Test the doGet function specifically
+ */
+function testDoGetFunction() {
+  try {
+    console.log('=== TESTING doGet FUNCTION ===');
+    
+    // Simulate a request event
+    const mockEvent = {
+      parameter: {
+        page: 'dashboard'
+      }
+    };
+    
+    // Call doGet
+    const result = doGet(mockEvent);
+    console.log('doGet result type:', typeof result);
+    console.log('doGet result:', result);
+    
+    if (result && result.getContent) {
+      const content = result.getContent();
+      console.log('Generated content length:', content.length);
+      
+      const hasNavigation = content.includes('class="navigation"') || content.includes('<nav');
+      console.log('Content includes navigation:', hasNavigation);
+      
+      if (hasNavigation) {
+        console.log('✅ Navigation found in generated content');
+      } else {
+        console.log('❌ Navigation NOT found in generated content');
+        
+        // Look for the placeholder in the output
+        const stillHasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+        console.log('Still has placeholder:', stillHasPlaceholder);
+      }
+    }
+    
+    console.log('=== doGet TEST END ===');
+    
+  } catch (error) {
+    console.log('❌ doGet test error:', error.message);
+  }
+}
+/**
+ * Enhanced debug function to find the exact issue
+ */
+function debugPlaceholderIssue() {
+  try {
+    console.log('=== ENHANCED PLACEHOLDER DEBUG ===');
+    
+    // Test reading index.html
+    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
+    console.log(`Index.html length: ${indexContent.length}`);
+    
+    // Look for exact placeholder
+    const exactPlaceholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
+    const hasExactPlaceholder = indexContent.includes(exactPlaceholder);
+    console.log(`Has exact placeholder: ${hasExactPlaceholder}`);
+    
+    if (hasExactPlaceholder) {
+      const placeholderIndex = indexContent.indexOf(exactPlaceholder);
+      console.log(`Placeholder found at position: ${placeholderIndex}`);
+      
+      // Show content around the placeholder
+      const start = Math.max(0, placeholderIndex - 100);
+      const end = Math.min(indexContent.length, placeholderIndex + exactPlaceholder.length + 100);
+      const surrounding = indexContent.substring(start, end);
+      console.log(`Content around placeholder: "${surrounding}"`);
+    } else {
+      // Search for any comment that might be the placeholder
+      const commentRegex = /<!--[^>]*-->/g;
+      const comments = indexContent.match(commentRegex);
+      console.log('All HTML comments found:');
+      if (comments) {
+        comments.forEach((comment, index) => {
+          console.log(`  ${index + 1}: ${comment}`);
+        });
+      } else {
+        console.log('  No HTML comments found');
+      }
+      
+      // Look for the word "NAVIGATION"
+      if (indexContent.toLowerCase().includes('navigation')) {
+        const navIndex = indexContent.toLowerCase().indexOf('navigation');
+        const navSurrounding = indexContent.substring(navIndex - 50, navIndex + 100);
+        console.log(`Found "navigation" at: "${navSurrounding}"`);
+      }
+    }
+    
+    // Test navigation file
+    try {
+      const navContent = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
+      console.log(`Navigation file length: ${navContent.length}`);
+      console.log(`Navigation preview: ${navContent.substring(0, 200)}...`);
+    } catch (navError) {
+      console.log(`Navigation file error: ${navError.message}`);
+    }
+    
+    console.log('=== DEBUG COMPLETE ===');
+    
+  } catch (error) {
+    console.log(`Debug error: ${error.message}`);
+  }
+}
+
+/**
+ * Test the replacement process step by step
+ */
+function testReplacementProcess() {
+  try {
+    console.log('=== TESTING REPLACEMENT PROCESS ===');
+    
+    // Get files
+    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
+    const navContent = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
+    
+    console.log(`Index length: ${indexContent.length}`);
+    console.log(`Nav length: ${navContent.length}`);
+    
+    // Test replacement
+    const placeholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
+    const beforeReplace = indexContent.length;
+    const afterContent = indexContent.replace(placeholder, navContent);
+    const afterReplace = afterContent.length;
+    
+    console.log(`Before replacement: ${beforeReplace} characters`);
+    console.log(`After replacement: ${afterReplace} characters`);
+    console.log(`Difference: ${afterReplace - beforeReplace} characters`);
+    console.log(`Expected difference: ${navContent.length - placeholder.length} characters`);
+    
+    const replacementWorked = afterReplace !== beforeReplace;
+    console.log(`Replacement worked: ${replacementWorked}`);
+    
+    if (replacementWorked) {
+      console.log('✅ Replacement process works correctly');
+    } else {
+      console.log('❌ Replacement process failed');
+    }
+    
+  } catch (error) {
+    console.log(`Test error: ${error.message}`);
+  }
+}
+/**
+ * Comprehensive debug to find why replacement fails
+ */
+function comprehensiveReplacementDebug() {
+  try {
+    console.log('=== COMPREHENSIVE REPLACEMENT DEBUG ===');
+    
+    // Get the files
+    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
+    const navContent = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
+    
+    console.log(`Index file length: ${indexContent.length}`);
+    console.log(`Nav file length: ${navContent.length}`);
+    
+    // Define the exact placeholder
+    const placeholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
+    console.log(`Searching for: "${placeholder}"`);
+    console.log(`Placeholder length: ${placeholder.length}`);
+    
+    // Check if placeholder exists
+    const placeholderExists = indexContent.includes(placeholder);
+    console.log(`Placeholder exists: ${placeholderExists}`);
+    
+    if (placeholderExists) {
+      // Find all occurrences
+      const positions = [];
+      let pos = indexContent.indexOf(placeholder, 0);
+      while (pos !== -1) {
+        positions.push(pos);
+        pos = indexContent.indexOf(placeholder, pos + 1);
+      }
+      
+      console.log(`Found ${positions.length} occurrence(s) at positions: ${positions.join(', ')}`);
+      
+      // Show content around each occurrence
+      positions.forEach((position, index) => {
+        const start = Math.max(0, position - 100);
+        const end = Math.min(indexContent.length, position + placeholder.length + 100);
+        const surrounding = indexContent.substring(start, end);
+        console.log(`\nOccurrence ${index + 1} at position ${position}:`);
+        console.log(`"${surrounding}"`);
+      });
+      
+      // Test replacement step by step
+      console.log('\n--- TESTING REPLACEMENT ---');
+      
+      // Method 1: Simple replace
+      console.log('Method 1: Simple replace');
+      const result1 = indexContent.replace(placeholder, navContent);
+      const worked1 = result1.length !== indexContent.length;
+      console.log(`Simple replace worked: ${worked1}`);
+      console.log(`Length change: ${result1.length - indexContent.length}`);
+      
+      // Method 2: Replace first occurrence only
+      console.log('Method 2: Replace first occurrence');
+      const firstPos = indexContent.indexOf(placeholder);
+      if (firstPos !== -1) {
+        const before = indexContent.substring(0, firstPos);
+        const after = indexContent.substring(firstPos + placeholder.length);
+        const result2 = before + navContent + after;
+        const worked2 = result2.length !== indexContent.length;
+        console.log(`Manual replace worked: ${worked2}`);
+        console.log(`Length change: ${result2.length - indexContent.length}`);
+      }
+      
+      // Method 3: Global replace
+      console.log('Method 3: Global replace');
+      const result3 = indexContent.replaceAll(placeholder, navContent);
+      const worked3 = result3.length !== indexContent.length;
+      console.log(`Global replace worked: ${worked3}`);
+      console.log(`Length change: ${result3.length - indexContent.length}`);
+      
+      // Method 4: Split and join
+      console.log('Method 4: Split and join');
+      const parts = indexContent.split(placeholder);
+      console.log(`Split into ${parts.length} parts`);
+      if (parts.length > 1) {
+        const result4 = parts.join(navContent);
+        const worked4 = result4.length !== indexContent.length;
+        console.log(`Split/join worked: ${worked4}`);
+        console.log(`Length change: ${result4.length - indexContent.length}`);
+      }
+      
+    } else {
+      console.log('❌ Placeholder not found - checking byte-level');
+      
+      // Check for the placeholder with potential encoding issues
+      const placeholderBytes = [];
+      for (let i = 0; i < placeholder.length; i++) {
+        placeholderBytes.push(placeholder.charCodeAt(i));
+      }
+      console.log(`Placeholder bytes: ${placeholderBytes.join(',')}`);
+      
+      // Look for similar patterns
+      const searchStart = '<!--NAVIGATION';
+      const searchStartPos = indexContent.indexOf(searchStart);
+      if (searchStartPos !== -1) {
+        const sampleEnd = Math.min(indexContent.length, searchStartPos + 50);
+        const sample = indexContent.substring(searchStartPos, sampleEnd);
+        console.log(`Found similar pattern: "${sample}"`);
+        
+        // Get bytes of this section
+        const sampleBytes = [];
+        for (let i = 0; i < Math.min(sample.length, placeholder.length); i++) {
+          sampleBytes.push(sample.charCodeAt(i));
+        }
+        console.log(`Sample bytes: ${sampleBytes.join(',')}`);
+      }
+    }
+    
+    // Test the navigation content
+    console.log('\n--- TESTING NAVIGATION CONTENT ---');
+    console.log(`Navigation content preview: "${navContent.substring(0, 100)}..."`);
+    console.log(`Navigation starts with: "${navContent.substring(0, 20)}"`);
+    console.log(`Navigation ends with: "${navContent.substring(navContent.length - 20)}"`);
+    
+    // Check if navigation content has any special characters
+    const navHasSpecialChars = /[^\x20-\x7E\s]/.test(navContent);
+    console.log(`Navigation has special characters: ${navHasSpecialChars}`);
+    
+  } catch (error) {
+    console.log(`❌ Debug error: ${error.message}`);
+    console.log(`Stack: ${error.stack}`);
+  }
+}
+
+/**
+ * Test with a simple replacement
+ */
+function testSimpleReplacement() {
+  try {
+    console.log('=== TESTING SIMPLE REPLACEMENT ===');
+    
+    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
+    
+    // Test with a simple string replacement
+    const testPlaceholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
+    const testReplacement = 'NAVIGATION_WAS_HERE';
+    
+    const beforeLength = indexContent.length;
+    const result = indexContent.replace(testPlaceholder, testReplacement);
+    const afterLength = result.length;
+    
+    console.log(`Before: ${beforeLength} characters`);
+    console.log(`After: ${afterLength} characters`);
+    console.log(`Difference: ${afterLength - beforeLength}`);
+    console.log(`Expected: ${testReplacement.length - testPlaceholder.length}`);
+    
+    const worked = afterLength !== beforeLength;
+    console.log(`Simple replacement worked: ${worked}`);
+    
+    if (worked) {
+      // Find where the replacement occurred
+      const replacePos = result.indexOf(testReplacement);
+      if (replacePos !== -1) {
+        const start = Math.max(0, replacePos - 50);
+        const end = Math.min(result.length, replacePos + testReplacement.length + 50);
+        const surrounding = result.substring(start, end);
+        console.log(`Replacement found at: "${surrounding}"`);
+      }
+    }
+    
+  } catch (error) {
+    console.log(`❌ Test error: ${error.message}`);
+  }
+}
+/**
+ * Definitive test to find exactly what's in the file
+ */
+function definitivePlaceholderTest() {
+  try {
+    console.log('=== DEFINITIVE PLACEHOLDER TEST ===');
+    
+    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
+    
+    // Search for any part of the word "NAVIGATION"
+    const searchWord = 'NAVIGATION';
+    const searchWordLower = searchWord.toLowerCase();
+    
+    console.log(`Searching for "${searchWord}" (case sensitive):`);
+    let pos = indexContent.indexOf(searchWord);
+    
+    if (pos !== -1) {
+      console.log(`✅ Found "${searchWord}" at position ${pos}`);
+      
+      // Show 200 characters around it
+      const start = Math.max(0, pos - 100);
+      const end = Math.min(indexContent.length, pos + searchWord.length + 100);
+      const surrounding = indexContent.substring(start, end);
+      
+      console.log('Context around "NAVIGATION":');
+      console.log('========================================');
+      console.log(surrounding);
+      console.log('========================================');
+      
+      // Get the exact characters around it for analysis
+      const exactStart = Math.max(0, pos - 5);
+      const exactEnd = Math.min(indexContent.length, pos + searchWord.length + 15);
+      const exactMatch = indexContent.substring(exactStart, exactEnd);
+      
+      console.log(`Exact match: "${exactMatch}"`);
+      
+      // Get character codes
+      const charCodes = [];
+      for (let i = 0; i < exactMatch.length; i++) {
+        charCodes.push(`${exactMatch[i]}(${exactMatch.charCodeAt(i)})`);
+      }
+      console.log(`Character codes: ${charCodes.join(' ')}`);
+      
+    } else {
+      console.log(`❌ "${searchWord}" not found, trying lowercase...`);
+      
+      pos = indexContent.toLowerCase().indexOf(searchWordLower);
+      if (pos !== -1) {
+        console.log(`✅ Found "${searchWordLower}" at position ${pos}`);
+        
+        const start = Math.max(0, pos - 100);
+        const end = Math.min(indexContent.length, pos + searchWordLower.length + 100);
+        const surrounding = indexContent.substring(start, end);
+        
+        console.log('Context around lowercase "navigation":');
+        console.log('========================================');
+        console.log(surrounding);
+        console.log('========================================');
+      } else {
+        console.log('❌ "navigation" not found in any case');
+      }
+    }
+    
+    // Test if ANY HTML comments exist
+    console.log('\n--- SEARCHING FOR HTML COMMENTS ---');
+    const commentPattern = /<!--[\s\S]*?-->/g;
+    const comments = indexContent.match(commentPattern);
+    
+    if (comments) {
+      console.log(`Found ${comments.length} HTML comments:`);
+      comments.forEach((comment, index) => {
+        console.log(`${index + 1}: "${comment}"`);
+        
+        // Check if this comment contains any part of our search
+        if (comment.toUpperCase().includes('NAVIGATION')) {
+          console.log(`  ⭐ This comment contains "NAVIGATION"!`);
+        }
+      });
+    } else {
+      console.log('❌ No HTML comments found at all');
+    }
+    
+    // Search for just "<!--" to see if any comments exist
+    const commentStart = indexContent.indexOf('<!--');
+    if (commentStart !== -1) {
+      console.log(`Found comment start at position: ${commentStart}`);
+      const commentSample = indexContent.substring(commentStart, commentStart + 100);
+      console.log(`Comment sample: "${commentSample}"`);
+    } else {
+      console.log('❌ No comment start markers found');
+    }
+    
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+}
+
+/**
+ * Test if we can write to the HTML file
+ */
+function testWriteToHTML() {
+  try {
+    console.log('=== TESTING HTML FILE WRITE ===');
+    
+    // This test will show us if the file is actually being read correctly
+    const originalContent = HtmlService.createHtmlOutputFromFile('index').getContent();
+    console.log(`Original file length: ${originalContent.length}`);
+    
+    // Try to find a safe place to test replacement
+    const bodyTag = '<body>';
+    if (originalContent.includes(bodyTag)) {
+      console.log('✅ Found <body> tag');
+      
+      const testReplacement = originalContent.replace(bodyTag, bodyTag + '<!-- TEST INJECTION -->');
+      const lengthDiff = testReplacement.length - originalContent.length;
+      
+      console.log(`Test replacement length difference: ${lengthDiff}`);
+      console.log(`Expected difference: ${('<!-- TEST INJECTION -->').length}`);
+      
+      if (lengthDiff > 0) {
+        console.log('✅ String replacement works on this file');
+      } else {
+        console.log('❌ String replacement failed even on <body> tag');
+      }
+    } else {
+      console.log('❌ <body> tag not found');
+    }
+    
+  } catch (error) {
+    console.log(`❌ Test error: ${error.message}`);
   }
 }

@@ -1,7 +1,57 @@
 <nav class="navigation">
-    <a href="?page=dashboard" class="nav-button" id="nav-dashboard" data-page="dashboard">📊 Dashboard</a>
-    <a href="?page=requests" class="nav-button" id="nav-requests" data-page="requests">📋 Requests</a>
-    <a href="?page=assignments" class="nav-button" id="nav-assignments" data-page="assignments">🏍️ Assignments</a>
-    <a href="?page=notifications" class="nav-button" id="nav-notifications" data-page="notifications">📱 Notifications</a>
-    <a href="?page=reports" class="nav-button" id="nav-reports" data-page="reports">📊 Reports</a>
+    <a href="?page=dashboard" class="nav-button" data-page="dashboard">📊 Dashboard</a>
+    <a href="?page=requests" class="nav-button" data-page="requests">📋 Requests</a>
+    <a href="?page=assignments" class="nav-button" data-page="assignments">🏍️ Assignments</a>
+    <a href="?page=notifications" class="nav-button" data-page="notifications">📱 Notifications</a>
+    <a href="?page=reports" class="nav-button" data-page="reports">📊 Reports</a>
 </nav>
+
+<style>
+.navigation {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    padding: 0 2rem;
+}
+
+.nav-button {
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 25px;
+    color: #2c3e50;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.nav-button:hover, .nav-button.active {
+    background: #3498db;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.nav-button.active {
+    background: #2980b9;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .navigation {
+        padding: 0 1rem;
+        justify-content: center;
+    }
+    
+    .nav-button {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+</style>
