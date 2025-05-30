@@ -335,6 +335,8 @@
     <div class="header">
         <h1>🏍️ Escort Requests</h1>
     </div>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
     
     <div class="controls">
         <div class="filter-row">
@@ -514,44 +516,61 @@
     <script>
         let allRequests = [];
         let currentEditingRequest = null;
+        let currentUser = null; // To store user info
         
         document.addEventListener('DOMContentLoaded', function() {
-            loadRequests();
-            document.getElementById('statusFilter').addEventListener('change', loadRequests);
+            loadPageData(); // Changed from loadRequests()
+            document.getElementById('statusFilter').addEventListener('change', loadPageData); // Changed from loadRequests
         });
         
-        function loadRequests() {
+        function loadPageData() { // Renamed from loadRequests
             showLoading();
-            
             const filter = document.getElementById('statusFilter').value;
             
-            google.script.run
-                .withSuccessHandler(handleSuccess)
-                .withFailureHandler(handleError)
-                .getFilteredRequestsForWebApp(filter);
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handlePageDataSuccess) // Changed from handleSuccess
+                    .withFailureHandler(handlePageDataError)   // Changed from handleError
+                    .getPageDataForRequests(filter);
+            } else {
+                console.log('⚠️ Google Apps Script not available for requests page.');
+                handlePageDataError({ message: "Google Apps Script not available." });
+            }
         }
         
-        function handleSuccess(requests) {
+        function handlePageDataSuccess(data) { // Renamed from handleSuccess
             hideLoading();
             
-            if (!requests || !Array.isArray(requests)) {
-                showError('Invalid data received from server');
-                return;
-            }
-            
-            if (requests.length === 0) {
-                showNoData();
+            if (data && data.success) {
+                console.log('✅ Requests page data loaded:', data);
+                currentUser = data.user; // Store user
+                // updateUserInfo(currentUser); // TODO: Add a function to display user info if needed on this page
+
+                const requests = data.requests;
+                if (!requests || !Array.isArray(requests)) {
+                    showError('Invalid requests data received from server');
+                    allRequests = []; // Ensure allRequests is an array
+                } else {
+                    allRequests = requests;
+                }
+
+                if (allRequests.length === 0) {
+                    showNoData();
+                    updateStats([]); // Pass empty array if no requests
+                } else {
+                    displayRequests(allRequests);
+                    updateStats(allRequests);
+                    showTable();
+                }
+            } else {
+                showError('Failed to load page data: ' + (data ? data.error : 'Unknown error'));
+                allRequests = [];
                 updateStats([]);
-                return;
+                showNoData();
             }
-            
-            allRequests = requests;
-            displayRequests(requests);
-            updateStats(requests);
-            showTable();
         }
         
-        function handleError(error) {
+        function handlePageDataError(error) { // Renamed from handleError
             hideLoading();
             showError('Error loading requests: ' + (error.message || error));
             console.error('Load error:', error);
