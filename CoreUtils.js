@@ -45,7 +45,97 @@ function formatTimeForDisplay(timeValue) {
     return String(timeValue);
   }
 }
+/**
+ * Safely format a date value for display
+ * @param {any} dateValue - The date value from the sheet
+ * @return {string} Formatted date string or original value
+ */
+function formatDateSafe(dateValue) {
+  try {
+    if (!dateValue) return '';
+    
+    // If it's already a properly formatted string, return it
+    if (typeof dateValue === 'string' && dateValue.length > 0 && dateValue !== 'TBD') {
+      // Check if it looks like a valid date string
+      const testDate = new Date(dateValue);
+      if (!isNaN(testDate.getTime())) {
+        return dateValue; // Return as-is if it's already a good date string
+      }
+      return dateValue; // Return original string even if not a date
+    }
+    
+    // If it's a Date object
+    if (dateValue instanceof Date) {
+      if (isNaN(dateValue.getTime())) return '';
+      return dateValue.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+    
+    // Try to convert to date
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+    
+    // Return original value if we can't format it
+    return String(dateValue);
+    
+  } catch (error) {
+    console.log('Error formatting date:', dateValue, error);
+    return String(dateValue || '');
+  }
+}
 
+/**
+ * Safely format a time value for display
+ * @param {any} timeValue - The time value from the sheet
+ * @return {string} Formatted time string or original value
+ */
+function formatTimeSafe(timeValue) {
+  try {
+    if (!timeValue) return '';
+    
+    // If it's already a good string, return it
+    if (typeof timeValue === 'string' && timeValue.length > 0 && timeValue !== 'TBD') {
+      return timeValue;
+    }
+    
+    // If it's a Date object (common for time cells in Sheets)
+    if (timeValue instanceof Date) {
+      if (isNaN(timeValue.getTime())) return '';
+      return timeValue.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+    
+    // Try to parse as time
+    if (typeof timeValue === 'number') {
+      // Might be a decimal representing time (e.g., 0.5 = 12:00 PM)
+      const totalMinutes = Math.round(timeValue * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    }
+    
+    // Return original value
+    return String(timeValue);
+    
+  } catch (error) {
+    console.log('Error formatting time:', timeValue, error);
+    return String(timeValue || '');
+  }
+}
 /**
  * Formats a date for display manually in "MM/DD/YYYY" format.
  * @param {Date} date The date object to format.
