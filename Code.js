@@ -253,160 +253,559 @@ function createMenu() {
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();
 }
+// ===== NAVIGATION INJECTION ISSUE ANALYSIS =====
+
+// Since the placeholders exist but the test shows they're not found,
+// the issue is likely one of these:
+
+// ISSUE 1: Character encoding or invisible characters
+// Sometimes copying/pasting can introduce non-standard characters
+
 /**
- * Handles HTTP GET requests to the web app, primarily for initial page loads and mobile detection.
- * This version appears to be an older or alternative doGet, potentially for a mobile detection/redirector page.
- * The primary page serving logic with navigation injection is in the second doGet function below.
- * @param {GoogleAppsScript.Events.DoGet} e The event object from the GET request.
- * @return {GoogleAppsScript.HTML.HtmlOutput} The HTML output to be served.
+ * Enhanced placeholder detection that checks for various issues
  */
-function doGet(e) {
+function debugPlaceholderIssues() {
+  const filesToCheck = ['index', 'requests', 'assignments', 'notifications', 'reports'];
+  
+  filesToCheck.forEach(fileName => {
+    try {
+      console.log(`\n=== DETAILED CHECK: ${fileName}.html ===`);
+      const content = HtmlService.createHtmlOutputFromFile(fileName).getContent();
+      
+      // Check for exact placeholder
+      const exactPlaceholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
+      const exactIndex = content.indexOf(exactPlaceholder);
+      console.log(`Exact placeholder found: ${exactIndex !== -1} (index: ${exactIndex})`);
+      
+      // Check for placeholder parts
+      const hasComment = content.includes('<!--');
+      const hasNavigation = content.includes('NAVIGATION');
+      const hasMenu = content.includes('MENU');
+      const hasPlaceholder = content.includes('PLACEHOLDER');
+      const hasClosingComment = content.includes('-->');
+      
+      console.log(`Has <!--: ${hasComment}`);
+      console.log(`Has NAVIGATION: ${hasNavigation}`);
+      console.log(`Has MENU: ${hasMenu}`);
+      console.log(`Has PLACEHOLDER: ${hasPlaceholder}`);
+      console.log(`Has -->: ${hasClosingComment}`);
+      
+      // Search for any navigation-related comments
+      const navCommentRegex = /<!--[^>]*NAVIGATION[^>]*-->/gi;
+      const navComments = content.match(navCommentRegex);
+      if (navComments) {
+        console.log(`Navigation comments found:`, navComments);
+      }
+      
+      // Check for common variations
+      const variations = [
+        '<!--NAVIGATION_MENU_PLACEHOLDER-->',
+        '<!-- NAVIGATION_MENU_PLACEHOLDER -->',
+        '<!--NAVIGATION_MENU_PLACEHOLDER -->',
+        '<!-- NAVIGATION_MENU_PLACEHOLDER-->',
+        '<!--NAV_PLACEHOLDER-->',
+        '<!--NAVIGATION PLACEHOLDER-->',
+        '<!--NAVIGATION-MENU-PLACEHOLDER-->'
+      ];
+      
+      variations.forEach(variation => {
+        if (content.includes(variation)) {
+          console.log(`Found variation: "${variation}"`);
+        }
+      });
+      
+      // Show character codes around any found navigation text
+      const navIndex = content.indexOf('NAVIGATION');
+      if (navIndex !== -1) {
+        const start = Math.max(0, navIndex - 20);
+        const end = Math.min(content.length, navIndex + 50);
+        const segment = content.substring(start, end);
+        console.log(`Context around NAVIGATION: "${segment}"`);
+        console.log(`Character codes:`, Array.from(segment).map(char => char.charCodeAt(0)));
+      }
+      
+    } catch (error) {
+      console.log(`Error checking ${fileName}: ${error.message}`);
+    }
+  });
+}
+
+// ISSUE 2: doGet function problems
+// Your current doGet might have issues. Here's a corrected version:
+function testNavigationUrls() {
+  const baseUrl = ScriptApp.getService().getUrl();
+  console.log('Web app URL:', baseUrl);
+  
+  const nav = getNavigationHtmlWithDynamicUrls('requests');
+  console.log('Generated navigation:', nav);
+}
+
+
+// ISSUE 3: getNavigationHtml function problems
+// Make sure this function is working correctly:
+
+/**
+ * Robust getNavigationHtml function
+ */
+function getNavigationHtml(currentPage = '') {
   try {
-    // Mobile detection
-    const userAgent = Utilities.getUuid(); // This won't work for user agent, let's use a different approach
-    let isMobile = false;
-
-    // Check if mobile is explicitly requested
-    if (e.parameter.mobile === 'true') {
-      isMobile = true;
-    } else if (e.parameter.mobile === 'false') {
-      isMobile = false;
-    } else {
-      // Auto-detect based on common mobile patterns in referrer or other indicators
-      // Since we can't directly access user agent in Apps Script, we'll use URL parameters
-      isMobile = e.parameter.m === '1' || e.parameter.mobile === '1';
+    console.log(`🧭 Getting navigation for page: ${currentPage}`);
+    
+    let navContent;
+    try {
+      navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+      console.log(`📄 Navigation file loaded: ${navContent.length} chars`);
+    } catch (error) {
+      console.error('❌ Could not load _navigation.html:', error);
+      throw error;
     }
     
-    const page = e.parameter.page || 'dashboard';
-    console.log(`Loading page: ${page}, Mobile: ${isMobile}`);
-    
-    let htmlOutput;
-    
-    switch(page) {
-      case 'dashboard':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-dashboard');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('index');
-        }
-        break;
-
-      case 'requests':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-requests');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('requests');
-        }
-        break;
-
-      case 'assignments':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-assignments');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('assignments');
-        }
-        break;
-
-      case 'notifications':
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-notifications');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('notifications');
-        }
-        break;
-
-      case 'reports':
-        // Reports probably better on desktop for now
-        htmlOutput = HtmlService.createHtmlOutputFromFile('reports');
-        break;
-
-      default:
-        // Default to dashboard
-        if (isMobile) {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-dashboard');
-        } else {
-          htmlOutput = HtmlService.createHtmlOutputFromFile('index');
-        }
+    if (!navContent || navContent.length === 0) {
+      throw new Error('Navigation file is empty');
     }
     
-    // Add mobile detection redirect page if no specific mobile version requested
-    if (!isMobile && !e.parameter.mobile) {
-      // Create a detection page that can redirect to mobile if needed
-      return HtmlService.createHtmlOutput(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Motorcycle Escort Management</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; text-align: center; }
-            .container { max-width: 600px; margin: 50px auto; }
-            .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 18px; }
-            .btn:hover { background: #2980b9; }
-            .mobile-btn { background: #e74c3c; }
-            .mobile-btn:hover { background: #c0392b; }
-            @media (max-width: 768px) {
-              .auto-redirect { display: block; margin-top: 30px; padding: 20px; background: #f39c12; color: white; border-radius: 10px; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>🏍️ Motorcycle Escort Management</h1>
-            <p>Choose your preferred interface:</p>
-
-            <a href="?mobile=false" class="btn">💻 Desktop Version</a>
-            <a href="?mobile=true" class="btn mobile-btn">📱 Mobile Version</a>
-
-            <div class="auto-redirect" style="display: none;">
-              <p>📱 Mobile device detected!</p>
-              <p>Redirecting to mobile version in <span id="countdown">3</span> seconds...</p>
-              <a href="?mobile=false">Use desktop version instead</a>
-            </div>
-          </div>
-
-          <script>
-            // Mobile detection and auto-redirect
-            function isMobileDevice() {
-              return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                     (window.innerWidth <= 768 && window.innerHeight <= 1024);
-            }
-
-            if (isMobileDevice()) {
-              document.querySelector('.auto-redirect').style.display = 'block';
-              let countdown = 3;
-              const countdownEl = document.getElementById('countdown');
-
-              const timer = setInterval(() => {
-                countdown--;
-                countdownEl.textContent = countdown;
-
-                if (countdown <= 0) {
-                  clearInterval(timer);
-                  window.location.href = '?mobile=true&page=${page}';
-                }
-              }, 1000);
-            }
-          </script>
-        </body>
-        </html>
-      `).setTitle('Motorcycle Escort Management - Choose Interface');
+    // Add active class if needed
+    if (currentPage) {
+      // Simple approach: add active class to matching data-page
+      const activePattern = new RegExp(`(data-page="${currentPage}"[^>]*class="[^"]*nav-button)([^"]*)(")`, 'i');
+      navContent = navContent.replace(activePattern, function(match, p1, p2, p3) {
+        if (!p2.includes('active')) {
+          return `${p1} active${p2}${p3}`;
+        }
+        return match;
+      });
     }
     
-    return htmlOutput
-      .setTitle(isMobile ? 'Mobile - Escort Management' : 'Motorcycle Escort Management')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-
+    return navContent;
+    
   } catch (error) {
-    logError('doGet error (mobile detection part)', error);
-    return HtmlService.createHtmlOutput(`
-      <html><body style="font-family: Arial; padding: 20px;">
-        <h1>⚠️ Error Loading Page</h1>
-        <p>Error: ${error.message}</p>
-        <p><a href="?" style="color: #3498db;">Return to Home</a></p>
-        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page}, Mobile: ${e.parameter.mobile}</p>
-      </body></html>
-    `);
+    console.error('❌ Error in getNavigationHtml:', error);
+    
+    // Return basic fallback navigation
+    const baseUrl = ScriptApp.getService().getUrl();
+    return `<nav class="navigation">
+      <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
+      <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
+      <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}">🏍️ Assignments</a>
+      <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}">📱 Notifications</a>
+      <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}">📊 Reports</a>
+    </nav>`;
+  }
+}
+
+// ISSUE 4: Test the complete flow
+/**
+ * Complete navigation flow test
+ */
+function testCompleteNavigationFlow() {
+  try {
+    console.log('=== COMPLETE NAVIGATION FLOW TEST ===');
+    
+    // Test 1: _navigation.html file
+    console.log('1. Testing _navigation.html...');
+    const navFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+    console.log(`   ✅ File exists: ${navFile.length} chars`);
+    
+    // Test 2: getNavigationHtml function
+    console.log('2. Testing getNavigationHtml...');
+    const navHtml = getNavigationHtml('dashboard');
+    console.log(`   ✅ Function works: ${navHtml.length} chars`);
+    
+    // Test 3: Test with each page file
+    console.log('3. Testing page files...');
+    const pages = ['index', 'requests', 'assignments', 'notifications', 'reports'];
+    
+    pages.forEach(page => {
+      try {
+        const content = HtmlService.createHtmlOutputFromFile(page).getContent();
+        const hasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+        console.log(`   ${page}.html: ${hasPlaceholder ? '✅ HAS' : '❌ MISSING'} placeholder`);
+        
+        if (hasPlaceholder) {
+          const injected = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navHtml);
+          const hasNavAfter = injected.includes('<nav class="navigation">');
+          console.log(`   ${page}.html: Injection ${hasNavAfter ? '✅ SUCCESS' : '❌ FAILED'}`);
+        }
+      } catch (error) {
+        console.log(`   ${page}.html: ❌ ERROR - ${error.message}`);
+      }
+    });
+    
+    // Test 4: Mock doGet call
+    console.log('4. Testing doGet simulation...');
+    const mockEvent = { parameter: { page: 'dashboard' } };
+    try {
+      const result = doGet(mockEvent);
+      console.log(`   ✅ doGet completed successfully`);
+      
+      const finalContent = result.getContent();
+      const hasFinalNav = finalContent.includes('<nav class="navigation">');
+      console.log(`   Navigation in final output: ${hasFinalNav ? '✅ YES' : '❌ NO'}`);
+      
+    } catch (error) {
+      console.log(`   ❌ doGet failed: ${error.message}`);
+    }
+    
+    console.log('=== TEST COMPLETE ===');
+    
+  } catch (error) {
+    console.error('❌ Complete flow test failed:', error);
+  }
+}
+// ===== DEFINITIVE PLACEHOLDER FIX =====
+
+// The debug clearly shows NO HTML comments exist in any file
+// This means the placeholders are truly missing from the actual files
+
+/**
+ * Function to show exactly what needs to be added to each file
+ */
+function showExactPlaceholderLocations() {
+  const files = ['index', 'requests', 'assignments', 'notifications', 'reports'];
+  
+  files.forEach(fileName => {
+    try {
+      console.log(`\n=== ${fileName.toUpperCase()}.HTML ===`);
+      const content = HtmlService.createHtmlOutputFromFile(fileName).getContent();
+      
+      // Find common insertion points
+      const headerEnd = content.indexOf('</header>');
+      const bodyStart = content.indexOf('<body>');
+      const containerStart = content.indexOf('<div class="container">');
+      const navigationStart = content.indexOf('<nav class="navigation">');
+      
+      console.log(`File length: ${content.length} characters`);
+      console.log(`</header> found at: ${headerEnd}`);
+      console.log(`<body> found at: ${bodyStart}`);
+      console.log(`<div class="container"> found at: ${containerStart}`);
+      console.log(`<nav class="navigation"> found at: ${navigationStart}`);
+      
+      // Show the area where placeholder should go
+      if (headerEnd !== -1) {
+        const start = Math.max(0, headerEnd - 50);
+        const end = Math.min(content.length, headerEnd + 100);
+        console.log(`Context around </header>:`);
+        console.log(`"${content.substring(start, end)}"`);
+        console.log(`\n>>> ADD PLACEHOLDER AFTER </header> AND BEFORE NEXT ELEMENT <<<`);
+      } else if (bodyStart !== -1) {
+        const start = Math.max(0, bodyStart);
+        const end = Math.min(content.length, bodyStart + 100);
+        console.log(`Context after <body>:`);
+        console.log(`"${content.substring(start, end)}"`);
+        console.log(`\n>>> ADD PLACEHOLDER AFTER <body> <<<`);
+      }
+      
+    } catch (error) {
+      console.log(`Error reading ${fileName}: ${error.message}`);
+    }
+  });
+}
+
+
+/**
+ * Create fallback navigation HTML
+ */
+function createFallbackNavigation(currentPage = '') {
+  const baseUrl = ScriptApp.getService().getUrl();
+  
+  const pages = [
+    { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
+    { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
+    { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
+    { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
+    { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
+  ];
+  
+  const navButtons = pages.map(page => {
+    const activeClass = page.id === currentPage ? ' active' : '';
+    return `<a href="${page.url}" class="nav-button${activeClass}" data-page="${page.id}">${page.label}</a>`;
+  }).join('\n        ');
+  
+  return `    <nav class="navigation">
+        ${navButtons}
+    </nav>`;
+}
+// ===== NAVIGATION VERIFICATION STEPS =====
+
+/**
+ * Test if the force injection actually worked
+ */
+function verifyNavigationInjection() {
+  try {
+    console.log('=== VERIFYING NAVIGATION INJECTION ===');
+    
+    // Test the actual doGet function with different pages
+    const testPages = ['dashboard', 'requests', 'assignments', 'notifications', 'reports'];
+    
+    testPages.forEach(pageName => {
+      console.log(`\n--- Testing ${pageName} page ---`);
+      
+      try {
+        const mockEvent = { parameter: { page: pageName === 'dashboard' ? undefined : pageName } };
+        const result = doGet(mockEvent);
+        const content = result.getContent();
+        
+        console.log(`✅ Page loads: ${pageName}`);
+        console.log(`Content length: ${content.length} chars`);
+        
+        // Check for navigation elements
+        const hasNavTag = content.includes('<nav class="navigation">');
+        const hasNavButtons = content.includes('nav-button');
+        const hasDashboardLink = content.includes('📊 Dashboard');
+        const hasRequestsLink = content.includes('📋 Requests');
+        
+        console.log(`Has <nav> tag: ${hasNavTag ? '✅' : '❌'}`);
+        console.log(`Has nav buttons: ${hasNavButtons ? '✅' : '❌'}`);
+        console.log(`Has Dashboard link: ${hasDashboardLink ? '✅' : '❌'}`);
+        console.log(`Has Requests link: ${hasRequestsLink ? '✅' : '❌'}`);
+        
+        if (hasNavTag) {
+          // Extract and show the navigation HTML
+          const navStart = content.indexOf('<nav class="navigation">');
+          const navEnd = content.indexOf('</nav>', navStart) + 6;
+          const navHtml = content.substring(navStart, navEnd);
+          console.log(`Navigation HTML: ${navHtml.substring(0, 200)}...`);
+        }
+        
+        // Check if navigation has active class for current page
+        if (pageName !== 'dashboard') {
+          const hasActiveClass = content.includes(`data-page="${pageName}"`) && content.includes('active');
+          console.log(`Has active class for ${pageName}: ${hasActiveClass ? '✅' : '❌'}`);
+        }
+        
+      } catch (error) {
+        console.log(`❌ Error testing ${pageName}: ${error.message}`);
+      }
+    });
+    
+    console.log('\n=== VERIFICATION COMPLETE ===');
+    
+  } catch (error) {
+    console.error('❌ Verification failed:', error);
+  }
+}
+
+/**
+ * Quick test to see what the actual web app output looks like
+ */
+function showActualWebAppOutput() {
+  try {
+    console.log('=== ACTUAL WEB APP OUTPUT SAMPLE ===');
+    
+    const mockEvent = { parameter: {} }; // Dashboard
+    const result = doGet(mockEvent);
+    const content = result.getContent();
+    
+    console.log(`Total content length: ${content.length} characters`);
+    
+    // Show the first part of the content (should include navigation)
+    const firstPart = content.substring(0, 1000);
+    console.log('\nFirst 1000 characters of output:');
+    console.log('---START---');
+    console.log(firstPart);
+    console.log('---END---');
+    
+    // Look specifically for navigation
+    const navIndex = content.indexOf('<nav');
+    if (navIndex !== -1) {
+      console.log(`\nNavigation found at position: ${navIndex}`);
+      const navSection = content.substring(navIndex, navIndex + 500);
+      console.log('Navigation section:');
+      console.log(navSection);
+    } else {
+      console.log('\n❌ No <nav> tag found in output');
+    }
+    
+    // Check what injection strategy was used (look for console logs)
+    console.log('\nDeployment check:');
+    console.log('- If you see navigation HTML above, the injection worked');
+    console.log('- If not, there may be a deployment issue');
+    console.log('- Check your web app deployment settings');
+    
+  } catch (error) {
+    console.error('❌ Error showing output:', error);
+  }
+}
+
+/**
+ * Check deployment and provide troubleshooting steps
+ */
+function checkDeploymentStatus() {
+  try {
+    console.log('=== DEPLOYMENT TROUBLESHOOTING ===');
+    
+    // Get the web app URL
+    const webAppUrl = ScriptApp.getService().getUrl();
+    console.log(`Web App URL: ${webAppUrl}`);
+    
+    // Check if we can create HTML outputs
+    try {
+      const testOutput = HtmlService.createHtmlOutput('<h1>Test</h1>');
+      console.log('✅ HTML Service working');
+    } catch (error) {
+      console.log('❌ HTML Service error:', error.message);
+    }
+    
+    // Check if navigation file exists
+    try {
+      const navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+      console.log(`✅ Navigation file exists (${navContent.length} chars)`);
+    } catch (error) {
+      console.log('❌ Navigation file error:', error.message);
+    }
+    
+    // Test the doGet function directly
+    try {
+      const result = doGet({ parameter: {} });
+      console.log('✅ doGet function works');
+      
+      const content = result.getContent();
+      const hasNav = content.includes('<nav');
+      console.log(`Navigation in output: ${hasNav ? '✅ YES' : '❌ NO'}`);
+      
+    } catch (error) {
+      console.log('❌ doGet function error:', error.message);
+    }
+    
+    console.log('\nNext steps:');
+    console.log('1. If everything shows ✅ above, check your browser');
+    console.log('2. Open your web app URL in a new private/incognito window');
+    console.log('3. Check browser console (F12) for any errors');
+    console.log('4. If still no navigation, you may need to redeploy the web app');
+    
+  } catch (error) {
+    console.error('❌ Deployment check failed:', error);
+  }
+}
+
+// BROWSER-SIDE DEBUGGING CODE
+// Add this to your HTML files for client-side verification:
+const clientDebugCode = `
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 CLIENT-SIDE NAVIGATION DEBUG');
+    
+    // Check if navigation exists
+    const nav = document.querySelector('nav.navigation');
+    console.log('Navigation element found:', !!nav);
+    
+    if (nav) {
+        console.log('✅ Navigation HTML:', nav.outerHTML);
+        console.log('✅ Navigation visible:', nav.offsetHeight > 0);
+        console.log('✅ Navigation position:', nav.getBoundingClientRect());
+        
+        // Check nav buttons
+        const buttons = nav.querySelectorAll('.nav-button');
+        console.log('✅ Number of nav buttons:', buttons.length);
+        
+        buttons.forEach((btn, index) => {
+            console.log(\`Button \${index + 1}: \${btn.textContent.trim()}\`);
+        });
+        
+    } else {
+        console.log('❌ Navigation not found in DOM');
+        
+        // Check if placeholder still exists
+        const bodyHtml = document.body.innerHTML;
+        if (bodyHtml.includes('NAVIGATION_MENU_PLACEHOLDER')) {
+            console.log('❌ Placeholder still exists - injection failed');
+        }
+        
+        // Check for any nav-related elements
+        const navElements = document.querySelectorAll('[class*="nav"], [id*="nav"]');
+        console.log('Other nav elements found:', navElements.length);
+    }
+    
+    // Check page parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    console.log('Current page parameter:', urlParams.get('page') || 'dashboard');
+});
+</script>
+`;
+
+/* 
+TESTING CHECKLIST:
+
+1. Run verifyNavigationInjection() to test all pages
+2. Run showActualWebAppOutput() to see what's being generated
+3. Run checkDeploymentStatus() for troubleshooting info
+
+4. If tests show navigation exists but you don't see it:
+   - Clear browser cache
+   - Try private/incognito window
+   - Check if you need to redeploy the web app
+
+5. Add the client debug code to one HTML file temporarily to check browser-side
+
+6. If navigation still doesn't appear:
+   - Go to Deploy → Manage Deployments
+   - Create a new deployment (New Deployment button)
+   - Set Execute as: Me
+   - Set Access: Anyone
+   - Deploy and use the new URL
+*/
+/**
+ * Test the force injection approach
+ */
+function testForceInjection() {
+  try {
+    console.log('=== TESTING FORCE INJECTION ===');
+    
+    const mockEvent = { parameter: { page: 'dashboard' } };
+    const result = doGetWithForceInjection(mockEvent);
+    const finalContent = result.getContent();
+    
+    console.log(`Final content length: ${finalContent.length}`);
+    console.log(`Has navigation: ${finalContent.includes('<nav class="navigation">')}`);
+    console.log(`Has nav buttons: ${finalContent.includes('nav-button')}`);
+    
+    // Show navigation section
+    const navStart = finalContent.indexOf('<nav class="navigation">');
+    if (navStart !== -1) {
+      const navEnd = finalContent.indexOf('</nav>', navStart) + 6;
+      console.log('Navigation HTML in final content:');
+      console.log(finalContent.substring(navStart, navEnd));
+    }
+    
+    return { success: true, hasNavigation: finalContent.includes('<nav class="navigation">') };
+    
+  } catch (error) {
+    console.error('Force injection test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+
+
+function testPlaceholderInFiles() {
+  const filesToCheck = ['index', 'requests', 'assignments', 'notifications', 'reports'];
+  
+  filesToCheck.forEach(fileName => {
+    try {
+      const content = HtmlService.createHtmlOutputFromFile(fileName).getContent();
+      const placeholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
+      const placeholderIndex = content.indexOf(placeholder);
+      
+      console.log(`${fileName}.html: Placeholder ${placeholderIndex !== -1 ? 'FOUND' : 'NOT FOUND'} at index ${placeholderIndex}`);
+      
+      if (placeholderIndex !== -1) {
+        const context = content.substring(placeholderIndex - 50, placeholderIndex + 100);
+        console.log(`Context: ${context}`);
+      }
+    } catch (error) {
+      console.log(`Error checking ${fileName}.html: ${error.message}`);
+    }
+  });
+}
+function testNavigationMenu() {
+  try {
+    const navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+    console.log('Navigation file exists. Length:', navContent.length);
+    console.log('Content:', navContent);
+    return navContent;
+  } catch (error) {
+    console.log('Navigation file error:', error.message);
+    return null;
   }
 }
 /**
@@ -562,124 +961,7 @@ function getNavigationHtml(currentPage = '') {
 
 // ===== WEB APP ENTRY POINTS (DO NOT EDIT FUNCTION NAMES)=====
 
-/**
- * Handles HTTP GET requests to the web app.
- * Directs to different HTML pages based on the 'page' parameter.
- * @param {GoogleAppsScript.Events.DoGet} e The event object from the GET request.
- * @return {GoogleAppsScript.HTML.HtmlOutput} The HTML output to be served.
- */
-function doGet(e) {
-  try {
-    // Comprehensive logging of the event object
-    Logger.log('-----------------------------------------');
-    Logger.log('doGet called. Event object: ' + JSON.stringify(e));
-    if (e) {
-      Logger.log('e.parameter: ' + JSON.stringify(e.parameter));
-      Logger.log('e.parameters: ' + JSON.stringify(e.parameters));
-      Logger.log('e.contextPath: ' + e.contextPath);
-      Logger.log('e.queryString: ' + e.queryString);
-      Logger.log('e.parameter.page: ' + e.parameter.page);
-    } else {
-      Logger.log('Event object e is undefined or null.');
-    }
 
-    const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
-    Logger.log(`Determined pageName: ${pageName}`);
-    
-    const navigationMenuHtml = getNavigationHtml(pageName);
-    Logger.log(`getNavigationHtml called with pageName: ${pageName}`);
-    let pageFileName = '';
-    let pageTitle = 'Motorcycle Escort Management'; // Default title
-
-    switch(pageName) {
-      case 'dashboard':
-        pageFileName = 'index'; // Assumes index.html is the dashboard
-        pageTitle = 'Dashboard - Escort Management';
-
-        // Logging for dashboard case
-        Logger.log('--- Debugging doGet for /dashboard ---');
-        let tempPageOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
-        let tempPageContent = tempPageOutput.getContent();
-        Logger.log('Raw content from index.html (snippet): ' + tempPageContent.substring(0, 500));
-        const placeholderIndex = tempPageContent.indexOf('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-        Logger.log('Placeholder present in index.html raw content: ' + (placeholderIndex !== -1));
-        if (placeholderIndex !== -1) {
-          Logger.log('Content around placeholder: ' + tempPageContent.substring(Math.max(0, placeholderIndex - 100), placeholderIndex + 130));
-        }
-        Logger.log('Navigation HTML to be injected: ' + navigationMenuHtml);
-        // End logging for dashboard case - actual replacement happens later
-        break;
-      case 'requests':
-        pageFileName = 'requests';
-        pageTitle = 'Requests - Escort Management';
-        break;
-      case 'assignments':
-        if (e.parameter.mode === 'sidebar') { // Sidebar is a special case, might not need main nav
-          return renderEscortSidebarForWebApp();
-        }
-        pageFileName = 'assignments';
-        pageTitle = 'Assignments - Escort Management';
-        break;
-      case 'notifications':
-        pageFileName = 'notifications';
-        pageTitle = 'Notifications - Escort Management';
-        break;
-      case 'reports':
-        pageFileName = 'reports';
-        pageTitle = 'Reports - Escort Management';
-        break;
-      // Handle mobile pages if they should also get the standard navigation
-      case 'mobile-requests': // Example if mobile-requests is a full page
-        pageFileName = 'mobile-requests';
-        pageTitle = 'Mobile Requests - Escort Management';
-        break;
-      default:
-        pageFileName = 'index'; // Fallback to dashboard
-        pageTitle = 'Dashboard - Escort Management';
-    }
-
-    if (!pageFileName) { // Should not happen with default case, but good practice
-        throw new Error("Page not found and no default specified.");
-    }
-
-    let htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
-    let pageContent = htmlOutput.getContent();
-
-    // Inject navigation menu using placeholder
-    const originalLength = pageContent.length;
-    pageContent = pageContent.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationMenuHtml);
-    const newLength = pageContent.length;
-
-    if (pageName === 'dashboard') { // Log only for the dashboard case after replacement
-        Logger.log('Placeholder replacement done. Original length: ' + originalLength + ', New length: ' + newLength);
-        const injectedNavIndex = pageContent.indexOf(navigationMenuHtml);
-        if (injectedNavIndex !== -1) {
-            Logger.log('Content after injection (snippet around nav): ' + pageContent.substring(Math.max(0, injectedNavIndex - 100), injectedNavIndex + navigationMenuHtml.length + 100));
-        } else {
-            Logger.log('Navigation HTML not found after replacement attempt.');
-        }
-        Logger.log('--- End debugging doGet for /dashboard ---');
-    }
-
-    htmlOutput.setContent(pageContent);
-
-    return htmlOutput
-      .setTitle(pageTitle)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-
-  } catch (error) {
-    logError('doGet error', error);
-    Logger.log('Critical error in doGet: ' + error.toString());
-    return HtmlService.createHtmlOutput(`
-      <html><body style="font-family: Arial; padding: 20px;">
-        <h1>⚠️ Error Loading Page</h1>
-        <p>Error: ${error.message}</p>
-        <p><a href="?" style="color: #3498db;">Return to Dashboard</a></p>
-        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page}</p>
-      </body></html>
-    `);
-  }
-}
 
 
 /**
@@ -1330,7 +1612,1055 @@ function getRecentRequestsForWebApp(limit = 10) {
     return [];
   }
 }
+// ===== DEBUGGING CHECKLIST AND FIXES =====
 
+// ISSUE 1: Missing Server-Side Functions
+// Your HTML files are calling functions that aren't defined in Code.js
+
+// Add these missing functions to your Code.js file:
+
+/**
+ * Consolidated function to get all dashboard data in one call
+ */
+function getPageDataForDashboard() {
+  try {
+    console.log('🚀 Loading consolidated dashboard data...');
+    
+    const user = getCurrentUser();
+    const stats = getDashboardStats();
+    const recentRequests = getRecentRequestsForWebApp(5);
+    const upcomingAssignments = getUpcomingAssignmentsForWebApp(5);
+    
+    return {
+      success: true,
+      user: user,
+      stats: stats,
+      recentRequests: recentRequests,
+      upcomingAssignments: upcomingAssignments
+    };
+  } catch (error) {
+    logError('Error in getPageDataForDashboard', error);
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser() // Try to at least return user data
+    };
+  }
+}
+
+/**
+ * Get current user information
+ */
+function getCurrentUser() {
+  try {
+    const session = Session.getActiveUser();
+    return {
+      name: session.getEmail().split('@')[0] || 'User',
+      email: session.getEmail(),
+      roles: ['admin'], // Default role
+      permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+    };
+  } catch (error) {
+    console.error('Error getting current user:', error);
+    return {
+      name: 'System User',
+      email: 'user@system.com',
+      roles: ['admin'],
+      permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+    };
+  }
+}
+
+/**
+ * Get dashboard statistics
+ */
+function getDashboardStats() {
+  try {
+    const requestsData = getRequestsData();
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+    
+    // Calculate active riders
+    const activeRiders = ridersData.data.filter(rider => {
+      const status = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status);
+      return status === 'Active';
+    }).length;
+    
+    // Calculate pending requests
+    const pendingRequests = requestsData.data.filter(request => {
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      return ['New', 'Pending', 'Unassigned'].includes(status);
+    }).length;
+    
+    // Calculate today's assignments
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayAssignments = assignmentsData.data.filter(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (!(eventDate instanceof Date)) return false;
+      const assignmentDate = new Date(eventDate);
+      assignmentDate.setHours(0, 0, 0, 0);
+      return assignmentDate.getTime() === today.getTime();
+    }).length;
+    
+    // Calculate week's assignments
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const weekAssignments = assignmentsData.data.filter(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (!(eventDate instanceof Date)) return false;
+      return eventDate >= weekStart && eventDate <= weekEnd;
+    }).length;
+    
+    return {
+      activeRiders: activeRiders,
+      pendingRequests: pendingRequests,
+      todayAssignments: todayAssignments,
+      weekAssignments: weekAssignments
+    };
+  } catch (error) {
+    logError('Error getting dashboard stats', error);
+    return {
+      activeRiders: 0,
+      pendingRequests: 0,
+      todayAssignments: 0,
+      weekAssignments: 0
+    };
+  }
+}
+
+/**
+ * Get upcoming assignments for dashboard
+ */
+function getUpcomingAssignmentsForWebApp(limit = 5) {
+  try {
+    const assignmentsData = getAssignmentsData();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const upcomingAssignments = assignmentsData.data
+      .filter(assignment => {
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        
+        return (eventDate instanceof Date) && 
+               eventDate >= today && 
+               riderName && 
+               !['Cancelled', 'Completed', 'No Show'].includes(status);
+      })
+      .sort((a, b) => {
+        const dateA = getColumnValue(a, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const dateB = getColumnValue(b, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        return dateA.getTime() - dateB.getTime();
+      })
+      .slice(0, limit)
+      .map(assignment => ({
+        assignmentId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
+        requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
+        riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
+        eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
+        startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
+        startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation)
+      }));
+    
+    return upcomingAssignments;
+  } catch (error) {
+    logError('Error getting upcoming assignments', error);
+    return [];
+  }
+}
+
+// ISSUE 2: Missing Data Access Functions
+// Make sure these core functions exist:
+
+/**
+ * Check if required sheets exist and create them if missing
+ */
+function ensureSheetsExist() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  Object.values(CONFIG.sheets).forEach(sheetName => {
+    if (!ss.getSheetByName(sheetName)) {
+      console.log(`Creating missing sheet: ${sheetName}`);
+      const newSheet = ss.insertSheet(sheetName);
+      
+      // Add headers based on sheet type
+      if (sheetName === CONFIG.sheets.requests) {
+        const headers = Object.values(CONFIG.columns.requests);
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      } else if (sheetName === CONFIG.sheets.riders) {
+        const headers = Object.values(CONFIG.columns.riders);
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      } else if (sheetName === CONFIG.sheets.assignments) {
+        const headers = Object.values(CONFIG.columns.assignments);
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      }
+    }
+  });
+}
+
+// ISSUE 3: Missing Helper Functions
+// Add these utility functions if they don't exist:
+
+/**
+ * Format date for display
+ */
+function formatDateForDisplay(date) {
+  if (!date || !(date instanceof Date)) return 'No Date';
+  try {
+    return Utilities.formatDate(date, CONFIG.system.timezone, CONFIG.system.dateFormat);
+  } catch (error) {
+    return 'Invalid Date';
+  }
+}
+
+/**
+ * Format time for display
+ */
+function formatTimeForDisplay(time) {
+  if (!time) return 'No Time';
+  try {
+    if (time instanceof Date) {
+      return Utilities.formatDate(time, CONFIG.system.timezone, CONFIG.system.timeFormat);
+    } else if (typeof time === 'string') {
+      return time;
+    }
+    return 'No Time';
+  } catch (error) {
+    return 'Invalid Time';
+  }
+}
+
+/**
+ * Get column value safely
+ */
+function getColumnValue(row, columnMap, columnName) {
+  try {
+    const columnIndex = columnMap[columnName];
+    if (columnIndex === undefined || columnIndex < 0 || columnIndex >= row.length) {
+      return null;
+    }
+    return row[columnIndex];
+  } catch (error) {
+    console.error(`Error getting column value for ${columnName}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Log error safely
+ */
+function logError(message, error) {
+  console.error(message, error);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = ss.getSheetByName(CONFIG.sheets.log);
+    if (logSheet) {
+      logSheet.appendRow([
+        new Date(),
+        message,
+        error.toString(),
+        error.stack || 'No stack trace'
+      ]);
+    }
+  } catch (logErr) {
+    console.error('Failed to log error to sheet:', logErr);
+  }
+}
+
+/**
+ * Log activity
+ */
+function logActivity(message) {
+  console.log(message);
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = ss.getSheetByName(CONFIG.sheets.log);
+    if (logSheet) {
+      logSheet.appendRow([new Date(), 'ACTIVITY', message, '']);
+    }
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+}
+function debugNavigationUrls() {
+  try {
+    console.log('=== NAVIGATION URL DEBUG ===');
+    
+    const pages = ['dashboard', 'requests', 'assignments', 'notifications', 'reports'];
+    
+    pages.forEach(pageName => {
+      console.log(`\n--- Testing ${pageName} page ---`);
+      
+      // Test navigation generation
+      const nav = getNavigationHtmlWithDynamicUrls(pageName);
+      console.log('Generated navigation:');
+      console.log(nav);
+      
+      // Extract URLs from the navigation
+      const urlMatches = nav.match(/href="([^"]+)"/g);
+      if (urlMatches) {
+        console.log('URLs found:');
+        urlMatches.forEach(match => {
+          const url = match.replace('href="', '').replace('"', '');
+          console.log(`  ${url}`);
+        });
+      }
+      
+      // Test actual doGet call
+      const mockEvent = { parameter: pageName === 'dashboard' ? {} : { page: pageName } };
+      const result = doGet(mockEvent);
+      const content = result.getContent();
+      
+      // Check if navigation exists in final content
+      const finalNavExists = content.includes('<nav class="navigation">');
+      console.log(`Navigation in final content: ${finalNavExists ? '✅' : '❌'}`);
+      
+      if (finalNavExists) {
+        // Extract navigation from final content
+        const navStart = content.indexOf('<nav class="navigation">');
+        const navEnd = content.indexOf('</nav>', navStart) + 6;
+        const finalNav = content.substring(navStart, navEnd);
+        
+        // Check URLs in final navigation
+        const finalUrls = finalNav.match(/href="([^"]+)"/g);
+        if (finalUrls) {
+          console.log('Final URLs:');
+          finalUrls.forEach(match => {
+            const url = match.replace('href="', '').replace('"', '');
+            console.log(`  ${url}`);
+          });
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
+  }
+}
+// ISSUE 4: Debug Function to Test Server Connection
+/**
+ * Simple test function to verify server connectivity
+ */
+function testServerConnection() {
+  try {
+    console.log('🧪 Testing server connection...');
+    ensureSheetsExist();
+    
+    const user = getCurrentUser();
+    console.log('✅ User data:', user);
+    
+    const requestsData = getRequestsData();
+    console.log('✅ Requests data loaded:', requestsData ? requestsData.data.length : 'Failed');
+    
+    const stats = getDashboardStats();
+    console.log('✅ Stats calculated:', stats);
+    
+    return {
+      success: true,
+      message: 'Server connection test passed',
+      user: user,
+      dataPoints: {
+        requests: requestsData ? requestsData.data.length : 0,
+        stats: stats
+      }
+    };
+  } catch (error) {
+    console.error('❌ Server connection test failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+// ===== TROUBLESHOOTING STEPS =====
+
+/*
+STEP 1: Check Web App Deployment
+1. Go to Deploy → Manage Deployments
+2. Make sure "Execute as" is set to "Me"
+3. Make sure "Who has access" is set to "Anyone"
+4. Copy the Web app URL and verify it matches your script
+
+STEP 2: Test Server Functions
+1. Run testServerConnection() in the Apps Script editor
+2. Check the execution transcript for errors
+3. Look at console.log outputs
+
+STEP 3: Check Sheet Structure
+1. Make sure your sheets exist with the names in CONFIG.sheets
+2. Verify column headers match CONFIG.columns
+3. Run ensureSheetsExist() if needed
+
+STEP 4: Test Web App
+1. Open your web app URL in browser
+2. Open browser Developer Tools (F12)
+3. Check Console tab for JavaScript errors
+4. Check Network tab to see if server calls are being made
+
+STEP 5: Add Debug Logging
+Add this to your index.html script section for more debugging:
+*/
+
+// Add this to index.html <script> section for debugging:
+const debugWebApp = `
+// Enhanced debug logging
+window.addEventListener('error', function(e) {
+    console.error('JavaScript Error:', e.error);
+});
+
+// Test server connection immediately
+if (typeof google !== 'undefined' && google.script && google.script.run) {
+    console.log('🧪 Testing server connection...');
+    google.script.run
+        .withSuccessHandler(result => {
+            console.log('✅ Server test successful:', result);
+        })
+        .withFailureHandler(error => {
+            console.error('❌ Server test failed:', error);
+        })
+        .testServerConnection();
+} else {
+    console.error('❌ Google Apps Script not available');
+}
+`;
+function debugNotificationsFile() {
+  try {
+    console.log('=== DEBUGGING NOTIFICATIONS.HTML ===');
+    
+    const content = HtmlService.createHtmlOutputFromFile('notifications').getContent();
+    console.log(`File length: ${content.length}`);
+    
+    // Count existing navigation
+    const navMatches = content.match(/<nav class="navigation">/g);
+    const navCount = navMatches ? navMatches.length : 0;
+    console.log(`Hardcoded navigation count: ${navCount}`);
+    
+    if (navCount > 0) {
+      console.log('⚠️ notifications.html has hardcoded navigation!');
+      console.log('This will cause duplicates when navigation is injected.');
+      console.log('Solution: Remove the hardcoded <nav class="navigation">...</nav> from notifications.html');
+    }
+    
+    // Check for placeholder
+    const hasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+    console.log(`Has placeholder: ${hasPlaceholder ? '✅' : '❌'}`);
+    
+    return { navCount, hasPlaceholder, length: content.length };
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
+    return { error: error.message };
+  }
+}
+
+
+/**
+ * Updated doGet with centered navigation and no iframe notice
+ */
+function doGet(e) {
+  try {
+    console.log('🚀 doGet with centered navigation...');
+    console.log('Parameters:', JSON.stringify(e.parameter));
+    
+    const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
+    console.log(`📄 Loading page: ${pageName}`);
+    
+    // Determine file name
+    let fileName;
+    switch(pageName) {
+      case 'dashboard': fileName = 'index'; break;
+      case 'requests': fileName = 'requests'; break;
+      case 'assignments': fileName = 'assignments'; break;
+      case 'notifications': fileName = 'notifications'; break;
+      case 'reports': fileName = 'reports'; break;
+      default: fileName = 'index';
+    }
+    
+    // Load the HTML file
+    let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    let content = htmlOutput.getContent();
+    console.log(`📝 Original content: ${content.length} chars`);
+    
+    // Get centered navigation
+    const navigationHtml = getNavigationHtmlWithIframeSupport(pageName);
+    console.log(`🧭 Navigation HTML: ${navigationHtml.length} chars`);
+    
+    // Remove any existing navigation
+    content = content.replace(/<nav class="navigation">[\s\S]*?<\/nav>/g, '');
+    
+    // Add centered navigation CSS
+    if (!content.includes('.navigation') || !content.includes('.nav-button')) {
+      const navCSS = `
+.navigation {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 1rem;
+    margin: 0 auto 2rem auto !important;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 15px 15px;
+    position: relative;
+    z-index: 1000;
+    max-width: 1200px;
+    width: 100%;
+    text-align: center;
+}
+    .nav-button {
+        padding: 0.75rem 1.5rem !important;
+        background: rgba(255, 255, 255, 0.9) !important;
+        border: none !important;
+        border-radius: 25px !important;
+        color: #2c3e50 !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        display: inline-block !important;
+        pointer-events: auto !important;
+        user-select: none !important;
+        white-space: nowrap !important;
+    }
+    .nav-button:hover, .nav-button.active {
+        background: #3498db !important;
+        color: white !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+    }
+    
+    /* Center the navigation container */
+    .container {
+        position: relative;
+    }
+    
+    /* Mobile responsive centering */
+    @media (max-width: 768px) {
+        .navigation {
+            padding: 1rem !important;
+            gap: 0.5rem !important;
+            justify-content: center !important;
+        }
+        
+        .nav-button {
+            padding: 0.5rem 1rem !important;
+            font-size: 0.9rem !important;
+        }
+    }`;
+      
+      if (content.includes('</style>')) {
+        content = content.replace('</style>', navCSS + '\n    </style>');
+      } else {
+        content = content.replace('</head>', `    <style>${navCSS}\n    </style>\n</head>`);
+      }
+      console.log('✅ Added centered navigation CSS');
+    }
+    
+    // Inject navigation
+    let injected = false;
+    
+    if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
+      content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+      injected = true;
+      console.log('✅ Injected via placeholder');
+    } else if (content.includes('</header>')) {
+      content = content.replace('</header>', `</header>\n${navigationHtml}\n`);
+      injected = true;
+      console.log('✅ Injected after header');
+    } else {
+      const bodyMatch = content.match(/<body[^>]*>/);
+      if (bodyMatch) {
+        content = content.replace(bodyMatch[0], `${bodyMatch[0]}\n${navigationHtml}\n`);
+        injected = true;
+        console.log('✅ Injected after body');
+      }
+    }
+    
+    console.log(`Injection successful: ${injected ? '✅' : '❌'}`);
+    
+    // Add navigation script WITHOUT iframe notice
+    if (content.includes('</body>')) {
+      const cleanNavigationScript = `
+<script>
+// Clean navigation handler without iframe notices
+function handleNavigation(element) {
+    const url = element.getAttribute('data-url') || element.getAttribute('href');
+    const page = element.getAttribute('data-page');
+    
+    console.log('🚀 Navigating to:', page);
+    
+    // Check if we're in an iframe (silently)
+    const isInIframe = window !== window.top;
+    
+    if (isInIframe) {
+        // Handle iframe navigation silently
+        try {
+            window.top.location.href = url;
+        } catch (error) {
+            try {
+                window.parent.location.href = url;
+            } catch (parentError) {
+                window.open(url, '_blank');
+            }
+        }
+    } else {
+        // Handle full window navigation
+        try {
+            window.location.href = url;
+            
+            // Fallback strategies
+            setTimeout(function() {
+                if (window.location.href !== url) {
+                    window.location.replace(url);
+                }
+            }, 500);
+            
+            setTimeout(function() {
+                if (window.location.href !== url) {
+                    window.open(url, '_self');
+                }
+            }, 1000);
+            
+        } catch (error) {
+            window.open(url, '_self');
+        }
+    }
+}
+
+// Enhanced navigation without iframe warnings
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🧭 Navigation system loaded');
+    
+    // Add hover effects to navigation links
+    const links = document.querySelectorAll('.nav-button');
+    
+    links.forEach(function(link) {
+        // Enhanced hover effects
+        link.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('active')) {
+                this.style.background = '#3498db';
+                this.style.color = 'white';
+                this.style.transform = 'translateY(-2px)';
+                this.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
+            }
+        });
+        
+        link.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('active')) {
+                this.style.background = 'rgba(255, 255, 255, 0.9)';
+                this.style.color = '#2c3e50';
+                this.style.transform = 'translateY(0)';
+                this.style.boxShadow = 'none';
+            }
+        });
+        
+        // Add click feedback
+        link.addEventListener('mousedown', function() {
+            this.style.transform = 'translateY(0)';
+        });
+        
+        link.addEventListener('mouseup', function() {
+            if (this.classList.contains('active')) {
+                this.style.transform = 'translateY(-2px)';
+            }
+        });
+    });
+    
+    // Add keyboard navigation (Alt+1-5)
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.key >= '1' && e.key <= '5') {
+            const linkIndex = parseInt(e.key) - 1;
+            const links = document.querySelectorAll('.nav-button');
+            if (links[linkIndex]) {
+                handleNavigation(links[linkIndex]);
+            }
+        }
+    });
+    
+    // Smooth navigation feedback
+    const activeButton = document.querySelector('.nav-button.active');
+    if (activeButton) {
+        activeButton.style.background = '#3498db';
+        activeButton.style.color = 'white';
+        activeButton.style.transform = 'translateY(-2px)';
+        activeButton.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
+    }
+});
+</script>`;
+      
+      content = content.replace('</body>', cleanNavigationScript + '\n</body>');
+      console.log('✅ Added clean navigation script');
+    }
+    
+    htmlOutput.setContent(content);
+    
+    return htmlOutput
+      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      
+  } catch (error) {
+    console.error('❌ doGet error:', error);
+    
+    return HtmlService.createHtmlOutput(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Navigation - Escort Management</title>
+        <style>
+          body { font-family: Arial; padding: 20px; }
+          .navigation { 
+            display: flex; 
+            justify-content: center; 
+            gap: 10px; 
+            margin: 20px auto; 
+            background: #f8f9fa; 
+            padding: 15px; 
+            border-radius: 8px; 
+            max-width: 800px;
+          }
+          .nav-button { 
+            padding: 10px 15px; 
+            background: #007bff; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 5px; 
+            transition: all 0.3s ease;
+          }
+          .nav-button:hover { 
+            background: #0056b3; 
+            transform: translateY(-2px);
+          }
+        </style>
+      </head>
+      <body>
+        <h1 style="text-align: center;">🏍️ Escort Management</h1>
+        
+        <nav class="navigation">
+          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Dashboard</a>
+          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📋 Requests</a>
+          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button" onclick="window.open(this.href, '_self'); return false;">🏍️ Assignments</a>
+          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📱 Notifications</a>
+          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Reports</a>
+        </nav>
+        
+        <div style="text-align: center; margin-top: 40px;">
+          <p>Error: ${error.message}</p>
+        </div>
+      </body>
+      </html>
+    `).setTitle('Navigation');
+  }
+}
+
+function getNavigationHtmlWithIframeSupport(currentPage = '') {
+  console.log(`🔗 Creating centered navigation for: ${currentPage}`);
+  
+  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  
+  // Create links with multiple navigation strategies
+  const links = [
+    `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" data-url="${BASE_URL}" onclick="handleNavigation(this); return false;">📊 Dashboard</a>`,
+    `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="${BASE_URL}?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
+    `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="${BASE_URL}?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${BASE_URL}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
+    `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${BASE_URL}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
+  ];
+  
+  const navigation = `<nav class="navigation" id="main-navigation">
+        ${links.join('\n        ')}
+    </nav>`;
+  
+  return navigation;
+}
+
+
+function getNavigationHtmlWithForcedClicks(currentPage = '') {
+  console.log(`🔗 Creating navigation with forced click handling for: ${currentPage}`);
+  
+  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  
+  // Create links with both href AND onclick for maximum compatibility
+  const links = [
+    `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" onclick="navigateToPage('${BASE_URL}'); return false;">📊 Dashboard</a>`,
+    `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" onclick="navigateToPage('${BASE_URL}?page=requests'); return false;">📋 Requests</a>`,
+    `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" onclick="navigateToPage('${BASE_URL}?page=assignments'); return false;">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" onclick="navigateToPage('${BASE_URL}?page=notifications'); return false;">📱 Notifications</a>`,
+    `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" onclick="navigateToPage('${BASE_URL}?page=reports'); return false;">📊 Reports</a>`
+  ];
+  
+  const navigation = `<nav class="navigation" style="position: relative; z-index: 1000;">
+        ${links.join('\n        ')}
+    </nav>`;
+  
+  console.log('Generated navigation with forced click handling');
+  return navigation;
+}
+/**
+ * Navigation function with absolute URLs (make sure this exists)
+ */
+function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
+  console.log(`🔗 Creating navigation with absolute URLs for: ${currentPage}`);
+  
+  // Your exact web app URL
+  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  
+  // Create each link with full absolute URL
+  const links = [
+    `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>`,
+    `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>`,
+    `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>`,
+    `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>`
+  ];
+  
+  const navigation = `<nav class="navigation">
+        ${links.join('\n        ')}
+    </nav>`;
+  
+  console.log('Generated navigation with absolute URLs');
+  return navigation;
+}
+
+/**
+ * Simple test to verify the navigation function works
+ */
+function testNavigationGeneration() {
+  try {
+    console.log('=== TESTING NAVIGATION GENERATION ===');
+    
+    const nav = getNavigationHtmlWithAbsoluteUrls('requests');
+    console.log('Generated navigation:');
+    console.log(nav);
+    
+    // Check for absolute URLs
+    const hasAbsoluteUrls = nav.includes('https://script.google.com');
+    console.log(`Has absolute URLs: ${hasAbsoluteUrls ? '✅' : '❌'}`);
+    
+    // Count links
+    const linkCount = (nav.match(/href="/g) || []).length;
+    console.log(`Number of links: ${linkCount}`);
+    
+    return { success: true, hasAbsoluteUrls, linkCount };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Test the complete doGet function
+ */
+function testDoGetFunction() {
+  try {
+    console.log('=== TESTING doGet FUNCTION ===');
+    
+    // Test requests page
+    const mockEvent = { parameter: { page: 'requests' } };
+    const result = doGet(mockEvent);
+    const content = result.getContent();
+    
+    console.log(`Content length: ${content.length}`);
+    console.log(`Has navigation: ${content.includes('<nav class="navigation">') ? '✅' : '❌'}`);
+    console.log(`Has absolute URLs: ${content.includes('https://script.google.com') ? '✅' : '❌'}`);
+    console.log(`Has debug script: ${content.includes('CLIENT-SIDE NAVIGATION DEBUG') ? '✅' : '❌'}`);
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ doGet test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/*
+IMMEDIATE STEPS:
+
+1. Replace your doGet function with the one above (fixed version)
+2. Make sure you have the getNavigationHtmlWithAbsoluteUrls function
+3. Run testNavigationGeneration() to verify it works
+4. Run testDoGetFunction() to test the complete flow
+5. Deploy and test in browser
+
+The fixed version:
+- ✅ Has the debug script embedded directly (no undefined reference)
+- ✅ Uses absolute URLs
+- ✅ Includes proper error handling
+- ✅ Adds client-side debugging automatically
+
+After deploying, check the browser console for the navigation debug messages.
+*/
+
+
+function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
+  console.log(`🔗 Creating navigation with absolute URLs for: ${currentPage}`);
+  
+  // Your exact web app URL - make sure this is correct
+  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  
+  // Create each link with full absolute URL
+  const links = [
+    `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>`,
+    `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>`,
+    `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>`,
+    `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>`
+  ];
+  
+  const navigation = `<nav class="navigation">
+        ${links.join('\n        ')}
+    </nav>`;
+  
+  console.log('Generated navigation with absolute URLs:');
+  console.log(navigation);
+  
+  return navigation;
+}
+/**
+ * Test function to check for duplicate navigation issues
+ */
+function testForNavigationDuplicates() {
+  try {
+    console.log('=== TESTING FOR NAVIGATION DUPLICATES ===');
+    
+    const pages = ['requests', 'notifications', 'assignments'];
+    
+    pages.forEach(pageName => {
+      console.log(`\n--- Checking ${pageName} page ---`);
+      
+      try {
+        const mockEvent = { parameter: { page: pageName } };
+        const result = doGet(mockEvent);
+        const content = result.getContent();
+        
+        // Count navigation elements
+        const navCount = (content.match(/<nav class="navigation">/g) || []).length;
+        const hasCSS = content.includes('.nav-button') && content.includes('.navigation');
+        
+        console.log(`Navigation count: ${navCount}`);
+        console.log(`Has CSS: ${hasCSS ? '✅' : '❌'}`);
+        console.log(`Status: ${navCount === 1 && hasCSS ? '✅ GOOD' : '❌ NEEDS FIX'}`);
+        
+        if (navCount > 1) {
+          console.log(`⚠️ DUPLICATE NAVIGATION DETECTED!`);
+        }
+        
+        if (!hasCSS) {
+          console.log(`⚠️ MISSING NAVIGATION CSS!`);
+        }
+        
+      } catch (error) {
+        console.log(`❌ Error testing ${pageName}: ${error.message}`);
+      }
+    });
+    
+    console.log('\n=== TEST COMPLETE ===');
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+  }
+}
+
+/**
+ * Create fallback navigation (same as before)
+ */
+function createFallbackNavigation(currentPage = '') {
+  const baseUrl = ScriptApp.getService().getUrl();
+  
+  return `<nav class="navigation">
+    <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>
+    <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>
+    <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>
+    <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>
+    <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>
+  </nav>`;
+}
+function getNavigationHtmlWithDynamicUrls(currentPage = '') {
+  try {
+    console.log(`🧭 Getting navigation for page: ${currentPage}`);
+    
+    // Use hardcoded URL for consistency across all pages
+    const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+    
+    const pages = [
+      { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
+      { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
+      { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
+      { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
+      { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
+    ];
+    
+    const navButtons = pages.map(page => {
+      const activeClass = page.id === currentPage ? ' active' : '';
+      return `        <a href="${page.url}" class="nav-button${activeClass}" id="nav-${page.id}" data-page="${page.id}">${page.label}</a>`;
+    }).join('\n');
+    
+    return `    <nav class="navigation">\n${navButtons}\n    </nav>`;
+    
+  } catch (error) {
+    console.error('❌ Error in navigation:', error);
+    return `<nav class="navigation"><a href="${baseUrl}">📊 Dashboard</a></nav>`;
+  }
+}
+/**
+ * Test the new doGet function
+ */
+function testNewDoGetFunction() {
+  try {
+    console.log('=== TESTING NEW doGet FUNCTION ===');
+    
+    const mockEvent = { parameter: { page: 'requests' } };
+    const result = doGet(mockEvent);
+    const content = result.getContent();
+    
+    console.log(`Result content length: ${content.length}`);
+    console.log(`Has navigation: ${content.includes('<nav class="navigation">')}`);
+    console.log(`Has nav buttons: ${content.includes('nav-button')}`);
+    
+    if (content.includes('<nav class="navigation">')) {
+      console.log('🎉 SUCCESS! Navigation injection is working!');
+      
+      // Show the navigation part
+      const navStart = content.indexOf('<nav class="navigation">');
+      const navEnd = content.indexOf('</nav>', navStart) + 6;
+      const navHtml = content.substring(navStart, navEnd);
+      console.log('Injected navigation HTML:');
+      console.log(navHtml);
+      
+    } else {
+      console.log('❌ FAILED! Navigation still not in final content');
+      
+      // Show first part of content for debugging
+      console.log('First 500 chars of content:');
+      console.log(content.substring(0, 500));
+    }
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+  }
+}
+
+/*
+IMMEDIATE STEPS:
+
+1. REPLACE your current doGet function with the one above
+2. Run testNewDoGetFunction() to verify it works
+3. Deploy the web app again (Deploy → New Deployment)
+4. Test in browser
+
+The new doGet has much more detailed logging and tries 6 different 
+injection strategies, so it should definitely work!
+*/
 /**
  * @fileoverview
  * This file contains the `showQuickAssignDialog` function, which is designed to be called
