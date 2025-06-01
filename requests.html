@@ -513,389 +513,510 @@
         <div class="spinner"></div>
     </div>
 
-    <script>
-        let allRequests = [];
-        let currentEditingRequest = null;
-        let currentUser = null; // To store user info
+<script>
+    /**
+     * @typedef {object} RequestFull - Detailed request object, assuming structure from form fields.
+     * @property {string} requestId
+     * @property {string} requesterName
+     * @property {string} requesterContact
+     * @property {string} requestType
+     * @property {string} eventDate - ISO Date string (YYYY-MM-DD)
+     * @property {string} startTime - Time string (HH:MM)
+     * @property {string} [endTime] - Optional time string (HH:MM)
+     * @property {string} startLocation
+     * @property {string} endLocation
+     * @property {string} [secondaryEndLocation]
+     * @property {number} ridersNeeded
+     * @property {string} status
+     * @property {string} [courtesy] - 'Yes' or 'No'
+     * @property {string} [specialRequirements]
+     * @property {string} [notes]
+     * @property {string} [ridersAssigned] - Comma-separated string of rider names.
+     * @property {string} [lastUpdated] - ISO DateTime string.
+     */
+
+    /**
+     * Stores all requests fetched from the server for the current view.
+     * @type {Array<RequestFull>}
+     */
+    let allRequests = [];
+    /**
+     * Holds the data of the request currently being edited or null if creating a new one.
+     * @type {RequestFull|null}
+     */
+    let currentEditingRequest = null;
+    /**
+     * Stores the current user's profile information.
+     * @type {UserProfile|null}  // Assuming UserProfile is defined elsewhere or via server.
+     */
+    let currentUser = null;
+
+    /**
+     * Initializes the page on DOM content loaded: loads requests and sets up event listeners.
+     * @listens DOMContentLoaded
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        loadPageData();
+        document.getElementById('statusFilter').addEventListener('change', loadPageData);
+    });
+
+    /**
+     * Loads page data (user info and requests) from the server based on the selected status filter.
+     * Shows loading indicators during the fetch.
+     * @return {void}
+     */
+    function loadPageData() {
+        showLoading();
+        const filter = document.getElementById('statusFilter').value;
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handlePageDataSuccess)
+                .withFailureHandler(handlePageDataError)
+                .getPageDataForRequests(filter);
+        } else {
+            console.log('⚠️ Google Apps Script not available for requests page.');
+            handlePageDataError({ message: "Google Apps Script not available." });
+        }
+    }
+
+    /**
+     * Handles successful response from `getPageDataForRequests`.
+     * Updates user info, stores requests, and renders the requests table.
+     * @param {object} data - The response object from the server.
+     * @param {boolean} data.success - True if the call was successful.
+     * @param {UserProfile} [data.user] - Current user information.
+     * @param {Array<RequestFull>} [data.requests] - Array of request objects.
+     * @param {string} [data.error] - Error message if not successful.
+     * @return {void}
+     */
+    function handlePageDataSuccess(data) {
+        hideLoading();
+
+        if (data && data.success) {
+            console.log('✅ Requests page data loaded:', data);
+            currentUser = data.user;
+            // updateUserInfo(currentUser); // TODO: Implement if user info needs display on this page.
+
+            const requests = data.requests;
+            if (!requests || !Array.isArray(requests)) {
+                showError('Invalid requests data received from server');
+                allRequests = [];
+            } else {
+                allRequests = requests;
+            }
+
+            if (allRequests.length === 0) {
+                showNoData();
+                updateStats([]);
+            } else {
+                displayRequests(allRequests);
+                updateStats(allRequests);
+                showTable();
+            }
+        } else {
+            showError('Failed to load page data: ' + (data ? data.error : 'Unknown error'));
+            allRequests = [];
+            updateStats([]);
+            showNoData();
+        }
+    }
+
+    /**
+     * Handles errors from `getPageDataForRequests` call.
+     * Displays an error message to the user.
+     * @param {Error|object|string} error - The error object or message.
+     * @return {void}
+     */
+    function handlePageDataError(error) {
+        hideLoading();
+        showError('Error loading requests: ' + (error.message || error));
+        console.error('Load error:', error);
+    }
+
+    /**
+     * Renders the requests data into the HTML table.
+     * @param {Array<RequestFull>} requests - Array of request objects to display.
+     * @return {void}
+     */
+    function displayRequests(requests) {
+        const tbody = document.getElementById('requestsBody');
+        tbody.innerHTML = '';
+
+        requests.forEach(request => {
+            const row = document.createElement('tr');
+
+            const assigned = request.ridersAssigned ?
+                request.ridersAssigned.split(',').map(r => r.trim()).filter(r => r).join(', ') :
+                '';
+
+            const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
+
+            row.innerHTML = `
+                <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
+                <td>${request.eventDate || ''}</td>
+                <td>${request.startTime || ''}</td>
+                <td>${request.endTime || ''}</td>
+                <td>${request.requesterName || ''}</td>
+                <td>${request.requestType || ''}</td>
+                <td>${request.startLocation || ''}</td>
+                <td>${request.endLocation || ''}</td>
+                <td style="text-align: center;">${request.ridersNeeded || 0}</td>
+                <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
+                <td>${assigned}</td>
+                <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
+            `;
+
+            tbody.appendChild(row);
+        });
+    }
+
+    /**
+     * Opens the edit/view modal for a specific request and populates it with request data.
+     * @param {string} requestId - The ID of the request to edit/view.
+     * @return {void}
+     */
+    function openEditModal(requestId) {
+        console.log('Opening edit modal for request:', requestId);
+
+        const request = allRequests.find(r => r.requestId === requestId);
+        if (!request) {
+            alert('Request not found: ' + requestId);
+            return;
+        }
+
+        currentEditingRequest = request;
+
+        document.getElementById('editRequestId').value = request.requestId || '';
+        document.getElementById('editRequesterName').value = request.requesterName || '';
+        document.getElementById('editRequesterContact').value = request.requesterContact || '';
+        document.getElementById('editRequestType').value = request.requestType || '';
+        document.getElementById('editEventDate').value = formatDateForInput(request.eventDate) || '';
+        document.getElementById('editStartTime').value = formatTimeForInput(request.startTime) || '';
+        document.getElementById('editEndTime').value = formatTimeForInput(request.endTime) || '';
+        document.getElementById('editStartLocation').value = request.startLocation || '';
+        document.getElementById('editEndLocation').value = request.endLocation || '';
+        document.getElementById('editSecondaryLocation').value = request.secondaryEndLocation || '';
+        document.getElementById('editRidersNeeded').value = request.ridersNeeded || 1;
+        document.getElementById('editStatus').value = request.status || 'New';
+        document.getElementById('editCourtesy').checked = (request.courtesy === 'Yes' || String(request.courtesy).toLowerCase() === 'true');
+        document.getElementById('editSpecialRequirements').value = request.specialRequirements || '';
+        document.getElementById('editNotes').value = request.notes || '';
+
+        document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
+        document.getElementById('deleteBtn').style.display = 'inline-block'; // Ensure delete button is visible for existing requests
+        document.getElementById('editRequestModal').style.display = 'block';
+    }
+
+    /**
+     * Opens the modal for creating a new request, clearing form fields and setting defaults.
+     * @return {void}
+     */
+    function openNewRequestForm() {
+        currentEditingRequest = null;
+
+        document.getElementById('editRequestForm').reset();
+        document.getElementById('editRequestId').value = ''; // No ID for new request
+
+        document.getElementById('editStatus').value = 'New';
+        document.getElementById('editRidersNeeded').value = 1;
+
+        document.getElementById('modalTitle').textContent = 'Add New Request';
+        document.getElementById('deleteBtn').style.display = 'none'; // Hide delete button for new requests
+        document.getElementById('editRequestModal').style.display = 'block';
+    }
+
+    /**
+     * Closes the edit/new request modal.
+     * @return {void}
+     */
+    function closeEditModal() {
+        document.getElementById('editRequestModal').style.display = 'none';
+        currentEditingRequest = null;
+        document.getElementById('deleteBtn').style.display = 'inline-block'; // Restore delete button visibility
+    }
+
+    /**
+     * Gathers data from the form and calls the appropriate server-side function
+     * to create or update a request. Handles validation for required fields.
+     * @return {void}
+     */
+    function saveRequest() {
+        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
+        for (const fieldId of requiredFields) {
+            const field = document.getElementById(fieldId);
+            if (!field.value.trim()) {
+                alert(`Please fill in the required field: ${field.previousElementSibling.textContent.replace('*','').trim()}`);
+                field.focus();
+                return;
+            }
+        }
         
-        document.addEventListener('DOMContentLoaded', function() {
-            loadPageData(); // Changed from loadRequests()
-            document.getElementById('statusFilter').addEventListener('change', loadPageData); // Changed from loadRequests
+        const requestData = {
+            requestId: document.getElementById('editRequestId').value, // Will be empty for new requests
+            requesterName: document.getElementById('editRequesterName').value.trim(),
+            requesterContact: document.getElementById('editRequesterContact').value.trim(),
+            requestType: document.getElementById('editRequestType').value,
+            eventDate: document.getElementById('editEventDate').value,
+            startTime: document.getElementById('editStartTime').value,
+            endTime: document.getElementById('editEndTime').value,
+            startLocation: document.getElementById('editStartLocation').value.trim(),
+            endLocation: document.getElementById('editEndLocation').value.trim(),
+            secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
+            ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
+            status: document.getElementById('editStatus').value,
+            courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
+            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
+            notes: document.getElementById('editNotes').value.trim()
+        };
+
+        console.log('Saving request data:', requestData);
+        showLoadingOverlay();
+
+        const isNewRequest = !currentEditingRequest;
+        const functionName = isNewRequest ? 'createNewRequest' : 'updateExistingRequest';
+
+        google.script.run
+            .withSuccessHandler((result) => {
+                hideLoadingOverlay();
+                if (result.success) {
+                    alert(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
+                    closeEditModal();
+                    loadPageData(); // Refresh the list (was loadRequests())
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .withFailureHandler((error) => {
+                hideLoadingOverlay();
+                alert('Error saving request: ' + error.message);
+            })
+            [functionName](requestData);
+    }
+
+    /**
+     * Handles deletion of the currently editing request after confirmation.
+     * Calls the server-side `deleteRequest` function.
+     * @return {void}
+     */
+    function deleteRequest() {
+        if (!currentEditingRequest) {
+            alert('No request selected for deletion');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete request ${currentEditingRequest.requestId}?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        showLoadingOverlay();
+
+        google.script.run
+            .withSuccessHandler((result) => {
+                hideLoadingOverlay();
+                if (result.success) {
+                    alert('Request deleted successfully!');
+                    closeEditModal();
+                    loadPageData(); // Refresh the list (was loadRequests())
+                } else {
+                    alert('Error deleting request: ' + result.message);
+                }
+            })
+            .withFailureHandler((error) => {
+                hideLoadingOverlay();
+                alert('Error deleting request: ' + error.message);
+            })
+            .deleteRequest(currentEditingRequest.requestId);
+    }
+
+    /**
+     * Formats a date string (potentially from a Date object or display format) into YYYY-MM-DD for date input fields.
+     * @param {string|Date} dateStr - The date string or Date object.
+     * @return {string} Formatted date string or empty string if invalid.
+     */
+    function formatDateForInput(dateStr) {
+        if (!dateStr) return '';
+        try {
+            // Handles various date string formats that `new Date()` can parse, including ISO and common display formats.
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return ''; // Invalid date
+            return date.toISOString().split('T')[0];
+        } catch (e) {
+            console.error("Error formatting date for input:", dateStr, e);
+            return '';
+        }
+    }
+
+    /**
+     * Formats a time string (potentially with AM/PM) into HH:MM for time input fields.
+     * @param {string} timeStr - The time string.
+     * @return {string} Formatted time string (HH:MM) or empty string if invalid.
+     */
+    function formatTimeForInput(timeStr) {
+        if (!timeStr) return '';
+        try {
+            // Check if it's already in HH:MM format (potentially 24-hour)
+            if (/^\d{1,2}:\d{2}$/.test(timeStr.trim())) {
+                 const parts = timeStr.trim().split(':');
+                 let hours = parseInt(parts[0], 10);
+                 const minutes = parseInt(parts[1], 10);
+                 if (hours >= 0 && hours <= 23 && minutes >=0 && minutes <= 59) {
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                 }
+            }
+
+            // Attempt to parse AM/PM or other time formats by creating a Date object
+            const tempDate = new Date(`1/1/1970 ${timeStr}`); // Provide a dummy date part
+            if (isNaN(tempDate.getTime())) return ''; // Invalid time
+
+            const hours = tempDate.getHours();
+            const minutes = tempDate.getMinutes();
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        } catch (e) {
+            console.error("Error formatting time for input:", timeStr, e);
+            return '';
+        }
+    }
+
+    /**
+     * Shows the loading overlay.
+     * @return {void}
+     */
+    function showLoadingOverlay() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+
+    /**
+     * Hides the loading overlay.
+     * @return {void}
+     */
+    function hideLoadingOverlay() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    /**
+     * Closes the edit modal if a click occurs outside of its content area.
+     * @param {Event} event - The click event.
+     * @listens window#onclick
+     */
+    window.onclick = function(event) {
+        const modal = document.getElementById('editRequestModal');
+        if (event.target === modal) {
+            closeEditModal();
+        }
+    }
+
+    /**
+     * Updates the statistics display string based on the current list of requests.
+     * @param {Array<RequestFull>} requests - The array of currently displayed requests.
+     * @return {void}
+     */
+    function updateStats(requests) {
+        const total = requests.length;
+        const assigned = requests.filter(r => r.status === 'Assigned').length;
+        const pending = requests.filter(r => r.status === 'Pending').length;
+        const newRequests = requests.filter(r => r.status === 'New').length;
+
+        document.getElementById('statsDisplay').innerHTML =
+            `Total: ${total} | New: ${newRequests} | Pending: ${pending} | Assigned: ${assigned}`;
+    }
+
+    /**
+     * Shows the loading message and hides other data display elements.
+     * @return {void}
+     */
+    function showLoading() {
+        document.getElementById('loadingDiv').style.display = 'block';
+        document.getElementById('tableDiv').style.display = 'none';
+        document.getElementById('noDataDiv').style.display = 'none';
+        document.getElementById('errorDiv').style.display = 'none';
+    }
+
+    /**
+     * Hides the loading message.
+     * @return {void}
+     */
+    function hideLoading() {
+        document.getElementById('loadingDiv').style.display = 'none';
+    }
+
+    /**
+     * Shows the main data table and hides other messages.
+     * @return {void}
+     */
+    function showTable() {
+        document.getElementById('tableDiv').style.display = 'block';
+        document.getElementById('noDataDiv').style.display = 'none';
+        document.getElementById('errorDiv').style.display = 'none';
+    }
+
+    /**
+     * Shows the "no data" message and hides other data display elements.
+     * @return {void}
+     */
+    function showNoData() {
+        document.getElementById('noDataDiv').style.display = 'block';
+        document.getElementById('tableDiv').style.display = 'none';
+        document.getElementById('errorDiv').style.display = 'none';
+    }
+
+    /**
+     * Shows an error message and hides other data display elements.
+     * @param {string} message - The error message to display.
+     * @return {void}
+     */
+    function showError(message) {
+        document.getElementById('errorDiv').innerHTML = message;
+        document.getElementById('errorDiv').style.display = 'block';
+        document.getElementById('tableDiv').style.display = 'none';
+        document.getElementById('noDataDiv').style.display = 'none';
+    }
+
+    /**
+     * Exports the currently displayed request data to a CSV file.
+     * @return {void}
+     */
+    function exportToCSV() {
+        if (!allRequests || allRequests.length === 0) {
+            alert('No data to export');
+            return;
+        }
+
+        const headers = ['Request ID', 'Event Date', 'Start Time', 'End Time', 'Requester', 'Type',
+                       'Start Location', 'End Location', 'Riders Needed', 'Status', 'Assigned', 'Notes'];
+
+        const csvRows = [headers.join(',')];
+
+        allRequests.forEach(req => {
+            const row = [
+                req.requestId || '',
+                req.eventDate || '',
+                req.startTime || '',
+                req.endTime || '',
+                req.requesterName || '',
+                req.requestType || '',
+                req.startLocation || '',
+                req.endLocation || '',
+                req.ridersNeeded || '',
+                req.status || '',
+                req.ridersAssigned || '',
+                `"${(req.notes || '').replace(/"/g, '""')}"` // Escape double quotes in notes
+            ];
+            csvRows.push(row.join(','));
         });
         
-        function loadPageData() { // Renamed from loadRequests
-            showLoading();
-            const filter = document.getElementById('statusFilter').value;
-            
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(handlePageDataSuccess) // Changed from handleSuccess
-                    .withFailureHandler(handlePageDataError)   // Changed from handleError
-                    .getPageDataForRequests(filter);
-            } else {
-                console.log('⚠️ Google Apps Script not available for requests page.');
-                handlePageDataError({ message: "Google Apps Script not available." });
-            }
-        }
-        
-        function handlePageDataSuccess(data) { // Renamed from handleSuccess
-            hideLoading();
-            
-            if (data && data.success) {
-                console.log('✅ Requests page data loaded:', data);
-                currentUser = data.user; // Store user
-                // updateUserInfo(currentUser); // TODO: Add a function to display user info if needed on this page
+        const csvContent = csvRows.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
 
-                const requests = data.requests;
-                if (!requests || !Array.isArray(requests)) {
-                    showError('Invalid requests data received from server');
-                    allRequests = []; // Ensure allRequests is an array
-                } else {
-                    allRequests = requests;
-                }
-
-                if (allRequests.length === 0) {
-                    showNoData();
-                    updateStats([]); // Pass empty array if no requests
-                } else {
-                    displayRequests(allRequests);
-                    updateStats(allRequests);
-                    showTable();
-                }
-            } else {
-                showError('Failed to load page data: ' + (data ? data.error : 'Unknown error'));
-                allRequests = [];
-                updateStats([]);
-                showNoData();
-            }
-        }
-        
-        function handlePageDataError(error) { // Renamed from handleError
-            hideLoading();
-            showError('Error loading requests: ' + (error.message || error));
-            console.error('Load error:', error);
-        }
-        
-        function displayRequests(requests) {
-            const tbody = document.getElementById('requestsBody');
-            tbody.innerHTML = '';
-            
-            requests.forEach(request => {
-                const row = document.createElement('tr');
-                
-                // Format assigned riders
-                const assigned = request.ridersAssigned ? 
-                    request.ridersAssigned.split(',').map(r => r.trim()).filter(r => r).join(', ') : 
-                    '';
-                
-                // Status class
-                const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
-                
-                row.innerHTML = `
-                    <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
-                    <td>${request.eventDate || ''}</td>
-                    <td>${request.startTime || ''}</td>
-                    <td>${request.endTime || ''}</td>
-                    <td>${request.requesterName || ''}</td>
-                    <td>${request.requestType || ''}</td>
-                    <td>${request.startLocation || ''}</td>
-                    <td>${request.endLocation || ''}</td>
-                    <td style="text-align: center;">${request.ridersNeeded || 0}</td>
-                    <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
-                    <td>${assigned}</td>
-                    <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-        }
-        
-        function openEditModal(requestId) {
-            console.log('Opening edit modal for request:', requestId);
-            
-            // Find the request data
-            const request = allRequests.find(r => r.requestId === requestId);
-            if (!request) {
-                alert('Request not found: ' + requestId);
-                return;
-            }
-            
-            currentEditingRequest = request;
-            
-            // Populate form fields
-            document.getElementById('editRequestId').value = request.requestId || '';
-            document.getElementById('editRequesterName').value = request.requesterName || '';
-            document.getElementById('editRequesterContact').value = request.requesterContact || '';
-            document.getElementById('editRequestType').value = request.requestType || '';
-            document.getElementById('editEventDate').value = formatDateForInput(request.eventDate) || '';
-            document.getElementById('editStartTime').value = formatTimeForInput(request.startTime) || '';
-            document.getElementById('editEndTime').value = formatTimeForInput(request.endTime) || '';
-            document.getElementById('editStartLocation').value = request.startLocation || '';
-            document.getElementById('editEndLocation').value = request.endLocation || '';
-            document.getElementById('editSecondaryLocation').value = request.secondaryEndLocation || '';
-            document.getElementById('editRidersNeeded').value = request.ridersNeeded || 1;
-            document.getElementById('editStatus').value = request.status || 'New';
-            document.getElementById('editCourtesy').checked = (request.courtesy === 'Yes' || request.courtesy === 'TRUE' || request.courtesy === true);
-            document.getElementById('editSpecialRequirements').value = request.specialRequirements || '';
-            document.getElementById('editNotes').value = request.notes || '';
-            
-            // Update modal title
-            document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
-            
-            // Show modal
-            document.getElementById('editRequestModal').style.display = 'block';
-        }
-        
-        function openNewRequestForm() {
-            currentEditingRequest = null;
-            
-            // Clear all form fields
-            document.getElementById('editRequestForm').reset();
-            document.getElementById('editRequestId').value = '';
-            
-            // Set default values
-            document.getElementById('editStatus').value = 'New';
-            document.getElementById('editRidersNeeded').value = 1;
-            
-            // Update modal title
-            document.getElementById('modalTitle').textContent = 'Add New Request';
-            
-            // Hide delete button for new requests
-            document.getElementById('deleteBtn').style.display = 'none';
-            
-            // Show modal
-            document.getElementById('editRequestModal').style.display = 'block';
-        }
-        
-        function closeEditModal() {
-            document.getElementById('editRequestModal').style.display = 'none';
-            currentEditingRequest = null;
-            
-            // Show delete button again
-            document.getElementById('deleteBtn').style.display = 'inline-block';
-        }
-        
-        function saveRequest() {
-            // Validate required fields
-            const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
-            
-            for (const fieldId of requiredFields) {
-                const field = document.getElementById(fieldId);
-                if (!field.value.trim()) {
-                    alert(`Please fill in the required field: ${field.previousElementSibling.textContent}`);
-                    field.focus();
-                    return;
-                }
-            }
-            
-            // Collect form data
-            const requestData = {
-                requestId: document.getElementById('editRequestId').value,
-                requesterName: document.getElementById('editRequesterName').value.trim(),
-                requesterContact: document.getElementById('editRequesterContact').value.trim(),
-                requestType: document.getElementById('editRequestType').value,
-                eventDate: document.getElementById('editEventDate').value,
-                startTime: document.getElementById('editStartTime').value,
-                endTime: document.getElementById('editEndTime').value,
-                startLocation: document.getElementById('editStartLocation').value.trim(),
-                endLocation: document.getElementById('editEndLocation').value.trim(),
-                secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
-                ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
-                status: document.getElementById('editStatus').value,
-                courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
-                specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
-                notes: document.getElementById('editNotes').value.trim()
-            };
-            
-            console.log('Saving request data:', requestData);
-            
-            showLoadingOverlay();
-            
-            const isNewRequest = !currentEditingRequest;
-            const functionName = isNewRequest ? 'createNewRequest' : 'updateExistingRequest';
-            
-            google.script.run
-                .withSuccessHandler((result) => {
-                    hideLoadingOverlay();
-                    if (result.success) {
-                        alert(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
-                        closeEditModal();
-                        loadRequests(); // Refresh the list
-                    } else {
-                        alert('Error: ' + result.message);
-                    }
-                })
-                .withFailureHandler((error) => {
-                    hideLoadingOverlay();
-                    alert('Error saving request: ' + error.message);
-                })
-                [functionName](requestData);
-        }
-        
-        function deleteRequest() {
-            if (!currentEditingRequest) {
-                alert('No request selected for deletion');
-                return;
-            }
-            
-            if (!confirm(`Are you sure you want to delete request ${currentEditingRequest.requestId}?\n\nThis action cannot be undone.`)) {
-                return;
-            }
-            
-            showLoadingOverlay();
-            
-            google.script.run
-                .withSuccessHandler((result) => {
-                    hideLoadingOverlay();
-                    if (result.success) {
-                        alert('Request deleted successfully!');
-                        closeEditModal();
-                        loadRequests(); // Refresh the list
-                    } else {
-                        alert('Error deleting request: ' + result.message);
-                    }
-                })
-                .withFailureHandler((error) => {
-                    hideLoadingOverlay();
-                    alert('Error deleting request: ' + error.message);
-                })
-                .deleteRequest(currentEditingRequest.requestId);
-        }
-        
-        // Utility functions
-        function formatDateForInput(dateStr) {
-            if (!dateStr) return '';
-            try {
-                const date = new Date(dateStr);
-                return date.toISOString().split('T')[0];
-            } catch (e) {
-                return '';
-            }
-        }
-        
-        function formatTimeForInput(timeStr) {
-            if (!timeStr) return '';
-            try {
-                // Handle various time formats
-                const cleanTime = timeStr.replace(/[^0-9:APM]/gi, '');
-                if (cleanTime.includes(':')) {
-                    const parts = cleanTime.split(':');
-                    let hours = parseInt(parts[0]);
-                    const minutes = parts[1] ? parseInt(parts[1].replace(/[^0-9]/g, '')) : 0;
-                    
-                    // Handle AM/PM
-                    if (cleanTime.toUpperCase().includes('PM') && hours < 12) {
-                        hours += 12;
-                    } else if (cleanTime.toUpperCase().includes('AM') && hours === 12) {
-                        hours = 0;
-                    }
-                    
-                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                }
-                return '';
-            } catch (e) {
-                return '';
-            }
-        }
-        
-        function showLoadingOverlay() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-        }
-        
-        function hideLoadingOverlay() {
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
-        
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('editRequestModal');
-            if (event.target === modal) {
-                closeEditModal();
-            }
-        }
-        
-        // Existing functions (keep these unchanged)
-        function updateStats(requests) {
-            const total = requests.length;
-            const assigned = requests.filter(r => r.status === 'Assigned').length;
-            const pending = requests.filter(r => r.status === 'Pending').length;
-            const newRequests = requests.filter(r => r.status === 'New').length;
-            
-            document.getElementById('statsDisplay').innerHTML = 
-                `Total: ${total} | New: ${newRequests} | Pending: ${pending} | Assigned: ${assigned}`;
-        }
-        
-        function showLoading() {
-            document.getElementById('loadingDiv').style.display = 'block';
-            document.getElementById('tableDiv').style.display = 'none';
-            document.getElementById('noDataDiv').style.display = 'none';
-            document.getElementById('errorDiv').style.display = 'none';
-        }
-        
-        function hideLoading() {
-            document.getElementById('loadingDiv').style.display = 'none';
-        }
-        
-        function showTable() {
-            document.getElementById('tableDiv').style.display = 'block';
-            document.getElementById('noDataDiv').style.display = 'none';
-            document.getElementById('errorDiv').style.display = 'none';
-        }
-        
-        function showNoData() {
-            document.getElementById('noDataDiv').style.display = 'block';
-            document.getElementById('tableDiv').style.display = 'none';
-            document.getElementById('errorDiv').style.display = 'none';
-        }
-        
-        function showError(message) {
-            document.getElementById('errorDiv').innerHTML = message;
-            document.getElementById('errorDiv').style.display = 'block';
-            document.getElementById('tableDiv').style.display = 'none';
-            document.getElementById('noDataDiv').style.display = 'none';
-        }
-        
-        function exportToCSV() {
-            if (!allRequests || allRequests.length === 0) {
-                alert('No data to export');
-                return;
-            }
-            
-            const headers = ['Request ID', 'Event Date', 'Start Time', 'End Time', 'Requester', 'Type', 
-                           'Start Location', 'End Location', 'Riders Needed', 'Status', 'Assigned', 'Notes'];
-            
-            const csvRows = [headers.join(',')];
-            
-            allRequests.forEach(req => {
-                const row = [
-                    req.requestId || '',
-                    req.eventDate || '',
-                    req.startTime || '',
-                    req.endTime || '',
-                    req.requesterName || '',
-                    req.requestType || '',
-                    req.startLocation || '',
-                    req.endLocation || '',
-                    req.ridersNeeded || '',
-                    req.status || '',
-                    req.ridersAssigned || '',
-                    `"${(req.notes || '').replace(/"/g, '""')}"`
-                ];
-                csvRows.push(row.join(','));
-            });
-            
-            const csvContent = csvRows.join('\n');
-            const blob = new Blob([csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `escort_requests_${new Date().toISOString().split('T')[0]}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    </script>
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `escort_requests_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
 </body>
 </html>

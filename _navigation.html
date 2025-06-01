@@ -1,68 +1,7 @@
-<!-- Replace _navigation.html with this simpler version -->
-<style>
-.navigation {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 1rem 0;
-}
-
-.nav-button {
-    padding: 0.75rem 1.5rem;
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    border-radius: 25px;
-    color: #2c3e50;
-    text-decoration: none;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 120px;
-    text-align: center;
-    font-family: inherit;
-    font-size: 0.95rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.nav-button:hover {
-    background: #3498db;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-    text-decoration: none;
-}
-
-.nav-button.active {
-    background: #3498db;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
-}
-
-@media (max-width: 768px) {
-    .navigation {
-        flex-direction: column;
-        gap: 0.5rem;
-        align-items: stretch;
-    }
-    
-    .nav-button {
-        min-width: auto;
-        width: 100%;
-        justify-content: center;
-    }
-}
-</style>
-
 <nav class="navigation">
-    <a href="?page=dashboard" class="nav-button" data-page="dashboard">📊 Dashboard</a>
-    <a href="?page=requests" class="nav-button" data-page="requests">📋 Requests</a>
-    <a href="?page=assignments" class="nav-button" data-page="assignments">🏍️ Assignments</a>
-    <a href="?page=notifications" class="nav-button" data-page="notifications">📱 Notifications</a>
-    <a href="?page=reports" class="nav-button" data-page="reports">📊 Reports</a>
+    <a href="?page=dashboard" class="nav-button" id="nav-dashboard" data-page="dashboard">📊 Dashboard</a>
+    <a href="?page=requests" class="nav-button" id="nav-requests" data-page="requests">📋 Requests</a>
+    <a href="?page=assignments" class="nav-button" id="nav-assignments" data-page="assignments">🏍️ Assignments</a>
+    <a href="?page=notifications" class="nav-button" id="nav-notifications" data-page="notifications">📱 Notifications</a>
+    <a href="?page=reports" class="nav-button" id="nav-reports" data-page="reports">📊 Reports</a>
 </nav>
