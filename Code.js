@@ -1,13 +1,25 @@
 /**
- * MOTORCYCLE ESCORT MANAGEMENT SYSTEM
- * Centralized Configuration
+ * @fileoverview
+ * This is the main server-side script file for the Motorcycle Escort Management System.
+ * It contains global configurations, core functions like onOpen and doGet/doPost for web app handling,
+ * utility classes like DataCache, and event handlers like _onEdit.
+ * It serves as the central hub for the Google Apps Script project.
  */
 
-// Global flag to prevent infinite recursion in debugLogToSheet
-// THIS MUST BE AT THE VERY TOP LEVEL OF YOUR SCRIPT, OUTSIDE OF ANY FUNCTION
+/**
+ * Global flag to prevent infinite recursion in debugLogToSheet.
+ * THIS MUST BE AT THE VERY TOP LEVEL OF YOUR SCRIPT, OUTSIDE OF ANY FUNCTION.
+ * @type {boolean}
+ */
 let isDebugLoggingInProgress = false;
 
-// ===== MAIN CONFIGURATION =====
+/**
+ * @description
+ * Centralized configuration object for the Motorcycle Escort Management System.
+ * Contains sheet names, column mappings, dropdown options, SMS gateways,
+ * dashboard layout settings, and system-wide parameters.
+ * @type {object}
+ */
 const CONFIG = {
   // Sheet names
   sheets: {
@@ -126,12 +138,23 @@ const CONFIG = {
 
 // --- DATA CACHE ---
 class DataCache {
+  /**
+   * @description Constructs a DataCache instance.
+   */
   constructor() {
+    /** @private @type {Object<string, any>} */
     this.cache = {};
+    /** @private @type {Object<string, number>} */
     this.lastUpdate = {};
-    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+    /** @private @type {number} Cache timeout in milliseconds (default: 5 minutes). */
+    this.cacheTimeout = 5 * 60 * 1000;
   }
 
+  /**
+   * Retrieves an item from the cache if it exists and has not expired.
+   * @param {string} key The key of the item to retrieve.
+   * @return {any|null} The cached item, or null if not found or expired.
+   */
   get(key) {
     const now = Date.now();
     if (this.cache[key] && (now - this.lastUpdate[key] < this.cacheTimeout)) {
@@ -140,11 +163,22 @@ class DataCache {
     return null;
   }
 
+  /**
+   * Adds or updates an item in the cache.
+   * @param {string} key The key of the item to store.
+   * @param {any} data The data to store.
+   * @return {void}
+   */
   set(key, data) {
     this.cache[key] = data;
     this.lastUpdate[key] = Date.now();
   }
 
+  /**
+   * Clears an item from the cache, or the entire cache if no key is provided.
+   * @param {string} [key=null] The key of the item to clear. If null, clears the entire cache.
+   * @return {void}
+   */
   clear(key = null) {
     if (key) {
       delete this.cache[key];
@@ -155,11 +189,20 @@ class DataCache {
     }
   }
 }
-const dataCache = new DataCache(); // Instantiate the cache
+/**
+ * Global instance of the DataCache class for managing in-memory caching of sheet data.
+ * @type {DataCache}
+ */
+const dataCache = new DataCache();
 
 
 // ===== MAIN FUNCTIONS & MENU SETUP =====
 
+/**
+ * Trigger function that runs when the Google Sheet is opened.
+ * Sets up the custom menu, displays the dashboard layout, and refreshes dashboard data.
+ * @return {void}
+ */
 function onOpen() {
   try {
     console.log('Starting onOpen...');
@@ -173,11 +216,17 @@ function onOpen() {
   }
 }
 
+/**
+ * Creates the custom menu in the Google Sheet UI.
+ * Provides access to various system functionalities like opening sidebars, refreshing data,
+ * and triggering bulk notifications.
+ * @return {void}
+ */
 function createMenu() {
   const ui = SpreadsheetApp.getUi();
 
   ui.createMenu('🏍️ Escort Management')
-    .addItem('🏍️ Open Assignment Sidebar', 'showEscortSidebar')
+    .addItem('🏍️ Open Assignment Sidebar', 'showEscortSidebar') // This function will be moved from QuickAssign.js
     .addItem('📊 Refresh Dashboard', 'refreshDashboard')
     .addSeparator()
     .addSubMenu(ui.createMenu('📱 Bulk SMS Notifications')
@@ -204,131 +253,173 @@ function createMenu() {
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();
 }
-
-// Replace the getNavigationHtml function in Code.js with this simpler version
-
 /**
- * Fetches the HTML content of the shared navigation menu.
- * @param {string} [currentPage=''] The name of the current page to set as active.
- * @return {string} The HTML content of the navigation menu.
+ * Handles HTTP GET requests to the web app, primarily for initial page loads and mobile detection.
+ * This version appears to be an older or alternative doGet, potentially for a mobile detection/redirector page.
+ * The primary page serving logic with navigation injection is in the second doGet function below.
+ * @param {GoogleAppsScript.Events.DoGet} e The event object from the GET request.
+ * @return {GoogleAppsScript.HTML.HtmlOutput} The HTML output to be served.
  */
-function getNavigationHtml(currentPage = '') {
+function doGet(e) {
   try {
-    console.log(`🧭 Getting navigation HTML for page: ${currentPage}`);
-    
-    // Get the base navigation HTML
-    let navHtml = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-    
-    // If we have a current page, add the active class
-    if (currentPage) {
-      // Replace the specific nav button with active class
-      const pattern = new RegExp(`(<a[^>]*data-page="${currentPage}"[^>]*class="[^"]*)(")`, 'i');
-      navHtml = navHtml.replace(pattern, '$1 active$2');
-    }
-    
-    console.log(`✅ Navigation HTML generated (${navHtml.length} chars)`);
-    return navHtml;
-    
-  } catch (error) {
-    logError('Error getting navigation HTML', error);
-    console.error('❌ Navigation error:', error);
-    
-    // Return a simple fallback navigation
-    return `
-      <style>
-        .navigation { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; justify-content: center; padding: 1rem 0; }
-        .nav-button { padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; }
-        .nav-button:hover, .nav-button.active { background: #3498db; color: white; transform: translateY(-2px); }
-      </style>
-      <nav class="navigation">
-        <a href="?page=dashboard" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
-        <a href="?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
-        <a href="?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}">🏍️ Assignments</a>
-        <a href="?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}">📱 Notifications</a>
-        <a href="?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}">📊 Reports</a>
-      </nav>
-    `;
-  }
-}
+    // Mobile detection
+    const userAgent = Utilities.getUuid(); // This won't work for user agent, let's use a different approach
+    let isMobile = false;
 
-/**
- * Debug function to test navigation system
- */
-function testNavigation() {
-  try {
-    console.log('=== NAVIGATION TEST ===');
-    
-    const pages = ['dashboard', 'requests', 'assignments', 'notifications', 'reports'];
-    
-    pages.forEach(page => {
-      const navHtml = getNavigationHtml(page);
-      const hasActive = navHtml.includes('active');
-      console.log(`${page}: Active class found = ${hasActive}`);
-    });
-    
-    // Test if _navigation.html file exists and can be read
-    try {
-      const navFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-      console.log(`Navigation file size: ${navFile.length} characters`);
-      console.log('Navigation file preview:', navFile.substring(0, 200));
-    } catch (fileError) {
-      console.error('Cannot read _navigation.html file:', fileError);
-    }
-    
-    return { success: true, message: 'Navigation test completed - check logs' };
-    
-  } catch (error) {
-    console.error('Navigation test error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Server-side navigation function to handle page routing
- * Add this function to your Code.js file
- */
-function getNavigationUrl(page) {
-  try {
-    console.log('🧭 Server-side navigation request for page:', page);
-    
-    // Get the current web app URL
-    const currentUrl = ScriptApp.getService().getUrl();
-    
-    let navigationUrl;
-    if (page === 'dashboard') {
-      navigationUrl = currentUrl;
+    // Check if mobile is explicitly requested
+    if (e.parameter.mobile === 'true') {
+      isMobile = true;
+    } else if (e.parameter.mobile === 'false') {
+      isMobile = false;
     } else {
-      navigationUrl = currentUrl + '?page=' + encodeURIComponent(page);
+      // Auto-detect based on common mobile patterns in referrer or other indicators
+      // Since we can't directly access user agent in Apps Script, we'll use URL parameters
+      isMobile = e.parameter.m === '1' || e.parameter.mobile === '1';
     }
     
-    console.log('🧭 Generated navigation URL:', navigationUrl);
+    const page = e.parameter.page || 'dashboard';
+    console.log(`Loading page: ${page}, Mobile: ${isMobile}`);
     
-    return {
-      success: true,
-      url: navigationUrl,
-      page: page
-    };
+    let htmlOutput;
     
+    switch(page) {
+      case 'dashboard':
+        if (isMobile) {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-dashboard');
+        } else {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('index');
+        }
+        break;
+
+      case 'requests':
+        if (isMobile) {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-requests');
+        } else {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('requests');
+        }
+        break;
+
+      case 'assignments':
+        if (isMobile) {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-assignments');
+        } else {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('assignments');
+        }
+        break;
+
+      case 'notifications':
+        if (isMobile) {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-notifications');
+        } else {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('notifications');
+        }
+        break;
+
+      case 'reports':
+        // Reports probably better on desktop for now
+        htmlOutput = HtmlService.createHtmlOutputFromFile('reports');
+        break;
+
+      default:
+        // Default to dashboard
+        if (isMobile) {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('mobile-dashboard');
+        } else {
+          htmlOutput = HtmlService.createHtmlOutputFromFile('index');
+        }
+    }
+    
+    // Add mobile detection redirect page if no specific mobile version requested
+    if (!isMobile && !e.parameter.mobile) {
+      // Create a detection page that can redirect to mobile if needed
+      return HtmlService.createHtmlOutput(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Motorcycle Escort Management</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; text-align: center; }
+            .container { max-width: 600px; margin: 50px auto; }
+            .btn { display: inline-block; padding: 15px 30px; margin: 10px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 18px; }
+            .btn:hover { background: #2980b9; }
+            .mobile-btn { background: #e74c3c; }
+            .mobile-btn:hover { background: #c0392b; }
+            @media (max-width: 768px) {
+              .auto-redirect { display: block; margin-top: 30px; padding: 20px; background: #f39c12; color: white; border-radius: 10px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🏍️ Motorcycle Escort Management</h1>
+            <p>Choose your preferred interface:</p>
+
+            <a href="?mobile=false" class="btn">💻 Desktop Version</a>
+            <a href="?mobile=true" class="btn mobile-btn">📱 Mobile Version</a>
+
+            <div class="auto-redirect" style="display: none;">
+              <p>📱 Mobile device detected!</p>
+              <p>Redirecting to mobile version in <span id="countdown">3</span> seconds...</p>
+              <a href="?mobile=false">Use desktop version instead</a>
+            </div>
+          </div>
+
+          <script>
+            // Mobile detection and auto-redirect
+            function isMobileDevice() {
+              return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                     (window.innerWidth <= 768 && window.innerHeight <= 1024);
+            }
+
+            if (isMobileDevice()) {
+              document.querySelector('.auto-redirect').style.display = 'block';
+              let countdown = 3;
+              const countdownEl = document.getElementById('countdown');
+
+              const timer = setInterval(() => {
+                countdown--;
+                countdownEl.textContent = countdown;
+
+                if (countdown <= 0) {
+                  clearInterval(timer);
+                  window.location.href = '?mobile=true&page=${page}';
+                }
+              }, 1000);
+            }
+          </script>
+        </body>
+        </html>
+      `).setTitle('Motorcycle Escort Management - Choose Interface');
+    }
+    
+    return htmlOutput
+      .setTitle(isMobile ? 'Mobile - Escort Management' : 'Motorcycle Escort Management')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
   } catch (error) {
-    console.error('🧭 Server navigation error:', error);
-    logError('Error in getNavigationUrl', error);
-    
-    return {
-      success: false,
-      error: error.message,
-      page: page
-    };
+    logError('doGet error (mobile detection part)', error);
+    return HtmlService.createHtmlOutput(`
+      <html><body style="font-family: Arial; padding: 20px;">
+        <h1>⚠️ Error Loading Page</h1>
+        <p>Error: ${error.message}</p>
+        <p><a href="?" style="color: #3498db;">Return to Home</a></p>
+        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page}, Mobile: ${e.parameter.mobile}</p>
+      </body></html>
+    `);
   }
 }
 /**
  * Enhanced onEdit function that clears cache when relevant sheets are modified.
  * Also handles Request ID generation, dashboard filter changes, and notification actions.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e The onEdit event object.
+ * @return {void}
  */
 function _onEdit(e) {
-  // Simple throttling to prevent rapid, identical edits from firing multiple times
+  // Simple throttling to prevent rapid, identical edits from firing multiple times.
   const now = Date.now();
   const last = PropertiesService.getScriptProperties().getProperty('lastEditTime');
-  if (last && (now - parseInt(last, 10)) < 1000) { // 1 second debounce
+  if (last && (now - parseInt(last, 10)) < 1000) { // 1-second debounce.
     console.log('_onEdit: Guard triggered, exiting.');
     return;
   }
@@ -336,6 +427,7 @@ function _onEdit(e) {
 
   const range = e.range;
   if (!range) {
+    // This should ideally not happen if `e` is a valid edit event.
     console.log('_onEdit: No range in event, exiting.');
     return;
   }
@@ -348,13 +440,13 @@ function _onEdit(e) {
 
   console.log(`_onEdit fired on sheet "${sheetName}", cell ${cellA1}`);
 
-  // Protection: Skip rider name column edits (Riders sheet, column B) and header row edits
+  // Protection: Skip rider name column edits (Riders sheet, column B) and header row edits.
   if (sheetName === 'Riders' && (col === 2 || row === 1)) {
     console.log('🛡️ _onEdit: Protecting rider name/header edit - skipping processing');
     return;
   }
 
-  // Clear relevant caches when the underlying data changes
+  // Clear relevant caches when the underlying data changes.
   if (['Requests', 'Assignments', 'Riders'].includes(sheetName)) {
     clearRequestsCache();
     clearDashboardCache();
@@ -362,7 +454,7 @@ function _onEdit(e) {
     // Specific actions only for Requests sheet
     if (sheetName === CONFIG.sheets.requests) {
       if (row > 1) { // Not header row
-        // Generation of Request ID (in column A)
+        // Generation of Request ID (in column A).
         // This is necessary because onEditRequestsSheet is called within _onEdit now.
         // It needs to be inside a conditional to only trigger if the ID is missing.
         const requestIdCell = sheet.getRange(row, 1);
@@ -382,15 +474,15 @@ function _onEdit(e) {
     }
   }
 
-  // Handle Dashboard sheet edits
+  // Handle Dashboard sheet edits.
   if (sheetName === CONFIG.sheets.dashboard) {
     console.log('_onEdit: Routing to dashboard logic');
 
-    // Handle filter dropdown changes (cell B9)
+    // Handle filter dropdown changes (cell B9).
     if (cellA1 === CONFIG.dashboard.filterCell) {
       console.log(`_onEdit: Filter cell changed to "${range.getValue()}", refreshing dashboard.`);
       const lock = LockService.getScriptLock();
-      if (lock.tryLock(10000)) { // Attempt to acquire lock for 10 seconds
+      if (lock.tryLock(10000)) { // Attempt to acquire lock for 10 seconds.
         try {
           refreshDashboard(true); // Force update dashboard
         } catch (err) {
@@ -402,7 +494,7 @@ function _onEdit(e) {
       return;
     }
 
-    // Handle notification column actions (column K - 11th column)
+    // Handle notification column actions (column K - 11th column).
     const requestsDisplayStartRow = CONFIG.dashboard.requestsDisplayStartRow;
     if (col === 11 && row >= requestsDisplayStartRow) {
       console.log(`_onEdit: Notification action selected at row ${row}`);
@@ -422,73 +514,6 @@ function _onEdit(e) {
  */
 
 
-/**
- * Opens "Assign Escort Riders" web app for the selected Request ID on the dashboard.
- * Requires the user to select a cell in the Request ID column (Column A) on the Dashboard sheet.
- */
-function showQuickAssignDialog() {
-  const ui = SpreadsheetApp.getUi();
-  try {
-    const ss = SpreadsheetApp.getActive();
-    const dashSheet = ss.getSheetByName(CONFIG.sheets.dashboard);
-
-    if (ss.getActiveSheet().getName() !== CONFIG.sheets.dashboard) {
-      ui.alert('Error', 'Please navigate to the Dashboard sheet to use this function.', ui.ButtonSet.OK);
-      return;
-    }
-
-    const activeRange = ss.getActiveRange();
-    if (!activeRange) {
-      ui.alert('Error', 'Please select a cell containing a Request ID on the dashboard.', ui.ButtonSet.OK);
-      return;
-    }
-
-    const selectedRow = activeRange.getRow();
-    const selectedCol = activeRange.getColumn();
-
-    const requestsDisplayStartRow = CONFIG.dashboard.requestsDisplayStartRow;
-    if (selectedRow < requestsDisplayStartRow) {
-      ui.alert('Error', 'Please select a Request ID cell within the displayed requests (rows 11 or below).', ui.ButtonSet.OK);
-      return;
-    }
-
-    if (selectedCol !== 1) {
-      ui.alert('Error', 'Please select a cell in the "Request ID" column (Column A) to assign riders.', ui.ButtonSet.OK);
-      return;
-    }
-
-    const requestId = activeRange.getValue();
-
-    if (!requestId || typeof requestId !== 'string' || !requestId.match(/^[A-L]-\d{1,2}-\d{2}$/)) {
-      ui.alert('Error', `Invalid Request ID selected: "${requestId}". Please select a valid Request ID.`, ui.ButtonSet.OK);
-      return;
-    }
-
-    // ===== REPLACE THIS WITH YOUR ACTUAL WEB APP DEPLOYMENT URL =====
-    const WEB_APP_BASE_URL = "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec";
-    if (WEB_APP_BASE_URL === "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec") {
-        ui.alert('Configuration Error', 'Please deploy your script as a Web App and update WEB_APP_BASE_URL in the script with the actual URL from your deployment settings.', ui.ButtonSet.OK);
-        return;
-    }
-
-    const webAppUrl = `${WEB_APP_BASE_URL}?requestId=${encodeURIComponent(requestId)}`;
-
-    const htmlOutput = HtmlService.createHtmlOutput(`<script>window.open('${webAppUrl}', '_blank').focus(); google.script.host.close();</script>`)
-      .setTitle('Opening Assignment Form')
-      .setHeight(10)
-      .setWidth(10);
-
-    ui.showModalDialog(htmlOutput, 'Opening...');
-
-    logActivity(`Opened assignment form for Request ID: ${requestId}`);
-
-  } catch (error) {
-    logError('Error assigning riders from dashboard', error);
-    ui.alert('Error', 'Failed to open assignment form: ' + error.message, ui.ButtonSet.OK);
-  }
-}
-
-
 // ===== NAVIGATION HELPER =====
 /**
  * Fetches the HTML content of the shared navigation menu.
@@ -497,94 +522,99 @@ function showQuickAssignDialog() {
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    let navHtml = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-    
-    // Logic to set the 'active' class - can be enhanced later
-    // For now, a simple string replacement based on data-page attribute.
+    Logger.log("Base Script URL: " + ScriptApp.getService().getUrl()); // Added for URL context
+    let navHtmlFromFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+    Logger.log('Fetched _navigation.html content: ' + navHtmlFromFile);
+
+    let navHtmlProcessed = navHtmlFromFile;
+    // Logic to set the 'active' class
     if (currentPage) {
-      const activeMarker = `data-page="${currentPage}"`;
-      const replaceString = `class="nav-button active" data-page="${currentPage}"`;
-      // Ensure we only replace if the class="nav-button" is also present to avoid mangling other attributes.
-      navHtml = navHtml.replace(
-        new RegExp(`class="nav-button" ${activeMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'), 
-        replaceString
+      // More robust regex to add 'active' class to the correct link
+      // It looks for an <a> tag with the correct data-page and class="nav-button"
+      // and inserts ' active' into the class attribute.
+      const linkToMakeActivePattern = new RegExp(
+        `(<a[^>]*data-page="${currentPage}"[^>]*class="[^"]*nav-button)([^"]*)("[^>]*>)`,
+        'i'
       );
+
+      navHtmlProcessed = navHtmlProcessed.replace(linkToMakeActivePattern, function(match, p1, p2, p3) {
+        if (p2.includes(' active')) { // Already active (or nav-button active)
+          // Check if it's exactly ' active' or part of another class like 'nav-button-active'
+          // This check ensures we don't add 'active' if 'nav-button active' is already present.
+          if (/(?:^|\s)active(?:\s|$)/.test(p2)) {
+            return match; // Already correctly active
+          }
+          // If 'active' is part of another class name, this might need more specific handling,
+          // but for 'nav-button active' it should be fine.
+        }
+        // Insert ' active' ensuring a space if other classes follow nav-button
+        return `${p1} active${p2}${p3}`;
+      });
     }
-    return navHtml;
+    Logger.log('Processed navigationMenuHtml (with active class attempt for ' + currentPage + '): ' + navHtmlProcessed);
+    return navHtmlProcessed;
   } catch (error) {
     logError('Error getting navigation HTML', error);
+    Logger.log('Error in getNavigationHtml: ' + error.toString());
     return '<!-- Navigation Load Error -->'; // Fallback
   }
 }
 
-// Add this to your Code.js to force proper routing
-function doGet(e) {
-  // Add explicit logging
-  console.log('🚀 doGet called with URL:', e.parameter);
-  console.log('🌐 Script URL context');
-    console.log('Request parameters:', JSON.stringify(e));
-  console.log('Request source:', e.source || 'unknown');
-  
-  try {
-    const page = e.parameter.page || 'dashboard';
-    
-    // Your existing doGet logic here...
-    // But add this at the very beginning:
-    
-    // Force proper content type and headers
-    const output = HtmlService.createHtmlOutputFromFile(getPageFile(page));
-    output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    output.addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
-    
-    return output;
-    
-  } catch (error) {
-    console.error('❌ doGet error:', error);
-    return HtmlService.createHtmlOutput(`Error: ${error.message}`);
-  }
-}
+// ===== WEB APP ENTRY POINTS (DO NOT EDIT FUNCTION NAMES)=====
 
-function getPageFile(page) {
-  const pageMap = {
-    'dashboard': 'index',
-    'requests': 'requests', 
-    'assignments': 'assignments',
-    'notifications': 'notifications',
-    'reports': 'reports'
-  };
-  return pageMap[page] || 'index';
-}
-// Add this function to test doGet
-function testDoGet() {
-  const testEvent = { parameter: { page: 'dashboard' } };
-  const result = doGet(testEvent);
-  console.log('doGet test result:', result);
-  return result;
-}
-
+/**
+ * Handles HTTP GET requests to the web app.
+ * Directs to different HTML pages based on the 'page' parameter.
+ * @param {GoogleAppsScript.Events.DoGet} e The event object from the GET request.
+ * @return {GoogleAppsScript.HTML.HtmlOutput} The HTML output to be served.
+ */
 function doGet(e) {
   try {
-    const pageName = e.parameter.page || 'dashboard'; // Default to dashboard
-    console.log(`🌐 Loading page: ${pageName}`);
+    // Comprehensive logging of the event object
+    Logger.log('-----------------------------------------');
+    Logger.log('doGet called. Event object: ' + JSON.stringify(e));
+    if (e) {
+      Logger.log('e.parameter: ' + JSON.stringify(e.parameter));
+      Logger.log('e.parameters: ' + JSON.stringify(e.parameters));
+      Logger.log('e.contextPath: ' + e.contextPath);
+      Logger.log('e.queryString: ' + e.queryString);
+      Logger.log('e.parameter.page: ' + e.parameter.page);
+    } else {
+      Logger.log('Event object e is undefined or null.');
+    }
+
+    const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
+    Logger.log(`Determined pageName: ${pageName}`);
     
-    // Get navigation HTML with current page for active state
     const navigationMenuHtml = getNavigationHtml(pageName);
-    
+    Logger.log(`getNavigationHtml called with pageName: ${pageName}`);
     let pageFileName = '';
-    let pageTitle = 'Motorcycle Escort Management';
+    let pageTitle = 'Motorcycle Escort Management'; // Default title
 
-    // Route to appropriate HTML file
     switch(pageName) {
       case 'dashboard':
-        pageFileName = 'index';
+        pageFileName = 'index'; // Assumes index.html is the dashboard
         pageTitle = 'Dashboard - Escort Management';
+
+        // Logging for dashboard case
+        Logger.log('--- Debugging doGet for /dashboard ---');
+        let tempPageOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
+        let tempPageContent = tempPageOutput.getContent();
+        Logger.log('Raw content from index.html (snippet): ' + tempPageContent.substring(0, 500));
+        const placeholderIndex = tempPageContent.indexOf('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+        Logger.log('Placeholder present in index.html raw content: ' + (placeholderIndex !== -1));
+        if (placeholderIndex !== -1) {
+          Logger.log('Content around placeholder: ' + tempPageContent.substring(Math.max(0, placeholderIndex - 100), placeholderIndex + 130));
+        }
+        Logger.log('Navigation HTML to be injected: ' + navigationMenuHtml);
+        // End logging for dashboard case - actual replacement happens later
         break;
       case 'requests':
         pageFileName = 'requests';
         pageTitle = 'Requests - Escort Management';
         break;
       case 'assignments':
-        if (e.parameter.mode === 'sidebar') {
+        if (e.parameter.mode === 'sidebar') { // Sidebar is a special case, might not need main nav
           return renderEscortSidebarForWebApp();
         }
         pageFileName = 'assignments';
@@ -598,64 +628,126 @@ function doGet(e) {
         pageFileName = 'reports';
         pageTitle = 'Reports - Escort Management';
         break;
+      // Handle mobile pages if they should also get the standard navigation
+      case 'mobile-requests': // Example if mobile-requests is a full page
+        pageFileName = 'mobile-requests';
+        pageTitle = 'Mobile Requests - Escort Management';
+        break;
       default:
-        pageFileName = 'index';
+        pageFileName = 'index'; // Fallback to dashboard
         pageTitle = 'Dashboard - Escort Management';
-        console.log(`⚠️ Unknown page '${pageName}', defaulting to dashboard`);
     }
 
-    console.log(`📄 Loading HTML file: ${pageFileName}`);
+    if (!pageFileName) { // Should not happen with default case, but good practice
+        throw new Error("Page not found and no default specified.");
+    }
 
-    // Create HTML output from file
     let htmlOutput = HtmlService.createHtmlOutputFromFile(pageFileName);
     let pageContent = htmlOutput.getContent();
-    
-    // Debug logging
-    const hasPlaceholder = pageContent.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-    console.log(`🔍 Placeholder found in ${pageFileName}: ${hasPlaceholder}`);
-    
-    if (!hasPlaceholder) {
-      console.log(`⚠️ WARNING: Navigation placeholder missing in ${pageFileName}.html`);
-    }
-    
-    // Inject navigation menu
+
+    // Inject navigation menu using placeholder
+    const originalLength = pageContent.length;
     pageContent = pageContent.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationMenuHtml);
-    
-    // Verify injection worked
-    const hasNavigation = pageContent.includes('<nav class="navigation">');
-    console.log(`✅ Navigation injected successfully: ${hasNavigation}`);
-    
+    const newLength = pageContent.length;
+
+    if (pageName === 'dashboard') { // Log only for the dashboard case after replacement
+        Logger.log('Placeholder replacement done. Original length: ' + originalLength + ', New length: ' + newLength);
+        const injectedNavIndex = pageContent.indexOf(navigationMenuHtml);
+        if (injectedNavIndex !== -1) {
+            Logger.log('Content after injection (snippet around nav): ' + pageContent.substring(Math.max(0, injectedNavIndex - 100), injectedNavIndex + navigationMenuHtml.length + 100));
+        } else {
+            Logger.log('Navigation HTML not found after replacement attempt.');
+        }
+        Logger.log('--- End debugging doGet for /dashboard ---');
+    }
+
     htmlOutput.setContent(pageContent);
-    
+
     return htmlOutput
       .setTitle(pageTitle)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      
+
   } catch (error) {
     logError('doGet error', error);
-    console.error(`❌ Error in doGet for page '${e.parameter.page}':`, error);
-    
+    Logger.log('Critical error in doGet: ' + error.toString());
     return HtmlService.createHtmlOutput(`
-      <html>
-        <head>
-          <title>Error - Escort Management</title>
-          <style>
-            body { font-family: Arial; padding: 20px; background: #f5f5f5; }
-            .error-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .error-title { color: #e74c3c; margin-bottom: 1rem; }
-            .back-link { color: #3498db; text-decoration: none; }
-          </style>
-        </head>
-        <body>
-          <div class="error-container">
-            <h1 class="error-title">⚠️ Error Loading Page</h1>
-            <p><strong>Error:</strong> ${error.message}</p>
-            <p><strong>Requested Page:</strong> ${e.parameter.page || 'none'}</p>
-            <p><a href="?" class="back-link">← Return to Dashboard</a></p>
-          </div>
-        </body>
-      </html>
-    `).setTitle('Error - Escort Management');
+      <html><body style="font-family: Arial; padding: 20px;">
+        <h1>⚠️ Error Loading Page</h1>
+        <p>Error: ${error.message}</p>
+        <p><a href="?" style="color: #3498db;">Return to Dashboard</a></p>
+        <p><strong>Debug Info:</strong> Requested page: ${e.parameter.page}</p>
+      </body></html>
+    `);
+  }
+}
+
+
+/**
+ * Handles HTTP POST requests, serving as an API endpoint for the web app.
+ * @param {GoogleAppsScript.Events.DoPost} e The event object from the POST request.
+ *                                         `e.parameter.action` specifies the function to call.
+ *                                         `e.parameter.data` contains a JSON string of arguments for the action.
+ * @return {GoogleAppsScript.ContentService.TextOutput} A JSON response indicating success or failure.
+ */
+function doPost(e) {
+  try {
+    const action = e.parameter.action;
+    const data = JSON.parse(e.parameter.data || '{}');
+
+    console.log(`doPost action: ${action}`);
+
+    let result = {};
+
+    switch (action) {
+      case 'createRequest':
+        // Assuming createRequestFromWebApp is defined elsewhere or doesn't exist
+        // result = createRequestFromWebApp(data);
+        throw new Error('createRequest action not implemented in this version.');
+
+      case 'updateRequestStatus':
+        // Assuming updateRequestStatusFromWebApp is defined elsewhere or doesn't exist
+        // result = updateRequestStatusFromWebApp(data.requestId, data.status);
+        throw new Error('updateRequestStatus action not implemented in this version.');
+
+      case 'assignRiders':
+        result = processAssignmentAndPopulate(data.requestId, data.selectedRiders);
+        break;
+
+      case 'sendNotification':
+        result = sendAssignmentNotification(data.assignmentId, data.notificationType);
+        break;
+
+      case 'bulkNotification':
+        result = sendBulkNotificationsByTimeframe(data.filter, data.type); // Fixed: data.filter and data.type
+        break;
+
+      case 'generateReport':
+        result = generateReportData(data.filters);
+        break;
+
+      default:
+        throw new Error(`Unknown action: ${action}`);
+    }
+
+    // Return standard success response
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        data: result,
+        timestamp: new Date().toISOString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    logError('doPost error', error);
+    // Return standard error response
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -663,29 +755,42 @@ function doGet(e) {
  * ENHANCEMENT 6: Bulk notification functions by time period (callable from menu)
  */
 // Today's assignments
+/** @return {void} Sends SMS for today's assignments. */
 function sendTodaySMS() { sendBulkByDateRange('SMS', 'today'); }
+/** @return {void} Sends Email for today's assignments. */
 function sendTodayEmail() { sendBulkByDateRange('Email', 'today'); }
+/** @return {void} Sends Both SMS and Email for today's assignments. */
 function sendTodayBoth() { sendBulkByDateRange('Both', 'today'); }
 
 // This week's assignments
+/** @return {void} Sends SMS for this week's assignments. */
 function sendWeekSMS() { sendBulkByDateRange('SMS', 'week'); }
+/** @return {void} Sends Email for this week's assignments. */
 function sendWeekEmail() { sendBulkByDateRange('Email', 'week'); }
+/** @return {void} Sends Both SMS and Email for this week's assignments. */
 function sendWeekBoth() { sendBulkByDateRange('Both', 'week'); }
 
 // Pending assignments (not yet notified)
+/** @return {void} Sends SMS for pending assignments (never notified). */
 function sendPendingSMS() { sendBulkByStatus('SMS', 'pending'); }
+/** @return {void} Sends Email for pending assignments (never notified). */
 function sendPendingEmail() { sendBulkByStatus('Email', 'pending'); }
+/** @return {void} Sends Both SMS and Email for pending assignments (never notified). */
 function sendPendingBoth() { sendBulkByStatus('Both', 'pending'); }
 
 // All assigned requests
+/** @return {void} Sends SMS for all active, assigned requests. */
 function sendAllAssignedSMS() { sendBulkByStatus('SMS', 'assigned'); }
+/** @return {void} Sends Email for all active, assigned requests. */
 function sendAllAssignedEmail() { sendBulkByStatus('Email', 'assigned'); }
+/** @return {void} Sends Both SMS and Email for all active, assigned requests. */
 function sendAllAssignedBoth() { sendBulkByStatus('Both', 'assigned'); }
 
 /**
  * Core logic for sending bulk notifications by date range.
  * @param {string} notificationType - The type of notification ('SMS', 'Email', 'Both').
  * @param {string} dateRange - The predefined date range ('today', 'week').
+ * @return {void}
  */
 function sendBulkByDateRange(notificationType, dateRange) {
   try {
@@ -747,6 +852,7 @@ function sendBulkByDateRange(notificationType, dateRange) {
  * Core logic for sending bulk notifications by status type.
  * @param {string} notificationType - The type of notification ('SMS', 'Email', 'Both').
  * @param {string} statusType - The predefined status type ('pending', 'assigned').
+ * @return {void}
  */
 function sendBulkByStatus(notificationType, statusType) {
   try {
@@ -803,10 +909,10 @@ function sendBulkByStatus(notificationType, statusType) {
 /**
  * Processes bulk notifications for a list of assignments.
  * This is the refined version used for both menu actions and any direct API calls.
- * @param {Array<Array<any>>} assignments - An array of assignment data rows.
+ * @param {Array<Array<object>>} assignments - An array of assignment data rows.
  * @param {string} notificationType - The type of notification ('SMS', 'Email', 'Both').
  * @param {string} description - A descriptive string for logging (e.g., "today's assignments").
- * @returns {object} A result object with success/failure counts and messages.
+ * @return {object} A result object with success/failure counts and messages.
  */
 function processBulkNotifications(assignments, notificationType, description) {
   try {
@@ -876,7 +982,8 @@ function processBulkNotifications(assignments, notificationType, description) {
 }
 
 /**
- * Generates a comprehensive notification report.
+ * Generates a comprehensive notification report and displays it in an alert.
+ * @return {void}
  */
 function generateNotificationReport() {
   try {
@@ -960,6 +1067,7 @@ function generateNotificationReport() {
 
 /**
  * Get notification history for the notifications page.
+ * @return {Array<object>} An array of notification history objects.
  */
 function getNotificationHistory() {
   try {
@@ -1020,8 +1128,9 @@ function getNotificationHistory() {
 // ===== REPORTS FUNCTIONS =====
 /**
  * Generates report data based on filters.
- * @param {Object} filters An object containing filter criteria (startDate, endDate, requestType, status).
- * @returns {Object} Structured report data for display.
+ * @param {object} filters An object containing filter criteria (startDate, endDate, requestType, status).
+ * @return {object} Structured report data for display.
+ * @throws {Error} If an error occurs during report generation.
  */
 function generateReportData(filters) {
   try {
@@ -1140,6 +1249,11 @@ function generateReportData(filters) {
   }
 }
 
+/**
+ * Fetches and formats recent requests for web app display.
+ * @param {number} [limit=10] The maximum number of recent requests to return.
+ * @return {Array<object>} An array of formatted recent request objects.
+ */
 function getRecentRequestsForWebApp(limit = 10) {
   try {
     console.log(`📋 Getting ${limit} recent requests for web app...`);
@@ -1216,537 +1330,92 @@ function getRecentRequestsForWebApp(limit = 10) {
     return [];
   }
 }
-// REMOVE FROM HERE! To the very end
-// Add this debug function to your Code.js file temporarily
 
 /**
- * Debug function to test navigation injection
+ * @fileoverview
+ * This file contains the `showQuickAssignDialog` function, which is designed to be called
+ * from the Google Sheets UI (e.g., a custom menu or a button). It allows users to quickly
+ * open the web app's assignment page for a specific Request ID selected on the dashboard sheet.
  */
-function debugNavigationInjection() {
+
+/**
+ * Opens the web application's assignment page for a Request ID selected on the dashboard.
+ * It validates the selection, constructs the web app URL with the Request ID,
+ * and then uses a small HTML dialog to trigger opening the URL in a new tab.
+ * This function is intended to be called from the Google Sheets environment.
+ * @return {void}
+ */
+function showQuickAssignDialog() {
+  const ui = SpreadsheetApp.getUi();
   try {
-    console.log('=== NAVIGATION DEBUG START ===');
-    
-    // Test 1: Can we read the navigation file?
-    let navHtml;
-    try {
-      navHtml = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
-      console.log('✅ Navigation file read successfully');
-      console.log('Navigation content length:', navHtml.length);
-      console.log('Navigation content preview:', navHtml.substring(0, 100) + '...');
-    } catch (e) {
-      console.log('❌ Cannot read _navigation.html:', e.message);
+    const ss = SpreadsheetApp.getActive();
+    const dashSheet = ss.getSheetByName(CONFIG.sheets.dashboard);
+
+    // Ensure the active sheet is the dashboard
+    if (ss.getActiveSheet().getName() !== CONFIG.sheets.dashboard) {
+      ui.alert('Error', 'Please navigate to the Dashboard sheet to use this function.', ui.ButtonSet.OK);
       return;
     }
-    
-    // Test 2: Can we read a main HTML file?
-    let indexHtml;
-    try {
-      indexHtml = HtmlService.createHtmlOutputFromFile('index').getContent();
-      console.log('✅ Index file read successfully');
-      console.log('Index content length:', indexHtml.length);
-    } catch (e) {
-      console.log('❌ Cannot read index.html:', e.message);
+
+    const activeRange = ss.getActiveRange();
+    if (!activeRange) {
+      ui.alert('Error', 'Please select a cell containing a Request ID on the dashboard.', ui.ButtonSet.OK);
       return;
     }
-    
-    // Test 3: Does the placeholder exist in the HTML?
-    const hasPlaceholder = indexHtml.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-    console.log('Has placeholder:', hasPlaceholder);
-    
-    if (hasPlaceholder) {
-      console.log('✅ Placeholder found in index.html');
-      
-      // Test 4: Can we perform the replacement?
-      const newContent = indexHtml.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navHtml);
-      const replacementWorked = newContent !== indexHtml;
-      console.log('Replacement worked:', replacementWorked);
-      
-      if (replacementWorked) {
-        console.log('✅ Replacement successful');
-        console.log('New content length:', newContent.length);
-      } else {
-        console.log('❌ Replacement failed');
-      }
-    } else {
-      console.log('❌ Placeholder NOT found in index.html');
-      console.log('Searching for similar patterns...');
-      
-      // Look for variations
-      const variations = [
-        '<!--NAVIGATION_MENU_PLACEHOLDER-->',
-        '<!-- NAVIGATION_MENU_PLACEHOLDER -->',
-        '<!--navigation_menu_placeholder-->',
-        '<!--NAVIGATION_PLACEHOLDER-->',
-        'NAVIGATION_MENU_PLACEHOLDER'
-      ];
-      
-      variations.forEach(variation => {
-        if (indexHtml.includes(variation)) {
-          console.log(`Found variation: ${variation}`);
-        }
-      });
-      
-      // Show some content around where navigation might be
-      const headerIndex = indexHtml.indexOf('</header>');
-      if (headerIndex !== -1) {
-        const surrounding = indexHtml.substring(headerIndex - 50, headerIndex + 200);
-        console.log('Content around </header>:', surrounding);
-      }
-    }
-    
-    console.log('=== NAVIGATION DEBUG END ===');
-    
-    return {
-      navFileExists: !!navHtml,
-      indexFileExists: !!indexHtml,
-      hasPlaceholder: hasPlaceholder,
-      navContentLength: navHtml ? navHtml.length : 0
-    };
-    
-  } catch (error) {
-    console.log('❌ Debug function error:', error.message);
-    return { error: error.message };
-  }
-}
 
-/**
- * Test the doGet function specifically
- */
-function testDoGetFunction() {
-  try {
-    console.log('=== TESTING doGet FUNCTION ===');
-    
-    // Simulate a request event
-    const mockEvent = {
-      parameter: {
-        page: 'dashboard'
-      }
-    };
-    
-    // Call doGet
-    const result = doGet(mockEvent);
-    console.log('doGet result type:', typeof result);
-    console.log('doGet result:', result);
-    
-    if (result && result.getContent) {
-      const content = result.getContent();
-      console.log('Generated content length:', content.length);
-      
-      const hasNavigation = content.includes('class="navigation"') || content.includes('<nav');
-      console.log('Content includes navigation:', hasNavigation);
-      
-      if (hasNavigation) {
-        console.log('✅ Navigation found in generated content');
-      } else {
-        console.log('❌ Navigation NOT found in generated content');
-        
-        // Look for the placeholder in the output
-        const stillHasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-        console.log('Still has placeholder:', stillHasPlaceholder);
-      }
-    }
-    
-    console.log('=== doGet TEST END ===');
-    
-  } catch (error) {
-    console.log('❌ doGet test error:', error.message);
-  }
-}
-/**
- * Enhanced debug function to find the exact issue
- */
-function debugPlaceholderIssue() {
-  try {
-    console.log('=== ENHANCED PLACEHOLDER DEBUG ===');
-    
-    // Test reading index.html
-    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
-    console.log(`Index.html length: ${indexContent.length}`);
-    
-    // Look for exact placeholder
-    const exactPlaceholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
-    const hasExactPlaceholder = indexContent.includes(exactPlaceholder);
-    console.log(`Has exact placeholder: ${hasExactPlaceholder}`);
-    
-    if (hasExactPlaceholder) {
-      const placeholderIndex = indexContent.indexOf(exactPlaceholder);
-      console.log(`Placeholder found at position: ${placeholderIndex}`);
-      
-      // Show content around the placeholder
-      const start = Math.max(0, placeholderIndex - 100);
-      const end = Math.min(indexContent.length, placeholderIndex + exactPlaceholder.length + 100);
-      const surrounding = indexContent.substring(start, end);
-      console.log(`Content around placeholder: "${surrounding}"`);
-    } else {
-      // Search for any comment that might be the placeholder
-      const commentRegex = /<!--[^>]*-->/g;
-      const comments = indexContent.match(commentRegex);
-      console.log('All HTML comments found:');
-      if (comments) {
-        comments.forEach((comment, index) => {
-          console.log(`  ${index + 1}: ${comment}`);
-        });
-      } else {
-        console.log('  No HTML comments found');
-      }
-      
-      // Look for the word "NAVIGATION"
-      if (indexContent.toLowerCase().includes('navigation')) {
-        const navIndex = indexContent.toLowerCase().indexOf('navigation');
-        const navSurrounding = indexContent.substring(navIndex - 50, navIndex + 100);
-        console.log(`Found "navigation" at: "${navSurrounding}"`);
-      }
-    }
-    
-    // Test navigation file
-    try {
-      const navContent = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
-      console.log(`Navigation file length: ${navContent.length}`);
-      console.log(`Navigation preview: ${navContent.substring(0, 200)}...`);
-    } catch (navError) {
-      console.log(`Navigation file error: ${navError.message}`);
-    }
-    
-    console.log('=== DEBUG COMPLETE ===');
-    
-  } catch (error) {
-    console.log(`Debug error: ${error.message}`);
-  }
-}
+    const selectedRow = activeRange.getRow();
+    const selectedCol = activeRange.getColumn();
 
-/**
- * Test the replacement process step by step
- */
-function testReplacementProcess() {
-  try {
-    console.log('=== TESTING REPLACEMENT PROCESS ===');
-    
-    // Get files
-    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
-    const navContent = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
-    
-    console.log(`Index length: ${indexContent.length}`);
-    console.log(`Nav length: ${navContent.length}`);
-    
-    // Test replacement
-    const placeholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
-    const beforeReplace = indexContent.length;
-    const afterContent = indexContent.replace(placeholder, navContent);
-    const afterReplace = afterContent.length;
-    
-    console.log(`Before replacement: ${beforeReplace} characters`);
-    console.log(`After replacement: ${afterReplace} characters`);
-    console.log(`Difference: ${afterReplace - beforeReplace} characters`);
-    console.log(`Expected difference: ${navContent.length - placeholder.length} characters`);
-    
-    const replacementWorked = afterReplace !== beforeReplace;
-    console.log(`Replacement worked: ${replacementWorked}`);
-    
-    if (replacementWorked) {
-      console.log('✅ Replacement process works correctly');
-    } else {
-      console.log('❌ Replacement process failed');
+    // Check if the selected row is within the requests display area (starts from row 11)
+    const requestsDisplayStartRow = CONFIG.dashboard.requestsDisplayStartRow;
+    if (selectedRow < requestsDisplayStartRow) {
+      ui.alert('Error', 'Please select a Request ID cell within the displayed requests (rows 11 or below).', ui.ButtonSet.OK);
+      return;
     }
-    
-  } catch (error) {
-    console.log(`Test error: ${error.message}`);
-  }
-}
-/**
- * Comprehensive debug to find why replacement fails
- */
-function comprehensiveReplacementDebug() {
-  try {
-    console.log('=== COMPREHENSIVE REPLACEMENT DEBUG ===');
-    
-    // Get the files
-    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
-    const navContent = HtmlService.createHtmlOutputFromFile('_navigation').getContent();
-    
-    console.log(`Index file length: ${indexContent.length}`);
-    console.log(`Nav file length: ${navContent.length}`);
-    
-    // Define the exact placeholder
-    const placeholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
-    console.log(`Searching for: "${placeholder}"`);
-    console.log(`Placeholder length: ${placeholder.length}`);
-    
-    // Check if placeholder exists
-    const placeholderExists = indexContent.includes(placeholder);
-    console.log(`Placeholder exists: ${placeholderExists}`);
-    
-    if (placeholderExists) {
-      // Find all occurrences
-      const positions = [];
-      let pos = indexContent.indexOf(placeholder, 0);
-      while (pos !== -1) {
-        positions.push(pos);
-        pos = indexContent.indexOf(placeholder, pos + 1);
-      }
-      
-      console.log(`Found ${positions.length} occurrence(s) at positions: ${positions.join(', ')}`);
-      
-      // Show content around each occurrence
-      positions.forEach((position, index) => {
-        const start = Math.max(0, position - 100);
-        const end = Math.min(indexContent.length, position + placeholder.length + 100);
-        const surrounding = indexContent.substring(start, end);
-        console.log(`\nOccurrence ${index + 1} at position ${position}:`);
-        console.log(`"${surrounding}"`);
-      });
-      
-      // Test replacement step by step
-      console.log('\n--- TESTING REPLACEMENT ---');
-      
-      // Method 1: Simple replace
-      console.log('Method 1: Simple replace');
-      const result1 = indexContent.replace(placeholder, navContent);
-      const worked1 = result1.length !== indexContent.length;
-      console.log(`Simple replace worked: ${worked1}`);
-      console.log(`Length change: ${result1.length - indexContent.length}`);
-      
-      // Method 2: Replace first occurrence only
-      console.log('Method 2: Replace first occurrence');
-      const firstPos = indexContent.indexOf(placeholder);
-      if (firstPos !== -1) {
-        const before = indexContent.substring(0, firstPos);
-        const after = indexContent.substring(firstPos + placeholder.length);
-        const result2 = before + navContent + after;
-        const worked2 = result2.length !== indexContent.length;
-        console.log(`Manual replace worked: ${worked2}`);
-        console.log(`Length change: ${result2.length - indexContent.length}`);
-      }
-      
-      // Method 3: Global replace
-      console.log('Method 3: Global replace');
-      const result3 = indexContent.replaceAll(placeholder, navContent);
-      const worked3 = result3.length !== indexContent.length;
-      console.log(`Global replace worked: ${worked3}`);
-      console.log(`Length change: ${result3.length - indexContent.length}`);
-      
-      // Method 4: Split and join
-      console.log('Method 4: Split and join');
-      const parts = indexContent.split(placeholder);
-      console.log(`Split into ${parts.length} parts`);
-      if (parts.length > 1) {
-        const result4 = parts.join(navContent);
-        const worked4 = result4.length !== indexContent.length;
-        console.log(`Split/join worked: ${worked4}`);
-        console.log(`Length change: ${result4.length - indexContent.length}`);
-      }
-      
-    } else {
-      console.log('❌ Placeholder not found - checking byte-level');
-      
-      // Check for the placeholder with potential encoding issues
-      const placeholderBytes = [];
-      for (let i = 0; i < placeholder.length; i++) {
-        placeholderBytes.push(placeholder.charCodeAt(i));
-      }
-      console.log(`Placeholder bytes: ${placeholderBytes.join(',')}`);
-      
-      // Look for similar patterns
-      const searchStart = '<!--NAVIGATION';
-      const searchStartPos = indexContent.indexOf(searchStart);
-      if (searchStartPos !== -1) {
-        const sampleEnd = Math.min(indexContent.length, searchStartPos + 50);
-        const sample = indexContent.substring(searchStartPos, sampleEnd);
-        console.log(`Found similar pattern: "${sample}"`);
-        
-        // Get bytes of this section
-        const sampleBytes = [];
-        for (let i = 0; i < Math.min(sample.length, placeholder.length); i++) {
-          sampleBytes.push(sample.charCodeAt(i));
-        }
-        console.log(`Sample bytes: ${sampleBytes.join(',')}`);
-      }
-    }
-    
-    // Test the navigation content
-    console.log('\n--- TESTING NAVIGATION CONTENT ---');
-    console.log(`Navigation content preview: "${navContent.substring(0, 100)}..."`);
-    console.log(`Navigation starts with: "${navContent.substring(0, 20)}"`);
-    console.log(`Navigation ends with: "${navContent.substring(navContent.length - 20)}"`);
-    
-    // Check if navigation content has any special characters
-    const navHasSpecialChars = /[^\x20-\x7E\s]/.test(navContent);
-    console.log(`Navigation has special characters: ${navHasSpecialChars}`);
-    
-  } catch (error) {
-    console.log(`❌ Debug error: ${error.message}`);
-    console.log(`Stack: ${error.stack}`);
-  }
-}
 
-/**
- * Test with a simple replacement
- */
-function testSimpleReplacement() {
-  try {
-    console.log('=== TESTING SIMPLE REPLACEMENT ===');
-    
-    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
-    
-    // Test with a simple string replacement
-    const testPlaceholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
-    const testReplacement = 'NAVIGATION_WAS_HERE';
-    
-    const beforeLength = indexContent.length;
-    const result = indexContent.replace(testPlaceholder, testReplacement);
-    const afterLength = result.length;
-    
-    console.log(`Before: ${beforeLength} characters`);
-    console.log(`After: ${afterLength} characters`);
-    console.log(`Difference: ${afterLength - beforeLength}`);
-    console.log(`Expected: ${testReplacement.length - testPlaceholder.length}`);
-    
-    const worked = afterLength !== beforeLength;
-    console.log(`Simple replacement worked: ${worked}`);
-    
-    if (worked) {
-      // Find where the replacement occurred
-      const replacePos = result.indexOf(testReplacement);
-      if (replacePos !== -1) {
-        const start = Math.max(0, replacePos - 50);
-        const end = Math.min(result.length, replacePos + testReplacement.length + 50);
-        const surrounding = result.substring(start, end);
-        console.log(`Replacement found at: "${surrounding}"`);
-      }
+    // Check if the selected column is the Request ID column (Column A, which is 1)
+    if (selectedCol !== 1) {
+      ui.alert('Error', 'Please select a cell in the "Request ID" column (Column A) to assign riders.', ui.ButtonSet.OK);
+      return;
     }
-    
-  } catch (error) {
-    console.log(`❌ Test error: ${error.message}`);
-  }
-}
-/**
- * Definitive test to find exactly what's in the file
- */
-function definitivePlaceholderTest() {
-  try {
-    console.log('=== DEFINITIVE PLACEHOLDER TEST ===');
-    
-    const indexContent = HtmlService.createHtmlOutputFromFile('index').getContent();
-    
-    // Search for any part of the word "NAVIGATION"
-    const searchWord = 'NAVIGATION';
-    const searchWordLower = searchWord.toLowerCase();
-    
-    console.log(`Searching for "${searchWord}" (case sensitive):`);
-    let pos = indexContent.indexOf(searchWord);
-    
-    if (pos !== -1) {
-      console.log(`✅ Found "${searchWord}" at position ${pos}`);
-      
-      // Show 200 characters around it
-      const start = Math.max(0, pos - 100);
-      const end = Math.min(indexContent.length, pos + searchWord.length + 100);
-      const surrounding = indexContent.substring(start, end);
-      
-      console.log('Context around "NAVIGATION":');
-      console.log('========================================');
-      console.log(surrounding);
-      console.log('========================================');
-      
-      // Get the exact characters around it for analysis
-      const exactStart = Math.max(0, pos - 5);
-      const exactEnd = Math.min(indexContent.length, pos + searchWord.length + 15);
-      const exactMatch = indexContent.substring(exactStart, exactEnd);
-      
-      console.log(`Exact match: "${exactMatch}"`);
-      
-      // Get character codes
-      const charCodes = [];
-      for (let i = 0; i < exactMatch.length; i++) {
-        charCodes.push(`${exactMatch[i]}(${exactMatch.charCodeAt(i)})`);
-      }
-      console.log(`Character codes: ${charCodes.join(' ')}`);
-      
-    } else {
-      console.log(`❌ "${searchWord}" not found, trying lowercase...`);
-      
-      pos = indexContent.toLowerCase().indexOf(searchWordLower);
-      if (pos !== -1) {
-        console.log(`✅ Found "${searchWordLower}" at position ${pos}`);
-        
-        const start = Math.max(0, pos - 100);
-        const end = Math.min(indexContent.length, pos + searchWordLower.length + 100);
-        const surrounding = indexContent.substring(start, end);
-        
-        console.log('Context around lowercase "navigation":');
-        console.log('========================================');
-        console.log(surrounding);
-        console.log('========================================');
-      } else {
-        console.log('❌ "navigation" not found in any case');
-      }
-    }
-    
-    // Test if ANY HTML comments exist
-    console.log('\n--- SEARCHING FOR HTML COMMENTS ---');
-    const commentPattern = /<!--[\s\S]*?-->/g;
-    const comments = indexContent.match(commentPattern);
-    
-    if (comments) {
-      console.log(`Found ${comments.length} HTML comments:`);
-      comments.forEach((comment, index) => {
-        console.log(`${index + 1}: "${comment}"`);
-        
-        // Check if this comment contains any part of our search
-        if (comment.toUpperCase().includes('NAVIGATION')) {
-          console.log(`  ⭐ This comment contains "NAVIGATION"!`);
-        }
-      });
-    } else {
-      console.log('❌ No HTML comments found at all');
-    }
-    
-    // Search for just "<!--" to see if any comments exist
-    const commentStart = indexContent.indexOf('<!--');
-    if (commentStart !== -1) {
-      console.log(`Found comment start at position: ${commentStart}`);
-      const commentSample = indexContent.substring(commentStart, commentStart + 100);
-      console.log(`Comment sample: "${commentSample}"`);
-    } else {
-      console.log('❌ No comment start markers found');
-    }
-    
-  } catch (error) {
-    console.log(`❌ Error: ${error.message}`);
-  }
-}
 
-/**
- * Test if we can write to the HTML file
- */
-function testWriteToHTML() {
-  try {
-    console.log('=== TESTING HTML FILE WRITE ===');
-    
-    // This test will show us if the file is actually being read correctly
-    const originalContent = HtmlService.createHtmlOutputFromFile('index').getContent();
-    console.log(`Original file length: ${originalContent.length}`);
-    
-    // Try to find a safe place to test replacement
-    const bodyTag = '<body>';
-    if (originalContent.includes(bodyTag)) {
-      console.log('✅ Found <body> tag');
-      
-      const testReplacement = originalContent.replace(bodyTag, bodyTag + '<!-- TEST INJECTION -->');
-      const lengthDiff = testReplacement.length - originalContent.length;
-      
-      console.log(`Test replacement length difference: ${lengthDiff}`);
-      console.log(`Expected difference: ${('<!-- TEST INJECTION -->').length}`);
-      
-      if (lengthDiff > 0) {
-        console.log('✅ String replacement works on this file');
-      } else {
-        console.log('❌ String replacement failed even on <body> tag');
-      }
-    } else {
-      console.log('❌ <body> tag not found');
+    // Get the Request ID from the selected cell
+    const requestId = activeRange.getValue();
+
+    // Changed \d{2} to \d{1,2} to allow for single-digit sequence numbers
+    if (!requestId || typeof requestId !== 'string' || !requestId.match(/^[A-L]-\d{1,2}-\d{2}$/)) {
+      ui.alert('Error', `Invalid Request ID selected: "${requestId}". Please select a valid Request ID.`, ui.ButtonSet.OK);
+      return;
     }
-    
+
+    // ===== IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WEB APP DEPLOYMENT URL =====
+    // If you don't have one yet, deploy your script as a Web App (Deploy -> New Deployment -> Web App)
+    // Make sure "Execute as" is "Me" and "Who has access" is "Anyone".
+    const WEB_APP_BASE_URL = "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec"; // Example: "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec";
+
+    // IMPORTANT: If you see a generic URL like "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec" you MUST
+    // get your unique web app URL from Deploy -> Manage Deployments -> Your Web App Deployment -> Web app URL
+    // Each deployment generates a unique URL.
+
+    if (WEB_APP_BASE_URL === "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec") {
+        ui.alert('Configuration Error', 'Please deploy your script as a Web App and update WEB_APP_BASE_URL in the script with the actual URL from your deployment settings.', ui.ButtonSet.OK);
+        return;
+    }
+
+
+    const webAppUrl = `${WEB_APP_BASE_URL}?requestId=${encodeURIComponent(requestId)}`;
+
+    const htmlOutput = HtmlService.createHtmlOutput(`<script>window.open('${webAppUrl}', '_blank').focus(); google.script.host.close();</script>`)
+      .setTitle('Opening Assignment Form')
+      .setHeight(10)
+      .setWidth(10);
+
+    ui.showModalDialog(htmlOutput, 'Opening...');
+
+    logActivity(`Opened assignment form for Request ID: ${requestId}`);
+
   } catch (error) {
-    console.log(`❌ Test error: ${error.message}`);
+    logError('Error assigning riders from dashboard', error);
+    ui.alert('Error', 'Failed to open assignment form: ' + error.message, ui.ButtonSet.OK);
   }
 }

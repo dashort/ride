@@ -1,11 +1,30 @@
+/**
+ * @fileoverview
+ * This file contains functions that serve data to the web application and manage application logic.
+ * It acts as a service layer, preparing data from various sources (like DataService.js and SheetUtils.js)
+ * and formatting it as needed for different web app views (e.g., dashboard, assignments page, reports).
+ * It includes wrapper functions for consolidating multiple data fetches, CRUD operations for requests,
+ * assignment processing, dashboard calculations, and report generation.
+ */
+
+// --- From WebAppService.js ---
+
+/**
+ * Retrieves detailed information for a specific escort request, including request details
+ * and a list of active riders.
+ *
+ * @param {string} requestIdInput The ID of the request to fetch details for. Can be a raw input that needs cleaning.
+ * @return {object} An object containing the `request` details and an array of `riders`.
+ * @throws {Error} If the request ID is not found or if there's a configuration error.
+ */
 function getEscortDetailsForAssignment(requestIdInput) {
   const cleanedInputId = String(requestIdInput || '').replace(/^"|"$/g, '').trim();
   const originalRequestId = cleanedInputId;
-  const requestId = normalizeRequestId(originalRequestId);
+  const requestId = normalizeRequestId(originalRequestId); // From Utility.js (expected in CoreUtils.gs)
 
   try {
-    const requestsData = getRequestsData();
-    const ridersData = getRidersData();
+    const requestsData = getRequestsData(); // From DataService.js (expected in SheetServices.gs)
+    const ridersData = getRidersData(); // From DataService.js (expected in SheetServices.gs)
 
     const requestColMap = requestsData.columnMap;
     const requestIdHeader = CONFIG.columns.requests.id;
@@ -20,7 +39,7 @@ function getEscortDetailsForAssignment(requestIdInput) {
 
     for (let i = 0; i < requestsData.data.length; i++) {
         const row = requestsData.data[i];
-        const rowIdRaw = getColumnValue(row, requestColMap, requestIdHeader);
+        const rowIdRaw = getColumnValue(row, requestColMap, requestIdHeader); // From SheetUtils.js (expected in SheetServices.gs)
         const normalizedRowId = normalizeRequestId(String(rowIdRaw));
         const cleanedRowId = normalizedRowId.trim().toLowerCase();
         if (cleanedRowId === cleanedTargetId) {
@@ -38,16 +57,16 @@ function getEscortDetailsForAssignment(requestIdInput) {
       ridersNeeded: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.ridersNeeded),
       eventDate: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.eventDate),
       startTime: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.startTime),
-      endTime: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.endTime), // Ensure endTime is retrievable
+      endTime: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.endTime),
       startLocation: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.startLocation),
-      endLocation: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.endLocation), // Ensure endLocation is retrievable
-      secondaryLocation: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.secondaryLocation), // Ensure secondaryLocation is retrievable
+      endLocation: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.endLocation),
+      secondaryLocation: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.secondaryLocation),
       requesterName: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.requesterName),
       status: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.status),
       ridersAssigned: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.ridersAssigned) || ''
     };
 
-    const activeRiders = getActiveRiders().map(riderRow => {
+    const activeRiders = getActiveRiders().map(riderRow => { // getActiveRiders from DataService.js (expected in SheetServices.gs)
       const riderColMap = ridersData.columnMap;
       return {
         jpNumber: getColumnValue(riderRow, riderColMap, CONFIG.columns.riders.jpNumber),
@@ -58,7 +77,7 @@ function getEscortDetailsForAssignment(requestIdInput) {
       };
     });
 
-    logActivity(`Fetched details for request: "${originalRequestId}"`);
+    logActivity(`Fetched details for request: "${originalRequestId}"`); // From Logger.js (expected in CoreUtils.gs)
 
     return {
       request: requestDetails,
@@ -66,67 +85,67 @@ function getEscortDetailsForAssignment(requestIdInput) {
     };
 
   } catch (error) {
-    logError(`Error in getEscortDetailsForAssignment for ${originalRequestId}`, error);
+    logError(`Error in getEscortDetailsForAssignment for ${originalRequestId}`, error); // From Logger.js (expected in CoreUtils.gs)
     throw new Error(`Could not retrieve escort details: ${error.message}`);
   }
 }
 
+/**
+ * Fetches upcoming assignments for the web application, typically for dashboard display.
+ * Filters assignments for the next 30 days that are not completed or cancelled.
+ *
+ * @param {object} user The current user object (currently unused in the function but good for context).
+ * @return {Array<object>} An array of formatted upcoming assignment objects, limited to 10.
+ *                         Each object contains: assignmentId, requestId, eventDate, startTime, riderName, startLocation, status.
+ */
 function getUpcomingAssignmentsForWebApp(user) {
   try {
     console.log('📋 Getting upcoming assignments for web app...');
     console.log('User parameter received:', user);
-    
-    // Get assignments data using the standardized function
+
     const assignmentsData = getAssignmentsData();
-    
+
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
       console.log('❌ No assignments data found');
       return [];
     }
-    
+
     console.log(`✅ Found ${assignmentsData.data.length} total assignments`);
-    
+
     const columnMap = assignmentsData.columnMap;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Get assignments for the next 30 days
+
     const thirtyDaysFromNow = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000));
-    
+
     const upcomingAssignments = assignmentsData.data
       .filter(row => {
-        // Check if row has required data
         const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
         const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
         const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
-        const eventDate = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
-        
-        // Must have basic required fields
-        if (!assignmentId || !riderName || !eventDate) {
+        const eventDateValue = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
+
+        if (!assignmentId || !riderName || !eventDateValue) {
           return false;
         }
-        
-        // Must not be completed or cancelled
+
         if (['Completed', 'Cancelled', 'No Show'].includes(status)) {
           return false;
         }
-        
-        // Must be in the upcoming timeframe
-        const assignmentDate = new Date(eventDate);
+
+        const assignmentDate = new Date(eventDateValue);
         if (isNaN(assignmentDate.getTime())) {
           return false;
         }
-        
+
         return assignmentDate >= today && assignmentDate <= thirtyDaysFromNow;
       })
       .map(row => {
-        // Map to expected structure with proper formatting
         const eventDate = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
         const startTime = getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime);
         const startLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation);
         const endLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation);
-        
-        // Create display location
+
         let displayLocation = 'Location TBD';
         if (startLocation) {
           displayLocation = startLocation;
@@ -136,7 +155,7 @@ function getUpcomingAssignmentsForWebApp(user) {
         } else if (endLocation) {
           displayLocation = `To: ${endLocation}`;
         }
-        
+
         return {
           assignmentId: getColumnValue(row, columnMap, CONFIG.columns.assignments.id),
           requestId: getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId) || 'Unknown',
@@ -148,21 +167,20 @@ function getUpcomingAssignmentsForWebApp(user) {
         };
       })
       .sort((a, b) => {
-        // Sort by event date, earliest first
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        
-        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-        
+        let dateA, dateB;
+        try { dateA = new Date(a.eventDate); } catch (e) { dateA = null; }
+        try { dateB = new Date(b.eventDate); } catch (e) { dateB = null; }
+
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+
         return dateA.getTime() - dateB.getTime();
       })
-      .slice(0, 10); // Limit to 10 most upcoming
-    
+      .slice(0, 10);
+
     console.log(`✅ Returning ${upcomingAssignments.length} upcoming assignments`);
-    
-    // Debug log first assignment
+
     if (upcomingAssignments.length > 0) {
       console.log('Sample assignment:', {
         id: upcomingAssignments[0].assignmentId,
@@ -171,9 +189,9 @@ function getUpcomingAssignmentsForWebApp(user) {
         rider: upcomingAssignments[0].riderName
       });
     }
-    
+
     return upcomingAssignments;
-    
+
   } catch (error) {
     console.error('❌ Error getting upcoming assignments:', error);
     logError('Error in getUpcomingAssignmentsForWebApp', error);
@@ -181,33 +199,38 @@ function getUpcomingAssignmentsForWebApp(user) {
   }
 }
 
+/**
+ * Gets all active assignments for web app display.
+ * "Active" here means not completed or cancelled.
+ *
+ * @return {Array<object>} An array of formatted active assignment objects, limited to 10.
+ */
 function getAllActiveAssignmentsForWebApp() {
   try {
     console.log('📋 Getting all active assignments...');
-    
+
     const assignmentsData = getAssignmentsData();
-    
+
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
       console.log('❌ No assignments data found');
       return [];
     }
-    
+
     const columnMap = assignmentsData.columnMap;
     const activeAssignments = [];
-    
+
     for (let i = 0; i < assignmentsData.data.length; i++) {
       try {
         const row = assignmentsData.data[i];
-        
+
         const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
         const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
         const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
-        
-        // Must have basic data and not be completed/cancelled
+
         if (!assignmentId || !riderName || ['Completed', 'Cancelled', 'No Show'].includes(status)) {
           continue;
         }
-        
+
         const assignment = {
           assignmentId: assignmentId,
           requestId: getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId) || 'Unknown',
@@ -217,19 +240,19 @@ function getAllActiveAssignmentsForWebApp() {
           startLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation) || 'Location TBD',
           status: status || 'Assigned'
         };
-        
+
         activeAssignments.push(assignment);
-        
+
       } catch (rowError) {
         console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
       }
     }
-    
+
     const limitedAssignments = activeAssignments.slice(0, 10);
-    
+
     console.log(`✅ Returning ${limitedAssignments.length} active assignments`);
     return limitedAssignments;
-    
+
   } catch (error) {
     console.error('❌ Error getting active assignments:', error);
     logError('Error in getAllActiveAssignmentsForWebApp', error);
@@ -238,7 +261,11 @@ function getAllActiveAssignmentsForWebApp() {
 }
 
 /**
- * Gets all active riders for rendering in web app forms.
+ * Gets all active riders for rendering in web app forms (e.g., assignment dropdowns).
+ * Filters riders by "Active" status and ensures they have a name.
+ *
+ * @return {Array<object>} An array of active rider objects, each containing:
+ *                         jpNumber, name, phone, email, carrier.
  */
 function getActiveRidersForWebApp() {
   try {
@@ -252,7 +279,7 @@ function getActiveRidersForWebApp() {
       .filter(row => {
         const status = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.status);
         const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-        return status === 'Active' && name && name.toString().trim().length > 0;
+        return String(status).trim().toLowerCase() === 'active' && name && String(name).trim().length > 0;
       })
       .map(row => ({
         jpNumber: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber) || '',
@@ -268,34 +295,28 @@ function getActiveRidersForWebApp() {
 }
 
 /**
- * Provides general dashboard data structure including statistics and requests.
- * @returns {object} An object containing 'stats', 'requests', and 'riderSchedule'.
+ * Provides general dashboard data structure including statistics, formatted requests, and formatted rider schedule.
+ * This function might be an older approach to dashboard data consolidation.
+ * The newer `getPageDataForDashboard` is preferred for client-side calls.
+ *
+ * @return {object} An object containing `stats`, `requests` (formatted), and `riderSchedule` (formatted).
  */
 function getDashboardData() {
   try {
-    // getRequestsData and getAssignmentsData already apply formatting and caching.
-    const requests = getFormattedRequestsForDashboard(); // Gets requests data formatted for dashboard
-    const riderSchedule = getRiderScheduleFormatted(); // Gets rider schedule formatted for dashboard
-
-    const stats = calculateDashboardStatistics(); // Calculates key statistics
+    const requests = getFormattedRequestsForDashboard();
+    const riderSchedule = getRiderScheduleFormatted();
+    const stats = calculateDashboardStatistics();
 
     return {
       stats: stats,
-      requests: requests, // Already formatted
-      riderSchedule: riderSchedule // Already formatted
+      requests: requests,
+      riderSchedule: riderSchedule
     };
 
   } catch (error) {
     logError('Error getting dashboard data:', error);
     return {
-      stats: {
-        totalRequests: 0,
-        activeRiders: 0,
-        pendingRequests: 0,
-        todaysAssignments: 0,
-        thisWeeksAssignments: 0,
-        completedRequests: 0
-      },
+      stats: { totalRequests: 0, activeRiders: 0, pendingRequests: 0, todaysAssignments: 0, thisWeeksAssignments: 0, completedRequests: 0 },
       requests: [],
       riderSchedule: []
     };
@@ -304,11 +325,15 @@ function getDashboardData() {
 
 /**
  * Get rider schedule with formatted dates/times for dashboard display.
+ * Filters assignments for the upcoming week.
+ *
+ * @return {Array<object>} An array of formatted assignment objects for the schedule.
  */
 function getRiderScheduleFormatted() {
   try {
-    const assignmentsData = getAssignmentsData(); // Data is already formatted
+    const assignmentsData = getAssignmentsData();
     const assignments = assignmentsData.data;
+    const columnMap = assignmentsData.columnMap;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -316,24 +341,29 @@ function getRiderScheduleFormatted() {
 
     const schedule = assignments
       .filter(row => {
-        const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-        if (!(eventDate instanceof Date)) return false; // Ensure it's a Date object
-        const rowDate = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+        const eventDateValue = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
+        if (!(eventDateValue instanceof Date)) return false;
+        const rowDate = new Date(eventDateValue.getFullYear(), eventDateValue.getMonth(), eventDateValue.getDate());
         return rowDate >= today && rowDate <= nextWeek;
       })
       .map(row => ({
-        assignmentId: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.id) || '',
-        requestId: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.requestId) || '',
-        eventDate: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate),
-        startTime: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime),
-        endTime: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime),
-        riderName: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName) || '',
-        status: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status) || 'Assigned'
+        assignmentId: getColumnValue(row, columnMap, CONFIG.columns.assignments.id) || '',
+        requestId: getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId) || '',
+        eventDate: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate)),
+        startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime)),
+        endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.endTime)),
+        riderName: getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName) || '',
+        status: getColumnValue(row, columnMap, CONFIG.columns.assignments.status) || 'Assigned'
       }))
       .sort((a, b) => {
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        return dateA.getTime() - dateB.getTime(); // Sort chronologically
+        let dateA, dateB;
+        try { dateA = new Date(a.eventDate); } catch (e) { dateA = null; }
+        try { dateB = new Date(b.eventDate); } catch (e) { dateB = null; }
+
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA.getTime() - dateB.getTime();
       });
 
     return schedule;
@@ -346,80 +376,75 @@ function getRiderScheduleFormatted() {
 // ===== SIDEBAR FUNCTIONS ===== (Shared by sheets & web app)
 
 /**
- * Get data for escort sidebar (used by EscortSidebar.html)
+ * Get data for the escort assignment sidebar, used by both Google Sheets sidebar and web app assignment modal.
+ * Filters for active requests and active riders.
+ *
+ * @return {object} An object containing:
+ *                  {Array<Array<any>>} requestsData Filtered request rows.
+ *                  {Array<string>} requestsHeaders Headers for requests.
+ *                  {Array<Array<any>>} ridersData Filtered active rider rows.
+ *                  {Array<string>} ridersHeaders Headers for riders.
  */
 function getDataForEscortSidebar() {
   try {
-    const requestsData = getRequestsData();
-    const ridersData = getRidersData();
+    const requestsDataObj = getRequestsData();
+    const ridersDataObj = getRidersData();
 
-    const validRequests = requestsData.data.filter(row => {
-      const id = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
-      const requesterName = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requesterName);
-      const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+    const validRequests = requestsDataObj.data.filter(row => {
+      const id = getColumnValue(row, requestsDataObj.columnMap, CONFIG.columns.requests.id);
+      const requesterName = getColumnValue(row, requestsDataObj.columnMap, CONFIG.columns.requests.requesterName);
+      const status = getColumnValue(row, requestsDataObj.columnMap, CONFIG.columns.requests.status);
 
-      return id &&
-             String(id).trim().length > 0 &&
-             requesterName &&
-             String(requesterName).trim().length > 0 &&
-             ['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress'].includes(status); // Added In Progress
+      return id && String(id).trim().length > 0 &&
+             requesterName && String(requesterName).trim().length > 0 &&
+             ['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress'].includes(status);
     });
 
-    const activeRiders = ridersData.data.filter(row => {
-      const status = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.status);
-      const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-      return status === 'Active' && name && String(name).trim().length > 0;
+    const activeRiders = ridersDataObj.data.filter(row => {
+      const status = getColumnValue(row, ridersDataObj.columnMap, CONFIG.columns.riders.status);
+      const name = getColumnValue(row, ridersDataObj.columnMap, CONFIG.columns.riders.name);
+      return String(status).trim().toLowerCase() === 'active' && name && String(name).trim().length > 0;
     });
 
     return {
       requestsData: validRequests,
-      requestsHeaders: requestsData.headers,
+      requestsHeaders: requestsDataObj.headers,
       ridersData: activeRiders,
-      ridersHeaders: ridersData.headers
+      ridersHeaders: ridersDataObj.headers
     };
 
   } catch (error) {
     logError('Error getting data for escort sidebar', error);
-    return {
-      requestsData: [],
-      requestsHeaders: [],
-      ridersData: [],
-      ridersHeaders: []
-    };
+    return { requestsData: [], requestsHeaders: [], ridersData: [], ridersHeaders: [] };
   }
 }
 
 /**
- * FIXED showEscortSidebar - Shows actual Request IDs from sheet, not normalized ones
- * This function is typically for Google Sheets sidebars.
+ * Displays the escort assignment sidebar in Google Sheets UI.
+ * Uses data fetched by `getDataForEscortSidebar`.
+ * @return {void}
  */
 function showEscortSidebar() {
   try {
-    const data = getDataForEscortSidebar(); // Use the general data retrieval
+    const data = getDataForEscortSidebar();
 
     if (data.requestsData.length === 0) {
       SpreadsheetApp.getUi().alert('No valid requests found with proper Request IDs and requester names.');
       return;
     }
-
     if (data.ridersData.length === 0) {
       SpreadsheetApp.getUi().alert('No active riders found.');
       return;
     }
 
-    // Pass data to a templated HTML for rendering
     const template = HtmlService.createTemplateFromFile('EscortSidebar');
     template.requestsData = data.requestsData;
     template.requestsHeaders = data.requestsHeaders;
     template.ridersData = data.ridersData;
     template.ridersHeaders = data.ridersHeaders;
 
-    const htmlOutput = template.evaluate()
-      .setTitle('🏍️ Assign Escort Riders')
-      .setWidth(400);
-
+    const htmlOutput = template.evaluate().setTitle('🏍️ Assign Escort Riders').setWidth(400);
     SpreadsheetApp.getUi().showSidebar(htmlOutput);
-
   } catch (error) {
     logError('Error loading escort sidebar:', error);
     SpreadsheetApp.getUi().alert('Error loading sidebar: ' + error.message);
@@ -427,99 +452,75 @@ function showEscortSidebar() {
 }
 
 /**
- * Renders the escort sidebar specifically for the web app (assignments.html page).
- * This allows the web app to trigger sidebar-like behavior.
+ * Renders the escort sidebar content as an HTML string for use in the web app (e.g., assignments.html).
+ * This allows the web app to display a similar assignment interface.
+ *
+ * @return {GoogleAppsScript.HTML.HtmlOutput} HTML content for the sidebar, or an error message.
  */
 function renderEscortSidebarForWebApp() {
   try {
     const data = getDataForEscortSidebar();
-    
     const template = HtmlService.createTemplateFromFile('EscortSidebar');
     template.requestsData = data.requestsData;
     template.requestsHeaders = data.requestsHeaders;
     template.ridersData = data.ridersData;
     template.ridersHeaders = data.ridersHeaders;
-    
-    return template.evaluate()
-      .setTitle('Assign Escort Riders')
-      .setWidth(400);
-      
+    return template.evaluate().setTitle('Assign Escort Riders').setWidth(400);
   } catch (error) {
     logError('Error rendering escort sidebar for web app:', error);
-    
-    return HtmlService.createHtmlOutput(`
-      <html><body style="font-family: Arial; padding: 20px;">
-        <h3>⚠️ Error Loading Assignment Form</h3>
-        <p>Error: ${error.message}</p>
-        <p>Please try refreshing or contact support.</p>
-        <button onclick="google.script.host.close()">Close</button>
-      </body></html>
-    `).setTitle('Assignment Error').setWidth(400);
+    return HtmlService.createHtmlOutput(
+      `<html><body><h3>⚠️ Error Loading Assignment Form</h3><p>Error: ${error.message}</p>` +
+      `<p>Please try refreshing or contact support.</p><button onclick="google.script.host.close()">Close</button></body></html>`
+    ).setTitle('Assignment Error').setWidth(400);
   }
 }
 
+/**
+ * Gets requests that are suitable for assignment (not completed or cancelled).
+ * Used by the assignments page in the web app.
+ *
+ * @param {object} user The current user object (logged for context, not used for filtering in this version).
+ * @return {Array<object>} An array of formatted request objects suitable for assignment.
+ */
 function getFilteredRequestsForAssignments(user) {
   try {
     console.log('📋 Getting filtered requests for assignments page...');
     console.log('User parameter:', user);
-    
     const requestsData = getRequestsData();
-    
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
       console.log('❌ No requests data found');
       return [];
     }
-    
     const columnMap = requestsData.columnMap;
-    
-    // DEBUG: Log the column mapping
     console.log('Column map:', columnMap);
     console.log('Looking for Request ID column:', CONFIG.columns.requests.id);
     console.log('Request ID column index:', columnMap[CONFIG.columns.requests.id]);
-    
-    // Filter requests that can be assigned (not completed/cancelled)
+
     const assignableRequests = [];
-    
     for (let i = 0; i < requestsData.data.length; i++) {
       try {
         const row = requestsData.data[i];
-        
-        // FIX: Add detailed logging for the first few rows
         if (i < 3) {
           console.log(`Row ${i} data:`, row);
           console.log(`Row ${i} Request ID:`, getColumnValue(row, columnMap, CONFIG.columns.requests.id));
         }
-        
         const requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
         const requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName);
         const status = getColumnValue(row, columnMap, CONFIG.columns.requests.status);
         const eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate);
-        
-        // FIX: Add better debugging for missing Request ID
         if (!requestId) {
-          console.log(`⚠️ Missing Request ID in row ${i}:`, {
-            requestId: requestId,
-            requesterName: requesterName,
-            rawRow: row.slice(0, 5) // Show first 5 columns
-          });
-          continue; // Skip rows without Request ID
+          console.log(`⚠️ Missing Request ID in row ${i}:`, { requestId, requesterName, rawRow: row.slice(0, 5) });
+          continue;
         }
-        
-        // Must have basic required fields
         if (!requesterName) {
           console.log(`⚠️ Missing requester name in row ${i} for Request ID: ${requestId}`);
           continue;
         }
-        
-        // Only include assignable statuses
         if (!['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress'].includes(status)) {
           continue;
         }
-        
-        const processedRequest = {
-          id: requestId,           // This should now have the proper value
-          requestId: requestId,    // Add both for compatibility
-          requesterName: requesterName,
+        assignableRequests.push({
+          id: requestId, requestId, requesterName,
           type: getColumnValue(row, columnMap, CONFIG.columns.requests.type) || 'Unknown',
           eventDate: formatDateForDisplay(eventDate) || 'No Date',
           startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.startTime)) || 'No Time',
@@ -529,44 +530,28 @@ function getFilteredRequestsForAssignments(user) {
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
           ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
           status: status || 'New'
-        };
-        
-        assignableRequests.push(processedRequest);
-        
+        });
       } catch (rowError) {
         console.log(`⚠️ Error processing request row ${i}:`, rowError);
       }
     }
-    
-    // Sort by event date (most recent first)
     const sortedRequests = assignableRequests.sort((a, b) => {
       try {
         if (a.eventDate === 'No Date' && b.eventDate === 'No Date') return 0;
         if (a.eventDate === 'No Date') return 1;
         if (b.eventDate === 'No Date') return -1;
-        
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        
-        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-        
+        let dateA, dateB;
+        try { dateA = new Date(a.eventDate); } catch (e) { dateA = null; }
+        try { dateB = new Date(b.eventDate); } catch (e) { dateB = null; }
+        if (!dateA && !dateB) return 0;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
         return dateB.getTime() - dateA.getTime();
-      } catch (sortError) {
-        return 0;
-      }
+      } catch (sortError) { return 0; }
     });
-    
     console.log(`✅ Returning ${sortedRequests.length} assignable requests`);
-    
-    // DEBUG: Log the first request to verify it has an ID
-    if (sortedRequests.length > 0) {
-      console.log('First processed request:', sortedRequests[0]);
-    }
-    
+    if (sortedRequests.length > 0) console.log('First processed request:', sortedRequests[0]);
     return sortedRequests;
-    
   } catch (error) {
     console.error('❌ Error getting filtered requests for assignments:', error);
     logError('Error in getFilteredRequestsForAssignments', error);
@@ -574,62 +559,45 @@ function getFilteredRequestsForAssignments(user) {
   }
 }
 
-// 2. Add to WebAppService.js - Function to get active riders for assignments page
+/**
+ * Fetches active riders for the assignments page.
+ * Filters riders by status (Active or Available, or no status) and ensures they have a name.
+ *
+ * @return {Array<object>} An array of active rider objects, each containing:
+ *                         name, jpNumber, phone, email, carrier, status ('Available').
+ */
 function getActiveRidersForAssignments() {
   try {
     console.log('🏍️ Getting active riders for assignments page...');
-    
     const ridersData = getRidersData();
-    
     if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
       console.log('❌ No riders data found');
       return [];
     }
-    
     const columnMap = ridersData.columnMap;
     const activeRiders = [];
-    
     for (let i = 0; i < ridersData.data.length; i++) {
       try {
         const row = ridersData.data[i];
-        
         const riderName = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
         const jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber);
         const status = getColumnValue(row, columnMap, CONFIG.columns.riders.status);
         const phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone);
         const email = getColumnValue(row, columnMap, CONFIG.columns.riders.email);
         const carrier = getColumnValue(row, columnMap, CONFIG.columns.riders.carrier);
-        
-        // Must have name and be active
-        if (!riderName || !String(riderName).trim()) {
-          continue;
-        }
-        
-        // Check if active (no status or status is Active/Available)
-        const riderStatus = String(status || '').toLowerCase().trim();
-        if (riderStatus && !['active', 'available', ''].includes(riderStatus)) {
-          continue;
-        }
-        
-        const rider = {
-          name: riderName,
-          jpNumber: jpNumber || 'N/A',
-          phone: phone || 'N/A',
-          email: email || 'N/A',
-          carrier: carrier || 'N/A',
-          status: 'Available' // For assignments page display
-        };
-        
-        activeRiders.push(rider);
-        
+        if (!riderName || !String(riderName).trim()) continue;
+        const riderStatus = String(status || '').trim().toLowerCase();
+        if (riderStatus && !['active', 'available', ''].includes(riderStatus)) continue;
+        activeRiders.push({
+          name: riderName, jpNumber: jpNumber || 'N/A', phone: phone || 'N/A',
+          email: email || 'N/A', carrier: carrier || 'N/A', status: 'Available'
+        });
       } catch (rowError) {
         console.log(`⚠️ Error processing rider row ${i}:`, rowError);
       }
     }
-    
     console.log(`✅ Returning ${activeRiders.length} active riders`);
     return activeRiders;
-    
   } catch (error) {
     console.error('❌ Error getting active riders for assignments:', error);
     logError('Error in getActiveRidersForAssignments', error);
@@ -637,105 +605,62 @@ function getActiveRidersForAssignments() {
   }
 }
 
-// 3. Add to WebAppService.js - Enhanced function to get upcoming assignments with better formatting
+/**
+ * Fetches upcoming assignments, formatted for the assignments page.
+ * Filters for assignments in the next 60 days that are not completed or cancelled.
+ * @param {object} user The current user object (logged for context, not used for filtering).
+ * @return {Array<object>} An array of formatted upcoming assignment objects.
+ */
 function getUpcomingAssignmentsForAssignmentsPage(user) {
   try {
     console.log('📋 Getting upcoming assignments for assignments page...');
-    
     const assignmentsData = getAssignmentsData();
-    
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
       console.log('❌ No assignments data found');
       return [];
     }
-    
     const columnMap = assignmentsData.columnMap;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get assignments for the next 60 days
+    const today = new Date(); today.setHours(0,0,0,0);
     const futureDate = new Date(today.getTime() + (60 * 24 * 60 * 60 * 1000));
-    
     const upcomingAssignments = [];
-    
     for (let i = 0; i < assignmentsData.data.length; i++) {
       try {
         const row = assignmentsData.data[i];
-        
         const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
         const requestId = getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId);
         const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
         const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
         const eventDate = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
-        
-        // Must have basic required fields
-        if (!assignmentId || !requestId || !riderName || !eventDate) {
-          continue;
-        }
-        
-        // Must not be completed or cancelled
-        if (['Completed', 'Cancelled', 'No Show'].includes(status)) {
-          continue;
-        }
-        
-        // Must be in the upcoming timeframe
+        if (!assignmentId || !requestId || !riderName || !eventDate) continue;
+        if (['Completed', 'Cancelled', 'No Show'].includes(status)) continue;
         const assignmentDate = new Date(eventDate);
-        if (isNaN(assignmentDate.getTime()) || assignmentDate < today || assignmentDate > futureDate) {
-          continue;
-        }
-        
+        if (isNaN(assignmentDate.getTime()) || assignmentDate < today || assignmentDate > futureDate) continue;
+
         const startLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation);
         const endLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation);
-        
-        // Create display location
         let displayLocation = 'Location TBD';
-        if (startLocation) {
-          displayLocation = startLocation;
-          if (endLocation) {
-            displayLocation += ` → ${endLocation}`;
-          }
-        } else if (endLocation) {
-          displayLocation = `To: ${endLocation}`;
-        }
-        
-        const assignment = {
-          id: assignmentId,
-          requestId: requestId,
-          eventDate: formatDateForDisplay(eventDate),
+        if (startLocation) { displayLocation = startLocation; if (endLocation) displayLocation += ` → ${endLocation}`; }
+        else if (endLocation) displayLocation = `To: ${endLocation}`;
+
+        upcomingAssignments.push({
+          id: assignmentId, requestId, eventDate: formatDateForDisplay(eventDate),
           startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime)) || 'No Time',
           endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.endTime)) || '',
-          riderName: riderName,
-          startLocation: displayLocation,
-          status: status || 'Assigned',
+          riderName, startLocation: displayLocation, status: status || 'Assigned',
           notificationStatus: determineNotificationStatus(row, columnMap)
-        };
-        
-        upcomingAssignments.push(assignment);
-        
-      } catch (rowError) {
-        console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
-      }
+        });
+      } catch (rowError) { console.log(`⚠️ Error processing assignment row ${i}:`, rowError); }
     }
-    
-    // Sort by event date, earliest first
     const sortedAssignments = upcomingAssignments.sort((a, b) => {
       try {
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        
+        const dateA = new Date(a.eventDate); const dateB = new Date(b.eventDate);
         if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-        
+        if (isNaN(dateA.getTime())) return 1; if (isNaN(dateB.getTime())) return -1;
         return dateA.getTime() - dateB.getTime();
-      } catch (sortError) {
-        return 0;
-      }
+      } catch (sortError) { return 0; }
     });
-    
     console.log(`✅ Returning ${sortedAssignments.length} upcoming assignments`);
     return sortedAssignments;
-    
   } catch (error) {
     console.error('❌ Error getting upcoming assignments for assignments page:', error);
     logError('Error in getUpcomingAssignmentsForAssignmentsPage', error);
@@ -743,42 +668,25 @@ function getUpcomingAssignmentsForAssignmentsPage(user) {
   }
 }
 
-// 4. Add debugging function to test assignments page data
+/**
+ * A debugging function to test data retrieval for the assignments page.
+ * Fetches requests, riders, and assignments and logs counts and sample data.
+ * @return {object} An object containing samples of requests, riders, assignments, and counts.
+ */
 function debugAssignmentsPageData() {
   try {
     console.log('=== DEBUGGING ASSIGNMENTS PAGE DATA ===');
-    
     const requests = getFilteredRequestsForAssignments({roles: ['admin']});
     const riders = getActiveRidersForAssignments();
     const assignments = getUpcomingAssignmentsForAssignmentsPage({roles: ['admin']});
-    
-    console.log('Requests count:', requests.length);
-    console.log('Riders count:', riders.length);
-    console.log('Assignments count:', assignments.length);
-    
-    if (requests.length > 0) {
-      console.log('Sample request:', requests[0]);
-    }
-    
-    if (riders.length > 0) {
-      console.log('Sample rider:', riders[0]);
-    }
-    
-    if (assignments.length > 0) {
-      console.log('Sample assignment:', assignments[0]);
-    }
-    
+    console.log('Requests count:', requests.length, 'Riders count:', riders.length, 'Assignments count:', assignments.length);
+    if (requests.length > 0) console.log('Sample request:', requests[0]);
+    if (riders.length > 0) console.log('Sample rider:', riders[0]);
+    if (assignments.length > 0) console.log('Sample assignment:', assignments[0]);
     return {
-      requests: requests.slice(0, 3),
-      riders: riders.slice(0, 3),
-      assignments: assignments.slice(0, 3),
-      summary: {
-        requestsCount: requests.length,
-        ridersCount: riders.length,
-        assignmentsCount: assignments.length
-      }
+      requests: requests.slice(0,3), riders: riders.slice(0,3), assignments: assignments.slice(0,3),
+      summary: { requestsCount: requests.length, ridersCount: riders.length, assignmentsCount: assignments.length }
     };
-    
   } catch (error) {
     console.error('Error in debugAssignmentsPageData:', error);
     return { error: error.message };
@@ -789,176 +697,108 @@ function debugAssignmentsPageData() {
  * NEW WRAPPER FUNCTIONS FOR CONSOLIDATED CLIENT-SIDE DATA REQUESTS
  */
 
-// For index.html (Dashboard)
+/**
+ * Fetches all necessary data for the main dashboard (index.html) in a single call.
+ * @return {object} An object containing `user`, `stats`, `recentRequests`, and `upcomingAssignments`. Includes a `success` flag and `error` message on failure.
+ */
 function getPageDataForDashboard() {
   try {
-    const user = getCurrentUser(); // From AuthService.js or Code.js
-    const stats = calculateDashboardStatistics(); // From Dashboard.js
-
-    // For recent requests:
-    // calculateDashboardStatistics fetches rawRequestsData.
-    // We need to pass this to getFilteredRequestsForWebApp if we want to avoid a second fetch.
-    // However, calculateDashboardStatistics doesn't return the raw data directly.
-    // Option 1: Modify calculateDashboardStatistics to return raw data (more invasive).
-    // Option 2: Fetch rawRequestsData again here (less invasive for now).
-    // Option 3: Create a new function in Dashboard.js that gives raw requests and then pass it around.
-
-    // Let's go with Option 2 for now to minimize changes to existing optimized functions in Dashboard.js,
-    // but acknowledge this isn't perfectly optimal if calculateDashboardStatistics already has the data.
-    // A future optimization could be to have a core data fetching function that calculateDashboardStatistics
-    // and this function both use.
-    
-    const rawRequests = getRequestsData(); // Fetch raw requests
+    const user = getCurrentUser();
+    const stats = calculateDashboardStatistics();
+    const rawRequests = getRequestsData();
     let recentRequests = [];
     if (rawRequests && rawRequests.data) {
-      // Use the existing getFilteredRequestsForWebApp from Dashboard.js
-      // It expects rawRequestsData object and a filter.
-      // To get "recent", we'll take all, then sort and slice.
-      const allFormattedRequests = getFilteredRequestsForWebApp(rawRequests, 'All'); 
-      
-      // Sort by date (assuming 'date' field is sortable after formatting or use raw date before formatting)
-      // For simplicity, if formatted date is "MM/DD/YYYY", new Date() can parse it.
-      // Otherwise, it's better to sort raw data then format.
-      // Let's assume getFilteredRequestsForWebApp returns objects with a 'date' field that is display-formatted
-      // and also a raw date field if possible, or we sort based on the formatted date string (less reliable).
-      // Given the previous refactor, getFilteredRequestsForWebApp formats dates.
-      // Sorting by formatted date strings like "ShortMonth DD, YYYY" can be tricky.
-      // It's better if getFilteredRequestsForWebApp could also return a raw sortable date.
-      // For now, we'll sort by the formatted date, which might not be perfectly chronological
-      // if date formats vary wildly.
+      const allFormattedRequests = getFilteredRequestsForWebApp(rawRequests, 'All');
       try {
-        recentRequests = allFormattedRequests.sort((a, b) => {
-          // Assuming 'date' field is something like "Jan 01, 2024" or "MM/DD/YYYY"
-          // This sort is imperfect for string dates but a common approach.
-          return new Date(b.date) - new Date(a.date); 
-        }).slice(0, 10);
+        recentRequests = allFormattedRequests.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
       } catch (e) {
         console.error("Error sorting recent requests: ", e);
-        recentRequests = allFormattedRequests.slice(0, 10); // Fallback to unsorted slice
+        recentRequests = allFormattedRequests.slice(0, 10);
       }
     }
-    
-    // For upcoming assignments:
-    // getUpcomingAssignmentsForWebApp is already in WebAppService.js
-    // It takes a user object, which we have.
     const upcomingAssignments = getUpcomingAssignmentsForWebApp(user);
-
-    return {
-      success: true,
-      user: user,
-      stats: stats,
-      recentRequests: recentRequests,
-      upcomingAssignments: upcomingAssignments
-    };
+    return { success: true, user, stats, recentRequests, upcomingAssignments };
   } catch (error) {
     logError('Error in getPageDataForDashboard', error);
     return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser(), // Still return user if possible
+      success: false, error: error.message, user: getCurrentUser(),
       stats: { activeRiders: 0, pendingRequests: 0, todayAssignments: 0, weekAssignments: 0, totalRequests: 0, completedRequests: 0 },
-      recentRequests: [],
-      upcomingAssignments: []
+      recentRequests: [], upcomingAssignments: []
     };
   }
 }
 
 
-// For assignments.html (Assignments Page)
+/**
+ * Fetches all necessary data for the assignments page (assignments.html).
+ * Optionally fetches details for a specific request if `requestId` is provided.
+ * @param {string} [requestId=null] Optional ID of a request to fetch details for.
+ * @return {object} An object containing `user`, `requests` (assignable), `riders` (active),
+ *                  and `initialRequestDetails`. Includes a `success` flag and `error` message on failure.
+ */
 function getPageDataForAssignments(requestId = null) {
   try {
     const user = getCurrentUser();
-    // These functions are already in WebAppService.js
-    const assignableRequests = getFilteredRequestsForAssignments(user); 
+    const assignableRequests = getFilteredRequestsForAssignments(user);
     const activeRiders = getActiveRidersForAssignments();
-    
     let requestDetails = null;
     if (requestId) {
-      // getEscortDetailsForAssignment is in WebAppService.js
-      // It fetches request details and active riders again.
-      // We can optimize by passing activeRiders if the function is refactored,
-      // or call it as is. For now, call as is.
       try {
         const escortDetails = getEscortDetailsForAssignment(requestId);
-        requestDetails = escortDetails.request; 
-        // We already have activeRiders, so escortDetails.riders is redundant here.
+        requestDetails = escortDetails.request;
       } catch (e) {
         logError(`Failed to get details for initial requestId ${requestId} in getPageDataForAssignments`, e);
-        // Continue without pre-loaded details if specific request fails
       }
     }
-
-    return {
-      success: true,
-      user: user,
-      requests: assignableRequests,
-      riders: activeRiders,
-      initialRequestDetails: requestDetails // For pre-populating if requestId was passed
-    };
+    return { success: true, user, requests: assignableRequests, riders: activeRiders, initialRequestDetails: requestDetails };
   } catch (error) {
     logError('Error in getPageDataForAssignments', error);
-    return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser(),
-      requests: [],
-      riders: [],
-      initialRequestDetails: null
-    };
+    return { success: false, error: error.message, user: getCurrentUser(), requests: [], riders: [], initialRequestDetails: null };
   }
 }
 
-// For requests.html (Requests Page)
+/**
+ * Fetches data for the requests list page (requests.html).
+ * @param {string} [filter='All'] The status filter to apply to the requests.
+ * @return {object} An object containing `user` and `requests` (filtered and formatted).
+ *                  Includes a `success` flag and `error` message on failure.
+ */
 function getPageDataForRequests(filter = 'All') {
   try {
     const user = getCurrentUser();
-    // getFilteredRequestsForWebApp is in Dashboard.js, ensure it's accessible
-    // or move/copy a version to WebAppService or Code.js if preferred.
-    // Assuming it's globally accessible for now.
-    // It needs raw data.
     const rawRequests = getRequestsData();
-    const requests = getFilteredRequestsForWebApp(rawRequests, filter);
-
-    return {
-      success: true,
-      user: user,
-      requests: requests
-    };
+    const requests = getFilteredRequestsForWebApp(rawRequests, filter); // From Dashboard.js
+    return { success: true, user, requests };
   } catch (error) {
     logError('Error in getPageDataForRequests', error);
-    return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser(),
-      requests: []
-    };
+    return { success: false, error: error.message, user: getCurrentUser(), requests: [] };
   }
 }
 
-// For notifications.html
-function getPageDataForNotifications(userRoles = ['admin']) { // Pass user roles for filtering if needed
+/**
+ * Fetches data for the notifications page (notifications.html).
+ * @param {Array<string>} [userRoles=['admin']] The roles of the current user (used for potential filtering, though not implemented in this version).
+ * @return {object} An object containing `user`, `assignments` (all relevant for notifications),
+ *                  and `stats` (notification-related statistics).
+ *                  Includes a `success` flag and `error` message on failure.
+ */
+function getPageDataForNotifications(userRoles = ['admin']) {
   try {
     const user = getCurrentUser();
-    // getAllAssignmentsForNotifications should be created or verified.
-    // Let's assume it exists in this file or is globally available.
-    // If it doesn't exist, we'll need to define it.
-    // For now, let's assume a function that gets all assignments suitable for notification.
     let assignments = [];
-    if (typeof getAllAssignmentsForNotifications === "function") {
+    if (typeof getAllAssignmentsForNotifications === "function") { // From Notifications.js
         assignments = getAllAssignmentsForNotifications();
     } else {
-        // Fallback or placeholder if the function isn't defined yet.
-        // This would ideally fetch all assignments and format them appropriately.
         const rawAssignments = getAssignmentsData();
         if (rawAssignments && rawAssignments.data) {
-            assignments = rawAssignments.data.map((row, index) => { // Basic mapping
+            assignments = rawAssignments.data.map((row, index) => {
                 const colMap = rawAssignments.columnMap;
                 return {
                     id: getColumnValue(row, colMap, CONFIG.columns.assignments.id) || `TEMP_ID_${index}`,
                     requestId: getColumnValue(row, colMap, CONFIG.columns.assignments.requestId),
                     riderName: getColumnValue(row, colMap, CONFIG.columns.assignments.riderName),
-                    riderPhone: getColumnValue(row, colMap, CONFIG.columns.riders.phone), // This might need a join or separate fetch
-                    riderEmail: getColumnValue(row, colMap, CONFIG.columns.riders.email), // Ditto
+                    riderPhone: getColumnValue(row, colMap, CONFIG.columns.riders.phone),
+                    riderEmail: getColumnValue(row, colMap, CONFIG.columns.riders.email),
                     eventDate: formatDateForDisplay(getColumnValue(row, colMap, CONFIG.columns.assignments.eventDate)),
                     startTime: formatTimeForDisplay(getColumnValue(row, colMap, CONFIG.columns.assignments.startTime)),
                     startLocation: getColumnValue(row, colMap, CONFIG.columns.assignments.startLocation),
@@ -969,53 +809,39 @@ function getPageDataForNotifications(userRoles = ['admin']) { // Pass user roles
         }
          logWarn("Used fallback data for getAllAssignmentsForNotifications in getPageDataForNotifications");
     }
-
-    // Calculate stats based on the fetched assignments
-    const stats = calculateStatsFromAssignmentsData(assignments); // Ensure this helper is available
-
-    return {
-      success: true,
-      user: user,
-      assignments: assignments,
-      stats: stats
-    };
+    const stats = calculateStatsFromAssignmentsData(assignments);
+    return { success: true, user, assignments, stats };
   } catch (error) {
     logError('Error in getPageDataForNotifications', error);
     return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser(),
-      assignments: [],
-      stats: { totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 }
+      success: false, error: error.message, user: getCurrentUser(),
+      assignments: [], stats: { totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 }
     };
   }
 }
 
-// For reports.html
+/**
+ * Fetches data for the reports page (reports.html).
+ * @param {object} filters Filters to apply for report generation (e.g., date ranges, types).
+ * @return {object} An object containing `user` and `reportData`.
+ *                  Includes a `success` flag and `error` message on failure.
+ */
 function getPageDataForReports(filters) {
   try {
     const user = getCurrentUser();
-    // generateReportData is already designed to fetch data based on filters.
-    const reportData = generateReportData(filters); // Assuming this is in Reports.js or global
-
-    return {
-      success: true,
-      user: user,
-      reportData: reportData
-    };
+    const reportData = generateReportData(filters); // From Reports.js
+    return { success: true, user, reportData };
   } catch (error) {
     logError('Error in getPageDataForReports', error);
-    return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser(),
-      reportData: null // Or some default/empty report structure
-    };
+    return { success: false, error: error.message, user: getCurrentUser(), reportData: null };
   }
 }
 
-// Helper function (ensure it's defined, possibly move from notifications.html or make global)
-// This is a placeholder, actual implementation might be more complex or reside elsewhere.
+/**
+ * Helper function to calculate notification-related statistics from a list of assignments.
+ * @param {Array<object>} assignments An array of assignment objects.
+ * @return {object} An object with statistics: totalAssignments, pendingNotifications, smsToday, emailToday.
+ */
 function calculateStatsFromAssignmentsData(assignments) {
     if (!assignments || !Array.isArray(assignments)) {
         return { totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 };
@@ -1044,14 +870,27 @@ function calculateStatsFromAssignmentsData(assignments) {
     };
 }
 
-// Ensure getCurrentUser is available (e.g., from AuthService.js or Code.js)
-// Ensure calculateDashboardStatistics is available (from Dashboard.js)
-// Ensure getFilteredRequestsForWebApp is available (from Dashboard.js)
-// Ensure getRequestsData is available (from DataService.js)
-// Ensure getAssignmentsData is available (from DataService.js)
-// Ensure formatDateForDisplay, formatTimeForDisplay are available (from Formatting.js)
-// Ensure getColumnValue is available (from SheetUtils.js)
-// Ensure CONFIG is available
-// Ensure logError, logWarn are available (from Logger.js or Code.js)
-// Ensure generateReportData is available (from Reports.js or Code.js)
-// Ensure getAllAssignmentsForNotifications is defined (expected in WebAppService.js or DataService.js)
+// --- End of From WebAppService.js ---
+
+// --- From Dashboard.js ---
+// (JSDoc comments for these functions were added in a previous step and are assumed to be present in the source)
+// displayDashboardLayout, setupDashboardFilterDropdown, refreshDashboard, updateSummaryStatistics,
+// calculateDashboardStatistics, updateRequestsDisplay, getFilteredRequestsForWebApp,
+// getFormattedRequestsForDashboard, updateRiderScheduleSection, getAssignedRidersForUpcomingWeek,
+// buildCompactRiderScheduleGrid, applyStatusColors, formatDashboardColumns, formatRequestsSheetForLineBreaks
+// --- End of From Dashboard.js ---
+
+// --- From Reports.js ---
+// (JSDoc comments for generateReportData was added previously)
+// --- End of From Reports.js ---
+
+// --- From RequestCRUD.js ---
+// (JSDoc comments for these functions were added previously)
+// createNewRequest, updateExistingRequest, deleteRequest, parseTimeString
+// --- End of From RequestCRUD.js ---
+
+// --- From AssignmentManager.js ---
+// (JSDoc comments for these functions were added previously)
+// buildAssignmentRow, cancelRiderAssignment, addRiderAssignments, processAssignmentAndPopulate,
+// getRequestDetails, generateAssignmentId, updateRequestStatus
+// --- End of From AssignmentManager.js ---

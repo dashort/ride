@@ -489,9 +489,15 @@
         </div>
     </header>
 
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
-
     <div class="container">
+        <nav class="navigation">
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec" class="nav-button">📊 Dashboard</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=requests" class="nav-button">📋 Requests</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=assignments" class="nav-button">🏍️ Assignments</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=notifications" class="nav-button active">📱 Notifications</a>
+            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=reports" class="nav-button">📊 Reports</a>
+        </nav>
+
         <div class="notifications-header">
             <h2 class="page-title">📱 Notifications Center</h2>
             
@@ -621,7 +627,8 @@
         // Initialize page
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Notifications page loading...');
-            loadInitialPageData(); // Consolidated function
+            loadUserData();
+            loadNotificationData();
             setupEventListeners();
         });
 
@@ -660,41 +667,38 @@
             };
         }
 
-        function loadInitialPageData() {
-            console.log('🔄 Loading all notification page data...');
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
+        function loadUserData() {
+            console.log('Loading user data...');
+            try {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    console.log('Google Apps Script not available, using fallback user data');
+                    handleUserData({
+                        name: 'System User',
+                        roles: ['admin'],
+                        permissions: ['send_notifications']
+                    });
+                    return;
+                }
+
                 google.script.run
-                    .withSuccessHandler(handlePageDataSuccess)
-                    .withFailureHandler(handlePageDataError)
-                    .getPageDataForNotifications(); // Pass current user roles if needed, e.g., app.user.roles
-            } else {
-                console.log('⚠️ Google Apps Script not available for notifications page.');
-                handlePageDataError({ message: "Google Apps Script not available." });
+                    .withSuccessHandler(handleUserData)
+                    .withFailureHandler((error) => {
+                        console.error('Error loading user:', error);
+                        handleUserData({
+                            name: 'System User',
+                            roles: ['admin'],
+                            permissions: ['send_notifications']
+                        });
+                    })
+                    .getCurrentUser();
+            } catch (error) {
+                console.error('Error in loadUserData:', error);
+                handleUserData({
+                    name: 'System User',
+                    roles: ['admin'],
+                    permissions: ['send_notifications']
+                });
             }
-        }
-
-        function handlePageDataSuccess(data) {
-            if (data && data.success) {
-                console.log('✅ Notifications page data loaded:', data);
-                handleUserData(data.user); // Processes user info
-                updateStats(data.stats);    // Update stats display
-                handleAssignmentsLoaded(data.assignments); // Process and render assignments
-            } else {
-                console.error('❌ Failed to load notifications page data:', data ? data.error : 'No data returned');
-                handlePageDataError(data || { message: "Received success:false or no data." });
-            }
-        }
-
-        function handlePageDataError(error) {
-            console.error('❌ Error loading notifications page data:', error.message || error);
-            const fallbackUser = (error && error.user) ? error.user : {
-                name: 'System User',
-                roles: ['admin'],
-                permissions: ['send_notifications']
-            };
-            handleUserData(fallbackUser);
-            updateStats({ totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 });
-            handleAssignmentsLoaded([]);
         }
 
         function handleUserData(user) {
@@ -727,11 +731,153 @@
                 console.log('Error in updateUserInfoSafely:', error);
             }
         }
-        
-        // This helper function might be slightly different from the one in WebAppService.js
-        // if client-side representation of assignments differs.
-        // For now, assume structure is compatible or WebAppService formats it.
-        function calculateStatsFromAssignmentsData(assignments) { 
+
+        // Replace the entire loadNotificationData function in notifications.html
+
+function loadNotificationData() {
+    console.log('🔄 Loading notification data using working functions...');
+    loadNotificationStatsWorking();
+    loadAssignmentsWorking();
+}
+
+function loadNotificationStatsWorking() {
+    console.log('📊 Loading notification statistics using working method...');
+    try {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Use the same function that works on assignments page
+            google.script.run
+                .withSuccessHandler((requests) => {
+                    console.log('✅ Stats data loaded successfully:', requests);
+
+                    // Calculate basic stats from requests data
+                    const stats = {
+                        totalAssignments: requests ? requests.length : 0,
+                        pendingNotifications: requests ? requests.filter(r => r.status === 'Assigned').length : 0,
+                        smsToday: 0, // Will be 0 for now until we get notification data working
+                        emailToday: 0
+                    };
+
+                    console.log('📊 Calculated stats:', stats);
+                    updateStats(stats);
+                })
+                .withFailureHandler((error) => {
+                    console.error('❌ Error loading stats:', error);
+                    updateStats({
+                        totalAssignments: 0,
+                        pendingNotifications: 0,
+                        smsToday: 0,
+                        emailToday: 0
+                    });
+                })
+                .getFilteredRequestsForWebApp('All'); // Use the working function from assignments
+        } else {
+            console.log('⚠️ Google Apps Script not available for stats');
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+        }
+    } catch (error) {
+        console.error('❌ Exception in loadNotificationStatsWorking:', error);
+        updateStats({
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        });
+    }
+}
+
+function loadAssignmentsWorking() {
+    console.log('📋 Loading real assignments for notifications...');
+
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.log('⚠️ Google Apps Script not available');
+        handleAssignmentsLoaded([]);
+        return;
+    }
+
+    try {
+        // Get actual assignments with real assignment IDs
+        google.script.run
+            .withSuccessHandler((assignments) => {
+                console.log('✅ Real assignments loaded successfully');
+                console.log('Assignment count:', assignments ? assignments.length : 0);
+
+                if (assignments && assignments.length > 0) {
+                    console.log('Sample real assignment:', assignments[0]);
+                    console.log('Real assignment ID:', assignments[0].id);
+
+                    // Use the assignments directly - they already have real IDs
+                    handleAssignmentsLoaded(assignments);
+                } else {
+                    console.log('⚠️ No assignments data received');
+                    handleAssignmentsLoaded([]);
+                }
+            })
+            .withFailureHandler((error) => {
+                console.error('❌ Error loading real assignments:', error);
+                handleAssignmentsLoaded([]);
+            })
+            .getAllAssignmentsForNotifications(); // Use the real assignments function
+    } catch (error) {
+        console.error('❌ Exception in loadAssignmentsWorking:', error);
+        handleAssignmentsLoaded([]);
+    }
+}
+
+
+
+
+function loadNotificationStats() {
+    console.log('📊 Loading notification statistics...');
+    try {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Load assignments data for calculating stats
+            google.script.run
+                .withSuccessHandler((assignments) => {
+                    console.log('✅ Assignments loaded for stats calculation:', assignments);
+
+                    // Calculate stats from actual assignments data
+                    const stats = calculateStatsFromAssignmentsData(assignments);
+                    console.log('📊 Calculated stats:', stats);
+
+                    updateStats(stats);
+                })
+                .withFailureHandler((error) => {
+                    console.error('❌ Error loading assignments for stats:', error);
+                    updateStats({
+                        totalAssignments: 0,
+                        pendingNotifications: 0,
+                        smsToday: 0,
+                        emailToday: 0
+                    });
+                })
+                .getAllAssignmentsForNotifications(); // Use assignments data
+        } else {
+            console.log('⚠️ Google Apps Script not available for stats');
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+        }
+    } catch (error) {
+        console.error('❌ Exception in loadNotificationStats:', error);
+        updateStats({
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        });
+    }
+}
+// Add this helper function to notifications.html
+
+function calculateStatsFromAssignmentsData(assignments) {
     if (!assignments || !Array.isArray(assignments)) {
         return {
             totalAssignments: 0,
@@ -775,6 +921,36 @@
         smsToday: smsToday,
         emailToday: emailToday
     };
+}
+
+function loadAssignments() {
+    console.log('📋 Loading assignments for notifications...');
+
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.log('⚠️ Google Apps Script not available');
+        handleAssignmentsLoaded([]);
+        return;
+    }
+
+    try {
+        // Use the same function that works on assignments page
+        google.script.run
+            .withSuccessHandler((assignments) => {
+                console.log('✅ Assignments loaded successfully for notifications');
+
+                // Convert assignments to notification format
+                const notificationAssignments = convertAssignmentsToNotificationFormat(assignments);
+                handleAssignmentsLoaded(notificationAssignments);
+            })
+            .withFailureHandler((error) => {
+                console.error('❌ Error loading assignments:', error);
+                handleAssignmentsLoaded([]);
+            })
+            .getFilteredRequestsForAssignments({roles: ['admin']});
+    } catch (error) {
+        console.error('❌ Exception in loadAssignments:', error);
+        handleAssignmentsLoaded([]);
+    }
 }
 function processAssignmentsForNotifications(assignments) {
     if (!assignments || !Array.isArray(assignments)) {

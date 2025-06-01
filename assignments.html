@@ -477,585 +477,796 @@
         </div>
     </div>
 
-    <script>
-        // Global state
-        var currentRequests = [];
-        var activeRiders = [];
-        var selectedRequest = null;
-        var selectedRiders = new Set();
-        var app = {
-            user: null,
-            isOnline: navigator.onLine,
-            loadingTimeout: 15000
-        };
+<script>
+    /**
+     * @typedef {object} UserProfile - (Assuming type definition from index.html or similar)
+     * @property {string} name
+     * @property {string} email
+     * @property {Array<string>} roles
+     * @property {Array<string>} permissions
+     */
 
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Assignments page loading...');
-            
-            // Set loading timeout
-            setTimeout(function() {
-                if (currentRequests.length === 0 && activeRiders.length === 0) {
-                    console.log('⚠️ Loading timeout - showing fallback data');
-                    handleLoadingTimeout();
-                }
-            }, app.loadingTimeout);
-            
-            loadAllData();
-            setupEventListeners();
-            
-            // Check if specific request was passed in URL
-            var urlParams = new URLSearchParams(window.location.search);
-            var requestIdToLoad = urlParams.get('requestId'); // Renamed to avoid conflict
-            // The actual loading of this requestId will be handled by getPageDataForAssignments
+    /**
+     * @typedef {object} RequestItemAssignmentsPage - Data for a request in the assignments list.
+     * @property {string} id - The request ID.
+     * @property {string} requesterName - Name of the requester.
+     * @property {string} eventDate - Formatted event date.
+     * @property {string} startTime - Formatted start time.
+     * @property {string} startLocation - Start location.
+     * @property {number} ridersNeeded - Number of riders needed.
+     * @property {string} status - Current status of the request.
+     * @property {string} [type] - Type of request.
+     * @property {string} [endTime] - Formatted end time.
+     * @property {string} [endLocation] - End location.
+     * @property {string} [ridersAssigned] - Comma-separated string of assigned rider names.
+     */
+
+    /**
+     * @typedef {object} RiderItemAssignmentsPage - Data for an active rider.
+     * @property {string} name - Rider's full name.
+     * @property {string} jpNumber - Rider's JP Number or ID.
+     * @property {string} phone - Rider's phone number.
+     * @property {string} email - Rider's email address.
+     * @property {string} carrier - Rider's phone carrier.
+     * @property {string} [status] - Rider's current status (e.g., "Available").
+     */
+
+    /**
+     * @typedef {object} AppStateAssignments
+     * @property {UserProfile|null} user - Current user's profile.
+     * @property {boolean} isOnline - Network status.
+     * @property {number} loadingTimeout - Timeout for loading operations in milliseconds.
+     */
+
+    /** Global state for the assignments page. */
+    var currentRequests = [];
+    /** @type {Array<RiderItemAssignmentsPage>} */
+    var activeRiders = [];
+    /** @type {RequestItemAssignmentsPage|null} */
+    var selectedRequest = null;
+    /** @type {Set<string>} */
+    var selectedRiders = new Set(); // Stores names of selected riders
+    /** @type {AppStateAssignments} */
+    var app = {
+        user: null,
+        isOnline: navigator.onLine,
+        loadingTimeout: 15000
+    };
+
+    /**
+     * Initializes the assignments page when the DOM content is fully loaded.
+     * Sets a timeout for data loading and fetches initial data.
+     * Also checks for a requestId in the URL to pre-select a request.
+     * @listens DOMContentLoaded
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🚀 Assignments page loading...');
+
+        setTimeout(function() {
+            if (currentRequests.length === 0 && activeRiders.length === 0) {
+                console.log('⚠️ Loading timeout - showing fallback data');
+                handleLoadingTimeout();
+            }
+        }, app.loadingTimeout);
+
+        loadAllData();
+        setupEventListeners();
+
+        // Pre-selection of request is now handled within handleAssignmentsDataSuccess
+    });
+
+    /**
+     * Loads all necessary data for the assignments page by calling the consolidated
+     * server-side function `getPageDataForAssignments`.
+     * Passes a requestId from URL parameters if present.
+     * @return {void}
+     */
+    function loadAllData() {
+        console.log('📊 Starting consolidated data loading for assignments page...');
+        var urlParams = new URLSearchParams(window.location.search);
+        var requestIdToLoad = urlParams.get('requestId');
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handleAssignmentsDataSuccess)
+                .withFailureHandler(handleAssignmentsDataFailure)
+                .getPageDataForAssignments(requestIdToLoad);
+        } else {
+            console.log('⚠️ Google Apps Script not available for assignments page.');
+            handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
+        }
+    }
+
+    /**
+     * Handles the successful response from fetching consolidated assignments page data.
+     * Updates UI with user info, requests, riders, and potentially pre-selects a request.
+     * @param {object} data - The consolidated data object from the server.
+     * @param {boolean} data.success - Indicates if the server call was successful.
+     * @param {UserProfile} [data.user] - User information.
+     * @param {Array<RequestItemAssignmentsPage>} [data.requests] - Assignable requests.
+     * @param {Array<RiderItemAssignmentsPage>} [data.riders] - Active riders.
+     * @param {RequestItemAssignmentsPage} [data.initialRequestDetails] - Details if a specific request was pre-loaded.
+     * @param {string} [data.error] - Error message if success is false.
+     * @return {void}
+     */
+    function handleAssignmentsDataSuccess(data) {
+        if (data && data.success) {
+            console.log('✅ Assignments page data loaded successfully:', data);
+            handleUserData(data.user);
+            handleRequestsLoaded(data.requests);
+            handleRidersLoaded(data.riders);
+
+            if (data.initialRequestDetails) {
+                setTimeout(function() {
+                     const preloadedRequestId = data.initialRequestDetails.id || data.initialRequestDetails.requestId;
+                     if (preloadedRequestId) {
+                        console.log('Attempting to pre-select request:', preloadedRequestId);
+                        selectRequest(preloadedRequestId, true);
+                     }
+                }, 500);
+            } else {
+                 var urlParams = new URLSearchParams(window.location.search);
+                 var requestIdFromUrl = urlParams.get('requestId');
+                 if (requestIdFromUrl) {
+                     console.log('Attempting to select request from URL param (fallback):', requestIdFromUrl);
+                     setTimeout(function() { selectRequest(requestIdFromUrl, true); }, 500);
+                 }
+            }
+        } else {
+            console.error('❌ Failed to load assignments page data:', data ? data.error : 'No data returned');
+            handleAssignmentsDataFailure(data || { message: "Received success:false or no data." });
+        }
+    }
+
+    /**
+     * Handles failures in fetching consolidated assignments page data.
+     * Logs the error and attempts to set fallback UI states.
+     * @param {object|string} error - The error object or message.
+     * @param {UserProfile} [error.user] - User data if available.
+     * @return {void}
+     */
+    function handleAssignmentsDataFailure(error) {
+        console.error('❌ Error loading assignments page data:', error.message || error);
+        const fallbackUser = (error && error.user) ? error.user : {
+            name: 'System User',
+            email: 'user@system.com',
+            roles: ['admin'],
+            permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+        };
+        handleUserData(fallbackUser);
+        handleLoadingTimeout();
+    }
+
+    /**
+     * Updates the user interface with the provided user data (name, role, avatar).
+     * Also adjusts navigation link visibility based on permissions.
+     * @param {UserProfile} user - The user object.
+     * @return {void}
+     */
+    function handleUserData(user) {
+        console.log('👤 User data loaded:', user);
+        app.user = user;
+
+        document.getElementById('userName').textContent = user.name || 'User';
+        document.getElementById('userRole').textContent = (user.roles || ['user']).join(', ');
+        document.getElementById('userAvatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
+
+        var permissions = user.permissions || [];
+
+        if (permissions.indexOf('send_notifications') === -1) {
+            var notifLink = document.getElementById('notificationsLink');
+            if (notifLink) notifLink.style.display = 'none';
+        }
+        if (permissions.indexOf('view_reports') === -1) {
+            var reportsLink = document.getElementById('reportsLink');
+            if (reportsLink) reportsLink.style.display = 'none';
+        }
+    }
+
+    /**
+     * Processes the loaded requests data and stores it. Renders the requests list.
+     * @param {Array<RequestItemAssignmentsPage>|null|undefined} data - Array of request items.
+     * @return {void}
+     */
+    function handleRequestsLoaded(data) {
+        console.log('📋 Processing loaded requests:', data);
+
+        if (data === null || data === undefined) {
+            console.log('⚠️ Server returned null/undefined for requests');
+            data = [];
+        }
+
+        currentRequests = Array.isArray(data) ? data : [];
+        console.log('📊 Stored requests count:', currentRequests.length);
+
+        renderRequestsList();
+    }
+
+    /**
+     * Processes the loaded active riders data and stores it.
+     * @param {Array<RiderItemAssignmentsPage>|null|undefined} data - Array of rider items.
+     * @return {void}
+     */
+    function handleRidersLoaded(data) {
+        console.log('🏍️ Processing loaded riders:', data);
+
+        if (data === null || data === undefined) {
+            console.log('⚠️ Server returned null/undefined for riders');
+            data = [];
+        }
+
+        activeRiders = Array.isArray(data) ? data : [];
+        console.log('📊 Stored riders count:', activeRiders.length);
+    }
+
+    /**
+     * Renders the list of assignable requests in the left panel.
+     * Filters `currentRequests` to show only those with assignable statuses.
+     * @return {void}
+     */
+    function renderRequestsList() {
+        var container = document.getElementById('requestsList');
+
+        if (!container) {
+            console.error('❌ Requests list container not found');
+            return;
+        }
+
+        if (currentRequests.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>No assignable requests found</h3><p>Create new requests or check if existing requests have assignable statuses</p></div>';
+            return;
+        }
+
+        var assignableRequests = currentRequests.filter(function(request) {
+            return ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
         });
 
-        function loadAllData() {
-            console.log('📊 Starting consolidated data loading for assignments page...');
-            var urlParams = new URLSearchParams(window.location.search);
-            var requestIdToLoad = urlParams.get('requestId');
-
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(handleAssignmentsDataSuccess)
-                    .withFailureHandler(handleAssignmentsDataFailure)
-                    .getPageDataForAssignments(requestIdToLoad);
-            } else {
-                console.log('⚠️ Google Apps Script not available for assignments page.');
-                handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
-            }
+        if (assignableRequests.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>No assignable requests</h3><p>All requests have been completed or cancelled</p></div>';
+            return;
         }
 
-        function handleAssignmentsDataSuccess(data) {
-            if (data && data.success) {
-                console.log('✅ Assignments page data loaded successfully:', data);
-                handleUserData(data.user); // Processes user info and permissions
-                handleRequestsLoaded(data.requests);
-                handleRidersLoaded(data.riders);
-
-                if (data.initialRequestDetails) {
-                    // If a specific request's details were pre-loaded, select it.
-                    // We need to make sure currentRequests is populated before calling selectRequest.
-                    // A small timeout can help, or a more robust check.
-                    setTimeout(function() {
-                         const preloadedRequestId = data.initialRequestDetails.id || data.initialRequestDetails.requestId;
-                         if (preloadedRequestId) {
-                            console.log('Attempting to pre-select request:', preloadedRequestId);
-                            selectRequest(preloadedRequestId, true); // Pass a flag to indicate it's a pre-selection
-                         }
-                    }, 500); // Delay to allow initial rendering from handleRequestsLoaded
-                } else {
-                     var urlParams = new URLSearchParams(window.location.search);
-                     var requestIdFromUrl = urlParams.get('requestId');
-                     if (requestIdFromUrl) {
-                         // Fallback if initialRequestDetails was not populated but requestId was in URL
-                         console.log('Attempting to select request from URL param (fallback):', requestIdFromUrl);
-                         setTimeout(function() { selectRequest(requestIdFromUrl, true); }, 500);
-                     }
-                }
-            } else {
-                console.error('❌ Failed to load assignments page data:', data ? data.error : 'No data returned');
-                handleAssignmentsDataFailure(data || { message: "Received success:false or no data." });
-            }
-        }
-
-        function handleAssignmentsDataFailure(error) {
-            console.error('❌ Error loading assignments page data:', error.message || error);
-            const fallbackUser = (error && error.user) ? error.user : {
-                name: 'System User',
-                email: 'user@system.com',
-                roles: ['admin'],
-                permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
-            };
-            handleUserData(fallbackUser); // Display user info if available
-            handleLoadingTimeout(); // Generic timeout handler for requests/riders
-        }
-
-        function handleUserData(user) {
-            console.log('👤 User data loaded:', user);
-            app.user = user;
-            
-            document.getElementById('userName').textContent = user.name || 'User';
-            document.getElementById('userRole').textContent = (user.roles || ['user']).join(', ');
-            document.getElementById('userAvatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
-            
-            // Show/hide navigation links based on permissions
-            var permissions = user.permissions || [];
-            
-            if (permissions.indexOf('send_notifications') === -1) {
-                var notifLink = document.getElementById('notificationsLink');
-                if (notifLink) notifLink.style.display = 'none';
-            }
-            if (permissions.indexOf('view_reports') === -1) {
-                var reportsLink = document.getElementById('reportsLink');
-                if (reportsLink) reportsLink.style.display = 'none';
-            }
-        }
-
-        function handleRequestsLoaded(data) {
-            console.log('📋 Processing loaded requests:', data);
-            
-            if (data === null || data === undefined) {
-                console.log('⚠️ Server returned null/undefined for requests');
-                data = [];
-            }
-            
-            currentRequests = Array.isArray(data) ? data : [];
-            console.log('📊 Stored requests count:', currentRequests.length);
-            
-            renderRequestsList();
-        }
-
-        function handleRidersLoaded(data) {
-            console.log('🏍️ Processing loaded riders:', data);
-            
-            if (data === null || data === undefined) {
-                console.log('⚠️ Server returned null/undefined for riders');
-                data = [];
-            }
-            
-            activeRiders = Array.isArray(data) ? data : [];
-            console.log('📊 Stored riders count:', activeRiders.length);
-        }
-
-        function renderRequestsList() {
-            var container = document.getElementById('requestsList');
-            
-            if (!container) {
-                console.error('❌ Requests list container not found');
-                return;
-            }
-            
-            if (currentRequests.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h3>No assignable requests found</h3><p>Create new requests or check if existing requests have assignable statuses</p></div>';
-                return;
-            }
-
-            // Filter requests to only show assignable ones
-            var assignableRequests = currentRequests.filter(function(request) {
-                return ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
-            });
-
-            if (assignableRequests.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h3>No assignable requests</h3><p>All requests have been completed or cancelled</p></div>';
-                return;
-            }
-
-            var html = assignableRequests.map(function(request) {
-                return '<div class="request-item" data-request-id="' + request.id + '" onclick="selectRequest(\'' + request.id + '\')">' +
-                    '<div class="request-id">' + request.id + '</div>' +
-                    '<div class="request-details">' +
-                    '<strong>' + request.requesterName + '</strong><br>' +
-                    request.eventDate + ' at ' + request.startTime + '<br>' +
-                    '📍 ' + request.startLocation + '<br>' +
-                    '👥 ' + request.ridersNeeded + ' rider(s) needed' +
-                    '</div>' +
-                    '<span class="status-badge status-' + request.status.toLowerCase() + '">' +
-                    request.status +
-                    '</span>' +
-                    '</div>';
-            }).join('');
-
-            container.innerHTML = html;
-            console.log('✅ Rendered', assignableRequests.length, 'assignable requests');
-        }
-
-        function setupEventListeners() {
-            // Search functionality
-            var searchInput = document.getElementById('requestSearch');
-            if (searchInput) {
-                searchInput.addEventListener('input', filterRequests);
-            }
-            
-            // Filter tabs
-            var filterTabs = document.querySelectorAll('.filter-tab');
-            for (var i = 0; i < filterTabs.length; i++) {
-                filterTabs[i].addEventListener('click', function(e) {
-                    var allTabs = document.querySelectorAll('.filter-tab');
-                    for (var j = 0; j < allTabs.length; j++) {
-                        allTabs[j].classList.remove('active');
-                    }
-                    e.target.classList.add('active');
-                    filterRequests();
-                });
-            }
-        }
-
-        function filterRequests() {
-            var searchInput = document.getElementById('requestSearch');
-            var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-            var activeTab = document.querySelector('.filter-tab.active');
-            var activeStatus = activeTab ? activeTab.dataset.status : 'all';
-            
-            var filtered = currentRequests.filter(function(request) {
-                var matchesSearch = !searchTerm || 
-                    request.id.toLowerCase().indexOf(searchTerm) !== -1 ||
-                    request.requesterName.toLowerCase().indexOf(searchTerm) !== -1;
-                
-                var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
-                
-                return matchesSearch && matchesStatus && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
-            });
-            
-            renderFilteredRequests(filtered);
-        }
-
-        function renderFilteredRequests(requests) {
-            var container = document.getElementById('requestsList');
-            
-            if (!container) return;
-            
-            if (requests.length === 0) {
-                container.innerHTML = '<div class="empty-state"><h3>No matching requests</h3><p>Try adjusting your search or filter</p></div>';
-                return;
-            }
-
-            var html = requests.map(function(request) {
-                return '<div class="request-item" data-request-id="' + request.id + '" onclick="selectRequest(\'' + request.id + '\')">' +
-                    '<div class="request-id">' + request.id + '</div>' +
-                    '<div class="request-details">' +
-                    '<strong>' + request.requesterName + '</strong><br>' +
-                    request.eventDate + ' at ' + request.startTime + '<br>' +
-                    '📍 ' + request.startLocation + '<br>' +
-                    '👥 ' + request.ridersNeeded + ' rider(s) needed' +
-                    '</div>' +
-                    '<span class="status-badge status-' + request.status.toLowerCase() + '">' +
-                    request.status +
-                    '</span>' +
-                    '</div>';
-            }).join('');
-
-            container.innerHTML = html;
-        }
-
-        function selectRequest(requestId) {
-            console.log('🎯 Selecting request:', requestId);
-            
-            // Remove previous selection
-            var requestItems = document.querySelectorAll('.request-item');
-            for (var i = 0; i < requestItems.length; i++) {
-                requestItems[i].classList.remove('selected');
-            }
-            
-            // Add selection to clicked item
-            var requestElement = document.querySelector('[data-request-id="' + requestId + '"]');
-            if (requestElement) {
-                requestElement.classList.add('selected');
-            }
-            
-            selectedRequest = null;
-            for (var j = 0; j < currentRequests.length; j++) {
-                if (currentRequests[j].id === requestId) {
-                    selectedRequest = currentRequests[j];
-                    break;
-                }
-            }
-            
-            selectedRiders.clear();
-            
-            if (selectedRequest) {
-                console.log('✅ Selected request:', selectedRequest);
-                renderAssignmentPanel();
-            } else {
-                console.error('❌ Request not found:', requestId);
-            }
-        }
-
-        function selectRequestById(requestId) {
-            var request = null;
-            for (var i = 0; i < currentRequests.length; i++) {
-                if (currentRequests[i].id === requestId) {
-                    request = currentRequests[i];
-                    break;
-                }
-            }
-            if (request) {
-                selectRequest(requestId);
-            } else {
-                console.log('⚠️ Request ID not found in current requests:', requestId);
-            }
-        }
-
-        function renderAssignmentPanel() {
-            var container = document.getElementById('assignmentContent');
-            
-            if (!selectedRequest) {
-                container.innerHTML = '<div class="empty-state"><h3>Select a Request</h3><p>Choose a request from the left panel to begin assigning riders</p></div>';
-                return;
-            }
-
-            var assignedRiders = selectedRequest.ridersAssigned ? 
-                selectedRequest.ridersAssigned.split(/[,\n]/).map(function(name) { return name.trim(); }).filter(function(name) { return name.length > 0; }) : [];
-            
-            // Pre-select currently assigned riders
-            selectedRiders.clear();
-            for (var i = 0; i < assignedRiders.length; i++) {
-                selectedRiders.add(assignedRiders[i]);
-            }
-
-            container.innerHTML = '<div class="request-info">' +
-                '<h4>' + selectedRequest.id + ' - ' + selectedRequest.requesterName + '</h4>' +
-                '<div class="info-grid">' +
-                '<div class="info-item">' +
-                '<div class="info-label">Event Date & Time</div>' +
-                '<div class="info-value">' + selectedRequest.eventDate + ' at ' + selectedRequest.startTime + '</div>' +
+        var html = assignableRequests.map(function(request) {
+            return '<div class="request-item" data-request-id="' + request.id + '" onclick="selectRequest(\'' + request.id + '\')">' +
+                '<div class="request-id">' + request.id + '</div>' +
+                '<div class="request-details">' +
+                '<strong>' + request.requesterName + '</strong><br>' +
+                request.eventDate + ' at ' + request.startTime + '<br>' +
+                '📍 ' + request.startLocation + '<br>' +
+                '👥 ' + request.ridersNeeded + ' rider(s) needed' +
                 '</div>' +
-                '<div class="info-item">' +
-                '<div class="info-label">Type</div>' +
-                '<div class="info-value">' + selectedRequest.type + '</div>' +
-                '</div>' +
-                '<div class="info-item">' +
-                '<div class="info-label">Start Location</div>' +
-                '<div class="info-value">' + selectedRequest.startLocation + '</div>' +
-                '</div>' +
-                '<div class="info-item">' +
-                '<div class="info-label">End Location</div>' +
-                '<div class="info-value">' + selectedRequest.endLocation + '</div>' +
-                '</div>' +
-                '<div class="info-item">' +
-                '<div class="info-label">Riders Needed</div>' +
-                '<div class="info-value">' + selectedRequest.ridersNeeded + '</div>' +
-                '</div>' +
-                '<div class="info-item">' +
-                '<div class="info-label">Current Status</div>' +
-                '<div class="info-value">' +
-                '<span class="status-badge status-' + selectedRequest.status.toLowerCase() + '">' +
-                selectedRequest.status +
+                '<span class="status-badge status-' + request.status.toLowerCase() + '">' +
+                request.status +
                 '</span>' +
-                '</div>' +
-                '</div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="assignment-summary">' +
-                '<div>Selected Riders: <span class="selected-count" id="selectedCount">' + selectedRiders.size + '</span> / ' + selectedRequest.ridersNeeded + '</div>' +
-                '</div>' +
-                '<div class="riders-section">' +
-                '<h4>Available Riders</h4>' +
-                '<div class="riders-grid" id="ridersGrid">' +
-                renderRidersGrid() +
-                '</div>' +
-                '</div>' +
-                '<div class="assignment-actions">' +
-                '<button class="btn btn-success" onclick="saveAssignment()" ' + (selectedRiders.size === 0 ? 'disabled' : '') + '>' +
-                '💾 Save Assignment' +
-                '</button>' +
-                '<button class="btn btn-warning" onclick="clearAssignment()">' +
-                '🗑️ Clear All' +
-                '</button>' +
-                '<button class="btn btn-primary" onclick="previewAssignment()">' +
-                '👁️ Preview' +
-                '</button>' +
                 '</div>';
+        }).join('');
+
+        container.innerHTML = html;
+        console.log('✅ Rendered', assignableRequests.length, 'assignable requests');
+    }
+
+    /**
+     * Sets up event listeners for the request search input and filter tabs.
+     * @return {void}
+     */
+    function setupEventListeners() {
+        var searchInput = document.getElementById('requestSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', filterRequests);
         }
 
-        function renderRidersGrid() {
-            if (activeRiders.length === 0) {
-                return '<div class="empty-state"><h3>No active riders</h3><p>No riders available for assignment</p></div>';
-            }
-
-            return activeRiders.map(function(rider) {
-                var isSelected = selectedRiders.has(rider.name);
-                var availability = getRiderAvailability(rider, selectedRequest);
-                var isUnavailable = availability !== 'Available';
-                
-                return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
-                    '<div class="rider-status status-' + availability.toLowerCase() + '"></div>' +
-                    '<div class="rider-name">' + rider.name + '</div>' +
-                    '<div class="rider-info">ID: ' + rider.jpNumber + '</div>' +
-                    '<div class="rider-info">📞 ' + rider.phone + '</div>' +
-                    '<div class="rider-info">📧 ' + rider.email + '</div>' +
-                    '<div class="rider-info">📡 ' + rider.carrier + '</div>' +
-                    (isUnavailable ? '<div class="rider-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
-                    '</div>';
-            }).join('');
+        var filterTabs = document.querySelectorAll('.filter-tab');
+        for (var i = 0; i < filterTabs.length; i++) {
+            filterTabs[i].addEventListener('click', function(e) {
+                var allTabs = document.querySelectorAll('.filter-tab');
+                for (var j = 0; j < allTabs.length; j++) {
+                    allTabs[j].classList.remove('active');
+                }
+                e.target.classList.add('active');
+                filterRequests();
+            });
         }
+    }
 
-        function getRiderAvailability(rider, request) {
-            return 'Available';
-        }
+    /**
+     * Filters the displayed list of requests based on search term and active status tab.
+     * @return {void}
+     */
+    function filterRequests() {
+        var searchInput = document.getElementById('requestSearch');
+        var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+        var activeTab = document.querySelector('.filter-tab.active');
+        var activeStatus = activeTab ? activeTab.dataset.status : 'all';
 
-        function toggleRider(riderName) {
-            if (selectedRiders.has(riderName)) {
-                selectedRiders.delete(riderName);
-            } else {
-                selectedRiders.add(riderName);
-            }
+        var filtered = currentRequests.filter(function(request) {
+            var matchesSearch = !searchTerm ||
+                request.id.toLowerCase().indexOf(searchTerm) !== -1 ||
+                request.requesterName.toLowerCase().indexOf(searchTerm) !== -1;
             
+            var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
+            
+            return matchesSearch && matchesStatus && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
+        });
+
+        renderFilteredRequests(filtered);
+    }
+
+    /**
+     * Renders a list of requests that have been filtered.
+     * @param {Array<RequestItemAssignmentsPage>} requests - The array of request items to render.
+     * @return {void}
+     */
+    function renderFilteredRequests(requests) {
+        var container = document.getElementById('requestsList');
+
+        if (!container) return;
+
+        if (requests.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>No matching requests</h3><p>Try adjusting your search or filter</p></div>';
+            return;
+        }
+
+        var html = requests.map(function(request) {
+            return '<div class="request-item" data-request-id="' + request.id + '" onclick="selectRequest(\'' + request.id + '\')">' +
+                '<div class="request-id">' + request.id + '</div>' +
+                '<div class="request-details">' +
+                '<strong>' + request.requesterName + '</strong><br>' +
+                request.eventDate + ' at ' + request.startTime + '<br>' +
+                '📍 ' + request.startLocation + '<br>' +
+                '👥 ' + request.ridersNeeded + ' rider(s) needed' +
+                '</div>' +
+                '<span class="status-badge status-' + request.status.toLowerCase() + '">' +
+                request.status +
+                '</span>' +
+                '</div>';
+        }).join('');
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Handles the selection of a request from the list.
+     * Updates the UI to show details for the selected request and renders the rider assignment panel.
+     * @param {string} requestId - The ID of the request to select.
+     * @param {boolean} [isPreselection=false] - Flag indicating if this is a pre-selection (e.g., from URL).
+     * @return {void}
+     */
+    function selectRequest(requestId) {
+        console.log('🎯 Selecting request:', requestId);
+
+        var requestItems = document.querySelectorAll('.request-item');
+        for (var i = 0; i < requestItems.length; i++) {
+            requestItems[i].classList.remove('selected');
+        }
+
+        var requestElement = document.querySelector('[data-request-id="' + requestId + '"]');
+        if (requestElement) {
+            requestElement.classList.add('selected');
+        }
+
+        selectedRequest = null;
+        for (var j = 0; j < currentRequests.length; j++) {
+            if (currentRequests[j].id === requestId) {
+                selectedRequest = currentRequests[j];
+                break;
+            }
+        }
+
+        selectedRiders.clear();
+
+        if (selectedRequest) {
+            console.log('✅ Selected request:', selectedRequest);
+            renderAssignmentPanel();
+        } else {
+            console.error('❌ Request not found:', requestId);
+            // If it was a pre-selection that failed, show a message.
+            // if (isPreselection) {
+            //     showError(`Could not automatically select request ID: ${requestId}. It might not be in the current list of assignable requests.`);
+            // }
+        }
+    }
+
+    /**
+     * Attempts to select a request by its ID. Used for pre-selection from URL parameters.
+     * @param {string} requestId - The ID of the request to select.
+     * @return {void}
+     * @deprecated This function seems redundant if selectRequest handles finding the request.
+     *             The pre-selection logic is now mostly within handleAssignmentsDataSuccess.
+     */
+    function selectRequestById(requestId) {
+        var request = null;
+        for (var i = 0; i < currentRequests.length; i++) {
+            if (currentRequests[i].id === requestId) {
+                request = currentRequests[i];
+                break;
+            }
+        }
+        if (request) {
+            selectRequest(requestId);
+        } else {
+            console.log('⚠️ Request ID not found in current requests:', requestId);
+        }
+    }
+
+    /**
+     * Renders the main assignment panel for the currently `selectedRequest`.
+     * Displays request details and the grid of available riders.
+     * @return {void}
+     */
+    function renderAssignmentPanel() {
+        var container = document.getElementById('assignmentContent');
+
+        if (!selectedRequest) {
+            container.innerHTML = '<div class="empty-state"><h3>Select a Request</h3><p>Choose a request from the left panel to begin assigning riders</p></div>';
+            return;
+        }
+
+        var assignedRidersArray = selectedRequest.ridersAssigned ?
+            selectedRequest.ridersAssigned.split(/[,\n]/).map(function(name) { return name.trim(); }).filter(function(name) { return name.length > 0; }) : [];
+
+        selectedRiders.clear();
+        for (var i = 0; i < assignedRidersArray.length; i++) {
+            selectedRiders.add(assignedRidersArray[i]);
+        }
+
+        container.innerHTML = '<div class="request-info">' +
+            '<h4>' + selectedRequest.id + ' - ' + selectedRequest.requesterName + '</h4>' +
+            '<div class="info-grid">' +
+            '<div class="info-item">' +
+            '<div class="info-label">Event Date & Time</div>' +
+            '<div class="info-value">' + selectedRequest.eventDate + ' at ' + selectedRequest.startTime + '</div>' +
+            '</div>' +
+            '<div class="info-item">' +
+            '<div class="info-label">Type</div>' +
+            '<div class="info-value">' + selectedRequest.type + '</div>' +
+            '</div>' +
+            '<div class="info-item">' +
+            '<div class="info-label">Start Location</div>' +
+            '<div class="info-value">' + selectedRequest.startLocation + '</div>' +
+            '</div>' +
+            '<div class="info-item">' +
+            '<div class="info-label">End Location</div>' +
+            '<div class="info-value">' + selectedRequest.endLocation + '</div>' +
+            '</div>' +
+            '<div class="info-item">' +
+            '<div class="info-label">Riders Needed</div>' +
+            '<div class="info-value">' + selectedRequest.ridersNeeded + '</div>' +
+            '</div>' +
+            '<div class="info-item">' +
+            '<div class="info-label">Current Status</div>' +
+            '<div class="info-value">' +
+            '<span class="status-badge status-' + selectedRequest.status.toLowerCase() + '">' +
+            selectedRequest.status +
+            '</span>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="assignment-summary">' +
+            '<div>Selected Riders: <span class="selected-count" id="selectedCount">' + selectedRiders.size + '</span> / ' + selectedRequest.ridersNeeded + '</div>' +
+            '</div>' +
+            '<div class="riders-section">' +
+            '<h4>Available Riders</h4>' +
+            '<div class="riders-grid" id="ridersGrid">' +
+            renderRidersGrid() +
+            '</div>' +
+            '</div>' +
+            '<div class="assignment-actions">' +
+            '<button class="btn btn-success" onclick="saveAssignment()" ' + (selectedRiders.size === 0 ? 'disabled' : '') + '>' +
+            '💾 Save Assignment' +
+            '</button>' +
+            '<button class="btn btn-warning" onclick="clearAssignment()">' +
+            '🗑️ Clear All' +
+            '</button>' +
+            '<button class="btn btn-primary" onclick="previewAssignment()">' +
+            '👁️ Preview' +
+            '</button>' +
+            '</div>';
+    }
+
+    /**
+     * Renders the grid of available riders.
+     * Each rider is displayed as a card that can be selected/deselected.
+     * @return {string} HTML string for the riders grid.
+     */
+    function renderRidersGrid() {
+        if (activeRiders.length === 0) {
+            return '<div class="empty-state"><h3>No active riders</h3><p>No riders available for assignment</p></div>';
+        }
+
+        return activeRiders.map(function(rider) {
+            var isSelected = selectedRiders.has(rider.name);
+            var availability = getRiderAvailability(rider, selectedRequest); // Currently always returns 'Available'
+            var isUnavailable = availability !== 'Available';
+            
+            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
+                '<div class="rider-status status-' + availability.toLowerCase() + '"></div>' +
+                '<div class="rider-name">' + rider.name + '</div>' +
+                '<div class="rider-info">ID: ' + rider.jpNumber + '</div>' +
+                '<div class="rider-info">📞 ' + rider.phone + '</div>' +
+                '<div class="rider-info">📧 ' + rider.email + '</div>' +
+                '<div class="rider-info">📡 ' + rider.carrier + '</div>' +
+                (isUnavailable ? '<div class="rider-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
+                '</div>';
+        }).join('');
+    }
+
+    /**
+     * Determines rider availability for a given request. (Placeholder implementation)
+     * @param {RiderItemAssignmentsPage} rider - The rider object.
+     * @param {RequestItemAssignmentsPage} request - The request object.
+     * @return {string} Availability status (e.g., "Available", "Busy", "Unavailable"). Currently always "Available".
+     */
+    function getRiderAvailability(rider, request) {
+        // Placeholder: Future logic could check rider's schedule against request time.
+        return 'Available';
+    }
+
+    /**
+     * Toggles the selection state of a rider.
+     * Adds or removes the rider's name from the `selectedRiders` set.
+     * Updates the UI to reflect the change.
+     * @param {string} riderName - The name of the rider to toggle.
+     * @return {void}
+     */
+    function toggleRider(riderName) {
+        if (selectedRiders.has(riderName)) {
+            selectedRiders.delete(riderName);
+        } else {
+            selectedRiders.add(riderName);
+        }
+
+        updateRiderSelection();
+        updateSelectedCount();
+    }
+
+    /**
+     * Updates the visual selection state (CSS class) of rider cards in the grid.
+     * @return {void}
+     */
+    function updateRiderSelection() {
+        var riderCards = document.querySelectorAll('.rider-card');
+        for (var i = 0; i < riderCards.length; i++) {
+            var card = riderCards[i];
+            var riderName = card.querySelector('.rider-name').textContent;
+            if (selectedRiders.has(riderName)) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        }
+    }
+
+    /**
+     * Updates the displayed count of selected riders and enables/disables the save button.
+     * @return {void}
+     */
+    function updateSelectedCount() {
+        var countElement = document.getElementById('selectedCount');
+        if (countElement) {
+            countElement.textContent = selectedRiders.size;
+        }
+
+        var saveBtn = document.querySelector('.btn-success');
+        if (saveBtn) {
+            saveBtn.disabled = selectedRiders.size === 0;
+            saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
+        }
+    }
+
+    /**
+     * Saves the current rider assignments for the selected request to the server.
+     * Calls the `processAssignmentAndPopulate` server-side function.
+     * @return {void}
+     */
+    function saveAssignment() {
+        if (!selectedRequest || selectedRiders.size === 0) {
+            showError('Please select at least one rider');
+            return;
+        }
+
+        var ridersArray = [];
+        selectedRiders.forEach(function(name) {
+            var rider = null;
+            for (var i = 0; i < activeRiders.length; i++) {
+                if (activeRiders[i].name === name) {
+                    rider = activeRiders[i];
+                    break;
+                }
+            }
+            ridersArray.push({ // Push full rider object if found, or just name if not (should always be found)
+                name: rider ? rider.name : name,
+                jpNumber: rider ? rider.jpNumber : '',
+                phone: rider ? rider.phone : '',
+                email: rider ? rider.email : '',
+                carrier: rider ? rider.carrier : ''
+            });
+        });
+
+        showLoading('Saving assignment...');
+
+        try {
+            google.script.run
+                .withSuccessHandler(handleAssignmentSuccess)
+                .withFailureHandler(handleError) // Generic error handler
+                .processAssignmentAndPopulate(selectedRequest.id, ridersArray);
+        } catch (error) {
+            console.error('Error calling processAssignmentAndPopulate:', error);
+            hideLoading();
+            showError('Failed to save assignment: ' + error.message);
+        }
+    }
+
+    /**
+     * Handles the successful response from saving an assignment.
+     * Shows a success message and reloads the requests list to reflect changes.
+     * @param {object} response - The response object from the server.
+     * @param {boolean} response.success - Indicates if the operation was successful.
+     * @param {string} [response.message] - Optional message from the server.
+     * @return {void}
+     */
+    function handleAssignmentSuccess(response) {
+        hideLoading();
+
+        if (response && response.success) {
+            showSuccess('Assignment saved successfully!');
+            
+            // Reload data for the current page to reflect status changes, etc.
+            // This now uses the consolidated data loader.
+            setTimeout(function() {
+                loadAllData(); // This will re-fetch user, requests, and riders.
+                // If selectedRequest.id was valid, it will attempt to re-select it via URL param logic in loadAllData.
+            }, 1000);
+        } else {
+            showError(response ? response.message : 'Failed to save assignment');
+        }
+    }
+
+    /**
+     * Clears all currently selected riders for the active request.
+     * Asks for confirmation before clearing.
+     * @return {void}
+     */
+    function clearAssignment() {
+        if (confirm('Clear all rider assignments for this request?')) {
+            selectedRiders.clear();
             updateRiderSelection();
             updateSelectedCount();
         }
+    }
 
-        function updateRiderSelection() {
-            var riderCards = document.querySelectorAll('.rider-card');
-            for (var i = 0; i < riderCards.length; i++) {
-                var card = riderCards[i];
-                var riderName = card.querySelector('.rider-name').textContent;
-                if (selectedRiders.has(riderName)) {
-                    card.classList.add('selected');
-                } else {
-                    card.classList.remove('selected');
-                }
-            }
+    /**
+     * Shows an alert with a preview of the current assignment details.
+     * @return {void}
+     */
+    function previewAssignment() {
+        if (selectedRiders.size === 0) {
+            alert('No riders selected for preview');
+            return;
         }
 
-        function updateSelectedCount() {
-            var countElement = document.getElementById('selectedCount');
-            if (countElement) {
-                countElement.textContent = selectedRiders.size;
-            }
-            
-            var saveBtn = document.querySelector('.btn-success');
-            if (saveBtn) {
-                saveBtn.disabled = selectedRiders.size === 0;
-                saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
-            }
+        var ridersList = [];
+        selectedRiders.forEach(function(rider) {
+            ridersList.push(rider);
+        });
+
+        alert('Assignment Preview:\n\nRequest: ' + selectedRequest.id + '\nRequester: ' + selectedRequest.requesterName + '\nEvent: ' + selectedRequest.eventDate + ' at ' + selectedRequest.startTime + '\n\nAssigned Riders (' + selectedRiders.size + '):\n' + ridersList.join('\n'));
+    }
+
+    /**
+     * Handles data loading timeouts by displaying an error message and
+     * showing a refresh button in the requests list area.
+     * @return {void}
+     */
+    function handleLoadingTimeout() {
+        console.log('⚠️ Handling loading timeout...');
+
+        var requestsContainer = document.getElementById('requestsList');
+        if (requestsContainer) {
+            requestsContainer.innerHTML = '<div class="empty-state"><h3>Loading Error</h3><p>Unable to load requests. Please try refreshing the page.</p><button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px;">🔄 Refresh Page</button></div>';
         }
 
-        function saveAssignment() {
-            if (!selectedRequest || selectedRiders.size === 0) {
-                showError('Please select at least one rider');
-                return;
-            }
-
-            var ridersArray = [];
-            selectedRiders.forEach(function(name) {
-                var rider = null;
-                for (var i = 0; i < activeRiders.length; i++) {
-                    if (activeRiders[i].name === name) {
-                        rider = activeRiders[i];
-                        break;
-                    }
-                }
-                ridersArray.push({
-                    name: rider ? rider.name : name,
-                    jpNumber: rider ? rider.jpNumber : '',
-                    phone: rider ? rider.phone : '',
-                    email: rider ? rider.email : '',
-                    carrier: rider ? rider.carrier : ''
-                });
-            });
-
-            showLoading('Saving assignment...');
-
-            try {
-                google.script.run
-                    .withSuccessHandler(handleAssignmentSuccess)
-                    .withFailureHandler(handleError)
-                    .processAssignmentAndPopulate(selectedRequest.id, ridersArray);
-            } catch (error) {
-                console.error('Error calling processAssignmentAndPopulate:', error);
-                hideLoading();
-                showError('Failed to save assignment: ' + error.message);
-            }
+        var assignmentPanel = document.getElementById('assignmentContent');
+        if (assignmentPanel.innerHTML.includes('Select a Request')) { // Only if not already displaying a request
+             assignmentPanel.innerHTML = '<div class="empty-state"><h3>Loading Error</h3><p>Please refresh the page.</p></div>';
         }
 
-        function handleAssignmentSuccess(response) {
-            hideLoading();
-            
-            if (response && response.success) {
-                showSuccess('Assignment saved successfully!');
-                
-                setTimeout(function() {
-                    loadRequestsPromise().then(function() {
-                        if (selectedRequest) {
-                            setTimeout(function() { selectRequest(selectedRequest.id); }, 500);
-                        }
-                    });
-                }, 1000);
-            } else {
-                showError(response ? response.message : 'Failed to save assignment');
-            }
-        }
+        showError('Failed to load assignments data. Please check your connection and try again.');
+    }
 
-        function clearAssignment() {
-            if (confirm('Clear all rider assignments for this request?')) {
-                selectedRiders.clear();
-                updateRiderSelection();
-                updateSelectedCount();
-            }
-        }
+    /**
+     * Displays a loading overlay with a message.
+     * @param {string} [message='Loading...'] - The message to display.
+     * @return {void}
+     */
+    function showLoading(message) {
+        var loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading'; // Use class for styling if defined
+        loadingDiv.textContent = message || 'Loading...';
+        loadingDiv.style.position = 'fixed';
+        loadingDiv.style.top = '50%';
+        loadingDiv.style.left = '50%';
+        loadingDiv.style.transform = 'translate(-50%, -50%)';
+        loadingDiv.style.background = 'rgba(255, 255, 255, 0.95)';
+        loadingDiv.style.padding = '2rem';
+        loadingDiv.style.borderRadius = '10px';
+        loadingDiv.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+        loadingDiv.style.zIndex = '9999';
+        loadingDiv.id = 'loading-overlay';
 
-        function previewAssignment() {
-            if (selectedRiders.size === 0) {
-                alert('No riders selected for preview');
-                return;
-            }
+        document.body.appendChild(loadingDiv);
+    }
 
-            var ridersList = [];
-            selectedRiders.forEach(function(rider) {
-                ridersList.push(rider);
-            });
-            
-            alert('Assignment Preview:\n\nRequest: ' + selectedRequest.id + '\nRequester: ' + selectedRequest.requesterName + '\nEvent: ' + selectedRequest.eventDate + ' at ' + selectedRequest.startTime + '\n\nAssigned Riders (' + selectedRiders.size + '):\n' + ridersList.join('\n'));
-        }
+    /**
+     * Hides the loading overlay.
+     * @return {void}
+     */
+    function hideLoading() {
+        var loading = document.getElementById('loading-overlay');
+        if (loading) loading.remove();
+    }
 
-        function handleLoadingTimeout() {
-            console.log('⚠️ Handling loading timeout...');
-            
-            var requestsContainer = document.getElementById('requestsList');
-            if (requestsContainer) {
-                requestsContainer.innerHTML = '<div class="empty-state"><h3>Loading Error</h3><p>Unable to load requests. Please try refreshing the page.</p><button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 5px;">🔄 Refresh Page</button></div>';
-            }
-            
-            showError('Failed to load assignments data. Please check your connection and try again.');
-        }
+    /**
+     * Displays a success notification message.
+     * @param {string} message - The success message.
+     * @return {void}
+     */
+    function showSuccess(message) {
+        showNotification(message, '#27ae60');
+    }
 
-        function showLoading(message) {
-            var loadingDiv = document.createElement('div');
-            loadingDiv.className = 'loading';
-            loadingDiv.textContent = message || 'Loading...';
-            loadingDiv.style.position = 'fixed';
-            loadingDiv.style.top = '50%';
-            loadingDiv.style.left = '50%';
-            loadingDiv.style.transform = 'translate(-50%, -50%)';
-            loadingDiv.style.background = 'rgba(255, 255, 255, 0.95)';
-            loadingDiv.style.padding = '2rem';
-            loadingDiv.style.borderRadius = '10px';
-            loadingDiv.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-            loadingDiv.style.zIndex = '9999';
-            loadingDiv.id = 'loading-overlay';
-            
-            document.body.appendChild(loadingDiv);
-        }
+    /**
+     * Displays an error notification message.
+     * @param {string} message - The error message.
+     * @return {void}
+     */
+    function showError(message) {
+        showNotification('Error: ' + message, '#e74c3c');
+    }
 
-        function hideLoading() {
-            var loading = document.getElementById('loading-overlay');
-            if (loading) loading.remove();
-        }
+    /**
+     * Displays a general notification message with a specified background color.
+     * @param {string} message - The message to display.
+     * @param {string} color - The background color for the notification.
+     * @return {void}
+     */
+    function showNotification(message, color) {
+        var notification = document.createElement('div');
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.background = color;
+        notification.style.color = 'white';
+        notification.style.padding = '1rem';
+        notification.style.borderRadius = '5px';
+        notification.style.zIndex = '9999';
+        notification.style.maxWidth = '300px';
+        notification.textContent = message;
 
-        function showSuccess(message) {
-            showNotification(message, '#27ae60');
-        }
+        document.body.appendChild(notification);
 
-        function showError(message) {
-            showNotification('Error: ' + message, '#e74c3c');
-        }
+        setTimeout(function() {
+            notification.remove();
+        }, 3000);
+    }
 
-        function showNotification(message, color) {
-            var notification = document.createElement('div');
-            notification.style.position = 'fixed';
-            notification.style.top = '20px';
-            notification.style.right = '20px';
-            notification.style.background = color;
-            notification.style.color = 'white';
-            notification.style.padding = '1rem';
-            notification.style.borderRadius = '5px';
-            notification.style.zIndex = '9999';
-            notification.style.maxWidth = '300px';
-            notification.textContent = message;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(function() {
-                notification.remove();
-            }, 3000);
-        }
+    /**
+     * Generic error handler for `google.script.run` failures.
+     * Hides loading indicator and shows an error message.
+     * @param {Error|object|string} error - The error object or message.
+     * @return {void}
+     */
+    function handleError(error) {
+        hideLoading();
+        showError(error.message || (typeof error === 'string' ? error : 'An unexpected error occurred'));
+    }
 
-        function handleError(error) {
-            hideLoading();
-            showError(error.message || 'An unexpected error occurred');
-        }
-        function manualDataTest() {
+    /**
+     * Test function for manually triggering data loading from the console.
+     * Useful for debugging.
+     * @return {void}
+     */
+    function manualDataTest() {
     console.log('🧪 Manual data test starting...');
     
     if (typeof google === 'undefined') {
@@ -1063,47 +1274,47 @@
         return;
     }
     
-    console.log('Test 1: Basic server connection...');
+    console.log('Test 1: Basic server connection (getCurrentUser)...');
     google.script.run
         .withSuccessHandler(function(user) {
             console.log('✅ Server connection OK, user:', user);
             
-            console.log('Test 2: Loading requests...');
+            console.log('Test 2: Loading requests (getFilteredRequestsForWebApp)...');
             google.script.run
                 .withSuccessHandler(function(requests) {
                     console.log('✅ Requests loaded:', requests);
                     console.log('Count:', requests ? requests.length : 'null');
                     if (requests && requests.length > 0) {
-                        handleRequestsLoaded(requests);
+                        handleRequestsLoaded(requests); // Assuming this function exists and is appropriate
                     }
                 })
                 .withFailureHandler(function(error) {
                     console.error('❌ Requests failed:', error);
                 })
-                .getFilteredRequestsForWebApp('All');
+                .getFilteredRequestsForWebApp('All'); // Example function call
             
-            console.log('Test 3: Loading riders...');
+            console.log('Test 3: Loading riders (getActiveRidersForWebApp)...');
             google.script.run
                 .withSuccessHandler(function(riders) {
                     console.log('✅ Riders loaded:', riders);
                     console.log('Count:', riders ? riders.length : 'null');
                     if (riders && riders.length > 0) {
-                        handleRidersLoaded(riders);
+                        handleRidersLoaded(riders); // Assuming this function exists
                     }
                 })
                 .withFailureHandler(function(error) {
                     console.error('❌ Riders failed:', error);
                 })
-                .getActiveRidersForWebApp();
+                .getActiveRidersForWebApp(); // Example function call
                 
         })
         .withFailureHandler(function(error) {
             console.error('❌ Basic server connection failed:', error);
         })
-        .getCurrentUser();
+        .getCurrentUser(); // Test with a simple, existing function
 }
 
-window.manualDataTest = manualDataTest;
+window.manualDataTest = manualDataTest; // Make it accessible from console
     </script>
 </body>
 </html>

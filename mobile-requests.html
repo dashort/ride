@@ -472,7 +472,7 @@
             if (data && data.success) {
                 console.log('✅ Mobile requests page data loaded:', data);
                 // data.user could be stored if needed: let currentUser = data.user;
-                
+
                 const requests = data.requests;
                 if (!requests || !Array.isArray(requests)) {
                     showMobileError('Invalid requests data received from server');

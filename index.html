@@ -288,46 +288,9 @@
                 <div id="userRole">User</div>
             </div>
         </div>
-
     </header>
-<!--NAVIGATION_MENU_PLACEHOLDER-->
 
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('currentUrl').textContent = window.location.href;
-    document.getElementById('windowLocation').textContent = window.location.toString();
-    
-    try {
-        document.getElementById('parentUrl').textContent = window.parent.location.href;
-    } catch(e) {
-        document.getElementById('parentUrl').textContent = 'Cannot access parent: ' + e.message;
-    }
-});
-
-function testNavigation() {
-    console.log('Current URL:', window.location.href);
-    console.log('Trying to navigate to requests...');
-    
-    // Test method 1: Simple search parameter change
-    try {
-        window.location.search = '?page=requests';
-    } catch(e) {
-        console.error('Method 1 failed:', e);
-        
-        // Test method 2: Full URL reconstruction
-        try {
-            const baseUrl = window.location.href.split('?')[0];
-            window.location.href = baseUrl + '?page=requests';
-        } catch(e2) {
-            console.error('Method 2 failed:', e2);
-        }
-    }
-}
-</script>
-
-
-<div class="container">
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
 
     <div class="container">
         <div class="dashboard-grid">
@@ -394,18 +357,69 @@ function testNavigation() {
 
 
 <script>
-    // Global app state
+    /**
+     * @typedef {object} UserProfile
+     * @property {string} name - User's display name.
+     * @property {string} email - User's email address.
+     * @property {Array<string>} roles - User's roles (e.g., 'admin').
+     * @property {Array<string>} permissions - User's specific permissions.
+     */
+
+    /**
+     * @typedef {object} DashboardStats
+     * @property {number} activeRiders - Count of active riders.
+     * @property {number} pendingRequests - Count of pending requests.
+     * @property {number} todayAssignments - Count of assignments for today.
+     * @property {number} weekAssignments - Count of assignments for the current week.
+     * @property {number} [totalRequests] - Total number of requests (optional).
+     * @property {number} [completedRequests] - Total completed requests (optional).
+     */
+
+    /**
+     * @typedef {object} RequestItem
+     * @property {string} id - Request ID.
+     * @property {string} requesterName - Name of the requester.
+     * @property {string} type - Type of request.
+     * @property {string} eventDate - Formatted event date.
+     * @property {string} status - Current status of the request.
+     */
+
+    /**
+     * @typedef {object} AssignmentItem
+     * @property {string} assignmentId - Assignment ID.
+     * @property {string} requestId - Associated Request ID.
+     * @property {string} riderName - Name of the assigned rider.
+     * @property {string} eventDate - Formatted event date.
+     * @property {string} startTime - Formatted start time.
+     * @property {string} startLocation - Start location of the assignment.
+     */
+
+    /**
+     * @typedef {object} AppState
+     * @property {UserProfile|null} user - Current user's profile.
+     * @property {boolean} isOnline - Network status.
+     * @property {number} loadingTimeout - Timeout for loading operations in milliseconds.
+     */
+
+    /**
+     * Global application state.
+     * @type {AppState}
+     */
     let app = {
         user: null,
         isOnline: navigator.onLine,
         loadingTimeout: 15000 // 15 second timeout
     };
 
-    // Initialize the dashboard
+    /**
+     * Initializes the dashboard when the DOM content is fully loaded.
+     * Sets a timeout to display fallback values if data loading takes too long.
+     * Calls `initializeDashboard` to fetch and display data.
+     * @listens DOMContentLoaded
+     */
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Dashboard loading...');
         
-        // Set loading timeouts to prevent infinite loading states
         setTimeout(() => {
             if (document.getElementById('activeRiders').textContent === '-') {
                 console.log('⚠️ Loading timeout - setting fallback values');
@@ -413,10 +427,14 @@ function testNavigation() {
             }
         }, app.loadingTimeout);
         
-        // Load data with proper error handling
         initializeDashboard();
     });
 
+    /**
+     * Initializes the dashboard by making a single consolidated call to the server
+     * to fetch all necessary data (user info, stats, recent requests, upcoming assignments).
+     * @return {void}
+     */
     function initializeDashboard() {
         console.log('🔄 Initializing dashboard with consolidated data call...');
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -430,11 +448,22 @@ function testNavigation() {
         }
     }
 
+    /**
+     * Handles the successful response from fetching consolidated dashboard data.
+     * Updates various sections of the dashboard UI with the received data.
+     * @param {object} data - The consolidated data object from the server.
+     * @param {boolean} data.success - Indicates if the server call was successful.
+     * @param {UserProfile} [data.user] - User information.
+     * @param {DashboardStats} [data.stats] - Dashboard statistics.
+     * @param {Array<RequestItem>} [data.recentRequests] - Array of recent request objects.
+     * @param {Array<AssignmentItem>} [data.upcomingAssignments] - Array of upcoming assignment objects.
+     * @param {string} [data.error] - Error message if success is false.
+     * @return {void}
+     */
     function handleDashboardDataSuccess(data) {
         if (data && data.success) {
             console.log('✅ Dashboard data loaded successfully:', data);
-            // Destructure and update UI components
-            handleUserDataSafely(data.user); // Processes user info and permissions
+            handleUserDataSafely(data.user);
             updateStats(data.stats);
             updateRecentRequests(data.recentRequests);
             updateUpcomingAssignments(data.upcomingAssignments);
@@ -444,19 +473,31 @@ function testNavigation() {
         }
     }
 
+    /**
+     * Handles failures in fetching consolidated dashboard data.
+     * Logs the error and attempts to set fallback values for the UI.
+     * @param {object|string} error - The error object or message from the server or client-side.
+     * @param {UserProfile} [error.user] - User object if available even on error.
+     * @return {void}
+     */
     function handleDashboardDataFailure(error) {
         console.error('❌ Error loading dashboard data:', error.message || error);
-        // Attempt to load minimal user data for UI consistency
         const fallbackUser = (error && error.user) ? error.user : {
             name: 'System User',
             email: 'user@system.com',
-            roles: ['admin'], // Default to admin to show most UI elements
+            roles: ['admin'],
             permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
         };
         handleUserDataSafely(fallbackUser);
-        setFallbackValues(); // Set fallback for stats, requests, assignments
+        setFallbackValues();
     }
 
+    /**
+     * Safely handles user data, stores it in the global `app` state,
+     * and triggers UI updates for user information and permissions.
+     * @param {UserProfile} user - The user profile object.
+     * @return {void}
+     */
     function handleUserDataSafely(user) {
         console.log('👤 Handling user data:', user);
         app.user = user;
@@ -467,8 +508,19 @@ function testNavigation() {
         }, 100);
     }
 
+    /**
+     * Updates the user information display elements on the page (avatar, name, role).
+     * @param {UserProfile} user - The user profile object.
+     * @return {void}
+     */
     function updateUserInfoSafely(user) {
         try {
+            /**
+             * Helper to safely update an element's textContent.
+             * @param {string} id - Element ID.
+             * @param {string} value - Value to set.
+             * @param {string} [property='textContent'] - Property to set.
+             */
             const safeUpdate = (id, value, property = 'textContent') => {
                 try {
                     const element = document.getElementById(id);
@@ -491,16 +543,26 @@ function testNavigation() {
         }
     }
 
+    /**
+     * Updates the visibility of UI elements based on user permissions.
+     * @param {UserProfile} user - The user profile object containing permissions.
+     * @return {void}
+     */
     function updatePermissionBasedUI(user) {
         try {
             const permissions = user.permissions || [];
             
+            /**
+             * Hides an element if the user lacks a specific permission.
+             * @param {string} elementId - The ID of the DOM element.
+             * @param {string} permission - The permission string to check.
+             */
             const hideIfNoPermission = (elementId, permission) => {
                 const element = document.getElementById(elementId);
                 if (element && !permissions.includes(permission)) {
                     element.style.display = 'none';
                 } else if (element) {
-                    element.style.display = '';
+                    element.style.display = ''; // Or its default display type
                 }
             };
 
@@ -512,9 +574,19 @@ function testNavigation() {
         }
     }
 
+    /**
+     * Updates the dashboard statistics display.
+     * @param {DashboardStats} stats - The statistics object.
+     * @return {void}
+     */
     function updateStats(stats) {
         console.log('📊 Updating stats display:', stats);
         
+         /**
+         * Helper to safely update a stat element's textContent.
+         * @param {string} id - Element ID.
+         * @param {number|string|undefined} value - Value to set.
+         */
         const safeUpdateStat = (id, value) => {
             try {
                 const element = document.getElementById(id);
@@ -536,6 +608,11 @@ function testNavigation() {
         safeUpdateStat('weekAssignments', stats.weekAssignments);
     }
 
+    /**
+     * Updates the list of recent requests on the dashboard.
+     * @param {Array<RequestItem>} requests - An array of request objects.
+     * @return {void}
+     */
     function updateRecentRequests(requests) {
         console.log('📋 Updating recent requests:', requests);
         const container = document.getElementById('recentRequestsList');
@@ -577,6 +654,11 @@ function testNavigation() {
         }
     }
 
+    /**
+     * Updates the list of upcoming assignments on the dashboard.
+     * @param {Array<AssignmentItem>|object} assignments - An array of assignment objects, or an object containing an assignments array.
+     * @return {void}
+     */
     function updateUpcomingAssignments(assignments) {
         console.log('🏍️ Updating upcoming assignments:', assignments);
         const container = document.getElementById('upcomingAssignmentsList');
@@ -586,13 +668,12 @@ function testNavigation() {
             return;
         }
         
-        // Handle different data formats
         let assignmentsArray = [];
         if (Array.isArray(assignments)) {
             assignmentsArray = assignments;
-        } else if (assignments && assignments.assignments && Array.isArray(assignments.assignments)) {
+        } else if (assignments && assignments.assignments && Array.isArray(assignments.assignments)) { // Compatibility for nested structure
             assignmentsArray = assignments.assignments;
-        } else if (assignments && typeof assignments === 'object' && assignments.length !== undefined) {
+        } else if (assignments && typeof assignments === 'object' && assignments.length !== undefined) { // For array-like objects
             assignmentsArray = Array.from(assignments);
         }
         
@@ -637,10 +718,13 @@ function testNavigation() {
         }
     }
 
+    /**
+     * Sets fallback values for dashboard elements in case of loading errors or timeouts.
+     * @return {void}
+     */
     function setFallbackValues() {
         console.log('⚠️ Setting fallback values due to loading timeout or errors');
         
-        // Set fallback stats
         updateStats({
             activeRiders: 0,
             pendingRequests: 0,
@@ -648,35 +732,47 @@ function testNavigation() {
             weekAssignments: 0
         });
         
-        // Set fallback messages
         updateRecentRequests([]);
         updateUpcomingAssignments([]);
         
-        // Show error message
         showMessage('Some dashboard data may not be current. Please try refreshing.', 'warning');
     }
 
-    // Quick action functions
+    /**
+     * Handles the "New Request" button click. Navigates to the requests page with an action to create.
+     * @return {void}
+     */
     function createNewRequest() {
         if (confirm('Navigate to Requests page to create a new request?')) {
             window.location.href = '?page=requests&action=create';
         }
     }
 
+    /**
+     * Handles the "Assign Riders" button click. Navigates to the assignments page.
+     * @return {void}
+     */
     function openAssignments() {
         window.location.href = '?page=assignments';
     }
 
+    /**
+     * Placeholder for "Send Bulk Notifications" button click. Shows an info message.
+     * @return {void}
+     */
     function sendBulkNotifications() {
         if (confirm('This will send notifications to all pending assignments. Continue?')) {
             showMessage('Notification feature will be available soon!', 'info');
         }
     }
 
+    /**
+     * Handles the "Refresh Dashboard" button click. Resets display elements and re-initializes the dashboard.
+     * @return {void}
+     */
     function refreshDashboard() {
         showMessage('Refreshing dashboard...', 'info');
         
-        // Reset all displays to loading state
         document.getElementById('activeRiders').textContent = '-';
         document.getElementById('pendingRequests').textContent = '-';
         document.getElementById('todayAssignments').textContent = '-';
@@ -685,7 +781,6 @@ function testNavigation() {
         document.getElementById('recentRequestsList').innerHTML = '<div class="loading">Loading recent requests...</div>';
         document.getElementById('upcomingAssignmentsList').innerHTML = '<div class="loading">Loading assignments...</div>';
         
-        // Reload all data
         initializeDashboard();
         
         setTimeout(() => {
@@ -693,7 +788,12 @@ function testNavigation() {
         }, 2000);
     }
 
-    // Utility functions
+    /**
+     * Displays a temporary message to the user.
+     * @param {string} message - The message to display.
+     * @param {'info'|'success'|'error'|'warning'} [type='info'] - The type of message, affects styling.
+     * @return {void}
+     */
     function showMessage(message, type = 'info') {
         const colors = {
             success: '#27ae60',
@@ -721,24 +821,31 @@ function testNavigation() {
         }, 3000);
     }
 
-    // Network status monitoring
+    /**
+     * Event listener for online status. Refreshes dashboard on reconnection.
+     * @listens window#online
+     */
     window.addEventListener('online', () => {
         app.isOnline = true;
         showMessage('Connection restored', 'success');
         refreshDashboard();
     });
 
+    /**
+     * Event listener for offline status. Shows a warning message.
+     * @listens window#offline
+     */
     window.addEventListener('offline', () => {
         app.isOnline = false;
         showMessage('Connection lost - some features may not work', 'warning');
     });
 
-    // Debug mode - remove this in production
+    // Debug mode functionality (conditionally enabled by URL parameter).
     if (window.location.search.includes('debug=true')) {
-        window.app = app;
+        window.app = app; // Expose app state for debugging
         console.log('🐛 Debug mode enabled. Access app state via window.app');
         
-        // Add debug button
+        // Add a debug button to the UI for testing.
         setTimeout(() => {
             const debugBtn = document.createElement('button');
             debugBtn.textContent = '🐛 Debug Dashboard';
@@ -752,12 +859,12 @@ function testNavigation() {
                 console.log('User:', app.user);
                 console.log('Online:', app.isOnline);
                 
-                // Test server connection
+                // Test server connection by calling getCurrentUser again.
                 if (typeof google !== 'undefined' && google.script && google.script.run) {
                     google.script.run
                         .withSuccessHandler(result => console.log('Server test success:', result))
                         .withFailureHandler(error => console.log('Server test failed:', error))
-                        .getCurrentUser();
+                        .getCurrentUser(); // Or any other simple server function
                 }
             };
             document.body.appendChild(debugBtn);

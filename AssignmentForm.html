@@ -48,110 +48,167 @@
         </div>
     </div>
 
-    <script>
-        let currentRequestId = '';
-        let currentRiders = [];
+<script>
+    /**
+     * Stores the current Request ID being processed.
+     * @type {string}
+     */
+    let currentRequestId = '';
+    /**
+     * Stores the list of available riders fetched from the server.
+     * @type {Array<object>}
+     */
+    let currentRiders = [];
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // This injects the server‐side requestId
-            const requestId = '<?= requestId ?>';
-            if (!requestId) {
-                showMessage('error', 'No Request ID provided. Please launch from the spreadsheet.');
-                document.getElementById('loading').style.display = 'none';
-                return;
-            }
-            currentRequestId = requestId;
-            document.getElementById('requestIdDisplay').textContent = requestId;
-
-            google.script.run
-                .withSuccessHandler(renderForm)
-                .withFailureHandler(onFailure)
-                .getEscortDetailsForAssignment(requestId);
-        });
-
-        function renderForm(data) {
+    /**
+     * Initializes the assignment form when the DOM content is fully loaded.
+     * Fetches request details and available riders from the server using a Request ID
+     * passed via template scriptlet (server-side injection).
+     * @listens DOMContentLoaded
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        // This injects the server‐side requestId
+        const requestId = '<?= requestId ?>'; // Server-side templated value
+        if (!requestId || requestId === 'undefined' || requestId.trim() === '') { // Check if effectively empty
+            showMessage('error', 'No Request ID provided. This form may have been opened directly or the ID was not passed correctly.');
             document.getElementById('loading').style.display = 'none';
-            document.getElementById('formContent').style.display = 'block';
+            document.getElementById('formContent').style.display = 'block'; // Show form to display error
+             // Disable form submission if no request ID
+            const submitButton = document.querySelector('#assignmentForm button[type="submit"]');
+            if (submitButton) submitButton.disabled = true;
+            return;
+        }
+        currentRequestId = requestId;
+        document.getElementById('requestIdDisplay').textContent = requestId;
 
-            if (!data.request) {
-                showMessage('error', 'Request details not found for ID: ' + currentRequestId);
-                return;
-            }
+        google.script.run
+            .withSuccessHandler(renderForm)
+            .withFailureHandler(onFailure)
+            .getEscortDetailsForAssignment(requestId);
+    });
 
-            // Populate the fields
-            document.getElementById('requesterNameDisplay').textContent = data.request.requesterName || 'N/A';
-            document.getElementById('eventDateDisplay').textContent = data.request.eventDate || 'N/A';
-            document.getElementById('startTimeDisplay').textContent = data.request.startTime || 'N/A';
-            document.getElementById('startLocationDisplay').textContent = data.request.startLocation || 'N/A';
-            document.getElementById('endLocationDisplay').textContent = data.request.endLocation || 'N/A';
-            document.getElementById('ridersNeededDisplay').textContent = data.request.ridersNeeded || 'N/A';
-            document.getElementById('statusDisplay').textContent = data.request.status || 'N/A';
+    /**
+     * Renders the main content of the assignment form with data received from the server.
+     * Populates request details and creates checkboxes for available riders.
+     * Sets up the form submission event listener.
+     * @param {object} data - The data object from `getEscortDetailsForAssignment`.
+     * @param {object} data.request - Details of the current request.
+     * @param {Array<object>} data.riders - List of available riders.
+     * @return {void}
+     */
+    function renderForm(data) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('formContent').style.display = 'block';
 
-            const assignedStr = data.request.ridersAssigned || '';
-            const currentlyAssigned = assignedStr.split(',').map(n=>n.trim()).filter(n=>n);
+        if (!data.request) {
+            showMessage('error', 'Request details not found for ID: ' + currentRequestId);
+            return;
+        }
 
-            const div = document.getElementById('riderCheckboxes');
-            div.innerHTML = '';
-            currentRiders = data.riders;
+        // Populate the fields
+        document.getElementById('requesterNameDisplay').textContent = data.request.requesterName || 'N/A';
+        document.getElementById('eventDateDisplay').textContent = data.request.eventDate || 'N/A'; // Assuming pre-formatted
+        document.getElementById('startTimeDisplay').textContent = data.request.startTime || 'N/A'; // Assuming pre-formatted
+        document.getElementById('startLocationDisplay').textContent = data.request.startLocation || 'N/A';
+        document.getElementById('endLocationDisplay').textContent = data.request.endLocation || 'N/A';
+        document.getElementById('ridersNeededDisplay').textContent = data.request.ridersNeeded || 'N/A';
+        document.getElementById('statusDisplay').textContent = data.request.status || 'N/A';
 
-            data.riders.forEach(rider => {
+        const assignedStr = data.request.ridersAssigned || '';
+        const currentlyAssigned = assignedStr.split(',').map(n=>n.trim()).filter(n=>n);
+
+        const div = document.getElementById('riderCheckboxes');
+        div.innerHTML = ''; // Clear previous rider checkboxes
+        currentRiders = data.riders || []; // Store riders data
+
+        if (currentRiders.length === 0) {
+            div.textContent = 'No active riders available.';
+        } else {
+            currentRiders.forEach(rider => {
                 const label = document.createElement('label');
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
                 cb.name = 'selectedRiders[]';
-                cb.value = rider.name;
+                cb.value = rider.name; // Use rider name as the value
                 cb.dataset.jpNumber = rider.jpNumber;
                 cb.dataset.phone    = rider.phone;
                 cb.dataset.email    = rider.email;
                 cb.dataset.carrier  = rider.carrier;
                 if (currentlyAssigned.includes(rider.name)) cb.checked = true;
+
                 label.appendChild(cb);
-                label.appendChild(document.createTextNode(`${rider.name} (${rider.jpNumber})`));
+                label.appendChild(document.createTextNode(` ${rider.name} (${rider.jpNumber || 'N/A'})`));
                 div.appendChild(label);
             });
+        }
 
-            document.getElementById('assignmentForm').addEventListener('submit', function(evt) {
-                evt.preventDefault();
-                const checked = Array.from(document.querySelectorAll('input[name="selectedRiders[]"]:checked'));
-                const objs = checked.map(cb => ({
+        document.getElementById('assignmentForm').addEventListener('submit', function(evt) {
+            evt.preventDefault();
+            const checkedInputs = Array.from(document.querySelectorAll('input[name="selectedRiders[]"]:checked'));
+            const selectedRiderObjects = checkedInputs.map(cb => {
+                // Find the full rider object from currentRiders to ensure all data is sent
+                const fullRider = currentRiders.find(r => r.name === cb.value);
+                return fullRider || { // Fallback if not found, though should always be found
                     name:     cb.value,
                     jpNumber: cb.dataset.jpNumber,
                     phone:    cb.dataset.phone,
                     email:    cb.dataset.email,
                     carrier:  cb.dataset.carrier
-                }));
-                showMessage('info', 'Assigning riders…');
-                google.script.run
-                    .withSuccessHandler(onAssignmentSuccess)
-                    .withFailureHandler(onFailure)
-                    .processAssignmentAndPopulate(currentRequestId, objs);
+                };
             });
-        }
+            showMessage('info', 'Assigning riders…');
+            google.script.run
+                .withSuccessHandler(onAssignmentSuccess)
+                .withFailureHandler(onFailure)
+                .processAssignmentAndPopulate(currentRequestId, selectedRiderObjects);
+        });
+    }
 
-        function onAssignmentSuccess(resp) {
-            if (resp.success) {
-                showMessage('success', resp.message);
-                // refresh the sheet dashboard
-                google.script.run.refreshDashboard();
-                // auto-close after 2s
-                setTimeout(()=>google.script.host.close(), 2000);
-            } else {
-                showMessage('error', resp.message);
-            }
+    /**
+     * Handles the successful response after attempting to save assignments.
+     * Displays a success message and closes the dialog after a short delay.
+     * Triggers a dashboard refresh.
+     * @param {object} resp - The response object from the server.
+     * @param {boolean} resp.success - True if assignment was successful.
+     * @param {string} resp.message - Message from the server.
+     * @return {void}
+     */
+    function onAssignmentSuccess(resp) {
+        if (resp.success) {
+            showMessage('success', resp.message || 'Assignments saved successfully!');
+            google.script.run.refreshDashboard(); // Refresh dashboard in the sheet
+            setTimeout(()=>google.script.host.close(), 2000); // Auto-close dialog
+        } else {
+            showMessage('error', resp.message || 'Failed to save assignments.');
         }
+    }
 
-        function onFailure(err) {
-            showMessage('error', 'Error: ' + err.message);
-            console.error(err);
-            google.script.run.refreshDashboard();
-        }
+    /**
+     * Handles failures from server-side calls (`google.script.run`).
+     * Displays an error message.
+     * @param {Error|object|string} err - The error object or message.
+     * @return {void}
+     */
+    function onFailure(err) {
+        const errorMessage = err.message || (typeof err === 'string' ? err : 'An unknown error occurred.');
+        showMessage('error', 'Error: ' + errorMessage);
+        console.error('Server-side failure:', err);
+        // Consider if dashboard refresh is needed even on failure
+        // google.script.run.refreshDashboard();
+    }
 
-        function showMessage(type, txt) {
-            const msg = document.getElementById('message');
-            msg.className = 'message ' + type;
-            msg.textContent = txt;
-            msg.style.display = 'block';
-        }
-    </script>
+    /**
+     * Displays a message to the user in a designated message area on the form.
+     * @param {'success'|'error'|'info'} type - The type of message (affects styling).
+     * @param {string} txt - The text of the message to display.
+     * @return {void}
+     */
+    function showMessage(type, txt) {
+        const msgElement = document.getElementById('message');
+        msgElement.className = 'message ' + type; // Applies CSS class for styling
+        msgElement.textContent = txt;
+        msgElement.style.display = 'block';
+    }
+</script>
 </body>
 </html>
