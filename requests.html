@@ -72,7 +72,7 @@
         .btn-info:hover {
             background-color: #138496;
         }
-
+        
         .stats {
             font-size: 14px;
             color: #666;
@@ -511,7 +511,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button>
+                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button> 
                 <button type="button" class="btn btn-primary" onclick="saveRequest()">💾 Save Changes</button>
             </div>
         </div>
@@ -713,7 +713,7 @@
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
-        document.getElementById('deleteBtn').style.display = 'inline-block';
+        document.getElementById('deleteBtn').style.display = 'inline-block'; 
         document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Show Assign Riders button
         document.getElementById('editRequestModal').style.display = 'block';
     }
@@ -732,7 +732,7 @@
         document.getElementById('editRidersNeeded').value = 1;
 
         document.getElementById('modalTitle').textContent = 'Add New Request';
-        document.getElementById('deleteBtn').style.display = 'none';
+        document.getElementById('deleteBtn').style.display = 'none'; 
         document.getElementById('assignRidersBtnModal').style.display = 'none'; // Hide Assign Riders button
         document.getElementById('editRequestModal').style.display = 'block';
     }
@@ -744,7 +744,7 @@
     function closeEditModal() {
         document.getElementById('editRequestModal').style.display = 'none';
         currentEditingRequest = null;
-        document.getElementById('deleteBtn').style.display = 'inline-block';
+        document.getElementById('deleteBtn').style.display = 'inline-block'; 
         document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Reset to default visible
     }
 
