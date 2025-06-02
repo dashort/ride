@@ -1531,6 +1531,57 @@ function getPageDataForReports(filters) {
 }
 
 /**
+ * Fetches all necessary data for the mobile rider view (requests and specific assignments).
+ * @param {string} [filter='All'] The status filter to apply to the general requests.
+ * @return {object} An object containing `user`, `requests`, and `assignments`.
+ *                  Includes a `success` flag and `error` message on failure.
+ */
+function getPageDataForMobileRiderView(filter = 'All') {
+  let user = null;
+  try {
+    user = getCurrentUser(); // Attempt to get user info first
+
+    // Fetch general requests
+    const rawRequests = getRequestsData();
+    let requests = [];
+    // Ensure getFilteredRequestsForWebApp is available in the global scope or defined in AppServices.gs
+    if (typeof getFilteredRequestsForWebApp === 'function') {
+        requests = getFilteredRequestsForWebApp(rawRequests, filter);
+    } else {
+        // console.warn('getFilteredRequestsForWebApp is not defined. Skipping general requests.');
+    }
+
+    // Fetch assignments specific to the rider
+    const assignments = getMobileAssignmentsForRider(); // Newly added function
+
+    return {
+      success: true,
+      user: user,
+      requests: requests,
+      assignments: assignments
+    };
+
+  } catch (error) {
+    // console.error('Error in getPageDataForMobileRiderView:', error.message, error.stack);
+    if (typeof logError === 'function') {
+      logError('Error in getPageDataForMobileRiderView', error);
+    } else {
+      // console.error('logError function not available. Error in getPageDataForMobileRiderView:', error);
+    }
+    if (!user) {
+      try { user = getCurrentUser(); } catch (e) { /* ignore secondary error */ }
+    }
+    return {
+      success: false,
+      error: error.message,
+      user: user,
+      requests: [],
+      assignments: []
+    };
+  }
+}
+
+/**
  * Helper function to calculate notification-related statistics from a list of assignments.
  * @param {Array<object>} assignments An array of assignment objects.
  * @return {object} An object with statistics: totalAssignments, pendingNotifications, smsToday, emailToday.
@@ -1587,3 +1638,152 @@ function calculateStatsFromAssignmentsData(assignments) {
 // buildAssignmentRow, cancelRiderAssignment, addRiderAssignments, processAssignmentAndPopulate,
 // getRequestDetails, generateAssignmentId, updateRequestStatus
 // --- End of From AssignmentManager.js ---
+
+/**
+ * Fetches assignments specifically for the logged-in rider, formatted for mobile display.
+ * Filters assignments based on the rider's email.
+ *
+ * @return {Array<object>} An array of assignment objects for the rider.
+ *                         Each object contains: assignmentId, requestId, eventDate, startTime,
+ *                         startLocation, status.
+ *                         Returns an empty array if no assignments or an error occurs.
+ */
+function getMobileAssignmentsForRider() {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    if (!userEmail) {
+      // console.warn('No active user email found for getMobileAssignmentsForRider.');
+      return [];
+    }
+
+    // console.log(`🏍️ Getting mobile assignments for rider: ${userEmail}`);
+
+    const assignmentsData = getAssignmentsData(); // Assumes this function exists and returns { data: [], columnMap: {} }
+
+    if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
+      // console.log('❌ No assignments data found in getMobileAssignmentsForRider.');
+      return [];
+    }
+
+    const columnMap = assignmentsData.columnMap;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Consider assignments from the beginning of today
+
+    const riderAssignments = [];
+
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      let riderIdentifierFound = false;
+
+      const assignedRiderEmailColumn = CONFIG.columns.assignments.riderEmail;
+      if (columnMap.hasOwnProperty(assignedRiderEmailColumn)) {
+        const assignedRiderEmail = getColumnValue(row, columnMap, assignedRiderEmailColumn);
+        if (assignedRiderEmail && String(assignedRiderEmail).trim().toLowerCase() === userEmail.trim().toLowerCase()) {
+          riderIdentifierFound = true;
+        }
+      } else {
+        // console.warn(`Configured riderEmail column "${assignedRiderEmailColumn}" not found in Assignments sheet columnMap. Falling back to name matching.`);
+      }
+
+      if (!riderIdentifierFound) {
+        const assignedRiderNameColumn = CONFIG.columns.assignments.riderName;
+        if (columnMap.hasOwnProperty(assignedRiderNameColumn)) {
+          const assignedRiderName = getColumnValue(row, columnMap, assignedRiderNameColumn);
+          const userProfile = getCurrentUser();
+          const currentUserName = userProfile ? userProfile.name : Session.getActiveUser().getUsername();
+          if (assignedRiderName && currentUserName && String(assignedRiderName).trim().toLowerCase() === String(currentUserName).trim().toLowerCase()){
+            riderIdentifierFound = true;
+            // console.log(`Matched assignment by name for ${currentUserName} as email was not found or didn't match.`);
+          }
+        } else {
+           // console.warn(`Configured riderName column "${assignedRiderNameColumn}" not found in Assignments sheet columnMap.`);
+        }
+      }
+
+      if (!riderIdentifierFound) {
+        continue;
+      }
+
+      const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
+      const eventDateValue = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
+
+      if (['Completed', 'Cancelled', 'No Show'].includes(status)) {
+        continue;
+      }
+
+      let assignmentDate;
+      if (eventDateValue instanceof Date) {
+        assignmentDate = new Date(eventDateValue.getFullYear(), eventDateValue.getMonth(), eventDateValue.getDate());
+      } else if (typeof eventDateValue === 'string' && eventDateValue.trim() !== '') {
+        try {
+          assignmentDate = new Date(eventDateValue);
+          if (isNaN(assignmentDate.getTime())) {
+             // console.warn(`Invalid date string for assignment ${getColumnValue(row, columnMap, CONFIG.columns.assignments.id)}: ${eventDateValue}`);
+             continue;
+          }
+          assignmentDate.setHours(0,0,0,0);
+        } catch(e){
+          // console.warn(`Error parsing date string for assignment ${getColumnValue(row, columnMap, CONFIG.columns.assignments.id)}: ${eventDateValue}`, e);
+          continue;
+        }
+      } else {
+        // console.warn(`Missing or invalid event date for assignment ${getColumnValue(row, columnMap, CONFIG.columns.assignments.id)}`);
+        continue;
+      }
+
+      const twoDaysAgo = new Date(today.getTime() - (2 * 24 * 60 * 60 * 1000));
+      if (assignmentDate < twoDaysAgo) {
+        if (!['In Progress', 'Assigned'].includes(status)) {
+            continue;
+        }
+      }
+
+      const startLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation);
+      const endLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation);
+      let displayLocation = 'Location TBD';
+      if (startLocation) {
+        displayLocation = startLocation;
+        if (endLocation) {
+          displayLocation += ` → ${endLocation}`;
+        }
+      } else if (endLocation) {
+        displayLocation = `To: ${endLocation}`;
+      }
+
+      riderAssignments.push({
+        assignmentId: getColumnValue(row, columnMap, CONFIG.columns.assignments.id) || 'N/A',
+        requestId: getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId) || 'N/A',
+        eventDate: formatDateForDisplay(eventDateValue),
+        startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime)) || 'No Time',
+        startLocation: displayLocation,
+        status: status || 'Assigned'
+      });
+    }
+
+    riderAssignments.sort((a, b) => {
+      let dateA, dateB;
+      try { dateA = new Date(a.eventDate + ' ' + (a.startTime === 'No Time' ? '00:00' : a.startTime.replace(/( AM| PM)/i, ''))); } catch(e) { dateA = null;}
+      try { dateB = new Date(b.eventDate + ' ' + (b.startTime === 'No Time' ? '00:00' : b.startTime.replace(/( AM| PM)/i, ''))); } catch(e) { dateB = null;}
+
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA - dateB;
+    });
+
+    // console.log(`✅ Returning ${riderAssignments.length} assignments for rider ${userEmail}.`);
+    // if (riderAssignments.length > 0) {
+      // console.log('Sample mobile assignment:', riderAssignments[0]);
+    // }
+    return riderAssignments;
+
+  } catch (error) {
+    // console.error(`❌ Error in getMobileAssignmentsForRider for ${Session.getActiveUser().getEmail()}:`, error.message, error.stack);
+    if (typeof logError === 'function') {
+      logError('Error in getMobileAssignmentsForRider', error);
+    } else {
+      // console.error('logError function not available. Error in getMobileAssignmentsForRider:', error);
+    }
+    return [];
+  }
+}
