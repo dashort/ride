@@ -59,31 +59,39 @@
             padding: 2rem;
         }
 
-        .navigation {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            flex-wrap: wrap;
-        }
+.navigation {
+    display: flex !important;
+    gap: 1rem !important;
+    margin: 1rem auto 2rem auto !important;
+    max-width: 1400px !important;
+    padding: 0 2rem !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    position: relative !important;
+    z-index: 10 !important;
+}
 
-        .nav-button {
-            padding: 0.75rem 1.5rem;
-            background: rgba(255, 255, 255, 0.9);
-            border: none;
-            border-radius: 25px;
-            color: #2c3e50;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
+.nav-button {
+    padding: 0.75rem 1.5rem !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    color: #2c3e50 !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
 
-        .nav-button:hover, .nav-button.active {
-            background: #3498db;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
-        }
+.nav-button:hover, .nav-button.active {
+    background: #3498db !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+}
 
         .notifications-header {
             background: rgba(255, 255, 255, 0.95);
@@ -170,6 +178,12 @@
             gap: 1rem;
             flex-wrap: wrap;
         }
+        .navigation {
+    justify-content: center !important;
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
 
         .btn-bulk {
             padding: 0.75rem 1.5rem;
@@ -488,15 +502,10 @@
             </div>
         </div>
     </header>
+     <!--NAVIGATION_MENU_PLACEHOLDER-->
 
     <div class="container">
-        <nav class="navigation">
-            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec" class="nav-button">📊 Dashboard</a>
-            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=requests" class="nav-button">📋 Requests</a>
-            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=assignments" class="nav-button">🏍️ Assignments</a>
-            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=notifications" class="nav-button active">📱 Notifications</a>
-            <a href="https://script.google.com/macros/s/AKfycbz5EaMAXhZ8o8WM14xFbKRfAYAlsFJtx3f91-Wriy0W4Nwvs10XkCVmrO7QtokYRwnO/exec?page=reports" class="nav-button">📊 Reports</a>
-        </nav>
+        
 
         <div class="notifications-header">
             <h2 class="page-title">📱 Notifications Center</h2>
@@ -735,9 +744,82 @@
         // Replace the entire loadNotificationData function in notifications.html
 
 function loadNotificationData() {
-    console.log('🔄 Loading notification data using working functions...');
-    loadNotificationStatsWorking();
-    loadAssignmentsWorking();
+    console.log('🔄 Loading notification data using consolidated function...');
+    
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(handleNotificationDataSuccess)
+            .withFailureHandler(handleNotificationDataFailure)
+            .getPageDataForNotifications();
+    } else {
+        console.log('⚠️ Google Apps Script not available for notifications');
+        handleNotificationDataFailure({ message: "Google Apps Script not available." });
+    }
+}
+
+function handleNotificationDataSuccess(data) {
+    if (data && data.success) {
+        console.log('✅ Notifications data loaded successfully:', data);
+        handleUserData(data.user);
+        updateStats(data.stats);
+        handleAssignmentsLoaded(data.assignments);
+        renderRecentActivity(data.recentActivity);
+    } else {
+        console.error('❌ Failed to load notifications data:', data ? data.error : 'No data returned');
+        handleNotificationDataFailure(data || { message: "Received success:false or no data." });
+    }
+}
+
+function handleNotificationDataFailure(error) {
+    console.error('❌ Error loading notifications data:', error.message || error);
+    
+    // Show fallback data
+    const fallbackUser = {
+        name: 'System User',
+        email: 'user@system.com',
+        roles: ['admin'],
+        permissions: ['send_notifications']
+    };
+    
+    handleUserData(fallbackUser);
+    updateStats({
+        totalAssignments: 0,
+        pendingNotifications: 0,
+        smsToday: 0,
+        emailToday: 0
+    });
+    handleAssignmentsLoaded([]);
+}
+
+function renderRecentActivity(activities) {
+    const container = document.getElementById('recentActivityList');
+    
+    if (!activities || activities.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <h3>No Recent Activity</h3>
+                <p>Recent notifications will appear here</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = activities.map(activity => `
+        <div class="assignment-item">
+            <div class="assignment-header">
+                <span class="assignment-id">${activity.requestId} - ${activity.recipient}</span>
+                <span class="notification-status status-success">
+                    ${activity.type} Sent
+                </span>
+            </div>
+            <div class="assignment-details">
+                ${activity.messagePreview}
+            </div>
+            <div class="notification-history">
+                Sent: ${new Date(activity.timestamp).toLocaleString()}
+            </div>
+        </div>
+    `).join('');
 }
 
 function loadNotificationStatsWorking() {
