@@ -381,7 +381,7 @@
     <div class="mobile-header" style="margin-top: 2rem; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 1rem;">
         <h1>My Assignments</h1>
     </div>
-
+    
     <div class="requests-container" id="mobileAssignmentsContainer">
         <div class="loading-state" id="mobileAssignmentsLoadingState">
             <div class="loading-spinner"></div>
@@ -389,7 +389,7 @@
         </div>
         <!-- Assignments will be loaded here by JavaScript -->
     </div>
-
+    
     <div class="bottom-spacer"></div>
 
     <script>
@@ -675,7 +675,7 @@
                 `;
                 return;
             }
-
+            
             container.innerHTML = assignments.map(assignment => {
                 const statusClass = 'status-' + (assignment.status || 'assigned').toLowerCase().replace(/\s+/g, '-');
                 // Similar card structure to requests, but simplified for assignments
@@ -720,7 +720,7 @@
                 if(req.assignments) acc.push(...req.assignments);
                 return acc;
             }, []); // Fallback or find where assignments are stored globally
-
+            
             // For now, let's assume we might need to fetch details or have them passed differently.
             // This is a simplified placeholder.
             alert(`Assignment Detail for ID: ${assignmentId}\n\nFurther details would be shown here.`);

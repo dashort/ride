@@ -20,9 +20,9 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
   try {
     console.log(`🚀 Starting new request creation by ${submittedBy} with data:`, JSON.stringify(requestData).substring(0, 200) + "...");
 
-    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests.name);
+    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
     if (!requestsSheet) {
-      throw new Error(`Sheet "${CONFIG.sheets.requests.name}" not found.`);
+      throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
     }
 
     const headers = getSheetHeaders(requestsSheet); // From SheetUtils.js (expected in CoreUtils.gs)
@@ -238,9 +238,9 @@ function updateExistingRequest(requestData) {
       throw new Error('Request ID is missing. Cannot update request.');
     }
 
-    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests.name);
+    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
     if (!requestsSheet) {
-      throw new Error(`Sheet "${CONFIG.sheets.requests.name}" not found.`);
+      throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
     }
 
     const headers = getSheetHeaders(requestsSheet); // From CoreUtils.js or SheetServices.gs
@@ -289,7 +289,7 @@ function updateExistingRequest(requestData) {
           value = requestData.eventDate ? new Date(requestData.eventDate) : null;
           break;
         case CONFIG.columns.requests.startTime:
-          value = requestData.startTime ? parseTimeString(requestData.startTime) : null;
+          value = requestData.startTime ? parseTimeString(requestData.startTime) : null; 
           break;
         case CONFIG.columns.requests.endTime:
           value = requestData.endTime ? parseTimeString(requestData.endTime) : null;
@@ -311,7 +311,7 @@ function updateExistingRequest(requestData) {
           break;
         // Assuming CONFIG.columns.requests.courtesy exists from your description
         // If not, this case (and the form field) might need review.
-        // case CONFIG.columns.requests.courtesy:
+        // case CONFIG.columns.requests.courtesy: 
         //   value = requestData.courtesy; // Should be 'Yes' or 'No'
         //   break;
         case CONFIG.columns.requests.notes: // CONFIG might call this 'notes' or 'specialRequirements'
@@ -321,7 +321,7 @@ function updateExistingRequest(requestData) {
           break;
         // Example for a differently named special requirements field:
         // Make sure CONFIG.columns.requests.requirements exists or adjust to actual sheet column name
-        // case CONFIG.columns.requests.requirements:
+        // case CONFIG.columns.requests.requirements: 
         //   value = requestData.specialRequirements;
         //   break;
         case CONFIG.columns.requests.lastModified: // Changed from lastUpdated to lastModified
@@ -334,14 +334,14 @@ function updateExistingRequest(requestData) {
           // Check if requestData has a property for the current header
           const requestDataKey = Object.keys(requestData).find(k => {
             // Simple direct match or common variations (e.g. form 'requestType' to sheet 'Type')
-            return k.toLowerCase() === header.toLowerCase() ||
+            return k.toLowerCase() === header.toLowerCase() || 
                    (CONFIG.columns.requests[k] && CONFIG.columns.requests[k] === header);
           });
 
           if (requestDataKey && requestData[requestDataKey] !== undefined) {
             value = requestData[requestDataKey];
           } else {
-            value = data[rowIndex][headers.indexOf(header)];
+            value = data[rowIndex][headers.indexOf(header)]; 
           }
       }
       rowData.push(value);
@@ -369,12 +369,12 @@ function deleteRequest(requestId) {
       throw new Error('Request ID is missing. Cannot delete request.');
     }
 
-    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests.name);
+    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
     if (!requestsSheet) {
-      throw new Error(`Sheet "${CONFIG.sheets.requests.name}" not found.`);
+      throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
     }
 
-    const headers = getSheetHeaders(requestsSheet); // From CoreUtils.gs or SheetServices.gs
+    const headers = getSheetHeaders(requestsSheet); // From CoreUtils.js or SheetServices.gs
     const data = requestsSheet.getDataRange().getValues();
 
     const idCol = headers.indexOf(CONFIG.columns.requests.id);
@@ -398,7 +398,7 @@ function deleteRequest(requestId) {
     // data[0] is the header row (sheet row 1).
     // data[1] is the first data row (sheet row 2).
     // So, if the match is at data[rowIndex], its actual sheet row number is rowIndex + 1.
-    const sheetRowToDelete = rowIndex + 1;
+    const sheetRowToDelete = rowIndex + 1; 
 
     requestsSheet.deleteRow(sheetRowToDelete);
     SpreadsheetApp.flush(); // Ensure changes are written
