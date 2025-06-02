@@ -65,6 +65,14 @@
             background-color: #218838;
         }
         
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background-color: #138496;
+        }
+
         .stats {
             font-size: 14px;
             color: #666;
@@ -503,6 +511,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button>
                 <button type="button" class="btn btn-primary" onclick="saveRequest()">💾 Save Changes</button>
             </div>
         </div>
@@ -704,7 +713,8 @@
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
-        document.getElementById('deleteBtn').style.display = 'inline-block'; // Ensure delete button is visible for existing requests
+        document.getElementById('deleteBtn').style.display = 'inline-block';
+        document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Show Assign Riders button
         document.getElementById('editRequestModal').style.display = 'block';
     }
 
@@ -722,7 +732,8 @@
         document.getElementById('editRidersNeeded').value = 1;
 
         document.getElementById('modalTitle').textContent = 'Add New Request';
-        document.getElementById('deleteBtn').style.display = 'none'; // Hide delete button for new requests
+        document.getElementById('deleteBtn').style.display = 'none';
+        document.getElementById('assignRidersBtnModal').style.display = 'none'; // Hide Assign Riders button
         document.getElementById('editRequestModal').style.display = 'block';
     }
 
@@ -733,7 +744,8 @@
     function closeEditModal() {
         document.getElementById('editRequestModal').style.display = 'none';
         currentEditingRequest = null;
-        document.getElementById('deleteBtn').style.display = 'inline-block'; // Restore delete button visibility
+        document.getElementById('deleteBtn').style.display = 'inline-block';
+        document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Reset to default visible
     }
 
     /**
@@ -1016,6 +1028,21 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+    }
+
+    function redirectToAssignmentPage() {
+        if (currentEditingRequest && currentEditingRequest.requestId) {
+            const requestId = currentEditingRequest.requestId;
+            // Construct URL based on how navigation is typically handled (e.g., using query parameters)
+            // Assuming current base path and adding query params.
+            // The doGet function uses ?page=assignments
+            const targetUrl = window.location.origin + window.location.pathname + '?page=assignments&requestId=' + encodeURIComponent(requestId);
+            console.log('Navigating to assignments page for request:', requestId, targetUrl);
+            window.location.href = targetUrl;
+        } else {
+            alert('No request selected or request ID is missing. Cannot navigate to assignments.');
+            console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
+        }
     }
 </script>
 </body>
