@@ -357,3 +357,57 @@ function updateExistingRequest(requestData) {
     return { success: false, message: 'Error updating request: ' + error.message };
   }
 }
+
+/**
+ * Deletes a request from the 'Requests' sheet based on its ID.
+ * @param {string} requestId The ID of the request to delete.
+ * @return {object} An object indicating success or failure, with a message.
+ */
+function deleteRequest(requestId) {
+  try {
+    if (!requestId) {
+      throw new Error('Request ID is missing. Cannot delete request.');
+    }
+
+    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests.name);
+    if (!requestsSheet) {
+      throw new Error(`Sheet "${CONFIG.sheets.requests.name}" not found.`);
+    }
+
+    const headers = getSheetHeaders(requestsSheet); // From CoreUtils.gs or SheetServices.gs
+    const data = requestsSheet.getDataRange().getValues();
+
+    const idCol = headers.indexOf(CONFIG.columns.requests.id);
+    if (idCol === -1) {
+      throw new Error(`"${CONFIG.columns.requests.id}" column not found in sheet.`);
+    }
+
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
+      if (data[i][idCol] == requestId) {
+        rowIndex = i; // This is the index in the data array (0-based for data rows relative to start of `data`)
+        break;
+      }
+    }
+
+    if (rowIndex === -1) {
+      throw new Error(`Request with ID "${requestId}" not found for deletion.`);
+    }
+
+    // Convert data array index to actual sheet row number (1-based)
+    // data[0] is the header row (sheet row 1).
+    // data[1] is the first data row (sheet row 2).
+    // So, if the match is at data[rowIndex], its actual sheet row number is rowIndex + 1.
+    const sheetRowToDelete = rowIndex + 1;
+
+    requestsSheet.deleteRow(sheetRowToDelete);
+    SpreadsheetApp.flush(); // Ensure changes are written
+
+    logActivity(`Request deleted: ${requestId}`); // Assumes logActivity is global
+    return { success: true, message: 'Request deleted successfully.' };
+
+  } catch (error) {
+    logError('Error deleting request', error); // Assumes logError is global
+    return { success: false, message: 'Error deleting request: ' + error.message };
+  }
+}

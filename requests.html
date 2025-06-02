@@ -790,16 +790,22 @@
 
         google.script.run
             .withSuccessHandler((result) => {
+                console.log('Save success handler received:', JSON.stringify(result, null, 2));
                 hideLoadingOverlay();
                 if (result.success) {
                     alert(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
                     closeEditModal();
                     loadPageData(); // Refresh the list (was loadRequests())
                 } else {
+                    console.error('Save operation reported failure. Server result:', JSON.stringify(result, null, 2));
                     alert('Error: ' + result.message);
                 }
             })
             .withFailureHandler((error) => {
+                console.error('Save failure handler triggered. Error object:', JSON.stringify(error, null, 2));
+                console.error('Error name:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Full error object:', error);
                 hideLoadingOverlay();
                 alert('Error saving request: ' + error.message);
             })
