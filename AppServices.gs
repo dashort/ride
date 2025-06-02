@@ -476,171 +476,6 @@ function renderEscortSidebarForWebApp() {
 }
 
 /**
- * Gets filtered requests for web app display
- * @param {string} filter - Status filter ('All', 'New', 'Pending', etc.)
- * @return {Array<object>} Array of formatted request objects
- */
-
-/**
- * Enhanced wrapper function for the requests page
- * Add this to your AppServices.gs file, replacing the existing version
- */
-function getPageDataForRequests(filter = 'All') {
-  try {
-    console.log(`📋 getPageDataForRequests called with filter: ${filter}`);
-    
-    // Get user data
-    const user = getCurrentUser();
-    console.log('✅ User data retrieved:', user?.name || 'Unknown');
-    
-    // Get requests using the enhanced function
-    const requests = getFilteredRequestsForWebApp(filter);
-    console.log(`✅ Requests retrieved: ${requests?.length || 0} items`);
-    
-    // Ensure we return an array
-    const safeRequests = Array.isArray(requests) ? requests : [];
-    
-    const result = {
-      success: true,
-      user: user,
-      requests: safeRequests
-    };
-    
-    console.log('✅ getPageDataForRequests result:', {
-      success: result.success,
-      userName: result.user?.name,
-      requestsCount: result.requests?.length || 0
-    });
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Error in getPageDataForRequests:', error);
-    logError('Error in getPageDataForRequests', error);
-    
-    return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser() || { name: 'Guest', roles: ['guest'], permissions: ['view'] },
-      requests: []
-    };
-  }
-}
-
-/**
- * Alternative direct function for testing
- * This bypasses the wrapper and directly returns formatted requests
- */
-function getRequestsForWebAppDirect(filter = 'All') {
-  try {
-    console.log(`🔄 Direct requests call with filter: ${filter}`);
-    
-    const result = getFilteredRequestsForWebApp(filter);
-    console.log(`📊 Direct result: ${result?.length || 0} requests`);
-    
-    return result || [];
-    
-  } catch (error) {
-    console.error('❌ Error in direct requests call:', error);
-    return [];
-  }
-}
-
-/**
- * Simple test that just returns basic data
- */
-function testSimpleRequestsData() {
-  try {
-    console.log('🧪 Testing simple requests data...');
-    
-    // Try to get raw sheet data
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
-    if (!sheet) {
-      return { error: 'Requests sheet not found' };
-    }
-    
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    console.log('✅ Got sheet data:', values.length, 'rows');
-    
-    // Return first few rows as simple objects
-    const simpleRequests = [];
-    for (let i = 1; i < Math.min(6, values.length); i++) { // Skip header, get first 5 rows
-      const row = values[i];
-      simpleRequests.push({
-        id: row[0] || `ROW-${i}`,
-        requestId: row[0] || `ROW-${i}`,
-        requesterName: row[2] || 'Unknown',
-        type: row[4] || 'Unknown',
-        requestType: row[4] || 'Unknown',
-        status: row[13] || 'New',
-        eventDate: 'TBD',
-        startTime: 'TBD',
-        endTime: 'TBD',
-        startLocation: row[8] || 'TBD',
-        endLocation: row[9] || 'TBD',
-        ridersNeeded: row[11] || 1,
-        notes: row[14] || ''
-      });
-    }
-    
-    console.log('✅ Returning', simpleRequests.length, 'simple requests');
-    return simpleRequests;
-    
-  } catch (error) {
-    console.error('❌ Error in testSimpleRequestsData:', error);
-    return { error: error.message };
-  }
-}
-/**
- * Simple test to check if requests data is accessible
- */
-function testRequestsAccess() {
-  try {
-    console.log('🧪 Testing basic requests access...');
-    
-    // Test 1: Can we access the sheet?
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
-    if (!sheet) {
-      return { error: 'Requests sheet not found. Expected sheet name: ' + CONFIG.sheets.requests };
-    }
-    
-    // Test 2: Get basic data
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    console.log('✅ Sheet found:', sheet.getName());
-    console.log('✅ Rows found:', values.length);
-    console.log('✅ Headers:', values[0]);
-    
-    // Test 3: Try getRequestsData function
-    const requestsData = getRequestsData();
-    console.log('✅ getRequestsData works:', !!requestsData);
-    
-    // Test 4: Try the filter function
-    const filtered = getFilteredRequestsForWebApp('All');
-    console.log('✅ getFilteredRequestsForWebApp works:', !!filtered);
-    
-    return {
-      success: true,
-      sheetName: sheet.getName(),
-      totalRows: values.length,
-      headers: values[0],
-      requestsDataWorks: !!requestsData,
-      filteredCount: filtered ? filtered.length : 0,
-      sampleRequest: filtered && filtered.length > 0 ? filtered[0] : null
-    };
-    
-  } catch (error) {
-    console.error('❌ Test error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-/**
  * Gets requests that are suitable for assignment (not completed or cancelled).
  * Used by the assignments page in the web app.
  *
@@ -895,335 +730,48 @@ function getPageDataForDashboard() {
 
 
 /**
- * Gets consolidated data for the assignments page
- * @param {string} [requestIdToLoad] - Optional request ID to pre-select
- * @return {object} Consolidated data object with user, requests, riders, and optional initial request details
+ * Fetches all necessary data for the assignments page (assignments.html).
+ * Optionally fetches details for a specific request if `requestId` is provided.
+ * @param {string} [requestId=null] Optional ID of a request to fetch details for.
+ * @return {object} An object containing `user`, `requests` (assignable), `riders` (active),
+ *                  and `initialRequestDetails`. Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForAssignments(requestIdToLoad) {
+function getPageDataForAssignments(requestId = null) {
   try {
-    console.log('🔄 Loading assignments page data...', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
-    
-    const result = {
-      success: true,
-      user: null,
-      requests: [],
-      riders: [],
-      initialRequestDetails: null
-    };
-    
-    // Get user data
-    try {
-      result.user = getCurrentUser();
-    } catch (userError) {
-      console.log('⚠️ Could not load user data:', userError);
-      result.user = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view', 'assign_riders']
-      };
-    }
-    
-    // Get assignable requests
-    try {
-      result.requests = getFilteredRequestsForAssignments(result.user);
-      console.log(`✅ Loaded ${result.requests.length} assignable requests`);
-    } catch (requestsError) {
-      console.log('⚠️ Could not load requests:', requestsError);
-      result.requests = [];
-    }
-    
-    // Get active riders
-    try {
-      result.riders = getActiveRidersForWebApp();
-      console.log(`✅ Loaded ${result.riders.length} active riders`);
-    } catch (ridersError) {
-      console.log('⚠️ Could not load riders:', ridersError);
-      result.riders = [];
-    }
-    
-    // If a specific request ID was requested, try to get its details
-    if (requestIdToLoad) {
+    const user = getCurrentUser();
+    const assignableRequests = getFilteredRequestsForAssignments(user);
+    const activeRiders = getActiveRidersForAssignments();
+    let requestDetails = null;
+    if (requestId) {
       try {
-        const specificRequest = result.requests.find(r => r.id === requestIdToLoad);
-        if (specificRequest) {
-          result.initialRequestDetails = specificRequest;
-          console.log(`✅ Found initial request details for: ${requestIdToLoad}`);
-        } else {
-          console.log(`⚠️ Request ID ${requestIdToLoad} not found in assignable requests`);
-        }
-      } catch (detailsError) {
-        console.log('⚠️ Could not load initial request details:', detailsError);
+        const escortDetails = getEscortDetailsForAssignment(requestId);
+        requestDetails = escortDetails.request;
+      } catch (e) {
+        logError(`Failed to get details for initial requestId ${requestId} in getPageDataForAssignments`, e);
       }
     }
-    
-    return result;
-    
+    return { success: true, user, requests: assignableRequests, riders: activeRiders, initialRequestDetails: requestDetails };
   } catch (error) {
-    console.error('❌ Error in getPageDataForAssignments:', error);
-    return {
-      success: false,
-      error: error.message,
-      user: {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view', 'assign_riders']
-      }
-    };
+    logError('Error in getPageDataForAssignments', error);
+    return { success: false, error: error.message, user: getCurrentUser(), requests: [], riders: [], initialRequestDetails: null };
   }
 }
 
 /**
- * Gets consolidated data for the requests page
- * @param {string} [filter='All'] - Status filter for requests
- * @return {object} Consolidated data object with user and filtered requests
+ * Fetches data for the requests list page (requests.html).
+ * @param {string} [filter='All'] The status filter to apply to the requests.
+ * @return {object} An object containing `user` and `requests` (filtered and formatted).
+ *                  Includes a `success` flag and `error` message on failure.
  */
-/**
- * Enhanced function to get filtered requests for web app with better error handling
- * Add this to your Dashboard.js or AppServices.gs file
- */
-function getFilteredRequestsForWebApp(filter = 'All') {
+function getPageDataForRequests(filter = 'All') {
   try {
-    console.log(`📋 Getting filtered requests for web app with filter: ${filter}`);
-    
-    // Get the raw requests data
-    const requestsData = getRequestsData();
-    
-    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      console.log('❌ No requests data found');
-      return [];
-    }
-    
-    console.log(`✅ Found ${requestsData.data.length} total requests in sheet`);
-    
-    const columnMap = requestsData.columnMap;
-    const filteredRequests = [];
-    
-    // Process each request row
-    for (let i = 0; i < requestsData.data.length; i++) {
-      try {
-        const row = requestsData.data[i];
-        
-        // Get basic required fields
-        const requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-        const requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName);
-        const status = getColumnValue(row, columnMap, CONFIG.columns.requests.status);
-        
-        // Skip rows without essential data
-        if (!requestId || !requesterName) {
-          console.log(`⚠️ Skipping row ${i}: Missing ID or requester name`);
-          continue;
-        }
-        
-        // Apply status filter
-        if (filter !== 'All' && status !== filter) {
-          continue;
-        }
-        
-        // Build the formatted request object
-        const formattedRequest = {
-          requestId: requestId,
-          requesterName: requesterName,
-          requesterContact: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '',
-          requestType: getColumnValue(row, columnMap, CONFIG.columns.requests.type) || 'Unknown',
-          eventDate: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate)) || 'No Date',
-          startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.startTime)) || 'No Time',
-          endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.endTime)) || '',
-          startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || 'Location TBD',
-          endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
-          secondaryEndLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
-          ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
-          status: status || 'New',
-          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
-          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
-          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
-          courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
-          lastUpdated: formatDateTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.lastUpdated)) || '',
-          date: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.date)) || formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate)) || 'No Date'
-        };
-        
-        filteredRequests.push(formattedRequest);
-        
-        // Log first few for debugging
-        if (i < 3) {
-          console.log(`✅ Processed request ${i}:`, {
-            id: formattedRequest.requestId,
-            requester: formattedRequest.requesterName,
-            status: formattedRequest.status,
-            eventDate: formattedRequest.eventDate
-          });
-        }
-        
-      } catch (rowError) {
-        console.log(`⚠️ Error processing request row ${i}:`, rowError);
-      }
-    }
-    
-    // Sort by event date (most recent first)
-    filteredRequests.sort((a, b) => {
-      try {
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        
-        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-        
-        return dateB.getTime() - dateA.getTime();
-      } catch (sortError) {
-        console.log('⚠️ Error sorting requests:', sortError);
-        return 0;
-      }
-    });
-    
-    console.log(`✅ Returning ${filteredRequests.length} filtered requests for filter: ${filter}`);
-    
-    if (filteredRequests.length > 0) {
-      console.log('Sample filtered request:', filteredRequests[0]);
-    }
-    
-    return filteredRequests;
-    
+    const user = getCurrentUser();
+    const rawRequests = getRequestsData();
+    const requests = getFilteredRequestsForWebApp(rawRequests, filter); // From Dashboard.js
+    return { success: true, user, requests };
   } catch (error) {
-    console.error('❌ Error in getFilteredRequestsForWebApp:', error);
-    logError('Error in getFilteredRequestsForWebApp', error);
-    
-    // Return empty array instead of null to prevent client-side errors
-    return [];
-  }
-}
-
-/**
- * Debugging function to test request data retrieval
- * Call this from your browser console: google.script.run.debugRequestsData()
- */
-function debugRequestsData() {
-  try {
-    console.log('=== DEBUGGING REQUESTS DATA ===');
-    
-    // Test basic data retrieval
-    const requestsData = getRequestsData();
-    console.log('Raw requests data:', {
-      hasData: !!requestsData,
-      dataLength: requestsData?.data?.length || 0,
-      headers: requestsData?.headers || [],
-      columnMap: requestsData?.columnMap || {}
-    });
-    
-    // Test column mapping
-    if (requestsData?.columnMap) {
-      console.log('Column mappings:');
-      Object.entries(CONFIG.columns.requests).forEach(([key, columnName]) => {
-        const index = requestsData.columnMap[columnName];
-        console.log(`  ${key} (${columnName}): column ${index}`);
-      });
-    }
-    
-    // Test sample data processing
-    if (requestsData?.data?.length > 0) {
-      console.log('Sample raw row:', requestsData.data[0]);
-      
-      const sampleProcessed = {
-        requestId: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.id),
-        requesterName: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.requesterName),
-        status: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.status)
-      };
-      console.log('Sample processed data:', sampleProcessed);
-    }
-    
-    // Test the actual function
-    const filtered = getFilteredRequestsForWebApp('All');
-    console.log('Filtered result:', {
-      type: typeof filtered,
-      isArray: Array.isArray(filtered),
-      length: filtered?.length || 0,
-      sample: filtered?.[0] || 'No data'
-    });
-    
-    return {
-      success: true,
-      rawDataLength: requestsData?.data?.length || 0,
-      filteredLength: filtered?.length || 0,
-      columnMap: requestsData?.columnMap || {},
-      sampleFiltered: filtered?.[0] || null
-    };
-    
-  } catch (error) {
-    console.error('Debug error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-/**
- * Test function to see what data we have
- */
-function testRequestsPageData() {
-  try {
-    console.log('🧪 Testing requests data...');
-    
-    // Test basic data access
-    const requestsData = getRequestsData();
-    console.log('Raw requests data:', requestsData);
-    
-    if (requestsData && requestsData.data) {
-      console.log('Found', requestsData.data.length, 'raw request rows');
-      
-      // Show first few rows
-      if (requestsData.data.length > 0) {
-        console.log('First request row:', requestsData.data[0]);
-        console.log('Column mapping:', requestsData.columnMap);
-      }
-    }
-    
-    // Test the filtered function
-    const filtered = getFilteredRequestsForWebApp('All');
-    console.log('Filtered requests:', filtered);
-    
-    return {
-      success: true,
-      rawCount: requestsData?.data?.length || 0,
-      filteredCount: filtered?.length || 0,
-      sampleRaw: requestsData?.data?.[0] || null,
-      sampleFiltered: filtered?.[0] || null
-    };
-    
-  } catch (error) {
-    console.error('Test error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-/**
- * Test function to debug requests page data
- */
-function testRequestsPageData() {
-  console.log('🧪 Testing requests page data...');
-  
-  try {
-    const result = getPageDataForRequests('All');
-    console.log('✅ Success:', result.success);
-    console.log('👤 User:', result.user?.name);
-    console.log('📋 Requests count:', result.requests?.length);
-    
-    if (result.requests && result.requests.length > 0) {
-      console.log('📋 Sample request:', result.requests[0]);
-      console.log('📋 Request fields available:', Object.keys(result.requests[0]));
-    }
-    
-    // Test with filter
-    const filteredResult = getPageDataForRequests('New');
-    console.log('📋 New requests count:', filteredResult.requests?.length);
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return { error: error.message };
+    logError('Error in getPageDataForRequests', error);
+    return { success: false, error: error.message, user: getCurrentUser(), requests: [] };
   }
 }
 
@@ -1234,283 +782,42 @@ function testRequestsPageData() {
  *                  and `stats` (notification-related statistics).
  *                  Includes a `success` flag and `error` message on failure.
  */
-/**
- * Gets consolidated data for the notifications page
- * @return {object} Consolidated data object with user, assignments, and stats
- */
-function getPageDataForNotifications() {
+function getPageDataForNotifications(userRoles = ['admin']) {
   try {
-    console.log('🔄 Loading notifications page data...');
-    
-    const result = {
-      success: true,
-      user: null,
-      assignments: [],
-      stats: {},
-      recentActivity: []
-    };
-    
-    // Get user data
-    try {
-      result.user = getCurrentUser();
-    } catch (userError) {
-      console.log('⚠️ Could not load user data:', userError);
-      result.user = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['send_notifications']
-      };
+    const user = getCurrentUser();
+    let assignments = [];
+    if (typeof getAllAssignmentsForNotifications === "function") { // From Notifications.js
+        assignments = getAllAssignmentsForNotifications();
+    } else {
+        const rawAssignments = getAssignmentsData();
+        if (rawAssignments && rawAssignments.data) {
+            assignments = rawAssignments.data.map((row, index) => {
+                const colMap = rawAssignments.columnMap;
+                return {
+                    id: getColumnValue(row, colMap, CONFIG.columns.assignments.id) || `TEMP_ID_${index}`,
+                    requestId: getColumnValue(row, colMap, CONFIG.columns.assignments.requestId),
+                    riderName: getColumnValue(row, colMap, CONFIG.columns.assignments.riderName),
+                    riderPhone: getColumnValue(row, colMap, CONFIG.columns.riders.phone),
+                    riderEmail: getColumnValue(row, colMap, CONFIG.columns.riders.email),
+                    eventDate: formatDateForDisplay(getColumnValue(row, colMap, CONFIG.columns.assignments.eventDate)),
+                    startTime: formatTimeForDisplay(getColumnValue(row, colMap, CONFIG.columns.assignments.startTime)),
+                    startLocation: getColumnValue(row, colMap, CONFIG.columns.assignments.startLocation),
+                    notificationStatus: getColumnValue(row, colMap, CONFIG.columns.assignments.notificationStatus) || 'none',
+                    lastNotified: getColumnValue(row, colMap, CONFIG.columns.assignments.lastNotifiedDate)
+                };
+            });
+        }
+         logWarn("Used fallback data for getAllAssignmentsForNotifications in getPageDataForNotifications");
     }
-    
-    // Get all assignments for notifications
-    try {
-      result.assignments = getAllAssignmentsForNotifications();
-      console.log(`✅ Loaded ${result.assignments.length} assignments for notifications`);
-    } catch (assignmentsError) {
-      console.log('⚠️ Could not load assignments:', assignmentsError);
-      result.assignments = [];
-    }
-    
-    // Calculate notification stats
-    try {
-      result.stats = calculateNotificationStats(result.assignments);
-      console.log('✅ Calculated notification stats:', result.stats);
-    } catch (statsError) {
-      console.log('⚠️ Could not calculate stats:', statsError);
-      result.stats = {
-        totalAssignments: 0,
-        pendingNotifications: 0,
-        smsToday: 0,
-        emailToday: 0
-      };
-    }
-    
-    // Get recent notification activity
-    try {
-      result.recentActivity = getRecentNotificationActivity(result.assignments);
-      console.log(`✅ Found ${result.recentActivity.length} recent activities`);
-    } catch (activityError) {
-      console.log('⚠️ Could not load recent activity:', activityError);
-      result.recentActivity = [];
-    }
-    
-    return result;
-    
+    const stats = calculateStatsFromAssignmentsData(assignments);
+    return { success: true, user, assignments, stats };
   } catch (error) {
-    console.error('❌ Error in getPageDataForNotifications:', error);
+    logError('Error in getPageDataForNotifications', error);
     return {
-      success: false,
-      error: error.message,
-      user: {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['send_notifications']
-      }
+      success: false, error: error.message, user: getCurrentUser(),
+      assignments: [], stats: { totalAssignments: 0, pendingNotifications: 0, smsToday: 0, emailToday: 0 }
     };
   }
-}
-
-/**
- * Gets all assignments formatted for notifications page
- * @return {Array<object>} Array of assignment objects with notification data
- */
-function getAllAssignmentsForNotifications() {
-  try {
-    const assignmentsData = getAssignmentsData();
-    if (!assignmentsData || !assignmentsData.data) {
-      console.log('⚠️ No assignments data found');
-      return [];
-    }
-    
-    const assignments = assignmentsData.data
-      .filter(assignment => {
-        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-        
-        // Only include assignments with riders that aren't cancelled/completed
-        return riderName && 
-               riderName.trim().length > 0 && 
-               !['Cancelled', 'Completed', 'No Show'].includes(status);
-      })
-      .map(assignment => {
-        const smsSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.smsSent);
-        const emailSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.emailSent);
-        const notified = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.notified);
-        
-        // Determine notification status
-        let notificationStatus = 'none';
-        if (smsSent instanceof Date && emailSent instanceof Date) {
-          notificationStatus = 'both_sent';
-        } else if (smsSent instanceof Date) {
-          notificationStatus = 'sms_sent';
-        } else if (emailSent instanceof Date) {
-          notificationStatus = 'email_sent';
-        } else if (notified instanceof Date) {
-          notificationStatus = 'notified'; // Generic notification
-        }
-        
-        // Get the most recent notification timestamp
-        let lastNotified = null;
-        if (smsSent instanceof Date || emailSent instanceof Date || notified instanceof Date) {
-          const dates = [smsSent, emailSent, notified].filter(d => d instanceof Date);
-          if (dates.length > 0) {
-            lastNotified = new Date(Math.max(...dates.map(d => d.getTime())));
-          }
-        }
-        
-        return {
-          id: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
-          requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
-          riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
-          riderPhone: getRiderPhone(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          riderEmail: getRiderEmail(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          riderCarrier: getRiderCarrier(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
-          startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
-          endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)),
-          startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation),
-          endLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation),
-          notificationStatus: notificationStatus,
-          lastNotified: lastNotified ? lastNotified.toISOString() : null,
-          status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status)
-        };
-      })
-      .filter(assignment => assignment.id && assignment.riderName);
-    
-    console.log(`✅ Processed ${assignments.length} assignments for notifications`);
-    return assignments;
-    
-  } catch (error) {
-    console.error('❌ Error getting assignments for notifications:', error);
-    return [];
-  }
-}
-
-/**
- * Helper function to get rider phone from riders data
- */
-function getRiderPhone(riderName) {
-  if (!riderName) return 'N/A';
-  try {
-    const ridersData = getRidersData();
-    const rider = ridersData.data.find(r => 
-      getColumnValue(r, ridersData.columnMap, CONFIG.columns.riders.name) === riderName
-    );
-    return rider ? getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.phone) || 'N/A' : 'N/A';
-  } catch (error) {
-    return 'N/A';
-  }
-}
-
-/**
- * Helper function to get rider email from riders data
- */
-function getRiderEmail(riderName) {
-  if (!riderName) return 'N/A';
-  try {
-    const ridersData = getRidersData();
-    const rider = ridersData.data.find(r => 
-      getColumnValue(r, ridersData.columnMap, CONFIG.columns.riders.name) === riderName
-    );
-    return rider ? getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.email) || 'N/A' : 'N/A';
-  } catch (error) {
-    return 'N/A';
-  }
-}
-
-/**
- * Helper function to get rider carrier from riders data
- */
-function getRiderCarrier(riderName) {
-  if (!riderName) return 'N/A';
-  try {
-    const ridersData = getRidersData();
-    const rider = ridersData.data.find(r => 
-      getColumnValue(r, ridersData.columnMap, CONFIG.columns.riders.name) === riderName
-    );
-    return rider ? getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.carrier) || 'N/A' : 'N/A';
-  } catch (error) {
-    return 'N/A';
-  }
-}
-
-/**
- * Calculates notification statistics from assignments data
- */
-function calculateNotificationStats(assignments) {
-  if (!assignments || !Array.isArray(assignments)) {
-    return {
-      totalAssignments: 0,
-      pendingNotifications: 0,
-      smsToday: 0,
-      emailToday: 0
-    };
-  }
-  
-  const today = new Date();
-  const todayStr = today.toDateString();
-  
-  let totalAssignments = assignments.length;
-  let pendingNotifications = 0;
-  let smsToday = 0;
-  let emailToday = 0;
-  
-  assignments.forEach(assignment => {
-    // Count pending notifications (not yet notified)
-    if (!assignment.notificationStatus || assignment.notificationStatus === 'none') {
-      pendingNotifications++;
-    }
-    
-    // Count today's notifications
-    if (assignment.lastNotified) {
-      const notifiedDate = new Date(assignment.lastNotified);
-      if (notifiedDate.toDateString() === todayStr) {
-        if (assignment.notificationStatus === 'sms_sent' || assignment.notificationStatus === 'both_sent') {
-          smsToday++;
-        }
-        if (assignment.notificationStatus === 'email_sent' || assignment.notificationStatus === 'both_sent') {
-          emailToday++;
-        }
-      }
-    }
-  });
-  
-  return {
-    totalAssignments: totalAssignments,
-    pendingNotifications: pendingNotifications,
-    smsToday: smsToday,
-    emailToday: emailToday
-  };
-}
-
-/**
- * Gets recent notification activity
- */
-function getRecentNotificationActivity(assignments) {
-  if (!assignments || !Array.isArray(assignments)) {
-    return [];
-  }
-  
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  
-  return assignments
-    .filter(assignment => {
-      return assignment.lastNotified && new Date(assignment.lastNotified) > weekAgo;
-    })
-    .sort((a, b) => new Date(b.lastNotified).getTime() - new Date(a.lastNotified).getTime())
-    .slice(0, 10)
-    .map(assignment => ({
-      id: `${assignment.id}_activity`,
-      timestamp: assignment.lastNotified,
-      type: assignment.notificationStatus.includes('sms') ? 'SMS' : 'Email',
-      recipient: assignment.riderName,
-      requestId: assignment.requestId,
-      status: 'Success',
-      messagePreview: `Assignment notification sent to ${assignment.riderName}`
-    }));
 }
 
 /**
@@ -1542,23 +849,23 @@ function getPageDataForMobileRiderView(filter = 'All') {
     user = getCurrentUser(); // Attempt to get user info first
 
     // Fetch general requests
-    const rawRequests = getRequestsData();
+    const rawRequests = getRequestsData(); 
     let requests = [];
     // Ensure getFilteredRequestsForWebApp is available in the global scope or defined in AppServices.gs
     if (typeof getFilteredRequestsForWebApp === 'function') {
-        requests = getFilteredRequestsForWebApp(rawRequests, filter);
+        requests = getFilteredRequestsForWebApp(rawRequests, filter); 
     } else {
         // console.warn('getFilteredRequestsForWebApp is not defined. Skipping general requests.');
     }
-
+    
     // Fetch assignments specific to the rider
     const assignments = getMobileAssignmentsForRider(); // Newly added function
 
-    return {
-      success: true,
-      user: user,
-      requests: requests,
-      assignments: assignments
+    return { 
+      success: true, 
+      user: user, 
+      requests: requests, 
+      assignments: assignments 
     };
 
   } catch (error) {
@@ -1571,12 +878,12 @@ function getPageDataForMobileRiderView(filter = 'All') {
     if (!user) {
       try { user = getCurrentUser(); } catch (e) { /* ignore secondary error */ }
     }
-    return {
-      success: false,
-      error: error.message,
-      user: user,
-      requests: [],
-      assignments: []
+    return { 
+      success: false, 
+      error: error.message, 
+      user: user, 
+      requests: [], 
+      assignments: [] 
     };
   }
 }
@@ -1689,8 +996,8 @@ function getMobileAssignmentsForRider() {
         const assignedRiderNameColumn = CONFIG.columns.assignments.riderName;
         if (columnMap.hasOwnProperty(assignedRiderNameColumn)) {
           const assignedRiderName = getColumnValue(row, columnMap, assignedRiderNameColumn);
-          const userProfile = getCurrentUser();
-          const currentUserName = userProfile ? userProfile.name : Session.getActiveUser().getUsername();
+          const userProfile = getCurrentUser(); 
+          const currentUserName = userProfile ? userProfile.name : Session.getActiveUser().getUsername(); 
           if (assignedRiderName && currentUserName && String(assignedRiderName).trim().toLowerCase() === String(currentUserName).trim().toLowerCase()){
             riderIdentifierFound = true;
             // console.log(`Matched assignment by name for ${currentUserName} as email was not found or didn't match.`);
@@ -1701,7 +1008,7 @@ function getMobileAssignmentsForRider() {
       }
 
       if (!riderIdentifierFound) {
-        continue;
+        continue; 
       }
 
       const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
@@ -1728,16 +1035,16 @@ function getMobileAssignmentsForRider() {
         }
       } else {
         // console.warn(`Missing or invalid event date for assignment ${getColumnValue(row, columnMap, CONFIG.columns.assignments.id)}`);
-        continue;
+        continue; 
       }
-
+      
       const twoDaysAgo = new Date(today.getTime() - (2 * 24 * 60 * 60 * 1000));
       if (assignmentDate < twoDaysAgo) {
         if (!['In Progress', 'Assigned'].includes(status)) {
             continue;
         }
       }
-
+      
       const startLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation);
       const endLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation);
       let displayLocation = 'Location TBD';
@@ -1753,9 +1060,9 @@ function getMobileAssignmentsForRider() {
       riderAssignments.push({
         assignmentId: getColumnValue(row, columnMap, CONFIG.columns.assignments.id) || 'N/A',
         requestId: getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId) || 'N/A',
-        eventDate: formatDateForDisplay(eventDateValue),
-        startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime)) || 'No Time',
-        startLocation: displayLocation,
+        eventDate: formatDateForDisplay(eventDateValue), 
+        startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime)) || 'No Time', 
+        startLocation: displayLocation, 
         status: status || 'Assigned'
       });
     }
@@ -1764,7 +1071,7 @@ function getMobileAssignmentsForRider() {
       let dateA, dateB;
       try { dateA = new Date(a.eventDate + ' ' + (a.startTime === 'No Time' ? '00:00' : a.startTime.replace(/( AM| PM)/i, ''))); } catch(e) { dateA = null;}
       try { dateB = new Date(b.eventDate + ' ' + (b.startTime === 'No Time' ? '00:00' : b.startTime.replace(/( AM| PM)/i, ''))); } catch(e) { dateB = null;}
-
+      
       if (!dateA && !dateB) return 0;
       if (!dateA) return 1;
       if (!dateB) return -1;
@@ -1780,10 +1087,10 @@ function getMobileAssignmentsForRider() {
   } catch (error) {
     // console.error(`❌ Error in getMobileAssignmentsForRider for ${Session.getActiveUser().getEmail()}:`, error.message, error.stack);
     if (typeof logError === 'function') {
-      logError('Error in getMobileAssignmentsForRider', error);
+      logError('Error in getMobileAssignmentsForRider', error); 
     } else {
       // console.error('logError function not available. Error in getMobileAssignmentsForRider:', error);
     }
-    return [];
+    return []; 
   }
 }
