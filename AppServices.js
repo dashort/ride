@@ -480,104 +480,72 @@ function renderEscortSidebarForWebApp() {
  * @param {string} filter - Status filter ('All', 'New', 'Pending', etc.)
  * @return {Array<object>} Array of formatted request objects
  */
-function getFilteredRequestsForWebApp(filter) {
+
+/**
+ * Enhanced wrapper function for the requests page
+ * Add this to your AppServices.gs file, replacing the existing version
+ */
+function getPageDataForRequests(filter = 'All') {
   try {
-    console.log(`🔄 Getting filtered requests for web app with filter: ${filter}`);
+    console.log(`📋 getPageDataForRequests called with filter: ${filter}`);
     
-    const requestsData = getRequestsData();
-    if (!requestsData || !requestsData.data) {
-      console.log('⚠️ No requests data found');
-      return [];
-    }
+    // Get user data
+    const user = getCurrentUser();
+    console.log('✅ User data retrieved:', user?.name || 'Unknown');
     
-    console.log(`📊 Found ${requestsData.data.length} total requests in sheet`);
+    // Get requests using the enhanced function
+    const requests = getFilteredRequestsForWebApp(filter);
+    console.log(`✅ Requests retrieved: ${requests?.length || 0} items`);
     
-    // Convert raw sheet data to formatted objects
-    let formattedRequests = requestsData.data.map((row, index) => {
-      try {
-        // Get raw values first
-        const rawEventDate = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-        const rawStartTime = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime);
-        const rawEndTime = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endTime);
-        
-        // Log first few for debugging
-        if (index < 3) {
-          console.log(`Row ${index} - Raw Event Date:`, rawEventDate, typeof rawEventDate);
-          console.log(`Row ${index} - Raw Start Time:`, rawStartTime, typeof rawStartTime);
-          console.log(`Row ${index} - Raw End Time:`, rawEndTime, typeof rawEndTime);
-        }
-        
-        const request = {
-          id: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id),
-          requestId: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id),
-          requesterName: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requesterName),
-          requesterContact: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requesterContact),
-          type: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type),
-          requestType: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type),
-          
-          // Better date/time handling
-          eventDate: formatDateSafe(rawEventDate),
-          startTime: formatTimeSafe(rawStartTime),
-          endTime: formatTimeSafe(rawEndTime),
-          
-          startLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startLocation),
-          endLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endLocation),
-          secondaryEndLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.secondaryLocation),
-          ridersNeeded: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded),
-          status: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status) || 'New',
-          specialRequirements: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requirements),
-          notes: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.notes),
-          courtesy: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.courtesy),
-          ridersAssigned: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned),
-          lastUpdated: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.lastUpdated)
-        };
-        
-        return request;
-      } catch (rowError) {
-        console.log(`⚠️ Error processing request row ${index}:`, rowError);
-        return null;
-      }
-    }).filter(request => {
-      // Filter out null requests and requests without ID or name
-      return request && request.id && request.requesterName;
+    // Ensure we return an array
+    const safeRequests = Array.isArray(requests) ? requests : [];
+    
+    const result = {
+      success: true,
+      user: user,
+      requests: safeRequests
+    };
+    
+    console.log('✅ getPageDataForRequests result:', {
+      success: result.success,
+      userName: result.user?.name,
+      requestsCount: result.requests?.length || 0
     });
     
-    console.log(`✅ Successfully formatted ${formattedRequests.length} requests`);
-    
-    // Apply status filter
-    if (filter && filter !== 'All') {
-      formattedRequests = formattedRequests.filter(request => request.status === filter);
-      console.log(`📋 After filtering by '${filter}': ${formattedRequests.length} requests`);
-    }
-    
-    // Sort by event date (most recent first), then by request ID
-    formattedRequests.sort((a, b) => {
-      // Try to sort by event date first
-      if (a.eventDate && b.eventDate && a.eventDate !== 'TBD' && b.eventDate !== 'TBD') {
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-        if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-          return dateB.getTime() - dateA.getTime();
-        }
-      }
-      
-      // Fallback to request ID
-      if (a.id && b.id) {
-        return b.id.localeCompare(a.id);
-      }
-      
-      return 0;
-    });
-    
-    console.log(`📤 Returning ${formattedRequests.length} filtered and sorted requests`);
-    return formattedRequests;
+    return result;
     
   } catch (error) {
-    console.error('❌ Error in getFilteredRequestsForWebApp:', error);
-    logError('Error in getFilteredRequestsForWebApp', error);
+    console.error('❌ Error in getPageDataForRequests:', error);
+    logError('Error in getPageDataForRequests', error);
+    
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser() || { name: 'Guest', roles: ['guest'], permissions: ['view'] },
+      requests: []
+    };
+  }
+}
+
+/**
+ * Alternative direct function for testing
+ * This bypasses the wrapper and directly returns formatted requests
+ */
+function getRequestsForWebAppDirect(filter = 'All') {
+  try {
+    console.log(`🔄 Direct requests call with filter: ${filter}`);
+    
+    const result = getFilteredRequestsForWebApp(filter);
+    console.log(`📊 Direct result: ${result?.length || 0} requests`);
+    
+    return result || [];
+    
+  } catch (error) {
+    console.error('❌ Error in direct requests call:', error);
     return [];
   }
 }
+
 /**
  * Simple test that just returns basic data
  */
@@ -1011,111 +979,181 @@ function getPageDataForAssignments(requestIdToLoad) {
  * @param {string} [filter='All'] - Status filter for requests
  * @return {object} Consolidated data object with user and filtered requests
  */
-function getPageDataForRequests(filter = 'All') {
+/**
+ * Enhanced function to get filtered requests for web app with better error handling
+ * Add this to your Dashboard.js or AppServices.gs file
+ */
+function getFilteredRequestsForWebApp(filter = 'All') {
   try {
-    console.log(`🔄 Loading requests page data with filter: ${filter}`);
+    console.log(`📋 Getting filtered requests for web app with filter: ${filter}`);
     
-    const result = {
-      success: true,
-      user: null,
-      requests: []
-    };
+    // Get the raw requests data
+    const requestsData = getRequestsData();
     
-    // Get user data
-    try {
-      result.user = getCurrentUser();
-    } catch (userError) {
-      console.log('⚠️ Could not load user data:', userError);
-      result.user = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view', 'create_request', 'edit_request', 'delete_request']
-      };
+    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
+      console.log('❌ No requests data found');
+      return [];
     }
     
-    // Get all requests with full details
-    try {
-      const requestsData = getRequestsData();
-      if (!requestsData || !requestsData.data) {
-        console.log('⚠️ No requests data found');
-        result.requests = [];
-        return result;
-      }
-      
-      // Convert raw data to full request objects
-      let allRequests = requestsData.data.map(request => {
-        const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-        const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
-        const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+    console.log(`✅ Found ${requestsData.data.length} total requests in sheet`);
+    
+    const columnMap = requestsData.columnMap;
+    const filteredRequests = [];
+    
+    // Process each request row
+    for (let i = 0; i < requestsData.data.length; i++) {
+      try {
+        const row = requestsData.data[i];
         
-        return {
-          requestId: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.id),
-          requesterName: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requesterName),
-          requesterContact: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requesterContact),
-          requestType: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type),
-          eventDate: eventDate ? formatDateForDisplay(eventDate) : '',
-          startTime: startTime ? formatTimeForDisplay(startTime) : '',
-          endTime: endTime ? formatTimeForDisplay(endTime) : '',
-          startLocation: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startLocation),
-          endLocation: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endLocation),
-          secondaryEndLocation: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.secondaryLocation),
-          ridersNeeded: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded),
-          status: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) || 'New',
-          specialRequirements: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requirements),
-          notes: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.notes),
-          courtesy: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.courtesy),
-          ridersAssigned: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned),
-          lastUpdated: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.lastUpdated)
+        // Get basic required fields
+        const requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
+        const requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName);
+        const status = getColumnValue(row, columnMap, CONFIG.columns.requests.status);
+        
+        // Skip rows without essential data
+        if (!requestId || !requesterName) {
+          console.log(`⚠️ Skipping row ${i}: Missing ID or requester name`);
+          continue;
+        }
+        
+        // Apply status filter
+        if (filter !== 'All' && status !== filter) {
+          continue;
+        }
+        
+        // Build the formatted request object
+        const formattedRequest = {
+          requestId: requestId,
+          requesterName: requesterName,
+          requesterContact: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '',
+          requestType: getColumnValue(row, columnMap, CONFIG.columns.requests.type) || 'Unknown',
+          eventDate: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate)) || 'No Date',
+          startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.startTime)) || 'No Time',
+          endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.endTime)) || '',
+          startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || 'Location TBD',
+          endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
+          secondaryEndLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
+          ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
+          status: status || 'New',
+          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
+          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
+          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
+          courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
+          lastUpdated: formatDateTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.lastUpdated)) || '',
+          date: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.date)) || formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate)) || 'No Date'
         };
-      }).filter(request => request.requestId && request.requesterName); // Only include requests with ID and name
-      
-      // Apply status filter
-      if (filter && filter !== 'All') {
-        allRequests = allRequests.filter(request => request.status === filter);
+        
+        filteredRequests.push(formattedRequest);
+        
+        // Log first few for debugging
+        if (i < 3) {
+          console.log(`✅ Processed request ${i}:`, {
+            id: formattedRequest.requestId,
+            requester: formattedRequest.requesterName,
+            status: formattedRequest.status,
+            eventDate: formattedRequest.eventDate
+          });
+        }
+        
+      } catch (rowError) {
+        console.log(`⚠️ Error processing request row ${i}:`, rowError);
       }
-      
-      // Sort by most recent (by event date, then by request ID)
-      allRequests.sort((a, b) => {
-        // First try to sort by event date
-        if (a.eventDate && b.eventDate) {
-          const dateA = new Date(a.eventDate);
-          const dateB = new Date(b.eventDate);
-          if (!isNaN(dateA.getTime()) && !isNaN(dateB.getTime())) {
-            return dateB.getTime() - dateA.getTime(); // Most recent first
-          }
-        }
-        
-        // Fallback to sorting by request ID (assuming newer IDs are "higher")
-        if (a.requestId && b.requestId) {
-          return b.requestId.localeCompare(a.requestId);
-        }
-        
-        return 0;
-      });
-      
-      result.requests = allRequests;
-      console.log(`✅ Loaded ${result.requests.length} requests (filtered: ${filter})`);
-      
-    } catch (requestsError) {
-      console.error('⚠️ Could not load requests:', requestsError);
-      result.requests = [];
     }
     
-    return result;
+    // Sort by event date (most recent first)
+    filteredRequests.sort((a, b) => {
+      try {
+        const dateA = new Date(a.eventDate);
+        const dateB = new Date(b.eventDate);
+        
+        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+        if (isNaN(dateA.getTime())) return 1;
+        if (isNaN(dateB.getTime())) return -1;
+        
+        return dateB.getTime() - dateA.getTime();
+      } catch (sortError) {
+        console.log('⚠️ Error sorting requests:', sortError);
+        return 0;
+      }
+    });
+    
+    console.log(`✅ Returning ${filteredRequests.length} filtered requests for filter: ${filter}`);
+    
+    if (filteredRequests.length > 0) {
+      console.log('Sample filtered request:', filteredRequests[0]);
+    }
+    
+    return filteredRequests;
     
   } catch (error) {
-    console.error('❌ Error in getPageDataForRequests:', error);
+    console.error('❌ Error in getFilteredRequestsForWebApp:', error);
+    logError('Error in getFilteredRequestsForWebApp', error);
+    
+    // Return empty array instead of null to prevent client-side errors
+    return [];
+  }
+}
+
+/**
+ * Debugging function to test request data retrieval
+ * Call this from your browser console: google.script.run.debugRequestsData()
+ */
+function debugRequestsData() {
+  try {
+    console.log('=== DEBUGGING REQUESTS DATA ===');
+    
+    // Test basic data retrieval
+    const requestsData = getRequestsData();
+    console.log('Raw requests data:', {
+      hasData: !!requestsData,
+      dataLength: requestsData?.data?.length || 0,
+      headers: requestsData?.headers || [],
+      columnMap: requestsData?.columnMap || {}
+    });
+    
+    // Test column mapping
+    if (requestsData?.columnMap) {
+      console.log('Column mappings:');
+      Object.entries(CONFIG.columns.requests).forEach(([key, columnName]) => {
+        const index = requestsData.columnMap[columnName];
+        console.log(`  ${key} (${columnName}): column ${index}`);
+      });
+    }
+    
+    // Test sample data processing
+    if (requestsData?.data?.length > 0) {
+      console.log('Sample raw row:', requestsData.data[0]);
+      
+      const sampleProcessed = {
+        requestId: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.id),
+        requesterName: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.requesterName),
+        status: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.status)
+      };
+      console.log('Sample processed data:', sampleProcessed);
+    }
+    
+    // Test the actual function
+    const filtered = getFilteredRequestsForWebApp('All');
+    console.log('Filtered result:', {
+      type: typeof filtered,
+      isArray: Array.isArray(filtered),
+      length: filtered?.length || 0,
+      sample: filtered?.[0] || 'No data'
+    });
+    
+    return {
+      success: true,
+      rawDataLength: requestsData?.data?.length || 0,
+      filteredLength: filtered?.length || 0,
+      columnMap: requestsData?.columnMap || {},
+      sampleFiltered: filtered?.[0] || null
+    };
+    
+  } catch (error) {
+    console.error('Debug error:', error);
     return {
       success: false,
-      error: error.message,
-      user: {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view', 'create_request', 'edit_request', 'delete_request']
-      },
-      requests: []
+      error: error.message
     };
   }
 }

@@ -20,7 +20,24 @@ let isDebugLoggingInProgress = false;
  * dashboard layout settings, and system-wide parameters.
  * @type {object}
  */
+/**
+ * @description
+ * Centralized configuration object for the Motorcycle Escort Management System.
+ * Updated for Twilio SMS integration with cleaned up structure.
+ */
 const CONFIG = {
+// Twilio SMS Configuration
+  twilio: {
+  accountSid: PropertiesService.getScriptProperties().getProperty('TWILIO_ACCOUNT_SID'),
+  authToken: PropertiesService.getScriptProperties().getProperty('TWILIO_AUTH_TOKEN'),
+  fromNumber: PropertiesService.getScriptProperties().getProperty('TWILIO_FROM_NUMBER'),
+    
+    // Optional settings
+    enableDeliveryCallbacks: true,                          // Set to true if you want delivery receipts
+    maxRetries: 3,                                          // Number of retry attempts
+    retryDelay: 1000                                        // Delay between retries in milliseconds
+  }, 
+
   // Sheet names
   sheets: {
     dashboard: "Dashboard",
@@ -29,7 +46,7 @@ const CONFIG = {
     assignments: "Assignments",
     history: "History",
     settings: "Settings",
-    log: "Log" // This exists
+    log: "Log"
   },
 
   // Column mappings (try to use consistent names)
@@ -50,21 +67,19 @@ const CONFIG = {
       requirements: 'Special Requirements',
       status: 'Status',
       notes: 'Notes',
-      ridersAssigned: 'Riders Assigned', // Maps to your Column Q
-      courtesy: 'Courtesy', // Maps to your Column R
+      ridersAssigned: 'Riders Assigned',
+      courtesy: 'Courtesy',
       lastUpdated: 'Last Updated'
     },
     riders: {
       jpNumber: 'Rider ID',
       name: 'Full Name',
       phone: 'Phone Number',
-      carrier: 'Carrier',
       email: 'Email',
-      smsGateway: 'SMS Gateway Email',
       status: 'Status',
       certification: 'Certification',
       totalAssignments: 'Total Assignments',
-      LastAssignmentDate: 'Last Assignment Date'
+      lastAssignmentDate: 'Last Assignment Date'  // Fixed: was 'LastAssignmentDate'
     },
     assignments: {
       id: 'Assignment ID',
@@ -76,7 +91,7 @@ const CONFIG = {
       endLocation: 'End Location',
       secondaryLocation: 'Secondary End Location',
       riderName: 'Rider Name',
-      jpNumber: 'JP Number', // Added for consistency in assignments.
+      jpNumber: 'JP Number',
       status: 'Status',
       createdDate: 'Created Date',
       notified: 'Notified',
@@ -93,32 +108,15 @@ const CONFIG = {
     requestTypes: ['Wedding', 'Funeral', 'Float Movement', 'VIP', 'Other'],
     requestStatuses: ['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress', 'Completed', 'Cancelled'],
     riderStatuses: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
-    assignmentStatuses: ['Assigned', 'Confirmed', 'En Route', 'In Progress', 'Completed', 'Cancelled', 'No Show'],
-    carriers: ['Verizon', 'AT&T', 'T-Mobile', 'Sprint', 'Virgin Mobile', 'Boost Mobile', 'Cricket', 'Metro PCS', 'US Cellular', 'Google Fi', 'Xfinity Mobile', 'Spectrum Mobile', 'Other']
-  },
-
-  // SMS carrier gateways
-  smsGateways: {
-    'verizon': 'vtext.com',
-    'at&t': 'txt.att.net',
-    'tmobile': 'tmomail.net',
-    'sprint': 'messaging.sprintpcs.com',
-    'virgin mobile': 'vmobl.com',
-    'boost mobile': 'sms.myboostmobile.com',
-    'cricket': 'sms.cricketwireless.net',
-    'metro pcs': 'mymetropcs.com',
-    'us cellular': 'email.uscc.net',
-    'google fi': 'msg.fi.google.com',
-    'xfinity mobile': 'vtext.com',
-    'spectrum mobile': 'vtext.com'
+    assignmentStatuses: ['Assigned', 'Confirmed', 'En Route', 'In Progress', 'Completed', 'Cancelled', 'No Show']
   },
 
   // Dashboard layout settings
   dashboard: {
-    requestsDisplayStartRow: 11, // Actual row where request data begins its display (e.g., 11)
-    scheduleStartRow: 9, // Schedule at top-right
-    scheduleStartCol: 12, // Column L (original was 14, moving left by 2)
-    summaryStatsStartCol: 1, // Column A (moving back to original left position)
+    requestsDisplayStartRow: 11,
+    scheduleStartRow: 9,
+    scheduleStartCol: 12,
+    summaryStatsStartCol: 1,
     maxDisplayRows: 40,
     refreshInterval: 5 * 60 * 1000,
     filterCell: 'B9',
@@ -971,47 +969,61 @@ function getNavigationHtml(currentPage = '') {
  *                                         `e.parameter.data` contains a JSON string of arguments for the action.
  * @return {GoogleAppsScript.ContentService.TextOutput} A JSON response indicating success or failure.
  */
+/**
+ * Complete doPost function with SMS webhook handler
+ * Replace your existing doPost function in Code.js with this version
+ */
 function doPost(e) {
   try {
+    console.log('📨 doPost called');
+    
+    // Log the incoming request for debugging
+    if (e && e.parameter) {
+      console.log('📋 Parameters received:', JSON.stringify(e.parameter));
+    }
+    
+    // Check if this is a Twilio SMS webhook
+    if (e.parameter.webhook === 'sms' || e.parameter.From) {
+      console.log('📱 Detected SMS webhook from Twilio');
+      return handleSMSWebhook(e);
+    }
+    
+    // Handle regular web app API calls
     const action = e.parameter.action;
     const data = JSON.parse(e.parameter.data || '{}');
-
-    console.log(`doPost action: ${action}`);
-
+    
+    console.log(`🔧 doPost action: ${action}`);
+    
     let result = {};
-
+    
     switch (action) {
       case 'createRequest':
-        // Assuming createRequestFromWebApp is defined elsewhere or doesn't exist
-        // result = createRequestFromWebApp(data);
         throw new Error('createRequest action not implemented in this version.');
-
+        
       case 'updateRequestStatus':
-        // Assuming updateRequestStatusFromWebApp is defined elsewhere or doesn't exist
-        // result = updateRequestStatusFromWebApp(data.requestId, data.status);
         throw new Error('updateRequestStatus action not implemented in this version.');
-
+        
       case 'assignRiders':
         result = processAssignmentAndPopulate(data.requestId, data.selectedRiders);
         break;
-
+        
       case 'sendNotification':
         result = sendAssignmentNotification(data.assignmentId, data.notificationType);
         break;
-
+        
       case 'bulkNotification':
-        result = sendBulkNotificationsByTimeframe(data.filter, data.type); // Fixed: data.filter and data.type
+        result = sendBulkNotificationsByTimeframe(data.filter, data.type);
         break;
-
+        
       case 'generateReport':
         result = generateReportData(data.filters);
         break;
-
+        
       default:
         throw new Error(`Unknown action: ${action}`);
     }
-
-    // Return standard success response
+    
+    // Return standard success response for API calls
     return ContentService
       .createTextOutput(JSON.stringify({
         success: true,
@@ -1019,10 +1031,12 @@ function doPost(e) {
         timestamp: new Date().toISOString()
       }))
       .setMimeType(ContentService.MimeType.JSON);
-
+      
   } catch (error) {
+    console.error('❌ doPost error:', error);
     logError('doPost error', error);
-    // Return standard error response
+    
+    // Return standard error response for API calls
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
@@ -1031,6 +1045,394 @@ function doPost(e) {
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * Handle incoming SMS responses from Twilio
+ * This function processes SMS replies from riders
+ */
+function handleSMSWebhook(e) {
+  try {
+    console.log('📱 Processing SMS webhook...');
+    
+    // Extract Twilio parameters
+    const fromNumber = e.parameter.From || '';           // Rider's phone number (+15551234567)
+    const toNumber = e.parameter.To || '';               // Your Twilio number
+    const messageBody = e.parameter.Body || '';          // The SMS message content
+    const messageSid = e.parameter.MessageSid || '';     // Twilio message ID
+    const accountSid = e.parameter.AccountSid || '';     // Twilio account ID
+    
+    console.log(`📨 SMS from ${fromNumber} to ${toNumber}: "${messageBody}"`);
+    console.log(`📋 Message SID: ${messageSid}`);
+    
+    // Verify this is from your Twilio account (security check)
+    if (accountSid && accountSid !== CONFIG.twilio.accountSid) {
+      console.warn('⚠️ SMS webhook from unknown account, ignoring');
+      return createTwiMLResponse();
+    }
+    
+    // Process the SMS response
+    const responseResult = processSMSResponse(fromNumber, messageBody, messageSid);
+    
+    // Log the response for tracking
+    logSMSResponse(fromNumber, messageBody, messageSid, responseResult);
+    
+    console.log(`✅ SMS response processed: ${responseResult.action}`);
+    
+    // Return empty TwiML response (required by Twilio)
+    return createTwiMLResponse();
+    
+  } catch (error) {
+    console.error('❌ SMS webhook error:', error);
+    logError('SMS webhook error', error);
+    
+    // Always return valid TwiML response, even on error
+    return createTwiMLResponse();
+  }
+}
+
+/**
+ * Process SMS responses from riders
+ */
+function processSMSResponse(fromNumber, messageBody, messageSid) {
+  try {
+    const cleanMessage = messageBody.trim().toLowerCase();
+    console.log(`🔍 Processing message: "${cleanMessage}"`);
+    
+    // Find the rider by phone number
+    const rider = findRiderByPhone(fromNumber);
+    if (!rider) {
+      console.log(`⚠️ SMS from unknown number: ${fromNumber}`);
+      
+      // Send helpful response to unknown numbers
+      sendAutoReply(fromNumber, 'This number is not registered in our rider system. Please contact dispatch if you need assistance.');
+      
+      return { 
+        action: 'unknown_number', 
+        rider: null,
+        fromNumber: fromNumber 
+      };
+    }
+    
+    console.log(`👤 SMS from rider: ${rider.name}`);
+    
+    // Process different response types
+    let action = 'unknown';
+    let autoReply = null;
+    let statusUpdate = null;
+    
+    if (cleanMessage.includes('confirm') || cleanMessage === 'yes' || cleanMessage === 'y' || cleanMessage === '1') {
+      action = 'confirm';
+      statusUpdate = 'Confirmed';
+      autoReply = `✅ Thanks ${rider.name}! Your assignment is CONFIRMED. Safe riding! 🏍️`;
+      
+    } else if (cleanMessage.includes('decline') || cleanMessage.includes('cancel') || cleanMessage === 'no' || cleanMessage === 'n' || cleanMessage === '0') {
+      action = 'decline';
+      statusUpdate = 'Declined';
+      autoReply = `📝 Thanks for letting us know, ${rider.name}. We'll assign another rider for this request.`;
+      
+    } else if (cleanMessage.includes('info') || cleanMessage.includes('details') || cleanMessage.includes('help')) {
+      action = 'info_request';
+      autoReply = getAssignmentDetails(rider.name);
+      
+    } else if (cleanMessage.includes('status') || cleanMessage.includes('assignment')) {
+      action = 'status_check';
+      autoReply = getAssignmentStatus(rider.name);
+      
+    } else {
+      action = 'general_response';
+      autoReply = `Thanks for your message, ${rider.name}. An admin will review and respond if needed.\n\nQuick replies:\n• CONFIRM - Accept assignment\n• DECLINE - Cannot accept\n• INFO - Get assignment details`;
+      
+      // Notify admin of message that needs attention
+      notifyAdminOfResponse(rider.name, fromNumber, messageBody);
+    }
+    
+    // Update assignment status if needed
+    if (statusUpdate) {
+      const updateResult = updateAssignmentStatus(rider.name, statusUpdate);
+      console.log(`📊 Status update result: ${updateResult.success ? 'Success' : 'Failed'}`);
+    }
+    
+    // Send auto-reply
+    if (autoReply) {
+      setTimeout(() => {
+        sendAutoReply(fromNumber, autoReply);
+      }, 1000); // Small delay to ensure proper order
+    }
+    
+    return { 
+      action: action, 
+      rider: rider.name, 
+      statusUpdate: statusUpdate,
+      autoReply: !!autoReply 
+    };
+    
+  } catch (error) {
+    console.error('❌ Error processing SMS response:', error);
+    logError('Error processing SMS response', error);
+    
+    return { 
+      action: 'error', 
+      error: error.message,
+      fromNumber: fromNumber 
+    };
+  }
+}
+
+/**
+ * Find rider by phone number
+ */
+function findRiderByPhone(phoneNumber) {
+  try {
+    const ridersData = getRidersData();
+    
+    // Clean the search phone number (remove +1 and non-digits, get last 10 digits)
+    const cleanSearchNumber = phoneNumber.replace(/\D/g, '').slice(-10);
+    console.log(`🔍 Searching for rider with phone ending in: ${cleanSearchNumber}`);
+    
+    for (let i = 0; i < ridersData.data.length; i++) {
+      const row = ridersData.data[i];
+      const riderPhone = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.phone);
+      const riderName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+      
+      if (riderPhone && riderName) {
+        // Clean the rider's phone number the same way
+        const cleanRiderPhone = riderPhone.replace(/\D/g, '').slice(-10);
+        
+        if (cleanRiderPhone === cleanSearchNumber) {
+          console.log(`✅ Found rider: ${riderName}`);
+          return {
+            name: riderName,
+            phone: riderPhone,
+            email: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.email) || '',
+            jpNumber: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber) || ''
+          };
+        }
+      }
+    }
+    
+    console.log(`❌ No rider found for phone: ${phoneNumber}`);
+    return null;
+    
+  } catch (error) {
+    console.error('❌ Error finding rider by phone:', error);
+    logError('Error finding rider by phone', error);
+    return null;
+  }
+}
+
+/**
+ * Update assignment status based on rider response
+ */
+function updateAssignmentStatus(riderName, newStatus) {
+  try {
+    console.log(`📊 Updating status for ${riderName} to ${newStatus}`);
+    
+    const assignmentsData = getAssignmentsData(false); // Force fresh data
+    const sheet = assignmentsData.sheet;
+    let updatedCount = 0;
+    
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      const assignmentRider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const currentStatus = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const assignmentId = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.id);
+      
+      // Update assignments that are currently "Assigned" for this rider
+      if (assignmentRider === riderName && currentStatus === 'Assigned') {
+        const rowNumber = i + 2; // Account for header row
+        const statusColIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status] + 1;
+        
+        sheet.getRange(rowNumber, statusColIndex).setValue(newStatus);
+        
+        console.log(`✅ Updated assignment ${assignmentId}: ${riderName} → ${newStatus}`);
+        logActivity(`SMS Response: Assignment ${assignmentId} status updated to ${newStatus} for ${riderName}`);
+        updatedCount++;
+      }
+    }
+    
+    return { success: true, updatedCount: updatedCount };
+    
+  } catch (error) {
+    console.error('❌ Error updating assignment status:', error);
+    logError('Error updating assignment status', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get assignment details for a rider
+ */
+function getAssignmentDetails(riderName) {
+  try {
+    console.log(`📋 Getting assignment details for ${riderName}`);
+    
+    const assignmentsData = getAssignmentsData();
+    
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      const assignmentRider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      
+      // Find active assignments for this rider
+      if (assignmentRider === riderName && ['Assigned', 'Confirmed'].includes(status)) {
+        const assignmentId = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.id);
+        const requestId = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+        const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const startTime = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
+        const startLocation = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation);
+        const endLocation = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation);
+        
+        let details = `📋 ASSIGNMENT DETAILS\n\n`;
+        details += `Assignment: ${assignmentId}\n`;
+        details += `Request: ${requestId}\n`;
+        details += `Date: ${formatDateForDisplay(eventDate)}\n`;
+        details += `Time: ${formatTimeForDisplay(startTime)}\n`;
+        details += `Start: ${startLocation || 'TBD'}\n`;
+        details += `End: ${endLocation || 'TBD'}\n`;
+        details += `Status: ${status}\n\n`;
+        details += `Reply CONFIRM to accept or DECLINE if unavailable.`;
+        
+        return details;
+      }
+    }
+    
+    return `Hi ${riderName}! No current assignments found. You'll receive notifications when new assignments are available.`;
+    
+  } catch (error) {
+    console.error('❌ Error getting assignment details:', error);
+    logError('Error getting assignment details', error);
+    return `Sorry ${riderName}, unable to retrieve assignment details right now. Please contact dispatch.`;
+  }
+}
+
+/**
+ * Get current assignment status for a rider
+ */
+function getAssignmentStatus(riderName) {
+  try {
+    const assignmentsData = getAssignmentsData();
+    const activeAssignments = [];
+    
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      const assignmentRider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      
+      if (assignmentRider === riderName && !['Completed', 'Cancelled'].includes(status)) {
+        const requestId = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+        const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        
+        activeAssignments.push({
+          requestId: requestId,
+          eventDate: formatDateForDisplay(eventDate),
+          status: status
+        });
+      }
+    }
+    
+    if (activeAssignments.length === 0) {
+      return `Hi ${riderName}! You have no active assignments at this time.`;
+    } else {
+      let statusMsg = `📊 STATUS for ${riderName}:\n\n`;
+      activeAssignments.forEach((assignment, index) => {
+        statusMsg += `${index + 1}. ${assignment.requestId}\n`;
+        statusMsg += `   Date: ${assignment.eventDate}\n`;
+        statusMsg += `   Status: ${assignment.status}\n\n`;
+      });
+      statusMsg += `Reply INFO for full details of any assignment.`;
+      return statusMsg;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error getting assignment status:', error);
+    return `Sorry ${riderName}, unable to check status right now.`;
+  }
+}
+
+/**
+ * Send auto-reply SMS
+ */
+function sendAutoReply(toNumber, message) {
+  try {
+    console.log(`📱 Sending auto-reply to ${toNumber}`);
+    
+    // Remove +1 country code for the sendSMS function
+    const cleanNumber = toNumber.replace('+1', '');
+    
+    const result = sendSMS(cleanNumber, 'auto', message);
+    
+    if (result.success) {
+      console.log(`✅ Auto-reply sent successfully`);
+      logActivity(`Auto-reply sent to ${toNumber}: ${message.substring(0, 50)}...`);
+    } else {
+      console.error(`❌ Auto-reply failed: ${result.message}`);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error sending auto-reply:', error);
+    logError('Error sending auto-reply', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Log SMS responses to tracking sheet
+ */
+function logSMSResponse(fromNumber, messageBody, messageSid, result) {
+  try {
+    const sheet = getOrCreateSheet('SMS_Responses', [
+      'Timestamp', 'From Number', 'Rider Name', 'Message Body', 'Action', 'Status Update', 'Auto Reply Sent'
+    ]);
+    
+    sheet.appendRow([
+      new Date(),
+      fromNumber,
+      result.rider || 'Unknown',
+      messageBody,
+      result.action,
+      result.statusUpdate || 'None',
+      result.autoReply ? 'Yes' : 'No'
+    ]);
+    
+    console.log(`📝 SMS response logged: ${result.action}`);
+    
+  } catch (error) {
+    console.error('❌ Error logging SMS response:', error);
+    logError('Error logging SMS response', error);
+  }
+}
+
+/**
+ * Notify admin of responses that need manual handling
+ */
+function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
+  try {
+    const logMessage = `SMS Response needs attention - ${riderName} (${fromNumber}): "${messageBody}"`;
+    logActivity(logMessage);
+    
+    // Could also send email notification here if needed:
+    // GmailApp.sendEmail('admin@yourdomain.com', 'SMS Response Needs Attention', logMessage);
+    
+    console.log(`📧 Admin notified of response from ${riderName}`);
+    
+  } catch (error) {
+    console.error('❌ Error notifying admin:', error);
+    logError('Error notifying admin of response', error);
+  }
+}
+
+/**
+ * Create empty TwiML response required by Twilio
+ */
+function createTwiMLResponse() {
+  const twimlResponse = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+  
+  return ContentService
+    .createTextOutput(twimlResponse)
+    .setMimeType(ContentService.MimeType.XML);
 }
 
 /**
