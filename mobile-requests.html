@@ -378,6 +378,18 @@
         </div>
     </div>
     
+    <div class="mobile-header" style="margin-top: 2rem; border-top: 2px solid rgba(255,255,255,0.2); padding-top: 1rem;">
+        <h1>My Assignments</h1>
+    </div>
+
+    <div class="requests-container" id="mobileAssignmentsContainer">
+        <div class="loading-state" id="mobileAssignmentsLoadingState">
+            <div class="loading-spinner"></div>
+            <div>Loading my assignments...</div>
+        </div>
+        <!-- Assignments will be loaded here by JavaScript -->
+    </div>
+
     <div class="bottom-spacer"></div>
 
     <script>
@@ -451,28 +463,31 @@
             
             isLoading = true;
             showMobileLoading();
+            showMobileAssignmentsLoading(); // Added
             
             const filter = document.getElementById('mobileStatusFilter').value;
             
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(handleMobilePageDataSuccess) // Changed
-                    .withFailureHandler(handleMobilePageDataError)   // Changed
-                    .getPageDataForRequests(filter); // Use the same wrapper as requests.html
+                    .withSuccessHandler(handleMobilePageDataSuccess)
+                    .withFailureHandler(handleMobilePageDataError)
+                    .getPageDataForMobileRiderView(filter); // Changed to new function
             } else {
-                console.log('⚠️ Google Apps Script not available for mobile requests page.');
+                console.log('⚠️ Google Apps Script not available for mobile page.');
                 handleMobilePageDataError({ message: "Google Apps Script not available." });
             }
         }
         
-        function handleMobilePageDataSuccess(data) { // Changed
+        function handleMobilePageDataSuccess(data) {
             isLoading = false;
             hideMobileLoading();
+            hideMobileAssignmentsLoading(); // Added
             
             if (data && data.success) {
-                console.log('✅ Mobile requests page data loaded:', data);
+                console.log('✅ Mobile page data loaded:', data);
                 // data.user could be stored if needed: let currentUser = data.user;
 
+                // Handle Requests
                 const requests = data.requests;
                 if (!requests || !Array.isArray(requests)) {
                     showMobileError('Invalid requests data received from server');
@@ -480,22 +495,35 @@
                 } else {
                     mobileAllRequests = requests;
                 }
-
                 displayMobileRequests(mobileAllRequests);
                 updateMobileStats(mobileAllRequests);
 
+                // Handle Assignments
+                const assignments = data.assignments;
+                if (!assignments || !Array.isArray(assignments)) {
+                    showMobileAssignmentsError('Invalid assignments data received from server');
+                } else {
+                    displayMobileAssignments(assignments);
+                }
+
             } else {
-                showMobileError('Failed to load mobile requests: ' + (data ? data.error : 'Unknown error'));
+                const errorMsg = 'Failed to load mobile page data: ' + (data ? data.error : 'Unknown error');
+                showMobileError(errorMsg);
+                showMobileAssignmentsError(errorMsg); // Show error in assignments section too
                 mobileAllRequests = [];
                 displayMobileRequests([]);
                 updateMobileStats([]);
+                displayMobileAssignments([]);
             }
         }
         
-        function handleMobilePageDataError(error) { // Changed
+        function handleMobilePageDataError(error) {
             isLoading = false;
             hideMobileLoading();
-            showMobileError('Error loading requests: ' + (error.message || error));
+            hideMobileAssignmentsLoading(); // Added
+            const errorMsg = 'Error loading page data: ' + (error.message || error);
+            showMobileError(errorMsg);
+            showMobileAssignmentsError(errorMsg); // Show error in assignments section too
         }
         
         function displayMobileRequests(requests) {
@@ -596,13 +624,106 @@
             const container = document.getElementById('mobileRequestsContainer');
             container.innerHTML = `
                 <div class="error-state">
-                    <h3>⚠️ Error</h3>
+                    <h3>⚠️ Error Loading Requests</h3>
                     <p>${message}</p>
                     <button class="mobile-btn btn-primary" onclick="loadMobileRequests()" style="margin-top: 1rem; width: auto;">
                         🔄 Try Again
                     </button>
                 </div>
             `;
+        }
+
+        // --- New functions for Assignments ---
+
+        function showMobileAssignmentsLoading() {
+            const el = document.getElementById('mobileAssignmentsLoadingState');
+            if (el) el.style.display = 'block';
+        }
+
+        function hideMobileAssignmentsLoading() {
+            const el = document.getElementById('mobileAssignmentsLoadingState');
+            if (el) el.style.display = 'none';
+        }
+
+        function showMobileAssignmentsError(message) {
+            const container = document.getElementById('mobileAssignmentsContainer');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="error-state">
+                    <h3>⚠️ Error Loading Assignments</h3>
+                    <p>${message}</p>
+                    <button class="mobile-btn btn-primary" onclick="loadMobileRequests()" style="margin-top: 1rem; width: auto;">
+                        🔄 Try Again
+                    </button>
+                </div>
+            `;
+        }
+
+        function displayMobileAssignments(assignments) {
+            const container = document.getElementById('mobileAssignmentsContainer');
+            if (!container) {
+                console.error("Assignments container not found");
+                return;
+            }
+
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No assignments here</h3>
+                        <p>You currently have no active assignments.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = assignments.map(assignment => {
+                const statusClass = 'status-' + (assignment.status || 'assigned').toLowerCase().replace(/\s+/g, '-');
+                // Similar card structure to requests, but simplified for assignments
+                return `
+                    <div class="request-card" onclick="openMobileAssignmentDetail('${assignment.assignmentId || ''}')">
+                        <div class="request-header">
+                            <div class="request-id">Assignment: ${assignment.assignmentId || 'N/A'}</div>
+                            <div class="mobile-status-badge ${statusClass}">${assignment.status || 'Assigned'}</div>
+                        </div>
+                        <div class="request-body">
+                            <div class="request-detail">
+                                <div class="detail-icon">📅</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Date & Time</div>
+                                    <div class="detail-value">${assignment.eventDate || 'No Date'} at ${assignment.startTime || 'No Time'}</div>
+                                </div>
+                            </div>
+                            <div class="request-detail">
+                                <div class="detail-icon">📍</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Location</div>
+                                    <div class="detail-value">${assignment.startLocation || 'Location TBD'}</div>
+                                </div>
+                            </div>
+                             <div class="request-detail">
+                                <div class="detail-icon">🔗</div>
+                                <div class="detail-content">
+                                    <div class="detail-label">Related Request ID</div>
+                                    <div class="detail-value">${assignment.requestId || 'N/A'}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openMobileAssignmentDetail(assignmentId) {
+            // Placeholder: Show an alert with assignment info
+            // In a real app, this would navigate to a detail view or expand inline
+            const assignments = mobileAllRequests.reduce((acc, req) => { // This needs to be adjusted if assignments are separate
+                if(req.assignments) acc.push(...req.assignments);
+                return acc;
+            }, []); // Fallback or find where assignments are stored globally
+
+            // For now, let's assume we might need to fetch details or have them passed differently.
+            // This is a simplified placeholder.
+            alert(`Assignment Detail for ID: ${assignmentId}\n\nFurther details would be shown here.`);
         }
         
         function openMobileEditRequest(requestId) {
