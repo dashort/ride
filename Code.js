@@ -1018,6 +1018,10 @@ function doPost(e) {
       case 'generateReport':
         result = generateReportData(data.filters);
         break;
+      
+      case 'riderOperation':
+        result = handleRiderOperation(data.action, data.data);
+        break;
         
       default:
         throw new Error(`Unknown action: ${action}`);
@@ -2484,6 +2488,8 @@ function doGet(e) {
       case 'assignments': fileName = 'assignments'; break;
       case 'notifications': fileName = 'notifications'; break;
       case 'reports': fileName = 'reports'; break;
+      case 'riders': fileName = 'riders';
+  break;
       default: fileName = 'index';
     }
     

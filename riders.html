@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riders - Motorcycle Escort Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
+
+        .riders-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-title {
+            font-size: 2rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #3498db;
+        }
+
+        .stat-card.success {
+            border-left-color: #27ae60;
+        }
+
+        .stat-card.warning {
+            border-left-color: #f39c12;
+        }
+
+        .stat-card.danger {
+            border-left-color: #e74c3c;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+            display: block;
+        }
+
+        .stat-card.success .stat-number {
+            color: #27ae60;
+        }
+
+        .stat-card.warning .stat-number {
+            color: #f39c12;
+        }
+
+        .stat-card.danger .stat-number {
+            color: #e74c3c;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .rider-controls {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .search-filter-section {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .filter-select {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            background: white;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .riders-table-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .riders-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .riders-table th {
+            background: #f8f9fa;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .riders-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #ecf0f1;
+            vertical-align: middle;
+        }
+
+        .riders-table tr:hover {
+            background: rgba(52, 152, 219, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: #d4edda; color: #155724; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-vacation { background: #fff3cd; color: #856404; }
+        .status-training { background: #cce5ff; color: #004085; }
+        .status-suspended { background: #e2e3e5; color: #6c757d; }
+
+        .actions-cell {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+            outline: none;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #7f8c8d;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #7f8c8d;
+        }
+
+        .bulk-actions {
+            background: #e8f5e8;
+            border: 1px solid #27ae60;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .bulk-actions.show {
+            display: block;
+        }
+
+        .checkbox-column {
+            width: 40px;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .riders-header {
+                padding: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .rider-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-filter-section {
+                flex-direction: column;
+            }
+
+            .riders-table-container {
+                padding: 1rem;
+            }
+
+            .actions-cell {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div>
+                <div id="userName">Loading...</div>
+                <div id="userRole">User</div>
+            </div>
+        </div>
+    </header>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <div class="container">
+        <div class="riders-header">
+            <h2 class="page-title">👥 Rider Management</h2>
+            
+            <!-- Statistics Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number" id="totalRiders">-</span>
+                    <div class="stat-label">Total Riders</div>
+                </div>
+                <div class="stat-card success">
+                    <span class="stat-number" id="activeRiders">-</span>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-number" id="inactiveRiders">-</span>
+                    <div class="stat-label">Inactive</div>
+                </div>
+                <div class="stat-card warning">
+                    <span class="stat-number" id="onVacation">-</span>
+                    <div class="stat-label">On Vacation</div>
+                </div>
+                <div class="stat-card danger">
+                    <span class="stat-number" id="inTraining">-</span>
+                    <div class="stat-label">In Training</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rider Controls -->
+        <div class="rider-controls">
+            <button onclick="openAddRiderModal()" class="btn btn-success">
+                ➕ Add New Rider
+            </button>
+            
+            <div class="search-filter-section">
+                <input type="text" class="search-box" placeholder="🔍 Search riders..." id="searchBox" onkeyup="filterRiders()">
+                
+                <select class="filter-select" id="statusFilter" onchange="filterRiders()">
+                    <option value="All">All Statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Vacation">On Vacation</option>
+                    <option value="Training">In Training</option>
+                    <option value="Suspended">Suspended</option>
+                </select>
+            </div>
+            
+            <button onclick="exportRiders()" class="btn btn-info">
+                📊 Export CSV
+            </button>
+            
+            <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">
+                📋 Bulk Actions
+            </button>
+        </div>
+
+        <!-- Bulk Actions Panel -->
+        <div class="bulk-actions" id="bulkActionsPanel">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Selected: <span id="selectedCount">0</span> riders</span>
+                <div>
+                    <select id="bulkStatusSelect" class="filter-select">
+                        <option value="">Select Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                        <option value="Vacation">On Vacation</option>
+                        <option value="Training">In Training</option>
+                        <option value="Suspended">Suspended</option>
+                    </select>
+                    <button onclick="applyBulkStatusUpdate()" class="btn btn-primary">Update Status</button>
+                    <button onclick="clearSelection()" class="btn btn-danger">Clear Selection</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Riders Table -->
+        <div class="riders-table-container">
+            <div id="loadingDiv" class="loading">
+                🔄 Loading riders...
+            </div>
+            
+            <div id="tableDiv" style="display: none;">
+                <table class="riders-table">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-column">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                            </th>
+                            <th>Rider ID</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Certification</th>
+                            <th>Assignments</th>
+                            <th>Last Assignment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ridersTableBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="emptyStateDiv" class="empty-state" style="display: none;">
+                <h3>No riders found</h3>
+                <p>Try adjusting your search or filter criteria</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rider Modal -->
+    <div id="riderModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Add New Rider</h3>
+                <span class="close" onclick="closeRiderModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="riderForm">
+                    <input type="hidden" id="originalRiderId" name="originalRiderId">
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="riderId">Rider ID *</label>
+                            <input type="text" id="riderId" name="riderId" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="riderName">Full Name *</label>
+                            <input type="text" id="riderName" name="riderName" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="riderPhone">Phone Number *</label>
+                            <input type="tel" id="riderPhone" name="riderPhone" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="riderEmail">Email</label>
+                            <input type="email" id="riderEmail" name="riderEmail">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="riderStatus">Status</label>
+                            <select id="riderStatus" name="riderStatus">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Vacation">On Vacation</option>
+                                <option value="Training">In Training</option>
+                                <option value="Suspended">Suspended</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="riderCertification">Certification</label>
+                            <select id="riderCertification" name="riderCertification">
+                                <option value="Standard">Standard</option>
+                                <option value="Advanced">Advanced</option>
+                                <option value="Instructor">Instructor</option>
+                                <option value="Trainee">Trainee</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="closeRiderModal()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveRider()">💾 Save Rider</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // Global state
+    let app = {
+        user: null,
+        riders: [],
+        filteredRiders: [],
+        selectedRiders: new Set(),
+        bulkMode: false,
+        isOnline: navigator.onLine
+    };
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🚀 Riders page loading...');
+        loadRidersData();
+        setupEventListeners();
+    });
+
+    function setupEventListeners() {
+        // Search box
+        const searchBox = document.getElementById('searchBox');
+        if (searchBox) {
+            searchBox.addEventListener('input', debounce(filterRiders, 300));
+        }
+
+        // Modal close on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('riderModal');
+            if (event.target === modal) {
+                closeRiderModal();
+            }
+        }
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    function loadRidersData() {
+        showLoading();
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handleRidersDataSuccess)
+                .withFailureHandler(handleRidersDataFailure)
+                .getPageDataForRiders();
+        } else {
+            console.log('⚠️ Google Apps Script not available');
+            handleRidersDataFailure({ message: "Google Apps Script not available." });
+        }
+    }
+
+    function handleRidersDataSuccess(data) {
+        hideLoading();
+        
+        if (data && data.success) {
+            console.log('✅ Riders data loaded:', data);
+            app.user = data.user;
+            app.riders = data.riders || [];
+            app.filteredRiders = [...app.riders];
+            
+            updateUserInfo(data.user);
+            updateStats(data.stats);
+            renderRidersTable(app.filteredRiders);
+            showTable();
+        } else {
+            console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
+            showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
+        }
+    }
+
+    function handleRidersDataFailure(error) {
+        hideLoading();
+        console.error('❌ Error loading riders:', error);
+        showError('Error loading riders: ' + (error.message || error));
+    }
+
+    function updateUserInfo(user) {
+        document.getElementById('userName').textContent = user.name || 'User';
+        document.getElementById('userRole').textContent = (user.roles || ['user']).join(', ');
+        document.getElementById('userAvatar').textContent = (user.name || 'U').charAt(0).toUpperCase();
+    }
+
+    function updateStats(stats) {
+        document.getElementById('totalRiders').textContent = stats.totalRiders || 0;
+        document.getElementById('activeRiders').textContent = stats.activeRiders || 0;
+        document.getElementById('inactiveRiders').textContent = stats.inactiveRiders || 0;
+        document.getElementById('onVacation').textContent = stats.onVacation || 0;
+        document.getElementById('inTraining').textContent = stats.inTraining || 0;
+    }
+
+    function renderRidersTable(riders) {
+        const tbody = document.getElementById('ridersTableBody');
+        
+        if (!riders || riders.length === 0) {
+            showEmptyState();
+            return;
+        }
+
+        tbody.innerHTML = riders.map(rider => `
+            <tr>
+                <td class="checkbox-column">
+                    <input type="checkbox" class="rider-checkbox" data-rider-id="${rider.jpNumber || ''}" onchange="updateSelection()">
+                </td>
+                <td>${rider.jpNumber || ''}</td>
+                <td>${rider.name || ''}</td>
+                <td>${rider.phone || ''}</td>
+                <td>${rider.email || ''}</td>
+                <td><span class="status-badge status-${(rider.status || 'active').toLowerCase()}">${rider.status || 'Active'}</span></td>
+                <td>${rider.certification || 'Standard'}</td>
+                <td>${rider.totalAssignments || 0}</td>
+                <td>${rider.lastAssignmentDate || 'Never'}</td>
+                <td class="actions-cell">
+                    <button onclick="editRider('${rider.jpNumber}')" class="btn btn-sm btn-primary">✏️ Edit</button>
+                    <button onclick="deleteRider('${rider.jpNumber}')" class="btn btn-sm btn-danger">🗑️ Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterRiders() {
+        const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
+
+        app.filteredRiders = app.riders.filter(rider => {
+            const matchesSearch = !searchTerm || 
+                (rider.name || '').toLowerCase().includes(searchTerm) ||
+                (rider.jpNumber || '').toLowerCase().includes(searchTerm) ||
+                (rider.phone || '').toLowerCase().includes(searchTerm) ||
+                (rider.email || '').toLowerCase().includes(searchTerm);
+
+            const matchesStatus = statusFilter === 'All' || 
+                (rider.status || 'Active') === statusFilter;
+
+            return matchesSearch && matchesStatus;
+        });
+
+        renderRidersTable(app.filteredRiders);
+        
+        if (app.filteredRiders.length > 0) {
+            showTable();
+        } else {
+            showEmptyState();
+        }
+    }
+
+    function openAddRiderModal() {
+        document.getElementById('modalTitle').textContent = 'Add New Rider';
+        document.getElementById('riderForm').reset();
+        document.getElementById('originalRiderId').value = '';
+        document.getElementById('riderModal').style.display = 'block';
+    }
+
+    function editRider(riderId) {
+        const rider = app.riders.find(r => r.jpNumber === riderId);
+        if (!rider) {
+            showError('Rider not found');
+            return;
+        }
+
+        document.getElementById('modalTitle').textContent = 'Edit Rider';
+        document.getElementById('originalRiderId').value = riderId;
+        document.getElementById('riderId').value = rider.jpNumber || '';
+        document.getElementById('riderName').value = rider.name || '';
+        document.getElementById('riderPhone').value = rider.phone || '';
+        document.getElementById('riderEmail').value = rider.email || '';
+        document.getElementById('riderStatus').value = rider.status || 'Active';
+        document.getElementById('riderCertification').value = rider.certification || 'Standard';
+        
+        document.getElementById('riderModal').style.display = 'block';
+    }
+
+    function closeRiderModal() {
+        document.getElementById('riderModal').style.display = 'none';
+    }
+
+    function saveRider() {
+        const formData = new FormData(document.getElementById('riderForm'));
+        const isUpdate = document.getElementById('originalRiderId').value;
+        
+        // Map to your CONFIG column names
+        const riderData = {
+            'Rider ID': formData.get('riderId'),
+            'Full Name': formData.get('riderName'),
+            'Phone Number': formData.get('riderPhone'),
+            'Email': formData.get('riderEmail'),
+            'Status': formData.get('riderStatus'),
+            'Certification': formData.get('riderCertification')
+        };
+
+        // Validate required fields
+        if (!riderData['Rider ID'] || !riderData['Full Name'] || !riderData['Phone Number']) {
+            showError('Please fill in all required fields');
+            return;
+        }
+
+        showLoading('Saving rider...');
+        
+        const action = isUpdate ? 'update' : 'create';
+        
+        google.script.run
+            .withSuccessHandler(handleRiderOperationSuccess)
+            .withFailureHandler(handleRiderOperationFailure)
+            .handleRiderOperation(action, riderData);
+    }
+
+    function deleteRider(riderId) {
+        const rider = app.riders.find(r => r.jpNumber === riderId);
+        const riderName = rider ? rider.name : riderId;
+        
+        if (!confirm(`Are you sure you want to delete rider "${riderName}"?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        showLoading('Deleting rider...');
+        
+        google.script.run
+            .withSuccessHandler(handleRiderOperationSuccess)
+            .withFailureHandler(handleRiderOperationFailure)
+            .handleRiderOperation('delete', { riderId: riderId });
+    }
+
+    function handleRiderOperationSuccess(result) {
+        hideLoading();
+        
+        if (result && result.success) {
+            showSuccess(result.message || 'Operation completed successfully');
+            closeRiderModal();
+            loadRidersData(); // Refresh the list
+        } else {
+            showError('Operation failed: ' + (result ? result.message : 'Unknown error'));
+        }
+    }
+
+    function handleRiderOperationFailure(error) {
+        hideLoading();
+        showError('Operation failed: ' + (error.message || error));
+    }
+
+    function exportRiders() {
+        const statusFilter = document.getElementById('statusFilter').value;
+        const exportStatus = statusFilter === 'All' ? null : statusFilter;
+        
+        showLoading('Exporting riders...');
+        
+        google.script.run
+            .withSuccessHandler(handleExportSuccess)
+            .withFailureHandler(handleRiderOperationFailure)
+            .handleRiderOperation('export', { status: exportStatus });
+    }
+
+    function handleExportSuccess(result) {
+        hideLoading();
+        
+        if (result && result.success) {
+            // Create and download CSV file
+            const blob = new Blob([result.csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showSuccess(`Exported ${result.count} riders successfully`);
+        } else {
+            showError('Export failed: ' + (result ? result.message : 'Unknown error'));
+        }
+    }
+
+    // Bulk operations
+    function toggleBulkMode() {
+        app.bulkMode = !app.bulkMode;
+        const panel = document.getElementById('bulkActionsPanel');
+        const btn = document.getElementById('bulkModeBtn');
+        
+        if (app.bulkMode) {
+            panel.classList.add('show');
+            btn.textContent = '❌ Exit Bulk Mode';
+            btn.className = 'btn btn-danger';
+        } else {
+            panel.classList.remove('show');
+            btn.textContent = '📋 Bulk Actions';
+            btn.className = 'btn btn-warning';
+            clearSelection();
+        }
+    }
+
+    function toggleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const checkboxes = document.querySelectorAll('.rider-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        
+        updateSelection();
+    }
+
+    function updateSelection() {
+        const checkboxes = document.querySelectorAll('.rider-checkbox:checked');
+        app.selectedRiders.clear();
+        
+        checkboxes.forEach(checkbox => {
+            app.selectedRiders.add(checkbox.dataset.riderId);
+        });
+        
+        document.getElementById('selectedCount').textContent = app.selectedRiders.size;
+        
+        // Update select all checkbox
+        const totalCheckboxes = document.querySelectorAll('.rider-checkbox').length;
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        selectAllCheckbox.indeterminate = app.selectedRiders.size > 0 && app.selectedRiders.size < totalCheckboxes;
+        selectAllCheckbox.checked = app.selectedRiders.size === totalCheckboxes && totalCheckboxes > 0;
+    }
+
+    function clearSelection() {
+        app.selectedRiders.clear();
+        document.querySelectorAll('.rider-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.getElementById('selectAllCheckbox').checked = false;
+        updateSelection();
+    }
+
+    function applyBulkStatusUpdate() {
+        const newStatus = document.getElementById('bulkStatusSelect').value;
+        
+        if (!newStatus) {
+            showError('Please select a status');
+            return;
+        }
+        
+        if (app.selectedRiders.size === 0) {
+            showError('Please select riders to update');
+            return;
+        }
+        
+        const riderIds = Array.from(app.selectedRiders);
+        
+        if (!confirm(`Update status to "${newStatus}" for ${riderIds.length} selected rider(s)?`)) {
+            return;
+        }
+        
+        showLoading('Updating rider statuses...');
+        
+        google.script.run
+            .withSuccessHandler(handleBulkUpdateSuccess)
+            .withFailureHandler(handleRiderOperationFailure)
+            .handleRiderOperation('bulkUpdateStatus', { riderIds: riderIds, newStatus: newStatus });
+    }
+
+    function handleBulkUpdateSuccess(result) {
+        hideLoading();
+        
+        if (result && result.success) {
+            showSuccess(`Bulk update completed: ${result.successCount} successful, ${result.failureCount} failed`);
+            clearSelection();
+            loadRidersData(); // Refresh the list
+        } else {
+            showError('Bulk update failed: ' + (result ? result.message : 'Unknown error'));
+        }
+    }
+
+    // UI state functions
+    function showLoading(message = 'Loading...') {
+        document.getElementById('loadingDiv').style.display = 'block';
+        document.getElementById('tableDiv').style.display = 'none';
+        document.getElementById('emptyStateDiv').style.display = 'none';
+        document.getElementById('loadingDiv').innerHTML = `🔄 ${message}`;
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingDiv').style.display = 'none';
+    }
+
+    function showTable() {
+        document.getElementById('tableDiv').style.display = 'block';
+        document.getElementById('emptyStateDiv').style.display = 'none';
+    }
+
+    function showEmptyState() {
+        document.getElementById('tableDiv').style.display = 'none';
+        document.getElementById('emptyStateDiv').style.display = 'block';
+    }
+
+    function showSuccess(message) {
+        showNotification(message, '#27ae60');
+    }
+
+    function showError(message) {
+        showNotification('Error: ' + message, '#e74c3c');
+    }
+
+    function showNotification(message, color) {
+        const notification = document.createElement('div');
+        notification.style.position = 'fixed';
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.background = color;
+        notification.style.color = 'white';
+        notification.style.padding = '1rem';
+        notification.style.borderRadius = '5px';
+        notification.style.zIndex = '9999';
+        notification.style.maxWidth = '300px';
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+</script>
+</body>
+</html>
