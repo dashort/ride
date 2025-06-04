@@ -350,19 +350,19 @@
             <div class="card">
                 <h3>📊 System Overview</h3>
                 <div class="stats-grid">
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToRiders('Active')">
                         <span class="stat-number" id="activeRiders">-</span>
                         <div class="stat-label">Active Riders</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToRequests('Pending')">
                         <span class="stat-number" id="pendingRequests">-</span>
                         <div class="stat-label">Pending Requests</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToAssignments('today')">
                         <span class="stat-number" id="todayAssignments">-</span>
                         <div class="stat-label">Today's Assignments</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToAssignments('week')">
                         <span class="stat-number" id="weekAssignments">-</span>
                         <div class="stat-label">This Week</div>
                     </div>
@@ -668,6 +668,18 @@
 
     function openAssignments() {
         window.location.href = '?page=assignments';
+    }
+
+    function goToRiders(status) {
+        window.location.href = '?page=riders&status=' + encodeURIComponent(status);
+    }
+
+    function goToRequests(status) {
+        window.location.href = '?page=requests&status=' + encodeURIComponent(status);
+    }
+
+    function goToAssignments(range) {
+        window.location.href = '?page=assignments&date=' + encodeURIComponent(range);
     }
 
     function sendBulkNotifications() {

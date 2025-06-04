@@ -543,7 +543,8 @@
     var app = {
         user: null,
         isOnline: navigator.onLine,
-        loadingTimeout: 15000
+        loadingTimeout: 15000,
+        dateFilter: 'all'
     };
 
     /**
@@ -554,6 +555,12 @@
      */
     document.addEventListener('DOMContentLoaded', function() {
         console.log('🚀 Assignments page loading...');
+
+        const params = new URLSearchParams(window.location.search);
+        const dateParam = params.get('date');
+        if (dateParam) {
+            app.dateFilter = dateParam.toLowerCase();
+        }
 
         setTimeout(function() {
             if (currentRequests.length === 0 && activeRiders.length === 0) {
@@ -935,7 +942,7 @@ if (!document.getElementById('debug-styles')) {
         currentRequests = Array.isArray(data) ? data : [];
         console.log('📊 Stored requests count:', currentRequests.length);
 
-        renderRequestsList();
+        filterRequests();
     }
 
     /**
@@ -1038,10 +1045,29 @@ if (!document.getElementById('debug-styles')) {
             var matchesSearch = !searchTerm ||
                 request.id.toLowerCase().indexOf(searchTerm) !== -1 ||
                 request.requesterName.toLowerCase().indexOf(searchTerm) !== -1;
-            
+
             var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
-            
-            return matchesSearch && matchesStatus && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
+
+            var matchesDate = true;
+            if (app.dateFilter === 'today') {
+                var today = new Date().toISOString().slice(0, 10);
+                matchesDate = request.eventDate === today;
+            } else if (app.dateFilter === 'week') {
+                try {
+                    var reqDate = new Date(request.eventDate);
+                    var now = new Date();
+                    var start = new Date(now);
+                    start.setDate(now.getDate() - now.getDay());
+                    start.setHours(0,0,0,0);
+                    var end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    matchesDate = reqDate >= start && reqDate <= end;
+                } catch (e) {
+                    matchesDate = true;
+                }
+            }
+
+            return matchesSearch && matchesStatus && matchesDate && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
         });
 
         renderFilteredRequests(filtered);
