@@ -662,14 +662,28 @@
 
     function navigateTo(page, params = {}) {
         const search = new URLSearchParams(params);
+        let url;
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             const base = window.location.href.split('?')[0];
             search.set('page', page);
-            window.location.href = base + '?' + search.toString();
+            url = base + '?' + search.toString();
         } else {
             // Fallback for local testing without Apps Script environment
-            window.location.href = page + '.html?' + search.toString();
+            url = page + '.html?' + search.toString();
+        }
+
+        try {
+            // Attempt normal navigation first
+            window.location.href = url;
+        } catch (error) {
+            // If we're in a restricted iframe, try to break out
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                // Final fallback opens a new tab/window
+                window.open(url, '_blank');
+            }
         }
     }
 
