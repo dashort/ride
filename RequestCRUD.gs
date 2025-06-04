@@ -232,8 +232,16 @@ function parseTimeString(timeInput) {
  * @param {object} requestData - An object containing the request data to update.
  * @return {object} An object indicating success or failure, with a message.
  */
+/**
+ * Updates an existing request in the 'Requests' sheet.
+ * Enhanced version with better error handling and data validation.
+ * @param {object} requestData - An object containing the request data to update.
+ * @return {object} An object indicating success or failure, with a message.
+ */
 function updateExistingRequest(requestData) {
   try {
+    console.log('📝 Starting updateExistingRequest with data:', JSON.stringify(requestData, null, 2));
+    
     if (!requestData || !requestData.requestId) {
       throw new Error('Request ID is missing. Cannot update request.');
     }
@@ -243,118 +251,182 @@ function updateExistingRequest(requestData) {
       throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
     }
 
-    const headers = getSheetHeaders(requestsSheet); // From CoreUtils.js or SheetServices.gs
-    const data = requestsSheet.getDataRange().getValues();
-
-    const idCol = headers.indexOf(CONFIG.columns.requests.id);
-    if (idCol === -1) {
-      throw new Error(`"${CONFIG.columns.requests.id}" column not found in sheet.`);
+    // Use the existing getRequestsData function to get structured data
+    const requestsData = getRequestsData(false); // Don't use cache for updates
+    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
+      throw new Error('No requests data found in sheet.');
     }
 
-    let rowIndex = -1;
-    for (let i = 1; i < data.length; i++) { // Start from 1 to skip header row
-      if (data[i][idCol] == requestData.requestId) {
-        rowIndex = i;
+    const columnMap = requestsData.columnMap;
+    const headers = requestsData.headers;
+    const sheet = requestsData.sheet;
+
+    // Find the request by ID
+    let targetRowIndex = -1;
+    for (let i = 0; i < requestsData.data.length; i++) {
+      const rowRequestId = getColumnValue(requestsData.data[i], columnMap, CONFIG.columns.requests.id);
+      if (String(rowRequestId).trim() === String(requestData.requestId).trim()) {
+        targetRowIndex = i;
         break;
       }
     }
 
-    if (rowIndex === -1) {
+    if (targetRowIndex === -1) {
       throw new Error(`Request with ID "${requestData.requestId}" not found.`);
     }
 
-    const rowData = [];
-    headers.forEach(header => {
-      let value;
-      switch (header) {
-        case CONFIG.columns.requests.id:
-          value = requestData.requestId;
-          break;
-        case CONFIG.columns.requests.requesterName:
-          value = requestData.requesterName;
-          break;
-        case CONFIG.columns.requests.requesterContact: // This was requesterEmail in create, but form might send generic contact
-          value = requestData.requesterContact || requestData.requesterEmail;
-          break;
-        case CONFIG.columns.requests.requesterPhone: // Added for completeness if form sends it separately
-             value = requestData.requesterPhone;
-             break;
-        case CONFIG.columns.requests.requesterDepartment: // Added for completeness
-             value = requestData.requesterDepartment;
-             break;
-        case CONFIG.columns.requests.type:
-          value = requestData.requestType; // Note: form sends requestType
-          break;
-        case CONFIG.columns.requests.eventDate:
-          value = requestData.eventDate ? new Date(requestData.eventDate) : null;
-          break;
-        case CONFIG.columns.requests.startTime:
-          value = requestData.startTime ? parseTimeString(requestData.startTime) : null; 
-          break;
-        case CONFIG.columns.requests.endTime:
-          value = requestData.endTime ? parseTimeString(requestData.endTime) : null;
-          break;
-        case CONFIG.columns.requests.startLocation:
-          value = requestData.startLocation;
-          break;
-        case CONFIG.columns.requests.endLocation:
-          value = requestData.endLocation;
-          break;
-        case CONFIG.columns.requests.secondaryLocation:
-          value = requestData.secondaryLocation || requestData.secondaryEndLocation ; // Accommodate both possible form field names
-          break;
-        case CONFIG.columns.requests.ridersNeeded:
-          value = requestData.ridersNeeded;
-          break;
-        case CONFIG.columns.requests.status:
-          value = requestData.status;
-          break;
-        // Assuming CONFIG.columns.requests.courtesy exists from your description
-        // If not, this case (and the form field) might need review.
-        // case CONFIG.columns.requests.courtesy: 
-        //   value = requestData.courtesy; // Should be 'Yes' or 'No'
-        //   break;
-        case CONFIG.columns.requests.notes: // CONFIG might call this 'notes' or 'specialRequirements'
-                                            // This assumes form 'notes' maps to sheet 'Notes'
-                                            // and form 'specialRequirements' maps to sheet 'Special Requirements' (or similar)
-          value = requestData.notes;
-          break;
-        // Example for a differently named special requirements field:
-        // Make sure CONFIG.columns.requests.requirements exists or adjust to actual sheet column name
-        // case CONFIG.columns.requests.requirements: 
-        //   value = requestData.specialRequirements;
-        //   break;
-        case CONFIG.columns.requests.lastModified: // Changed from lastUpdated to lastModified
-          value = new Date();
-          break;
-        // CONFIG.columns.requests.ridersAssigned is not typically updated from this form.
-        // CONFIG.columns.requests.submissionTimestamp (original request date) is usually not updated.
-        default:
-          // Preserve existing value if not explicitly provided by form
-          // Check if requestData has a property for the current header
-          const requestDataKey = Object.keys(requestData).find(k => {
-            // Simple direct match or common variations (e.g. form 'requestType' to sheet 'Type')
-            return k.toLowerCase() === header.toLowerCase() || 
-                   (CONFIG.columns.requests[k] && CONFIG.columns.requests[k] === header);
-          });
+    // Calculate actual sheet row number (data array index + 2 because of header row)
+    const sheetRowNumber = targetRowIndex + 2;
 
-          if (requestDataKey && requestData[requestDataKey] !== undefined) {
-            value = requestData[requestDataKey];
-          } else {
-            value = data[rowIndex][headers.indexOf(header)]; 
-          }
+    console.log(`✅ Found request at data index ${targetRowIndex}, sheet row ${sheetRowNumber}`);
+
+    // Update individual cells rather than entire row to be more robust
+    const updates = [];
+
+    // Map form data to sheet columns with proper validation
+    const fieldMappings = {
+      requesterName: CONFIG.columns.requests.requesterName,
+      requesterContact: CONFIG.columns.requests.requesterContact,
+      requestType: CONFIG.columns.requests.type,
+      eventDate: CONFIG.columns.requests.eventDate,
+      startTime: CONFIG.columns.requests.startTime,
+      endTime: CONFIG.columns.requests.endTime,
+      startLocation: CONFIG.columns.requests.startLocation,
+      endLocation: CONFIG.columns.requests.endLocation,
+      secondaryEndLocation: CONFIG.columns.requests.secondaryLocation,
+      ridersNeeded: CONFIG.columns.requests.ridersNeeded,
+      status: CONFIG.columns.requests.status,
+      courtesy: CONFIG.columns.requests.courtesy,
+      specialRequirements: CONFIG.columns.requests.requirements,
+      notes: CONFIG.columns.requests.notes
+    };
+
+    // Process each field mapping
+    for (const [formField, configColumn] of Object.entries(fieldMappings)) {
+      if (requestData.hasOwnProperty(formField) && columnMap.hasOwnProperty(configColumn)) {
+        const columnIndex = columnMap[configColumn];
+        let value = requestData[formField];
+
+        // Handle special data types
+        switch (configColumn) {
+          case CONFIG.columns.requests.eventDate:
+            if (value) {
+              value = new Date(value);
+              if (isNaN(value.getTime())) {
+                console.warn(`Invalid date provided for eventDate: ${requestData[formField]}`);
+                continue; // Skip this update
+              }
+            }
+            break;
+            
+          case CONFIG.columns.requests.startTime:
+          case CONFIG.columns.requests.endTime:
+            if (value) {
+              value = parseTimeString(value);
+              if (!value) {
+                console.warn(`Invalid time provided for ${formField}: ${requestData[formField]}`);
+                continue; // Skip this update
+              }
+            }
+            break;
+            
+          case CONFIG.columns.requests.ridersNeeded:
+            if (value !== undefined && value !== null) {
+              value = parseInt(value);
+              if (isNaN(value) || value <= 0) {
+                throw new Error(`Invalid number of riders needed: ${requestData[formField]}`);
+              }
+            }
+            break;
+            
+          case CONFIG.columns.requests.courtesy:
+            // Ensure courtesy is 'Yes' or 'No'
+            value = (value === true || value === 'Yes' || value === 'true') ? 'Yes' : 'No';
+            break;
+        }
+
+        updates.push({
+          column: columnIndex + 1, // Convert to 1-based
+          value: value
+        });
       }
-      rowData.push(value);
-    });
+    }
 
-    requestsSheet.getRange(rowIndex + 1, 1, 1, headers.length).setValues([rowData]);
+    // Always update the last modified timestamp
+    if (columnMap.hasOwnProperty(CONFIG.columns.requests.lastUpdated)) {
+      updates.push({
+        column: columnMap[CONFIG.columns.requests.lastUpdated] + 1,
+        value: new Date()
+      });
+    }
 
-    logActivity(`Request updated: ${requestData.requestId}`); // Assumes logActivity is global
-    return { success: true, message: 'Request updated successfully.', requestId: requestData.requestId };
+    console.log(`📝 Preparing to update ${updates.length} fields for request ${requestData.requestId}`);
+
+    // Apply all updates
+    for (const update of updates) {
+      try {
+        sheet.getRange(sheetRowNumber, update.column).setValue(update.value);
+      } catch (cellError) {
+        console.error(`Error updating column ${update.column}:`, cellError);
+        // Continue with other updates rather than failing completely
+      }
+    }
+
+    // Force spreadsheet to flush changes
+    SpreadsheetApp.flush();
+
+    // Clear cache to ensure fresh data on next load
+    if (typeof clearRequestsCache === 'function') {
+      clearRequestsCache();
+    }
+
+    // Log the successful update
+    logActivity(`Request updated: ${requestData.requestId} - Updated ${updates.length} fields`);
+    
+    console.log(`✅ Successfully updated request ${requestData.requestId}`);
+
+    return { 
+      success: true, 
+      message: 'Request updated successfully.', 
+      requestId: requestData.requestId,
+      updatedFields: updates.length
+    };
 
   } catch (error) {
-    logError('Error updating request', error); // Assumes logError is global
-    return { success: false, message: 'Error updating request: ' + error.message };
+    console.error('❌ Error in updateExistingRequest:', error);
+    logError('Error updating request', error);
+    return { 
+      success: false, 
+      message: 'Error updating request: ' + error.message,
+      requestId: requestData.requestId || 'unknown'
+    };
+  }
+}
+
+/**
+ * Helper function to get sheet headers (if not available globally)
+ */
+function getSheetHeaders(sheet) {
+  if (!sheet) return [];
+  try {
+    const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+    return headerRange.getValues()[0];
+  } catch (error) {
+    console.error('Error getting sheet headers:', error);
+    return [];
+  }
+}
+/**
+ * Helper function to get sheet headers (if not available globally)
+ */
+function getSheetHeaders(sheet) {
+  if (!sheet) return [];
+  try {
+    const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+    return headerRange.getValues()[0];
+  } catch (error) {
+    console.error('Error getting sheet headers:', error);
+    return [];
   }
 }
 

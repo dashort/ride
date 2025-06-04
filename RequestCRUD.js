@@ -232,6 +232,12 @@ function parseTimeString(timeInput) {
  * @param {object} requestData - An object containing the request data to update.
  * @return {object} An object indicating success or failure, with a message.
  */
+/**
+ * Updates an existing request in the 'Requests' sheet.
+ * Enhanced version with better error handling and data validation.
+ * @param {object} requestData - An object containing the request data to update.
+ * @return {object} An object indicating success or failure, with a message.
+ */
 function updateExistingRequest(requestData) {
   try {
     console.log('📝 Starting updateExistingRequest with data:', JSON.stringify(requestData, null, 2));
@@ -370,7 +376,9 @@ function updateExistingRequest(requestData) {
     SpreadsheetApp.flush();
 
     // Clear cache to ensure fresh data on next load
-    clearRequestsCache();
+    if (typeof clearRequestsCache === 'function') {
+      clearRequestsCache();
+    }
 
     // Log the successful update
     logActivity(`Request updated: ${requestData.requestId} - Updated ${updates.length} fields`);
@@ -395,6 +403,19 @@ function updateExistingRequest(requestData) {
   }
 }
 
+/**
+ * Helper function to get sheet headers (if not available globally)
+ */
+function getSheetHeaders(sheet) {
+  if (!sheet) return [];
+  try {
+    const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+    return headerRange.getValues()[0];
+  } catch (error) {
+    console.error('Error getting sheet headers:', error);
+    return [];
+  }
+}
 /**
  * Helper function to get sheet headers (if not available globally)
  */

@@ -1313,6 +1313,83 @@ function getPageDataForNotifications() {
 }
 
 /**
+ * ADD THIS NEW FUNCTION to AppServices.gs
+ * Gets all assignments formatted for notifications page
+ */
+function getAllAssignmentsForNotifications() {
+  try {
+    const assignmentsData = getAssignmentsData();
+    if (!assignmentsData || !assignmentsData.data) {
+      console.log('⚠️ No assignments data found');
+      return [];
+    }
+    
+    const assignments = assignmentsData.data
+      .filter(assignment => {
+        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        
+        // Only include assignments with riders that aren't cancelled/completed
+        return riderName && 
+               riderName.trim().length > 0 && 
+               !['Cancelled', 'Completed', 'No Show'].includes(status);
+      })
+      .map(assignment => {
+        const smsSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.smsSent);
+        const emailSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.emailSent);
+        const notified = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.notified);
+        
+        // Determine notification status
+        let notificationStatus = 'none';
+        if (smsSent instanceof Date && emailSent instanceof Date) {
+          notificationStatus = 'both_sent';
+        } else if (smsSent instanceof Date) {
+          notificationStatus = 'sms_sent';
+        } else if (emailSent instanceof Date) {
+          notificationStatus = 'email_sent';
+        } else if (notified instanceof Date) {
+          notificationStatus = 'notified'; // Generic notification
+        }
+        
+        // Get the most recent notification timestamp
+        let lastNotified = null;
+        if (smsSent instanceof Date || emailSent instanceof Date || notified instanceof Date) {
+          const dates = [smsSent, emailSent, notified].filter(d => d instanceof Date);
+          if (dates.length > 0) {
+            lastNotified = new Date(Math.max(...dates.map(d => d.getTime())));
+          }
+        }
+        
+        return {
+          id: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
+          requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
+          riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
+          riderPhone: getRiderPhone(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
+          riderEmail: getRiderEmail(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
+          riderCarrier: getRiderCarrier(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
+          eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
+          startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
+          endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)),
+          startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation),
+          endLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation),
+          notificationStatus: notificationStatus,
+          lastNotified: lastNotified ? lastNotified.toISOString() : null,
+          status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status)
+        };
+      })
+      .filter(assignment => assignment.id && assignment.riderName);
+    
+    console.log(`✅ Processed ${assignments.length} assignments for notifications`);
+    return assignments;
+    
+  } catch (error) {
+    console.error('❌ Error getting assignments for notifications:', error);
+    return [];
+  }
+}
+
+
+/**
  * Gets all assignments formatted for notifications page
  * @return {Array<object>} Array of assignment objects with notification data
  */
@@ -2152,400 +2229,7 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     throw new Error(`Failed to update request with riders: ${error.message}`);
   }
 }
-// ===== 1. ADD TO AppServices.gs =====
-// Add these functions to your AppServices.gs file
 
-/**
- * Fetches all data needed for the riders management page.
- * @param {string} [statusFilter='All'] The status filter to apply.
- * @return {object} Consolidated data for the riders page.
- */
-function getPageDataForRiders(statusFilter = 'All') {
-  try {
-    console.log('🏍️ Loading riders page data...');
-    
-    const user = getCurrentUser();
-    const allRiders = getRiders();
-    
-    // Filter riders based on status
-    let riders = allRiders;
-    if (statusFilter && statusFilter !== 'All') {
-      riders = allRiders.filter(rider => 
-        (rider.status || 'Active').toLowerCase() === statusFilter.toLowerCase()
-      );
-    }
-    
-    // Get rider statistics
-    const stats = {
-      totalRiders: allRiders.length,
-      activeRiders: allRiders.filter(r => (r.status || 'Active') === 'Active').length,
-      inactiveRiders: allRiders.filter(r => r.status === 'Inactive').length,
-      onVacation: allRiders.filter(r => r.status === 'Vacation').length,
-      inTraining: allRiders.filter(r => r.status === 'Training').length
-    };
-    
-    return {
-      success: true,
-      user: user,
-      riders: riders,
-      stats: stats,
-      statusOptions: CONFIG.options.riderStatuses || ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended']
-    };
-    
-  } catch (error) {
-    logError('Error in getPageDataForRiders', error);
-    return {
-      success: false,
-      error: error.message,
-      user: getCurrentUser(),
-      riders: [],
-      stats: { totalRiders: 0, activeRiders: 0, inactiveRiders: 0, onVacation: 0, inTraining: 0 }
-    };
-  }
-}
-
-/**
- * Web app handler for rider CRUD operations.
- * @param {string} action The action to perform ('create', 'read', 'update', 'delete').
- * @param {object} data The data for the operation.
- * @return {object} Result of the operation.
- */
-function handleRiderOperation(action, data) {
-  try {
-    console.log(`🔧 Handling rider operation: ${action}`);
-    
-    switch (action) {
-      case 'create':
-        return addRider(data);
-        
-      case 'read':
-        if (data.riderId) {
-          const rider = getRiderDetails(data.riderId);
-          return { success: !!rider, rider: rider };
-        } else {
-          const riders = data.status ? getRidersByStatus(data.status) : getRiders();
-          return { success: true, riders: riders };
-        }
-        
-      case 'update':
-        return updateRider(data);
-        
-      case 'delete':
-        return deleteRider(data.riderId);
-        
-      case 'bulkUpdateStatus':
-        return bulkUpdateRiderStatus(data.riderIds, data.newStatus);
-        
-      case 'export':
-        return exportRidersToCSV(data.status);
-        
-      default:
-        throw new Error(`Unknown rider operation: ${action}`);
-    }
-    
-  } catch (error) {
-    logError(`Error in handleRiderOperation (${action})`, error);
-    return {
-      success: false,
-      message: `Operation failed: ${error.message}`
-    };
-  }
-}
-
-// ===== 2. UPDATE Code.js doGet function =====
-// Add this case to your existing doGet function in Code.js
-
-// In your doGet function, add this case:
-/*
-case 'riders':
-  fileName = 'riders';
-  break;
-*/
-
-// ===== 3. UPDATE Code.js doPost function =====
-// Add this case to your existing doPost function in Code.js
-
-// In your doPost function, add this case:
-/*
-case 'riderOperation':
-  result = handleRiderOperation(data.action, data.data);
-  break;
-*/
-
-// ===== 4. UPDATE CONFIG in Code.js =====
-// Make sure your CONFIG has these rider columns defined:
-
-/*
-const CONFIG = {
-  // ... existing config ...
-  
-  columns: {
-    // ... existing columns ...
-    
-    riders: {
-      jpNumber: 'Rider ID',           // or 'JP Number' - match your sheet
-      name: 'Full Name',              // or 'Name' - match your sheet  
-      phone: 'Phone Number',          // or 'Phone' - match your sheet
-      email: 'Email',                 // or 'Email Address' - match your sheet
-      status: 'Status',               // Active, Inactive, etc.
-      certification: 'Certification', // Standard, Advanced, etc.
-      totalAssignments: 'Total Assignments',
-      lastAssignmentDate: 'Last Assignment Date'
-    }
-  },
-  
-  options: {
-    // ... existing options ...
-    
-    riderStatuses: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended']
-  }
-};
-*/
-
-// ===== 5. UPDATE _navigation.html =====
-// Add the riders link to your navigation file:
-
-/*
-<nav class="navigation">
-    <a href="?page=dashboard" class="nav-button" id="nav-dashboard" data-page="dashboard">📊 Dashboard</a>
-    <a href="?page=requests" class="nav-button" id="nav-requests" data-page="requests">📋 Requests</a>
-    <a href="?page=assignments" class="nav-button" id="nav-assignments" data-page="assignments">🏍️ Assignments</a>
-    <a href="?page=riders" class="nav-button" id="nav-riders" data-page="riders">👥 Riders</a>
-    <a href="?page=notifications" class="nav-button" id="nav-notifications" data-page="notifications">📱 Notifications</a>
-    <a href="?page=reports" class="nav-button" id="nav-reports" data-page="reports">📊 Reports</a>
-</nav>
-*/
-
-// ===== 6. CLIENT-SIDE INTEGRATION EXAMPLES =====
-
-// Example JavaScript functions for your HTML pages:
-
-/**
- * Load all riders for display
- */
-function loadRiders(statusFilter = 'All') {
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(handleRidersLoaded)
-      .withFailureHandler(handleError)
-      .getPageDataForRiders(statusFilter);
-  }
-}
-
-/**
- * Add a new rider
- */
-function addNewRider(riderData) {
-  google.script.run
-    .withSuccessHandler(handleRiderOperationSuccess)
-    .withFailureHandler(handleError)
-    .handleRiderOperation('create', riderData);
-}
-
-/**
- * Update a rider
- */
-function updateRiderDetails(riderData) {
-  google.script.run
-    .withSuccessHandler(handleRiderOperationSuccess)
-    .withFailureHandler(handleError)
-    .handleRiderOperation('update', riderData);
-}
-
-/**
- * Delete a rider
- */
-function deleteRiderById(riderId) {
-  if (confirm(`Are you sure you want to delete rider ${riderId}?`)) {
-    google.script.run
-      .withSuccessHandler(handleRiderOperationSuccess)
-      .withFailureHandler(handleError)
-      .handleRiderOperation('delete', { riderId: riderId });
-  }
-}
-
-/**
- * Bulk update rider status
- */
-function bulkUpdateStatus(riderIds, newStatus) {
-  google.script.run
-    .withSuccessHandler(handleRiderOperationSuccess)
-    .withFailureHandler(handleError)
-    .handleRiderOperation('bulkUpdateStatus', { riderIds: riderIds, newStatus: newStatus });
-}
-
-/**
- * Export riders to CSV
- */
-function exportRiders(status = null) {
-  google.script.run
-    .withSuccessHandler(handleExportSuccess)
-    .withFailureHandler(handleError)
-    .handleRiderOperation('export', { status: status });
-}
-
-// ===== 7. SAMPLE HTML INTEGRATION =====
-
-// Example HTML structure for riders page:
-
-/*
-<div class="riders-container">
-  <!-- Stats Cards -->
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="stat-number" id="totalRiders">-</span>
-      <div class="stat-label">Total Riders</div>
-    </div>
-    <div class="stat-card success">
-      <span class="stat-number" id="activeRiders">-</span>
-      <div class="stat-label">Active</div>
-    </div>
-    <!-- More stat cards... -->
-  </div>
-
-  <!-- Controls -->
-  <div class="rider-controls">
-    <button onclick="openAddRiderModal()" class="btn btn-success">➕ Add Rider</button>
-    <select id="statusFilter" onchange="filterRiders()">
-      <option value="All">All Statuses</option>
-      <option value="Active">Active</option>
-      <option value="Inactive">Inactive</option>
-    </select>
-    <button onclick="exportRiders()" class="btn btn-info">📊 Export</button>
-  </div>
-
-  <!-- Riders Table -->
-  <div class="riders-table-container">
-    <table id="ridersTable">
-      <thead>
-        <tr>
-          <th>Rider ID</th>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Email</th>
-          <th>Status</th>
-          <th>Assignments</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="ridersTableBody">
-      </tbody>
-    </table>
-  </div>
-</div>
-*/
-
-// ===== 8. EXAMPLE EVENT HANDLERS =====
-
-function handleRidersLoaded(data) {
-  if (data && data.success) {
-    updateRiderStats(data.stats);
-    renderRidersTable(data.riders);
-  } else {
-    showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
-  }
-}
-
-function handleRiderOperationSuccess(result) {
-  if (result && result.success) {
-    showSuccess(result.message || 'Operation completed successfully');
-    loadRiders(); // Refresh the list
-  } else {
-    showError('Operation failed: ' + (result ? result.message : 'Unknown error'));
-  }
-}
-
-function handleExportSuccess(result) {
-  if (result && result.success) {
-    // Create and download CSV file
-    const blob = new Blob([result.csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = result.filename;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    showSuccess(`Exported ${result.count} riders successfully`);
-  } else {
-    showError('Export failed: ' + (result ? result.message : 'Unknown error'));
-  }
-}
-
-function renderRidersTable(riders) {
-  const tbody = document.getElementById('ridersTableBody');
-  if (!tbody) return;
-
-  tbody.innerHTML = riders.map(rider => `
-    <tr>
-      <td>${rider.jpNumber || ''}</td>
-      <td>${rider.name || ''}</td>
-      <td>${rider.phone || ''}</td>
-      <td>${rider.email || ''}</td>
-      <td><span class="status-badge status-${(rider.status || 'active').toLowerCase()}">${rider.status || 'Active'}</span></td>
-      <td>${rider.totalAssignments || 0}</td>
-      <td>
-        <button onclick="editRider('${rider.jpNumber}')" class="btn btn-sm">✏️ Edit</button>
-        <button onclick="deleteRiderById('${rider.jpNumber}')" class="btn btn-sm btn-danger">🗑️ Delete</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function updateRiderStats(stats) {
-  document.getElementById('totalRiders').textContent = stats.totalRiders || 0;
-  document.getElementById('activeRiders').textContent = stats.activeRiders || 0;
-  // Update other stat elements...
-}
-
-// ===== 9. FORM HANDLING EXAMPLES =====
-
-function openAddRiderModal() {
-  // Open modal with empty form
-  document.getElementById('riderModal').style.display = 'block';
-  document.getElementById('riderForm').reset();
-  document.getElementById('modalTitle').textContent = 'Add New Rider';
-}
-
-function saveRider() {
-  const formData = new FormData(document.getElementById('riderForm'));
-  const riderData = {};
-  
-  // Map form fields to CONFIG column names
-  riderData[CONFIG.columns.riders.jpNumber] = formData.get('riderId');
-  riderData[CONFIG.columns.riders.name] = formData.get('name');
-  riderData[CONFIG.columns.riders.phone] = formData.get('phone');
-  riderData[CONFIG.columns.riders.email] = formData.get('email');
-  riderData[CONFIG.columns.riders.status] = formData.get('status');
-  
-  // Determine if this is add or update
-  const isUpdate = document.getElementById('originalRiderId').value;
-  
-  if (isUpdate) {
-    updateRiderDetails(riderData);
-  } else {
-    addNewRider(riderData);
-  }
-  
-  closeRiderModal();
-}
-
-// ===== 10. UTILITY FUNCTIONS =====
-
-function showSuccess(message) {
-  // Your existing success notification function
-  console.log('✅ ' + message);
-}
-
-function showError(message) {
-  // Your existing error notification function
-  console.error('❌ ' + message);
-}
-
-function handleError(error) {
-  showError(error.message || error);
-  console.error('Operation failed:', error);
-}
 /**
  * Alternative assignment function for testing/debugging.
  * @param {string} requestId - The request ID.
