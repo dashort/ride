@@ -666,6 +666,16 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Riders page loading...');
+
+        const params = new URLSearchParams(window.location.search);
+        const statusParam = params.get('status');
+        if (statusParam) {
+            const statusFilter = document.getElementById('statusFilter');
+            if (statusFilter) {
+                statusFilter.value = statusParam;
+            }
+        }
+
         loadRidersData();
         setupEventListeners();
     });
@@ -1202,9 +1212,20 @@ function handleRidersDataSuccess(data) {
     updateStats(data.stats);
     renderRidersTable(app.filteredRiders); // Use filtered riders
     showTable();
-    
+
     // IMPORTANT: Setup search after data is loaded
     setupEventListeners();
+
+    // Apply filter from URL if provided
+    const params = new URLSearchParams(window.location.search);
+    const statusParam = params.get('status');
+    if (statusParam) {
+      const statusFilter = document.getElementById('statusFilter');
+      if (statusFilter) {
+        statusFilter.value = statusParam;
+        filterRiders();
+      }
+    }
     
     console.log(`🔍 Search ready with ${app.riders.length} riders`);
   } else {

@@ -543,7 +543,8 @@
     var app = {
         user: null,
         isOnline: navigator.onLine,
-        loadingTimeout: 15000
+        loadingTimeout: 15000,
+        dateFilter: 'all'
     };
 
     /**
@@ -554,6 +555,12 @@
      */
     document.addEventListener('DOMContentLoaded', function() {
         console.log('🚀 Assignments page loading...');
+
+        const params = new URLSearchParams(window.location.search);
+        const dateParam = params.get('date');
+        if (dateParam) {
+            app.dateFilter = dateParam.toLowerCase();
+        }
 
         setTimeout(function() {
             if (currentRequests.length === 0 && activeRiders.length === 0) {
@@ -589,250 +596,6 @@
             handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
         }
     }
-<!-- Add this to your assignments.html <script> section for debugging -->
-
-// Debug function to test riders loading
-function debugRidersLoading() {
-  console.log('🔍 Debugging riders loading...');
-  
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    // Test the enhanced function
-    console.log('📞 Calling debugActiveRidersIssue...');
-    google.script.run
-      .withSuccessHandler(function(result) {
-        console.log('✅ Debug result:', result);
-        
-        if (result.error) {
-          console.error('❌ Server-side error:', result.error);
-        } else {
-          console.log(`📊 Found ${result.ridersFound} total riders, ${result.activeRiders} active`);
-          console.log('📋 Headers:', result.headers);
-          console.log('📄 Sample data:', result.sampleData);
-        }
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Debug call failed:', error);
-      })
-      .debugActiveRidersIssue();
-      
-    // Also test the regular function
-    console.log('📞 Calling getActiveRidersForAssignments...');
-    google.script.run
-      .withSuccessHandler(function(riders) {
-        console.log('✅ Active riders result:', riders);
-        console.log(`📊 Found ${riders.length} active riders`);
-        
-        if (riders.length > 0) {
-          console.log('👤 Sample rider:', riders[0]);
-        } else {
-          console.log('❌ No active riders found');
-        }
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Active riders call failed:', error);
-      })
-      .getActiveRidersForAssignments();
-      
-  } else {
-    console.error('❌ Google Apps Script not available');
-  }
-}
-
-// Enhanced riders loading with better error handling
-function loadActiveRidersEnhanced() {
-  console.log('🔄 Loading active riders with enhanced debugging...');
-  
-  showLoading('Loading riders...');
-  
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(function(riders) {
-        hideLoading();
-        console.log('✅ Enhanced riders loaded:', riders);
-        
-        if (!riders || !Array.isArray(riders)) {
-          console.error('❌ Invalid riders data received:', typeof riders);
-          displayNoRiders('Invalid data received from server');
-          return;
-        }
-        
-        if (riders.length === 0) {
-          console.log('⚠️ No active riders found');
-          
-          // Try the flexible function as fallback
-          console.log('🔄 Trying flexible function as fallback...');
-          google.script.run
-            .withSuccessHandler(function(flexibleRiders) {
-              console.log('🔄 Flexible function result:', flexibleRiders);
-              
-              if (flexibleRiders && flexibleRiders.length > 0) {
-                displayRiders(flexibleRiders);
-                showSuccess(`Found ${flexibleRiders.length} riders using flexible detection`);
-              } else {
-                displayNoRiders('No active riders found in system');
-              }
-            })
-            .withFailureHandler(function(error) {
-              console.error('❌ Flexible function failed:', error);
-              displayNoRiders('Error loading riders: ' + error.message);
-            })
-            .getActiveRidersForAssignmentsFlexible();
-            
-        } else {
-          displayRiders(riders);
-          showSuccess(`Loaded ${riders.length} active riders`);
-        }
-      })
-      .withFailureHandler(function(error) {
-        hideLoading();
-        console.error('❌ Enhanced riders loading failed:', error);
-        displayNoRiders('Error loading riders: ' + (error.message || error));
-      })
-      .getActiveRidersForAssignments();
-  } else {
-    hideLoading();
-    console.error('❌ Google Apps Script not available');
-    displayNoRiders('Google Apps Script not available');
-  }
-}
-
-// Display no riders message with more info
-function displayNoRiders(message) {
-  const ridersContainer = document.getElementById('ridersContainer') || 
-                         document.querySelector('.riders-list') ||
-                         document.querySelector('#activeRidersList');
-  
-  if (ridersContainer) {
-    ridersContainer.innerHTML = `
-      <div class="no-riders-message">
-        <h3>⚠️ No Active Riders Available</h3>
-        <p>${message}</p>
-        <div class="debug-actions">
-          <button onclick="debugRidersLoading()" class="btn btn-info">
-            🔍 Debug Riders Loading
-          </button>
-          <button onclick="loadActiveRidersEnhanced()" class="btn btn-primary">
-            🔄 Retry Loading
-          </button>
-          <button onclick="window.open('?page=riders', '_blank')" class="btn btn-secondary">
-            👥 Go to Riders Page
-          </button>
-        </div>
-        <details class="debug-info">
-          <summary>🔧 Technical Details</summary>
-          <ul>
-            <li>This usually means no riders have "Active" status</li>
-            <li>Check the Riders sheet for proper data</li>
-            <li>Verify column headers match the configuration</li>
-            <li>Ensure riders have names and status values</li>
-          </ul>
-        </details>
-      </div>
-    `;
-  }
-}
-
-// Better success/error notifications
-function showSuccess(message) {
-  console.log('✅', message);
-  // Add your success notification code here
-}
-
-function showError(message) {
-  console.error('❌', message);
-  // Add your error notification code here
-}
-
-function showLoading(message) {
-  console.log('🔄', message);
-  // Add your loading indicator code here
-}
-
-function hideLoading() {
-  console.log('✅ Loading complete');
-  // Add your hide loading code here
-}
-
-// Auto-run debug when page loads (temporary)
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait a bit for the page to fully load
-  setTimeout(function() {
-    console.log('🔍 Auto-running riders debug...');
-    debugRidersLoading();
-  }, 2000);
-});
-
-// Add CSS for the no-riders message
-const debugStyles = `
-<style>
-.no-riders-message {
-  text-align: center;
-  padding: 2rem;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-  margin: 1rem 0;
-}
-
-.no-riders-message h3 {
-  color: #dc3545;
-  margin-bottom: 1rem;
-}
-
-.debug-actions {
-  margin: 1.5rem 0;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.debug-actions .btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-info { background: #17a2b8; color: white; }
-.btn-primary { background: #007bff; color: white; }
-.btn-secondary { background: #6c757d; color: white; }
-
-.debug-info {
-  text-align: left;
-  margin-top: 1rem;
-  padding: 1rem;
-  background: white;
-  border-radius: 4px;
-  border: 1px solid #dee2e6;
-}
-
-.debug-info summary {
-  cursor: pointer;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-}
-
-.debug-info ul {
-  margin: 0.5rem 0 0 1rem;
-}
-
-.debug-info li {
-  margin: 0.25rem 0;
-  color: #6c757d;
-}
-</style>
-`;
-
-// Add debug styles to document
-if (!document.getElementById('debug-styles')) {
-  const styleDiv = document.createElement('div');
-  styleDiv.id = 'debug-styles';
-  styleDiv.innerHTML = debugStyles;
-  document.head.appendChild(styleDiv);
-}
     /**
      * Handles the successful response from fetching consolidated assignments page data.
      * Updates UI with user info, requests, riders, and potentially pre-selects a request.
@@ -935,7 +698,7 @@ if (!document.getElementById('debug-styles')) {
         currentRequests = Array.isArray(data) ? data : [];
         console.log('📊 Stored requests count:', currentRequests.length);
 
-        renderRequestsList();
+        filterRequests();
     }
 
     /**
@@ -1038,273 +801,33 @@ if (!document.getElementById('debug-styles')) {
             var matchesSearch = !searchTerm ||
                 request.id.toLowerCase().indexOf(searchTerm) !== -1 ||
                 request.requesterName.toLowerCase().indexOf(searchTerm) !== -1;
-            
+
             var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
-            
-            return matchesSearch && matchesStatus && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
+
+            var matchesDate = true;
+            if (app.dateFilter === 'today') {
+                var today = new Date().toISOString().slice(0, 10);
+                matchesDate = request.eventDate === today;
+            } else if (app.dateFilter === 'week') {
+                try {
+                    var reqDate = new Date(request.eventDate);
+                    var now = new Date();
+                    var start = new Date(now);
+                    start.setDate(now.getDate() - now.getDay());
+                    start.setHours(0,0,0,0);
+                    var end = new Date(start);
+                    end.setDate(start.getDate() + 6);
+                    matchesDate = reqDate >= start && reqDate <= end;
+                } catch (e) {
+                    matchesDate = true;
+                }
+            }
+
+            return matchesSearch && matchesStatus && matchesDate && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
         });
 
         renderFilteredRequests(filtered);
     }
-<!-- Add this to your assignments.html <script> section for simple debugging -->
-
-// Simple debug function that uses existing functions
-function debugRidersSimple() {
-  console.log('🔍 Simple debug for riders issue...');
-  
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    
-    // Test 1: Try to get basic riders data
-    console.log('📋 Test 1: Getting basic riders data...');
-    google.script.run
-      .withSuccessHandler(function(riders) {
-        console.log('✅ Basic riders result:', riders);
-        console.log(`📊 Type: ${typeof riders}, Length: ${riders?.length || 'N/A'}`);
-        
-        if (riders && riders.length > 0) {
-          console.log('👤 Sample rider:', riders[0]);
-          console.log('🔑 Rider keys:', Object.keys(riders[0]));
-        } else {
-          console.log('❌ No riders returned');
-        }
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Basic riders failed:', error);
-      })
-      .getRiders(); // Use the existing getRiders function
-    
-    // Test 2: Try the assignments function
-    console.log('📋 Test 2: Getting active riders for assignments...');
-    google.script.run
-      .withSuccessHandler(function(riders) {
-        console.log('✅ Active riders for assignments:', riders);
-        console.log(`📊 Type: ${typeof riders}, Length: ${riders?.length || 'N/A'}`);
-        
-        if (riders && riders.length > 0) {
-          console.log('👤 Sample active rider:', riders[0]);
-        } else {
-          console.log('❌ No active riders for assignments');
-        }
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Active riders for assignments failed:', error);
-      })
-      .getActiveRidersForAssignments();
-      
-    // Test 3: Try the web app riders function
-    console.log('📋 Test 3: Getting active riders for web app...');
-    google.script.run
-      .withSuccessHandler(function(riders) {
-        console.log('✅ Active riders for web app:', riders);
-        console.log(`📊 Type: ${typeof riders}, Length: ${riders?.length || 'N/A'}`);
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Active riders for web app failed:', error);
-      })
-      .getActiveRidersForWebApp();
-      
-  } else {
-    console.error('❌ Google Apps Script not available');
-  }
-}
-
-// Test if we can load any rider data at all
-function testBasicRiderAccess() {
-  console.log('🧪 Testing basic rider access...');
-  
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(function(result) {
-        console.log('✅ Test connection result:', result);
-        
-        // Now try to get riders
-        google.script.run
-          .withSuccessHandler(function(riders) {
-            console.log('✅ Got riders:', riders);
-            
-            if (riders && Array.isArray(riders) && riders.length > 0) {
-              console.log(`📊 Found ${riders.length} riders`);
-              console.log('👤 First rider:', riders[0]);
-              
-              // Check status values
-              const statuses = riders.map(r => r.status || r.Status || 'No Status');
-              const uniqueStatuses = [...new Set(statuses)];
-              console.log('📋 Unique status values:', uniqueStatuses);
-              
-              // Count by status
-              const statusCounts = {};
-              statuses.forEach(status => {
-                statusCounts[status] = (statusCounts[status] || 0) + 1;
-              });
-              console.log('📊 Status counts:', statusCounts);
-              
-            } else {
-              console.log('❌ No riders found or invalid data');
-            }
-          })
-          .withFailureHandler(function(error) {
-            console.error('❌ Failed to get riders:', error);
-          })
-          .getRiders();
-          
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Test connection failed:', error);
-      })
-      .testServerConnection();
-  }
-}
-
-// Quick fix: Create riders manually for testing
-function createTestRiders() {
-  console.log('🔧 Creating test riders...');
-  
-  const testRiders = [
-    {
-      name: 'Test Rider 1',
-      jpNumber: 'TEST001',
-      phone: '555-0001',
-      email: 'test1@example.com',
-      carrier: 'Verizon',
-      status: 'Available'
-    },
-    {
-      name: 'Test Rider 2', 
-      jpNumber: 'TEST002',
-      phone: '555-0002',
-      email: 'test2@example.com',
-      carrier: 'AT&T',
-      status: 'Available'
-    }
-  ];
-  
-  console.log('✅ Test riders created:', testRiders);
-  
-  // Display these test riders
-  const ridersContainer = document.getElementById('ridersContainer') || 
-                         document.querySelector('.riders-list') ||
-                         document.querySelector('#activeRidersList');
-                         
-  if (ridersContainer) {
-    ridersContainer.innerHTML = `
-      <div class="test-riders">
-        <h3>🧪 Test Riders (for debugging)</h3>
-        ${testRiders.map(rider => `
-          <div class="rider-item">
-            <strong>${rider.name}</strong> (${rider.jpNumber})<br>
-            📞 ${rider.phone} | 📧 ${rider.email}<br>
-            📡 ${rider.carrier} | ✅ ${rider.status}
-          </div>
-        `).join('')}
-        <button onclick="testBasicRiderAccess()" class="btn btn-primary">
-          🔍 Debug Real Riders
-        </button>
-      </div>
-    `;
-  }
-  
-  return testRiders;
-}
-
-// Check what functions are available
-function checkAvailableFunctions() {
-  console.log('🔍 Checking available server functions...');
-  
-  const functionsToTest = [
-    'getRiders',
-    'getActiveRidersForAssignments', 
-    'getActiveRidersForWebApp',
-    'getRidersData',
-    'testServerConnection',
-    'getPageDataForAssignments'
-  ];
-  
-  functionsToTest.forEach(funcName => {
-    try {
-      if (typeof google !== 'undefined' && google.script && google.script.run && google.script.run[funcName]) {
-        console.log(`✅ ${funcName} is available`);
-      } else {
-        console.log(`❌ ${funcName} is NOT available`);
-      }
-    } catch (error) {
-      console.log(`❓ ${funcName} - cannot determine availability`);
-    }
-  });
-}
-
-// Auto-run when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(function() {
-    console.log('🔍 Auto-running simple debug...');
-    checkAvailableFunctions();
-    testBasicRiderAccess();
-  }, 1000);
-});
-
-// Add a manual debug button to the page
-function addDebugButton() {
-  const debugButton = document.createElement('button');
-  debugButton.innerHTML = '🔍 Debug Riders';
-  debugButton.className = 'btn btn-warning';
-  debugButton.style.position = 'fixed';
-  debugButton.style.top = '10px';
-  debugButton.style.right = '10px';
-  debugButton.style.zIndex = '9999';
-  debugButton.onclick = function() {
-    debugRidersSimple();
-    testBasicRiderAccess();
-  };
-  
-  document.body.appendChild(debugButton);
-}
-
-// Add debug button when page loads
-document.addEventListener('DOMContentLoaded', addDebugButton);
-
-// CSS for test riders display
-const testRiderStyles = `
-<style>
-.test-riders {
-  background: #fff3cd;
-  border: 1px solid #ffeaa7;
-  border-radius: 8px;
-  padding: 1rem;
-  margin: 1rem 0;
-}
-
-.test-riders h3 {
-  color: #856404;
-  margin-bottom: 1rem;
-}
-
-.rider-item {
-  background: white;
-  padding: 0.75rem;
-  margin: 0.5rem 0;
-  border-radius: 4px;
-  border-left: 4px solid #28a745;
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  margin: 0.25rem;
-}
-
-.btn-primary { background: #007bff; color: white; }
-.btn-warning { background: #ffc107; color: #212529; }
-</style>
-`;
-
-// Add styles
-if (!document.getElementById('test-rider-styles')) {
-  const styleDiv = document.createElement('div');
-  styleDiv.id = 'test-rider-styles';
-  styleDiv.innerHTML = testRiderStyles;
-  document.head.appendChild(styleDiv);
-}
     /**
      * Renders a list of requests that have been filtered.
      * @param {Array<RequestItemAssignmentsPage>} requests - The array of request items to render.
@@ -1775,60 +1298,6 @@ if (!document.getElementById('test-rider-styles')) {
         showError(error.message || (typeof error === 'string' ? error : 'An unexpected error occurred'));
     }
 
-    /**
-     * Test function for manually triggering data loading from the console.
-     * Useful for debugging.
-     * @return {void}
-     */
-    function manualDataTest() {
-    console.log('🧪 Manual data test starting...');
-    
-    if (typeof google === 'undefined') {
-        console.error('❌ Google Apps Script not available');
-        return;
-    }
-    
-    console.log('Test 1: Basic server connection (getCurrentUser)...');
-    google.script.run
-        .withSuccessHandler(function(user) {
-            console.log('✅ Server connection OK, user:', user);
-            
-            console.log('Test 2: Loading requests (getFilteredRequestsForWebApp)...');
-            google.script.run
-                .withSuccessHandler(function(requests) {
-                    console.log('✅ Requests loaded:', requests);
-                    console.log('Count:', requests ? requests.length : 'null');
-                    if (requests && requests.length > 0) {
-                        handleRequestsLoaded(requests); // Assuming this function exists and is appropriate
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    console.error('❌ Requests failed:', error);
-                })
-                .getFilteredRequestsForWebApp('All'); // Example function call
-            
-            console.log('Test 3: Loading riders (getActiveRidersForWebApp)...');
-            google.script.run
-                .withSuccessHandler(function(riders) {
-                    console.log('✅ Riders loaded:', riders);
-                    console.log('Count:', riders ? riders.length : 'null');
-                    if (riders && riders.length > 0) {
-                        handleRidersLoaded(riders); // Assuming this function exists
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    console.error('❌ Riders failed:', error);
-                })
-                .getActiveRidersForWebApp(); // Example function call
-                
-        })
-        .withFailureHandler(function(error) {
-            console.error('❌ Basic server connection failed:', error);
-        })
-        .getCurrentUser(); // Test with a simple, existing function
-}
-
-window.manualDataTest = manualDataTest; // Make it accessible from console
-    </script>
+</script>
 </body>
 </html>
