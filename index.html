@@ -660,14 +660,33 @@
         showMessage('Some dashboard data may not be current. Please try refreshing.', 'warning');
     }
 
+    function navigateTo(page, params = {}) {
+        const base = window.location.href.split('?')[0];
+        const search = new URLSearchParams(params);
+        search.set('page', page);
+        window.location.href = base + '?' + search.toString();
+    }
+
     function createNewRequest() {
         if (confirm('Navigate to Requests page to create a new request?')) {
-            window.location.href = '?page=requests&action=create';
+            navigateTo('requests', { action: 'create' });
         }
     }
 
     function openAssignments() {
-        window.location.href = '?page=assignments';
+        navigateTo('assignments');
+    }
+
+    function goToRiders(status) {
+        navigateTo('riders', { status: status });
+    }
+
+    function goToRequests(status) {
+        navigateTo('requests', { status: status });
+    }
+
+    function goToAssignments(range) {
+        navigateTo('assignments', { date: range });
     }
 
     function goToRiders(status) {
