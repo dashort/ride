@@ -662,14 +662,40 @@
 
     function navigateTo(page, params = {}) {
         const search = new URLSearchParams(params);
+        let url;
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             const base = window.location.href.split('?')[0];
             search.set('page', page);
-            window.location.href = base + '?' + search.toString();
+            url = base + '?' + search.toString();
         } else {
             // Fallback for local testing without Apps Script environment
-            window.location.href = page + '.html?' + search.toString();
+            url = page + '.html?' + search.toString();
+        }
+
+        const isInIframe = window !== window.top;
+
+        if (isInIframe) {
+            try {
+                window.top.location.href = url;
+            } catch (error) {
+                try {
+                    window.parent.location.href = url;
+                } catch (parentError) {
+                    window.open(url, '_blank');
+                }
+            }
+        } else {
+            try {
+                window.location.href = url;
+                setTimeout(() => {
+                    if (window.location.href !== url) {
+                        window.location.replace(url);
+                    }
+                }, 500);
+            } catch (error) {
+                window.open(url, '_self');
+            }
         }
     }
 
