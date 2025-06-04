@@ -661,10 +661,16 @@
     }
 
     function navigateTo(page, params = {}) {
-        const base = window.location.href.split('?')[0];
         const search = new URLSearchParams(params);
-        search.set('page', page);
-        window.location.href = base + '?' + search.toString();
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            const base = window.location.href.split('?')[0];
+            search.set('page', page);
+            window.location.href = base + '?' + search.toString();
+        } else {
+            // Fallback for local testing without Apps Script environment
+            window.location.href = page + '.html?' + search.toString();
+        }
     }
 
     function createNewRequest() {
@@ -689,17 +695,6 @@
         navigateTo('assignments', { date: range });
     }
 
-    function goToRiders(status) {
-        window.location.href = '?page=riders&status=' + encodeURIComponent(status);
-    }
-
-    function goToRequests(status) {
-        window.location.href = '?page=requests&status=' + encodeURIComponent(status);
-    }
-
-    function goToAssignments(range) {
-        window.location.href = '?page=assignments&date=' + encodeURIComponent(range);
-    }
 
     function sendBulkNotifications() {
         if (confirm('This will send notifications to all pending assignments. Continue?')) {
