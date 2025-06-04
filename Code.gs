@@ -3076,6 +3076,7 @@ function getNavigationHtmlWithDynamicUrls(currentPage = '') {
       { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
       { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
       { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
+      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
       { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
       { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
     ];
