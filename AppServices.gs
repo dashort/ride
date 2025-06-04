@@ -1124,6 +1124,171 @@ function getActiveRidersForAssignments() {
     return [];
   }
 }
+/**
+ * Simple debug function to diagnose riders issue
+ * Add this to your AppServices.gs or Code.gs file
+ */
+function debugRidersIssue() {
+  try {
+    console.log('🔍 Starting simple riders debug...');
+    
+    // Test 1: Get raw riders data
+    const ridersData = getRidersData();
+    
+    const result = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      tests: {}
+    };
+    
+    // Test raw data access
+    result.tests.rawData = {
+      hasData: !!ridersData,
+      dataLength: ridersData?.data?.length || 0,
+      headersLength: ridersData?.headers?.length || 0,
+      headers: ridersData?.headers || [],
+      columnMap: ridersData?.columnMap || {},
+      sampleRow: ridersData?.data?.[0] || null
+    };
+    
+    // Test CONFIG columns
+    result.tests.configColumns = {
+      expectedName: CONFIG.columns.riders.name,
+      expectedStatus: CONFIG.columns.riders.status,
+      expectedJpNumber: CONFIG.columns.riders.jpNumber,
+      nameColumnExists: ridersData?.columnMap?.[CONFIG.columns.riders.name] !== undefined,
+      statusColumnExists: ridersData?.columnMap?.[CONFIG.columns.riders.status] !== undefined,
+      jpNumberColumnExists: ridersData?.columnMap?.[CONFIG.columns.riders.jpNumber] !== undefined
+    };
+    
+    // Test actual riders function
+    let allRiders = [];
+    try {
+      allRiders = getRiders();
+      result.tests.getRiders = {
+        success: true,
+        count: allRiders.length,
+        sample: allRiders[0] || null
+      };
+    } catch (error) {
+      result.tests.getRiders = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Test active riders function
+    let activeRiders = [];
+    try {
+      activeRiders = getActiveRidersForAssignments();
+      result.tests.getActiveRiders = {
+        success: true,
+        count: activeRiders.length,
+        sample: activeRiders[0] || null
+      };
+    } catch (error) {
+      result.tests.getActiveRiders = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Analyze why no active riders
+    if (allRiders.length > 0 && activeRiders.length === 0) {
+      result.analysis = {
+        totalRiders: allRiders.length,
+        activeRiders: activeRiders.length,
+        statusValues: allRiders.map(r => r.status || r.Status || 'No Status'),
+        possibleIssues: []
+      };
+      
+      // Check for common issues
+      const statuses = result.analysis.statusValues;
+      const uniqueStatuses = [...new Set(statuses)];
+      
+      if (!uniqueStatuses.includes('Active')) {
+        result.analysis.possibleIssues.push('No riders have "Active" status');
+      }
+      
+      if (uniqueStatuses.includes('')) {
+        result.analysis.possibleIssues.push('Some riders have empty status');
+      }
+      
+      result.analysis.uniqueStatuses = uniqueStatuses;
+    }
+    
+    console.log('✅ Debug completed:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * Quick fix function to make all riders active
+ * Use this temporarily to test if the issue is status-related
+ */
+function getAllRidersRegardlessOfStatus() {
+  try {
+    console.log('🔧 Getting ALL riders regardless of status...');
+    
+    const ridersData = getRidersData();
+    
+    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
+      return [];
+    }
+    
+    const columnMap = ridersData.columnMap;
+    const allRiders = [];
+    
+    for (let i = 0; i < ridersData.data.length; i++) {
+      const row = ridersData.data[i];
+      
+      const riderName = getColumnValue(row, columnMap, CONFIG.columns.riders.name) || 
+                        getColumnValue(row, columnMap, 'Full Name') || 
+                        row[1];
+      
+      // Only require a name - ignore status completely
+      if (!riderName || String(riderName).trim().length === 0) {
+        continue;
+      }
+      
+      const jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber) || 
+                       getColumnValue(row, columnMap, 'Rider ID') || 
+                       row[0] || `RIDER-${i}`;
+      
+      const phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || 
+                    getColumnValue(row, columnMap, 'Phone Number') || 
+                    '555-0000';
+      
+      const email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || 
+                    getColumnValue(row, columnMap, 'Email') || 
+                    '';
+      
+      allRiders.push({
+        name: String(riderName).trim(),
+        jpNumber: String(jpNumber).trim(),
+        phone: String(phone).trim(),
+        email: String(email).trim(),
+        carrier: 'Unknown',
+        status: 'Available' // Force all to be available
+      });
+    }
+    
+    console.log(`✅ Found ${allRiders.length} riders (ignoring status)`);
+    return allRiders;
+    
+  } catch (error) {
+    console.error('❌ Error getting all riders:', error);
+    return [];
+  }
+}
 
 /**
  * Fetches upcoming assignments, formatted for the assignments page.
