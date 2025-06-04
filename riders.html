@@ -770,34 +770,23 @@ function setupEventListeners() {
         document.getElementById('inTraining').textContent = stats.inTraining || 0;
     }
 
-    function renderRidersTable(riders) {
-        const tbody = document.getElementById('ridersTableBody');
-        
-        if (!riders || riders.length === 0) {
-            showEmptyState();
-            return;
-        }
 
-        tbody.innerHTML = riders.map(rider => `
-            <tr>
-                <td class="checkbox-column">
-                    <input type="checkbox" class="rider-checkbox" data-rider-id="${rider.jpNumber || ''}" onchange="updateSelection()">
-                </td>
-                <td>${rider.jpNumber || ''}</td>
-                <td>${rider.name || ''}</td>
-                <td>${rider.phone || ''}</td>
-                <td>${rider.email || ''}</td>
-                <td><span class="status-badge status-${(rider.status || 'active').toLowerCase()}">${rider.status || 'Active'}</span></td>
-                <td>${rider.certification || 'Standard'}</td>
-                <td>${rider.totalAssignments || 0}</td>
-                <td>${rider.lastAssignmentDate || 'Never'}</td>
-                <td class="actions-cell">
-                    <button onclick="editRider('${rider.jpNumber}')" class="btn btn-sm btn-primary">✏️ Edit</button>
-                    <button onclick="deleteRider('${rider.jpNumber}')" class="btn btn-sm btn-danger">🗑️ Delete</button>
-                </td>
-            </tr>
-        `).join('');
+
+// Debug function to test delete functionality
+function testDeleteFunction() {
+  if (app.riders && app.riders.length > 0) {
+    const firstRider = app.riders[0];
+    const riderId = firstRider.jpNumber || firstRider['Rider ID'];
+    console.log('🧪 Testing delete function with first rider:', riderId);
+    
+    if (confirm('This is a test. Do you want to test the delete function (no actual deletion will occur)?')) {
+      console.log('✅ Delete function test would proceed with rider:', riderId);
+      showSuccess('Delete function test completed - no actual deletion performed');
     }
+  } else {
+    console.log('❌ No riders available for testing');
+  }
+}
 
 /**
  * SEARCH FIX: Replace the filterRiders function in your riders.html
@@ -1091,23 +1080,55 @@ function editRider(riderId) {
             .withFailureHandler(handleRiderOperationFailure)
             .handleRiderOperation(action, riderData);
     }
-
-    function deleteRider(riderId) {
-        const rider = app.riders.find(r => r.jpNumber === riderId);
-        const riderName = rider ? rider.name : riderId;
-        
-        if (!confirm(`Are you sure you want to delete rider "${riderName}"?\n\nThis action cannot be undone.`)) {
-            return;
-        }
-
-        showLoading('Deleting rider...');
-        
-        google.script.run
-            .withSuccessHandler(handleRiderOperationSuccess)
-            .withFailureHandler(handleRiderOperationFailure)
-            .handleRiderOperation('delete', { riderId: riderId });
-    }
 */
+function deleteRider(riderId) {
+  console.log('🗑️ Delete button clicked for rider ID:', riderId);
+  
+  // Find the rider to get their name for confirmation
+  const rider = app.riders.find(r => 
+    r.jpNumber === riderId || 
+    r['Rider ID'] === riderId ||
+    String(r.jpNumber) === String(riderId) ||
+    String(r['Rider ID']) === String(riderId)
+  );
+  
+  const riderName = rider ? (rider.name || rider['Full Name'] || 'Unknown Rider') : riderId;
+  
+  // Enhanced confirmation dialog
+  const confirmMessage = `⚠️ DELETE RIDER CONFIRMATION\n\n` +
+    `Rider: ${riderName}\n` +
+    `ID: ${riderId}\n\n` +
+    `This will permanently delete this rider from the system.\n` +
+    `This action CANNOT be undone.\n\n` +
+    `Are you absolutely sure you want to proceed?`;
+  
+  if (!confirm(confirmMessage)) {
+    console.log('❌ Rider deletion cancelled by user');
+    return;
+  }
+
+  // Show loading state
+  showLoading('Deleting rider...');
+  
+  console.log(`🗑️ Proceeding with deletion of rider: ${riderName} (ID: ${riderId})`);
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        console.log('✅ Delete operation completed:', result);
+        handleRiderOperationSuccess(result);
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Delete operation failed:', error);
+        handleRiderOperationFailure(error);
+      })
+      .handleRiderOperation('delete', { riderId: riderId });
+  } else {
+    console.error('❌ Google Apps Script not available');
+    handleRiderOperationFailure({ message: "Google Apps Script not available." });
+  }
+}
+
 
 function saveRider() {
   console.log('💾 saveRider called');
@@ -1192,22 +1213,85 @@ function handleRidersDataSuccess(data) {
   }
 }
 
-    function handleRiderOperationFailure(error) {
-        hideLoading();
-        showError('Operation failed: ' + (error.message || error));
-    }
+function handleRiderOperationSuccess(result) {
+  hideLoading();
+  
+  console.log('✅ Rider operation successful:', result);
+  
+  if (result && result.success) {
+    showSuccess(result.message || 'Operation completed successfully');
+    
+    // Close the modal
+    closeRiderModal();
+    
+    // Refresh the riders list to show changes
+    loadRidersData();
+    
+  } else {
+    showError('Operation failed: ' + (result ? result.message : 'Unknown error'));
+  }
+}
 
-    function exportRiders() {
-        const statusFilter = document.getElementById('statusFilter').value;
-        const exportStatus = statusFilter === 'All' ? null : statusFilter;
-        
-        showLoading('Exporting riders...');
-        
-        google.script.run
-            .withSuccessHandler(handleExportSuccess)
-            .withFailureHandler(handleRiderOperationFailure)
-            .handleRiderOperation('export', { status: exportStatus });
-    }
+function handleRiderOperationFailure(error) {
+  hideLoading();
+  console.error('❌ Rider operation failed:', error);
+  showError('Operation failed: ' + (error.message || error));
+}
+
+function deleteRider(riderId) {
+  console.log('🗑️ Delete button clicked for rider ID:', riderId);
+  
+  // Find the rider to get their name for confirmation
+  const rider = app.riders.find(r => 
+    r.jpNumber === riderId || 
+    r['Rider ID'] === riderId ||
+    String(r.jpNumber) === String(riderId) ||
+    String(r['Rider ID']) === String(riderId)
+  );
+  
+  const riderName = rider ? (rider.name || rider['Full Name'] || 'Unknown Rider') : riderId;
+  
+  // Enhanced confirmation dialog
+  const confirmMessage = `⚠️ DELETE RIDER CONFIRMATION\n\n` +
+    `Rider: ${riderName}\n` +
+    `ID: ${riderId}\n\n` +
+    `This will permanently delete this rider from the system.\n` +
+    `This action CANNOT be undone.\n\n` +
+    `Are you absolutely sure you want to proceed?`;
+  
+  if (!confirm(confirmMessage)) {
+    console.log('❌ Rider deletion cancelled by user');
+    return;
+  }
+
+  // Show loading state
+  showLoading('Deleting rider...');
+  
+  console.log(`🗑️ Proceeding with deletion of rider: ${riderName} (ID: ${riderId})`);
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        console.log('✅ Delete operation completed:', result);
+        handleRiderOperationSuccess(result);
+      })
+      .withFailureHandler(function(error) {
+        console.error('❌ Delete operation failed:', error);
+        handleRiderOperationFailure(error);
+      })
+      .handleRiderOperation('delete', { riderId: riderId });
+  } else {
+    console.error('❌ Google Apps Script not available');
+    handleRiderOperationFailure({ message: "Google Apps Script not available." });
+  }
+}
+
+if (typeof handleRiderOperationFailure === 'undefined') {
+  window.handleRiderOperationFailure = function(error) {
+    hideLoading();
+    showError('Operation failed: ' + (error.message || error));
+  };
+}
 
     function handleExportSuccess(result) {
         hideLoading();
@@ -1371,6 +1455,473 @@ function handleRidersDataSuccess(data) {
             notification.remove();
         }, 3000);
     }
+    // Quick fix for delete buttons - add this to your riders.html script section
+document.addEventListener('DOMContentLoaded', function() {
+  // Add event delegation for delete buttons
+  document.addEventListener('click', function(event) {
+    if (event.target.closest('[onclick*="deleteRider"]')) {
+      const button = event.target.closest('button');
+      const onclickAttr = button.getAttribute('onclick');
+      
+      if (onclickAttr) {
+        const match = onclickAttr.match(/deleteRider\(['"]([^'"]+)['"]\)/);
+        if (match) {
+          event.preventDefault();
+          deleteRider(match[1]);
+        }
+      }
+    }
+  });
+});
+<!-- Add these functions to your riders.html <script> section -->
+
+// Enhanced renderRidersTable with clickable rider names
+function renderRidersTable(riders) {
+  const tbody = document.getElementById('ridersTableBody');
+  
+  if (!riders || riders.length === 0) {
+    showEmptyState();
+    return;
+  }
+
+  // Clear existing content
+  tbody.innerHTML = '';
+
+  riders.forEach((rider, index) => {
+    // Get the rider ID - try multiple field names
+    const riderId = rider.jpNumber || rider['Rider ID'] || rider.riderId || `rider-${index}`;
+    const riderName = rider.name || rider['Full Name'] || 'Unknown';
+    const riderPhone = rider.phone || rider['Phone Number'] || '';
+    const riderEmail = rider.email || rider['Email'] || '';
+    const riderStatus = rider.status || rider['Status'] || 'Active';
+    const riderCertification = rider.certification || rider['Certification'] || 'Standard';
+    const totalAssignments = rider.totalAssignments || rider['Total Assignments'] || 0;
+    const lastAssignment = rider.lastAssignmentDate || rider['Last Assignment Date'] || 'Never';
+
+    // Create clickable rider name with assignment count
+    const riderNameCell = createRiderNameLink(riderName, riderId, totalAssignments);
+
+    // Create table row
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="checkbox-column">
+        <input type="checkbox" class="rider-checkbox" data-rider-id="${riderId}" onchange="updateSelection()">
+      </td>
+      <td>${riderId}</td>
+      <td class="rider-name-cell">${riderNameCell}</td>
+      <td>${riderPhone}</td>
+      <td>${riderEmail}</td>
+      <td><span class="status-badge status-${riderStatus.toLowerCase()}">${riderStatus}</span></td>
+      <td>${riderCertification}</td>
+      <td>${totalAssignments}</td>
+      <td>${lastAssignment}</td>
+      <td class="actions-cell">
+        <button onclick="editRider('${riderId}')" class="btn btn-sm btn-primary" title="Edit ${riderName}">
+          ✏️ Edit
+        </button>
+        <button onclick="deleteRider('${riderId}')" class="btn btn-sm btn-danger" title="Delete ${riderName}">
+          🗑️ Delete
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  console.log(`✅ Rendered ${riders.length} riders in table with clickable names`);
+}
+
+// Create clickable rider name link
+function createRiderNameLink(riderName, riderId, totalAssignments) {
+  const hasAssignments = totalAssignments && totalAssignments > 0;
+  const linkTitle = hasAssignments 
+    ? `View ${totalAssignments} assignment(s) for ${riderName}`
+    : `${riderName} - No current assignments`;
+  
+  return `
+    <a href="#" 
+       class="rider-name-link ${hasAssignments ? 'has-assignments' : 'no-assignments'}" 
+       onclick="viewRiderAssignments('${riderId}', '${riderName.replace(/'/g, "\\'")}'); return false;"
+       title="${linkTitle}">
+      ${riderName}
+      ${hasAssignments ? ` <span class="assignment-count">(${totalAssignments})</span>` : ''}
+    </a>
+  `;
+}
+
+// Main function to view rider assignments
+function viewRiderAssignments(riderId, riderName) {
+  console.log(`🔍 Viewing assignments for rider: ${riderName} (ID: ${riderId})`);
+  
+  showLoading(`Loading assignments for ${riderName}...`);
+  
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        displayRiderAssignments(result, riderName, riderId);
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        showError(`Failed to load assignments for ${riderName}: ${error.message || error}`);
+      })
+      .getRiderAssignments(riderId, riderName);
+  } else {
+    hideLoading();
+    // Fallback: Navigate to assignments page with rider filter
+    const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+    window.open(`${baseUrl}?page=assignments&rider=${encodeURIComponent(riderName)}`, '_blank');
+  }
+}
+
+// Display rider assignments in a modal
+function displayRiderAssignments(assignments, riderName, riderId) {
+  console.log(`📋 Displaying ${assignments.length} assignments for ${riderName}`);
+  
+  // Create or get the assignments modal
+  let modal = document.getElementById('assignmentsModal');
+  if (!modal) {
+    modal = createAssignmentsModal();
+  }
+  
+  const modalTitle = document.getElementById('assignmentsModalTitle');
+  const modalBody = document.getElementById('assignmentsModalBody');
+  
+  modalTitle.textContent = `🏍️ Assignments for ${riderName}`;
+  
+  if (!assignments || assignments.length === 0) {
+    modalBody.innerHTML = `
+      <div class="no-assignments">
+        <p><strong>${riderName}</strong> has no current assignments.</p>
+        <p>They are available for new assignments.</p>
+      </div>
+    `;
+  } else {
+    modalBody.innerHTML = createAssignmentsTable(assignments, riderName);
+  }
+  
+  modal.style.display = 'block';
+}
+
+// Create assignments modal HTML
+function createAssignmentsModal() {
+  const modal = document.createElement('div');
+  modal.id = 'assignmentsModal';
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content assignments-modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="assignmentsModalTitle">Rider Assignments</h3>
+        <span class="close" onclick="closeAssignmentsModal()">&times;</span>
+      </div>
+      <div class="modal-body" id="assignmentsModalBody">
+        Loading assignments...
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="goToAssignmentsPage()">
+          📋 View All Assignments
+        </button>
+        <button type="button" class="btn btn-secondary" onclick="closeAssignmentsModal()">
+          Close
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  return modal;
+}
+
+// Create assignments table HTML
+function createAssignmentsTable(assignments, riderName) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Separate upcoming and past assignments
+  const upcoming = [];
+  const past = [];
+  
+  assignments.forEach(assignment => {
+    try {
+      const eventDate = new Date(assignment.eventDate || assignment.date);
+      if (eventDate >= today) {
+        upcoming.push(assignment);
+      } else {
+        past.push(assignment);
+      }
+    } catch (e) {
+      upcoming.push(assignment); // Default to upcoming if date parsing fails
+    }
+  });
+  
+  let html = '';
+  
+  // Upcoming assignments section
+  if (upcoming.length > 0) {
+    html += `
+      <div class="assignments-section">
+        <h4>🔜 Upcoming Assignments (${upcoming.length})</h4>
+        <div class="assignments-table-container">
+          <table class="assignments-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${upcoming.map(assignment => createAssignmentRow(assignment)).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Past assignments section (show last 5)
+  if (past.length > 0) {
+    const recentPast = past.slice(0, 5);
+    html += `
+      <div class="assignments-section">
+        <h4>📅 Recent Past Assignments (${recentPast.length}${past.length > 5 ? ` of ${past.length}` : ''})</h4>
+        <div class="assignments-table-container">
+          <table class="assignments-table">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Location</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recentPast.map(assignment => createAssignmentRow(assignment, true)).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+  
+  return html;
+}
+
+// Create individual assignment row
+function createAssignmentRow(assignment, isPast = false) {
+  const requestId = assignment.requestId || assignment.id || 'Unknown';
+  const eventDate = assignment.eventDate || assignment.date || 'No Date';
+  const startTime = assignment.startTime || assignment.time || 'No Time';
+  const location = assignment.startLocation || assignment.location || 'Location TBD';
+  const status = assignment.status || 'Assigned';
+  
+  const statusClass = status.toLowerCase().replace(' ', '-');
+  const actionButtons = isPast ? '' : `
+    <td class="assignment-actions">
+      <button onclick="viewRequestDetails('${requestId}')" class="btn btn-sm btn-info" title="View Request Details">
+        👁️ View
+      </button>
+    </td>
+  `;
+  
+  return `
+    <tr class="assignment-row ${isPast ? 'past-assignment' : 'upcoming-assignment'}">
+      <td class="request-id">
+        <strong>${requestId}</strong>
+      </td>
+      <td class="event-date">${eventDate}</td>
+      <td class="start-time">${startTime}</td>
+      <td class="location">${location}</td>
+      <td class="status">
+        <span class="status-badge status-${statusClass}">${status}</span>
+      </td>
+      ${actionButtons || '<td></td>'}
+    </tr>
+  `;
+}
+
+// View request details
+function viewRequestDetails(requestId) {
+  console.log(`📋 Viewing details for request: ${requestId}`);
+  closeAssignmentsModal();
+  
+  // Navigate to requests page with the specific request highlighted
+  const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  window.open(`${baseUrl}?page=requests&highlight=${encodeURIComponent(requestId)}`, '_blank');
+}
+
+// Close assignments modal
+function closeAssignmentsModal() {
+  const modal = document.getElementById('assignmentsModal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+// Go to assignments page
+function goToAssignmentsPage() {
+  const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  window.open(`${baseUrl}?page=assignments`, '_blank');
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const riderModal = document.getElementById('riderModal');
+  const assignmentsModal = document.getElementById('assignmentsModal');
+  
+  if (event.target === riderModal) {
+    closeRiderModal();
+  }
+  if (event.target === assignmentsModal) {
+    closeAssignmentsModal();
+  }
+}
+
+// Add CSS styles for the rider name links and assignments modal
+const riderLinkStyles = `
+<style>
+/* Rider name link styles */
+.rider-name-link {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.rider-name-link:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+.rider-name-link.has-assignments {
+  color: #27ae60;
+}
+
+.rider-name-link.has-assignments:hover {
+  color: #219a52;
+}
+
+.rider-name-link.no-assignments {
+  color: #95a5a6;
+}
+
+.rider-name-link.no-assignments:hover {
+  color: #7f8c8d;
+}
+
+.assignment-count {
+  font-size: 0.85em;
+  color: #e67e22;
+  font-weight: 600;
+}
+
+/* Assignments modal styles */
+.assignments-modal-content {
+  max-width: 900px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.assignments-section {
+  margin-bottom: 2rem;
+}
+
+.assignments-section h4 {
+  color: #2c3e50;
+  border-bottom: 2px solid #ecf0f1;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.assignments-table-container {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #ecf0f1;
+}
+
+.assignments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.assignments-table th {
+  background: #f8f9fa;
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.assignments-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #ecf0f1;
+  vertical-align: middle;
+}
+
+.assignment-row:hover {
+  background: rgba(52, 152, 219, 0.05);
+}
+
+.upcoming-assignment {
+  background: rgba(46, 204, 113, 0.05);
+}
+
+.past-assignment {
+  background: rgba(149, 165, 166, 0.05);
+  opacity: 0.8;
+}
+
+.request-id strong {
+  color: #2980b9;
+}
+
+.no-assignments {
+  text-align: center;
+  padding: 2rem;
+  color: #7f8c8d;
+}
+
+.no-assignments p {
+  margin: 0.5rem 0;
+}
+
+.assignment-actions {
+  white-space: nowrap;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .assignments-modal-content {
+    margin: 5% auto;
+    max-height: 90vh;
+  }
+  
+  .assignments-table {
+    font-size: 0.8rem;
+  }
+  
+  .assignments-table th,
+  .assignments-table td {
+    padding: 0.5rem;
+  }
+}
+</style>
+`;
+
+// Add styles to document head
+if (!document.getElementById('rider-link-styles')) {
+  const styleSheet = document.createElement('div');
+  styleSheet.id = 'rider-link-styles';
+  styleSheet.innerHTML = riderLinkStyles;
+  document.head.appendChild(styleSheet);
+}
 </script>
 </body>
 </html>

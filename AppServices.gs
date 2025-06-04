@@ -386,7 +386,206 @@ function getDashboardData() {
     };
   }
 }
+/**
+ * Gets all assignments for a specific rider
+ * Add this function to your AppServices.gs or RiderCRUD.gs file
+ */
+function getRiderAssignments(riderId, riderName) {
+  try {
+    console.log(`🔍 Getting assignments for rider: ${riderName} (ID: ${riderId})`);
+    
+    const assignmentsData = getAssignmentsData();
+    
+    if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
+      console.log('❌ No assignments data found');
+      return [];
+    }
+    
+    const columnMap = assignmentsData.columnMap;
+    const riderAssignments = [];
+    
+    // Filter assignments for this specific rider
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      try {
+        const row = assignmentsData.data[i];
+        
+        // Get rider name from assignment
+        const assignmentRiderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
+        const assignmentJpNumber = getColumnValue(row, columnMap, CONFIG.columns.assignments.jpNumber);
+        
+        // Check if this assignment belongs to the requested rider
+        const riderMatches = 
+          (assignmentRiderName && assignmentRiderName === riderName) ||
+          (assignmentJpNumber && assignmentJpNumber === riderId) ||
+          (assignmentRiderName && riderName && 
+           String(assignmentRiderName).toLowerCase().trim() === String(riderName).toLowerCase().trim());
+        
+        if (!riderMatches) {
+          continue;
+        }
+        
+        // Get assignment details
+        const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
+        const requestId = getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId);
+        const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
+        const eventDate = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
+        const startTime = getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime);
+        const endTime = getColumnValue(row, columnMap, CONFIG.columns.assignments.endTime);
+        const startLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation);
+        const endLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation);
+        const notes = getColumnValue(row, columnMap, CONFIG.columns.assignments.notes);
+        
+        // Skip if no assignment ID or request ID
+        if (!assignmentId || !requestId) {
+          continue;
+        }
+        
+        // Format the assignment
+        const assignment = {
+          assignmentId: assignmentId,
+          requestId: requestId,
+          eventDate: formatDateForDisplay(eventDate) || 'No Date',
+          startTime: formatTimeForDisplay(startTime) || 'No Time',
+          endTime: formatTimeForDisplay(endTime) || '',
+          startLocation: startLocation || 'Location TBD',
+          endLocation: endLocation || '',
+          status: status || 'Assigned',
+          notes: notes || '',
+          riderName: assignmentRiderName
+        };
+        
+        // Create location display
+        if (startLocation && endLocation) {
+          assignment.location = `${startLocation} → ${endLocation}`;
+        } else if (startLocation) {
+          assignment.location = startLocation;
+        } else if (endLocation) {
+          assignment.location = `To: ${endLocation}`;
+        } else {
+          assignment.location = 'Location TBD';
+        }
+        
+        riderAssignments.push(assignment);
+        
+      } catch (rowError) {
+        console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
+      }
+    }
+    
+    // Sort assignments by event date (upcoming first, then by date)
+    riderAssignments.sort((a, b) => {
+      try {
+        const dateA = new Date(a.eventDate);
+        const dateB = new Date(b.eventDate);
+        
+        // Handle invalid dates
+        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+        if (isNaN(dateA.getTime())) return 1;
+        if (isNaN(dateB.getTime())) return -1;
+        
+        return dateA.getTime() - dateB.getTime();
+      } catch (sortError) {
+        console.log('⚠️ Error sorting assignments:', sortError);
+        return 0;
+      }
+    });
+    
+    console.log(`✅ Found ${riderAssignments.length} assignments for ${riderName}`);
+    
+    if (riderAssignments.length > 0) {
+      console.log('Sample assignment:', riderAssignments[0]);
+    }
+    
+    return riderAssignments;
+    
+  } catch (error) {
+    console.error(`❌ Error getting assignments for rider ${riderName}:`, error);
+    logError(`Error in getRiderAssignments for rider ${riderName}`, error);
+    return [];
+  }
+}
 
+/**
+ * Alternative function to get rider assignments by name only
+ */
+function getRiderAssignmentsByName(riderName) {
+  try {
+    console.log(`🔍 Getting assignments for rider by name: ${riderName}`);
+    
+    // Find the rider ID first
+    const ridersData = getRidersData();
+    let riderId = null;
+    
+    if (ridersData && ridersData.data) {
+      for (let i = 0; i < ridersData.data.length; i++) {
+        const row = ridersData.data[i];
+        const rowName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+        
+        if (rowName && String(rowName).toLowerCase().trim() === String(riderName).toLowerCase().trim()) {
+          riderId = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber);
+          break;
+        }
+      }
+    }
+    
+    return getRiderAssignments(riderId, riderName);
+    
+  } catch (error) {
+    console.error(`❌ Error getting assignments by name for ${riderName}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Enhanced function to get rider assignment summary with counts
+ */
+function getRiderAssignmentSummary(riderId, riderName) {
+  try {
+    const assignments = getRiderAssignments(riderId, riderName);
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let upcoming = 0;
+    let completed = 0;
+    let inProgress = 0;
+    let total = assignments.length;
+    
+    assignments.forEach(assignment => {
+      try {
+        const eventDate = new Date(assignment.eventDate);
+        const status = assignment.status;
+        
+        if (status === 'Completed') {
+          completed++;
+        } else if (status === 'In Progress') {
+          inProgress++;
+        } else if (eventDate >= today) {
+          upcoming++;
+        }
+      } catch (e) {
+        // Skip assignments with invalid dates
+      }
+    });
+    
+    return {
+      assignments: assignments,
+      summary: {
+        total: total,
+        upcoming: upcoming,
+        completed: completed,
+        inProgress: inProgress
+      }
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error getting assignment summary for ${riderName}:`, error);
+    return {
+      assignments: [],
+      summary: { total: 0, upcoming: 0, completed: 0, inProgress: 0 }
+    };
+  }
+}
 /**
  * Get rider schedule with formatted dates/times for dashboard display.
  * Filters assignments for the upcoming week.
@@ -798,35 +997,127 @@ function getFilteredRequestsForAssignments(user) {
 function getActiveRidersForAssignments() {
   try {
     console.log('🏍️ Getting active riders for assignments page...');
+    
     const ridersData = getRidersData();
+    
     if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
       console.log('❌ No riders data found');
       return [];
     }
+    
+    console.log(`📊 Total riders in sheet: ${ridersData.data.length}`);
+    console.log('📋 Available columns:', ridersData.headers);
+    console.log('🗂️ Column mapping:', ridersData.columnMap);
+    
     const columnMap = ridersData.columnMap;
     const activeRiders = [];
+    
+    // Debug: Show what we're looking for
+    console.log('🔍 Looking for columns:');
+    console.log(`  Name column: "${CONFIG.columns.riders.name}" → index ${columnMap[CONFIG.columns.riders.name]}`);
+    console.log(`  Status column: "${CONFIG.columns.riders.status}" → index ${columnMap[CONFIG.columns.riders.status]}`);
+    console.log(`  JP Number column: "${CONFIG.columns.riders.jpNumber}" → index ${columnMap[CONFIG.columns.riders.jpNumber]}`);
+    
     for (let i = 0; i < ridersData.data.length; i++) {
       try {
         const row = ridersData.data[i];
-        const riderName = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
-        const jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber);
-        const status = getColumnValue(row, columnMap, CONFIG.columns.riders.status);
-        const phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone);
-        const email = getColumnValue(row, columnMap, CONFIG.columns.riders.email);
-        const carrier = getColumnValue(row, columnMap, CONFIG.columns.riders.carrier);
-        if (!riderName || !String(riderName).trim()) continue;
+        
+        // Get rider data with multiple fallback strategies
+        const riderName = getColumnValue(row, columnMap, CONFIG.columns.riders.name) || 
+                          getColumnValue(row, columnMap, 'Full Name') || 
+                          row[1]; // Fallback to second column
+        
+        const jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber) || 
+                         getColumnValue(row, columnMap, 'Rider ID') || 
+                         row[0]; // Fallback to first column
+        
+        const status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 
+                       getColumnValue(row, columnMap, 'Status') || 
+                       'Active'; // Default to Active if no status
+        
+        const phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || 
+                      getColumnValue(row, columnMap, 'Phone Number') || 
+                      row[2]; // Fallback to third column
+        
+        const email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || 
+                      getColumnValue(row, columnMap, 'Email') || 
+                      '';
+        
+        const carrier = getColumnValue(row, columnMap, CONFIG.columns.riders.carrier) || 
+                        getColumnValue(row, columnMap, 'Carrier') || 
+                        'Unknown';
+        
+        // Debug first 3 riders
+        if (i < 3) {
+          console.log(`🔍 Rider ${i + 1}:`, {
+            name: riderName,
+            jpNumber: jpNumber,
+            status: status,
+            phone: phone,
+            rawRow: row.slice(0, 6)
+          });
+        }
+        
+        // Check if rider has a name (essential requirement)
+        if (!riderName || String(riderName).trim().length === 0) {
+          if (i < 5) console.log(`⚠️ Skipping rider ${i + 1}: No name`);
+          continue;
+        }
+        
+        // More flexible status checking
         const riderStatus = String(status || '').trim().toLowerCase();
-        if (riderStatus && !['active', 'available', ''].includes(riderStatus)) continue;
+        const isActive = !riderStatus || 
+                        riderStatus === '' || 
+                        riderStatus === 'active' || 
+                        riderStatus === 'available' ||
+                        riderStatus === 'yes' ||
+                        riderStatus === 'y';
+        
+        if (!isActive) {
+          if (i < 5) console.log(`⚠️ Skipping rider ${i + 1}: Status '${status}' not active`);
+          continue;
+        }
+        
+        // Add to active riders list
         activeRiders.push({
-          name: riderName, jpNumber: jpNumber || 'N/A', phone: phone || 'N/A',
-          email: email || 'N/A', carrier: carrier || 'N/A', status: 'Available'
+          name: String(riderName).trim(),
+          jpNumber: jpNumber ? String(jpNumber).trim() : 'N/A',
+          phone: phone ? String(phone).trim() : 'N/A',
+          email: email ? String(email).trim() : 'N/A',
+          carrier: carrier ? String(carrier).trim() : 'N/A',
+          status: 'Available'
         });
+        
+        if (i < 3) {
+          console.log(`✅ Added rider ${i + 1}: ${riderName} (${jpNumber})`);
+        }
+        
       } catch (rowError) {
         console.log(`⚠️ Error processing rider row ${i}:`, rowError);
       }
     }
-    console.log(`✅ Returning ${activeRiders.length} active riders`);
+    
+    console.log(`✅ Found ${activeRiders.length} active riders out of ${ridersData.data.length} total riders`);
+    
+    if (activeRiders.length === 0) {
+      console.log('❌ NO ACTIVE RIDERS FOUND - DEBUGGING INFO:');
+      console.log('📊 Sample of first 5 riders:');
+      
+      for (let i = 0; i < Math.min(5, ridersData.data.length); i++) {
+        const row = ridersData.data[i];
+        console.log(`  Row ${i + 1}:`, {
+          raw: row,
+          name: getColumnValue(row, columnMap, CONFIG.columns.riders.name),
+          status: getColumnValue(row, columnMap, CONFIG.columns.riders.status),
+          hasData: row.some(cell => cell && String(cell).trim().length > 0)
+        });
+      }
+    } else {
+      console.log('📋 Sample active riders:', activeRiders.slice(0, 3));
+    }
+    
     return activeRiders;
+    
   } catch (error) {
     console.error('❌ Error getting active riders for assignments:', error);
     logError('Error in getActiveRidersForAssignments', error);
