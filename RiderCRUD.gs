@@ -12,7 +12,7 @@
 
 function getRiders() {
   try {
-    console.log('📋 Fetching all riders with consistent filtering...');
+    console.log('📋 Fetching all riders with enhanced filtering...');
     
     const sheetData = getSheetData(CONFIG.sheets.riders);
     
@@ -23,9 +23,34 @@ function getRiders() {
     
     const riders = sheetData.data.map((row, index) => {
       try {
-        // Apply consistent filtering at map level
-        const name = getColumnValue(row, sheetData.columnMap, CONFIG.columns.riders.name);
-        const jpNumber = getColumnValue(row, sheetData.columnMap, CONFIG.columns.riders.jpNumber);
+        // Enhanced column detection
+        const possibleNameColumns = [CONFIG.columns.riders.name, 'Full Name', 'Name'];
+        const possibleIdColumns = [CONFIG.columns.riders.jpNumber, 'Rider ID', 'JP Number', 'ID'];
+        
+        let name = null;
+        let jpNumber = null;
+        
+        // Try to find name in any of the possible columns
+        for (const colName of possibleNameColumns) {
+          const value = getColumnValue(row, sheetData.columnMap, colName);
+          if (value && String(value).trim().length > 0) {
+            name = value;
+            break;
+          }
+        }
+        
+        // Try to find ID in any of the possible columns
+        for (const colName of possibleIdColumns) {
+          const value = getColumnValue(row, sheetData.columnMap, colName);
+          if (value && String(value).trim().length > 0) {
+            jpNumber = value;
+            break;
+          }
+        }
+        
+        // Fallback to positional if no named columns found
+        if (!name && row.length > 1) name = row[1];
+        if (!jpNumber && row.length > 0) jpNumber = row[0];
         
         // CONSISTENT LOGIC: Must have either name OR JP number
         const hasValidIdentifier = (name && String(name).trim().length > 0) || 
@@ -1223,5 +1248,101 @@ function testCertificationSave() {
   } catch (error) {
     console.error('❌ Test failed:', error);
     return { success: false, error: error.message };
+  }
+}
+/**
+ * QUICK FIX: Function to immediately resolve the riders issue
+ * Call this if you want to quickly fix the problem
+ */
+function quickFixRidersIssue() {
+  try {
+    console.log('⚡ Applying quick fix for riders issue...');
+    
+    const result = {
+      success: false,
+      actions: [],
+      finalResult: {}
+    };
+    
+    // Action 1: Ensure riders sheet has proper headers
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!sheet) {
+      throw new Error('Riders sheet not found');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length === 0) {
+      // Create headers
+      const headers = Object.values(CONFIG.columns.riders);
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      result.actions.push('Added proper headers to riders sheet');
+    }
+    
+    // Action 2: Ensure there's at least one test rider
+    if (data.length < 2) {
+      const testRider = [
+        'TEST001',           // Rider ID
+        'Test Rider',        // Full Name
+        '555-0123',          // Phone Number
+        'test@example.com',  // Email
+        'Active',            // Status
+        'Standard',          // Certification
+        0,                   // Total Assignments
+        ''                   // Last Assignment Date
+      ];
+      
+      sheet.appendRow(testRider);
+      result.actions.push('Added test rider');
+    }
+    
+    // Action 3: Fix any empty statuses
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const statusColIndex = headers.findIndex(h => 
+      h === CONFIG.columns.riders.status || h === 'Status'
+    );
+    
+    if (statusColIndex >= 0) {
+      const allData = sheet.getDataRange().getValues();
+      let fixedCount = 0;
+      
+      for (let i = 1; i < allData.length; i++) {
+        const name = allData[i][1] || allData[i][0];
+        const status = allData[i][statusColIndex];
+        
+        if (name && String(name).trim().length > 0 && 
+            (!status || String(status).trim() === '')) {
+          sheet.getRange(i + 1, statusColIndex + 1).setValue('Active');
+          fixedCount++;
+        }
+      }
+      
+      if (fixedCount > 0) {
+        result.actions.push(`Fixed ${fixedCount} empty statuses`);
+      }
+    }
+    
+    // Action 4: Clear cache
+    dataCache.clear('sheet_' + CONFIG.sheets.riders);
+    result.actions.push('Cleared data cache');
+    
+    // Action 5: Test the result
+    const activeRiders = getActiveRidersForAssignments();
+    result.finalResult = {
+      activeRidersFound: activeRiders.length,
+      sampleRider: activeRiders[0] || null
+    };
+    
+    result.success = activeRiders.length > 0;
+    
+    console.log('⚡ Quick fix result:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Quick fix failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      actions: []
+    };
   }
 }

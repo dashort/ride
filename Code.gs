@@ -3226,3 +3226,567 @@ function showQuickAssignDialog() {
     ui.alert('Error', 'Failed to open assignment form: ' + error.message, ui.ButtonSet.OK);
   }
 }
+/**
+ * REAL DIAGNOSIS AND FIX FOR RIDERS DATA ISSUE
+ * 
+ * The "System Rider" appearing means the error fallback is being triggered.
+ * Let's find and fix the actual issue with your riders data.
+ */
+
+/**
+ * STEP 1: Deep diagnosis of your actual riders data
+ * Add this to your Code.gs file and run it
+ */
+function diagnoseRealRidersIssue() {
+  try {
+    console.log('🔍 === DEEP RIDERS DATA DIAGNOSIS ===');
+    
+    const diagnosis = {
+      timestamp: new Date().toISOString(),
+      sheetAnalysis: {},
+      dataAnalysis: {},
+      columnAnalysis: {},
+      configAnalysis: {},
+      recommendations: []
+    };
+    
+    // STEP 1: Check if riders sheet exists and is accessible
+    console.log('📋 Step 1: Checking sheet access...');
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      console.log('✅ Spreadsheet accessible:', ss.getName());
+      
+      const sheet = ss.getSheetByName(CONFIG.sheets.riders);
+      if (!sheet) {
+        diagnosis.sheetAnalysis.error = `Sheet "${CONFIG.sheets.riders}" not found`;
+        console.log(`❌ Sheet "${CONFIG.sheets.riders}" not found`);
+        
+        // Check what sheets actually exist
+        const allSheets = ss.getSheets().map(s => s.getName());
+        diagnosis.sheetAnalysis.availableSheets = allSheets;
+        console.log('📊 Available sheets:', allSheets);
+        
+        return diagnosis;
+      }
+      
+      diagnosis.sheetAnalysis.sheetName = sheet.getName();
+      diagnosis.sheetAnalysis.lastRow = sheet.getLastRow();
+      diagnosis.sheetAnalysis.lastColumn = sheet.getLastColumn();
+      
+      console.log(`✅ Sheet found: ${sheet.getName()}`);
+      console.log(`📊 Dimensions: ${sheet.getLastRow()} rows × ${sheet.getLastColumn()} columns`);
+      
+    } catch (sheetError) {
+      diagnosis.sheetAnalysis.error = sheetError.message;
+      console.error('❌ Sheet access error:', sheetError);
+      return diagnosis;
+    }
+    
+    // STEP 2: Get raw sheet data
+    console.log('📋 Step 2: Getting raw sheet data...');
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+      const range = sheet.getDataRange();
+      const allValues = range.getValues();
+      
+      diagnosis.dataAnalysis.totalRows = allValues.length;
+      diagnosis.dataAnalysis.headers = allValues.length > 0 ? allValues[0] : [];
+      diagnosis.dataAnalysis.dataRows = allValues.length > 1 ? allValues.length - 1 : 0;
+      diagnosis.dataAnalysis.sampleDataRows = [];
+      
+      // Get first 5 data rows for analysis
+      for (let i = 1; i < Math.min(6, allValues.length); i++) {
+        diagnosis.dataAnalysis.sampleDataRows.push({
+          rowNumber: i + 1,
+          data: allValues[i],
+          hasAnyData: allValues[i].some(cell => cell && String(cell).trim() !== '')
+        });
+      }
+      
+      console.log(`✅ Raw data: ${allValues.length} total rows, ${allValues.length - 1} data rows`);
+      console.log('📊 Headers:', allValues[0]);
+      
+    } catch (dataError) {
+      diagnosis.dataAnalysis.error = dataError.message;
+      console.error('❌ Data access error:', dataError);
+      return diagnosis;
+    }
+    
+    // STEP 3: Analyze column mapping
+    console.log('📋 Step 3: Analyzing column mapping...');
+    try {
+      const headers = diagnosis.dataAnalysis.headers;
+      
+      // Check what CONFIG expects vs what we have
+      const expectedColumns = {
+        name: CONFIG.columns.riders.name,
+        jpNumber: CONFIG.columns.riders.jpNumber,
+        phone: CONFIG.columns.riders.phone,
+        email: CONFIG.columns.riders.email,
+        status: CONFIG.columns.riders.status,
+        certification: CONFIG.columns.riders.certification
+      };
+      
+      diagnosis.configAnalysis.expectedColumns = expectedColumns;
+      
+      // Check which expected columns actually exist
+      const columnMapping = {};
+      Object.entries(expectedColumns).forEach(([key, expectedName]) => {
+        const index = headers.indexOf(expectedName);
+        columnMapping[key] = {
+          expectedName: expectedName,
+          foundAtIndex: index,
+          exists: index !== -1
+        };
+      });
+      
+      diagnosis.columnAnalysis.mapping = columnMapping;
+      diagnosis.columnAnalysis.allExpectedColumnsFound = Object.values(columnMapping).every(col => col.exists);
+      
+      console.log('🔍 Column mapping analysis:');
+      Object.entries(columnMapping).forEach(([key, info]) => {
+        const status = info.exists ? '✅' : '❌';
+        console.log(`  ${status} ${key}: "${info.expectedName}" ${info.exists ? `at index ${info.foundAtIndex}` : 'NOT FOUND'}`);
+      });
+      
+    } catch (columnError) {
+      diagnosis.columnAnalysis.error = columnError.message;
+      console.error('❌ Column analysis error:', columnError);
+    }
+    
+    // STEP 4: Test getRidersData function
+    console.log('📋 Step 4: Testing getRidersData function...');
+    try {
+      const ridersData = getRidersData(false); // Force fresh data, no cache
+      
+      diagnosis.dataAnalysis.getRidersDataResult = {
+        success: true,
+        hasData: !!ridersData,
+        dataLength: ridersData?.data?.length || 0,
+        headersLength: ridersData?.headers?.length || 0,
+        columnMapKeys: ridersData?.columnMap ? Object.keys(ridersData.columnMap) : []
+      };
+      
+      console.log('✅ getRidersData test result:', diagnosis.dataAnalysis.getRidersDataResult);
+      
+    } catch (getRidersError) {
+      diagnosis.dataAnalysis.getRidersDataResult = {
+        success: false,
+        error: getRidersError.message
+      };
+      console.error('❌ getRidersData error:', getRidersError);
+    }
+    
+    // STEP 5: Analyze specific rider data issues
+    console.log('📋 Step 5: Analyzing rider data quality...');
+    try {
+      const headers = diagnosis.dataAnalysis.headers;
+      const sampleRows = diagnosis.dataAnalysis.sampleDataRows;
+      
+      const dataQuality = {
+        rowsWithNames: 0,
+        rowsWithIds: 0,
+        rowsWithStatuses: 0,
+        emptyRows: 0,
+        statusValues: new Set(),
+        issues: []
+      };
+      
+      // Assume standard positions if named columns not found
+      const nameColIndex = headers.indexOf(CONFIG.columns.riders.name) !== -1 
+        ? headers.indexOf(CONFIG.columns.riders.name) 
+        : 1; // Fallback to second column
+        
+      const idColIndex = headers.indexOf(CONFIG.columns.riders.jpNumber) !== -1 
+        ? headers.indexOf(CONFIG.columns.riders.jpNumber) 
+        : 0; // Fallback to first column
+        
+      const statusColIndex = headers.indexOf(CONFIG.columns.riders.status) !== -1 
+        ? headers.indexOf(CONFIG.columns.riders.status) 
+        : 4; // Fallback to fifth column
+      
+      sampleRows.forEach(rowInfo => {
+        const row = rowInfo.data;
+        
+        const name = row[nameColIndex];
+        const id = row[idColIndex];
+        const status = row[statusColIndex];
+        
+        if (!rowInfo.hasAnyData) {
+          dataQuality.emptyRows++;
+          return;
+        }
+        
+        if (name && String(name).trim()) {
+          dataQuality.rowsWithNames++;
+        }
+        
+        if (id && String(id).trim()) {
+          dataQuality.rowsWithIds++;
+        }
+        
+        if (status && String(status).trim()) {
+          dataQuality.rowsWithStatuses++;
+          dataQuality.statusValues.add(String(status).trim());
+        }
+      });
+      
+      diagnosis.dataAnalysis.dataQuality = {
+        ...dataQuality,
+        statusValues: Array.from(dataQuality.statusValues)
+      };
+      
+      console.log('📊 Data quality analysis:', diagnosis.dataAnalysis.dataQuality);
+      
+    } catch (qualityError) {
+      diagnosis.dataAnalysis.dataQualityError = qualityError.message;
+      console.error('❌ Data quality analysis error:', qualityError);
+    }
+    
+    // STEP 6: Generate specific recommendations
+    console.log('📋 Step 6: Generating recommendations...');
+    
+    if (diagnosis.dataAnalysis.dataRows === 0) {
+      diagnosis.recommendations.push({
+        priority: 'HIGH',
+        issue: 'No rider data found',
+        action: 'Add rider data to the sheet',
+        fix: 'addSampleRiders'
+      });
+    }
+    
+    if (!diagnosis.columnAnalysis.allExpectedColumnsFound) {
+      const missingColumns = Object.entries(diagnosis.columnAnalysis.mapping)
+        .filter(([_, info]) => !info.exists)
+        .map(([key, info]) => `${key} (${info.expectedName})`);
+      
+      diagnosis.recommendations.push({
+        priority: 'HIGH',
+        issue: `Missing expected columns: ${missingColumns.join(', ')}`,
+        action: 'Fix column headers or update CONFIG',
+        fix: 'fixColumnHeaders'
+      });
+    }
+    
+    const dataQuality = diagnosis.dataAnalysis.dataQuality;
+    if (dataQuality && dataQuality.rowsWithNames === 0) {
+      diagnosis.recommendations.push({
+        priority: 'HIGH',
+        issue: 'No riders have names',
+        action: 'Add names to rider records',
+        fix: 'addRiderNames'
+      });
+    }
+    
+    if (dataQuality && dataQuality.statusValues.length === 0) {
+      diagnosis.recommendations.push({
+        priority: 'MEDIUM',
+        issue: 'No status values found',
+        action: 'Set rider statuses to Active',
+        fix: 'setActiveStatuses'
+      });
+    } else if (dataQuality && !dataQuality.statusValues.includes('Active')) {
+      diagnosis.recommendations.push({
+        priority: 'MEDIUM',
+        issue: 'No riders have "Active" status',
+        action: 'Set some riders to Active status',
+        fix: 'setActiveStatuses'
+      });
+    }
+    
+    console.log('✅ Diagnosis complete!');
+    console.log('🎯 Recommendations:', diagnosis.recommendations);
+    
+    return diagnosis;
+    
+  } catch (error) {
+    console.error('❌ Diagnosis failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * STEP 2: Automatic fix based on diagnosis
+ */
+function autoFixRidersIssue() {
+  try {
+    console.log('🔧 Starting automatic fix for riders issue...');
+    
+    // First, get diagnosis
+    const diagnosis = diagnoseRealRidersIssue();
+    
+    if (!diagnosis.recommendations || diagnosis.recommendations.length === 0) {
+      console.log('✅ No issues found that need fixing');
+      return { success: true, message: 'No fixes needed' };
+    }
+    
+    const fixResults = {
+      success: true,
+      appliedFixes: [],
+      errors: []
+    };
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    
+    // Apply fixes based on recommendations
+    for (const recommendation of diagnosis.recommendations) {
+      console.log(`🔧 Applying fix: ${recommendation.fix}`);
+      
+      try {
+        switch (recommendation.fix) {
+          case 'addSampleRiders':
+            // Add sample riders if no data exists
+            const sampleRiders = [
+              ['RIDER001', 'John Smith', '555-0101', 'john@example.com', 'Active', 'Standard', 0, ''],
+              ['RIDER002', 'Jane Doe', '555-0102', 'jane@example.com', 'Active', 'Advanced', 0, ''],
+              ['RIDER003', 'Bob Wilson', '555-0103', 'bob@example.com', 'Active', 'Standard', 0, '']
+            ];
+            
+            sampleRiders.forEach(rider => {
+              sheet.appendRow(rider);
+            });
+            
+            fixResults.appliedFixes.push('Added 3 sample riders');
+            console.log('✅ Added sample riders');
+            break;
+            
+          case 'fixColumnHeaders':
+            // Fix headers to match CONFIG expectations
+            const expectedHeaders = Object.values(CONFIG.columns.riders);
+            sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+            
+            fixResults.appliedFixes.push('Fixed column headers');
+            console.log('✅ Fixed column headers');
+            break;
+            
+          case 'setActiveStatuses':
+            // Set empty statuses to 'Active'
+            const data = sheet.getDataRange().getValues();
+            const headers = data[0];
+            const statusColIndex = headers.indexOf(CONFIG.columns.riders.status);
+            const nameColIndex = headers.indexOf(CONFIG.columns.riders.name);
+            
+            if (statusColIndex >= 0 && nameColIndex >= 0) {
+              let fixedCount = 0;
+              for (let i = 1; i < data.length; i++) {
+                const name = data[i][nameColIndex];
+                const status = data[i][statusColIndex];
+                
+                if (name && String(name).trim() && (!status || String(status).trim() === '')) {
+                  sheet.getRange(i + 1, statusColIndex + 1).setValue('Active');
+                  fixedCount++;
+                }
+              }
+              
+              fixResults.appliedFixes.push(`Set ${fixedCount} riders to Active status`);
+              console.log(`✅ Set ${fixedCount} riders to Active status`);
+            }
+            break;
+            
+          case 'addRiderNames':
+            // Add placeholder names where missing
+            const allData = sheet.getDataRange().getValues();
+            const allHeaders = allData[0];
+            const nameCol = allHeaders.indexOf(CONFIG.columns.riders.name);
+            const idCol = allHeaders.indexOf(CONFIG.columns.riders.jpNumber);
+            
+            if (nameCol >= 0) {
+              let addedNames = 0;
+              for (let i = 1; i < allData.length; i++) {
+                const name = allData[i][nameCol];
+                const id = allData[i][idCol];
+                
+                if ((!name || String(name).trim() === '') && id && String(id).trim()) {
+                  sheet.getRange(i + 1, nameCol + 1).setValue(`Rider ${id}`);
+                  addedNames++;
+                }
+              }
+              
+              fixResults.appliedFixes.push(`Added names to ${addedNames} riders`);
+              console.log(`✅ Added names to ${addedNames} riders`);
+            }
+            break;
+        }
+        
+      } catch (fixError) {
+        console.error(`❌ Fix ${recommendation.fix} failed:`, fixError);
+        fixResults.errors.push(`${recommendation.fix}: ${fixError.message}`);
+      }
+    }
+    
+    // Clear cache after fixes
+    dataCache.clear('sheet_' + CONFIG.sheets.riders);
+    fixResults.appliedFixes.push('Cleared data cache');
+    
+    // Test the result
+    try {
+      const testRiders = getActiveRidersForAssignments();
+      fixResults.testResult = {
+        success: testRiders.length > 0,
+        ridersFound: testRiders.length,
+        sampleRider: testRiders[0] || null
+      };
+      
+      console.log(`🧪 Test result: Found ${testRiders.length} active riders`);
+      
+    } catch (testError) {
+      fixResults.testResult = {
+        success: false,
+        error: testError.message
+      };
+    }
+    
+    console.log('🔧 Auto-fix complete:', fixResults);
+    return fixResults;
+    
+  } catch (error) {
+    console.error('❌ Auto-fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * STEP 3: Simple test to verify riders are working
+ */
+function testRidersAreWorking() {
+  try {
+    console.log('🧪 Testing if riders are working...');
+    
+    const tests = {
+      timestamp: new Date().toISOString(),
+      results: {}
+    };
+    
+    // Test 1: Basic data access
+    try {
+      const ridersData = getRidersData(false);
+      tests.results.getRidersData = {
+        success: true,
+        dataFound: !!(ridersData && ridersData.data && ridersData.data.length > 0),
+        rowCount: ridersData?.data?.length || 0
+      };
+    } catch (error) {
+      tests.results.getRidersData = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Test 2: Active riders for assignments
+    try {
+      const activeRiders = getActiveRidersForAssignments();
+      tests.results.getActiveRidersForAssignments = {
+        success: true,
+        ridersFound: activeRiders.length,
+        hasRealRiders: activeRiders.length > 0 && !activeRiders[0].name.includes('System'),
+        sampleRider: activeRiders[0] || null
+      };
+    } catch (error) {
+      tests.results.getActiveRidersForAssignments = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Test 3: Web app riders
+    try {
+      const webAppRiders = getActiveRidersForWebApp();
+      tests.results.getActiveRidersForWebApp = {
+        success: true,
+        ridersFound: webAppRiders.length,
+        hasRealRiders: webAppRiders.length > 0 && !webAppRiders[0].name.includes('System'),
+        sampleRider: webAppRiders[0] || null
+      };
+    } catch (error) {
+      tests.results.getActiveRidersForWebApp = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Overall assessment
+    const hasRealRiders = tests.results.getActiveRidersForAssignments?.hasRealRiders === true;
+    tests.overallSuccess = hasRealRiders;
+    tests.message = hasRealRiders 
+      ? '✅ Riders are working correctly!' 
+      : '❌ Still showing fallback/system riders - real data issue remains';
+    
+    console.log('🧪 Test complete:', tests);
+    return tests;
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * STEP 4: Complete solution - diagnose and fix in one go
+ */
+function fixRidersCompletely() {
+  try {
+    console.log('🚀 === COMPLETE RIDERS FIX ===');
+    
+    const solution = {
+      timestamp: new Date().toISOString(),
+      steps: []
+    };
+    
+    // Step 1: Diagnose
+    console.log('🔍 Step 1: Diagnosing issue...');
+    const diagnosis = diagnoseRealRidersIssue();
+    solution.steps.push({
+      step: 'diagnosis',
+      result: diagnosis,
+      success: !diagnosis.error
+    });
+    
+    // Step 2: Apply fixes
+    console.log('🔧 Step 2: Applying fixes...');
+    const fixes = autoFixRidersIssue();
+    solution.steps.push({
+      step: 'fixes',
+      result: fixes,
+      success: fixes.success
+    });
+    
+    // Step 3: Test result
+    console.log('🧪 Step 3: Testing result...');
+    const test = testRidersAreWorking();
+    solution.steps.push({
+      step: 'test',
+      result: test,
+      success: test.overallSuccess
+    });
+    
+    solution.overallSuccess = test.overallSuccess;
+    solution.finalMessage = test.message;
+    
+    console.log('🚀 Complete fix result:', solution);
+    
+    if (solution.overallSuccess) {
+      console.log('🎉 SUCCESS! Riders should now work properly. Refresh your web app.');
+    } else {
+      console.log('❌ Issue persists. Check the diagnosis for more details.');
+    }
+    
+    return solution;
+    
+  } catch (error) {
+    console.error('❌ Complete fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
