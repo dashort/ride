@@ -3790,3 +3790,213 @@ function fixRidersCompletely() {
     };
   }
 }
+/**
+ * QUICK FIX: Add this function to your Code.gs file and run it
+ * This will immediately fix the "filterValidRidersData is not defined" error
+ */
+function quickFixRidersError() {
+  try {
+    console.log('🔧 Applying quick fix for riders error...');
+    
+    // Step 1: Clear any bad cache
+    dataCache.clear('sheet_' + CONFIG.sheets.riders);
+    console.log('✅ Cleared riders cache');
+    
+    // Step 2: Test basic sheet access
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!sheet) {
+      throw new Error('Riders sheet not found');
+    }
+    
+    const range = sheet.getDataRange();
+    const values = range.getValues();
+    console.log(`✅ Sheet accessible: ${values.length} rows found`);
+    
+    // Step 3: Test the problematic getRidersData function by creating a fixed version
+    const headers = values.length > 0 ? values[0] : [];
+    const allData = values.length > 1 ? values.slice(1) : [];
+    
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      columnMap[header] = index;
+    });
+    
+    // Apply the same filtering logic without the undefined function
+    const nameIdx = columnMap[CONFIG.columns.riders.name];
+    const idIdx = columnMap[CONFIG.columns.riders.jpNumber];
+    
+    const validData = allData.filter(row => {
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+      const riderId = idIdx !== undefined ? String(row[idIdx] || '').trim() : '';
+      
+      // Only include rows that have either a name OR an ID
+      return name.length > 0 || riderId.length > 0;
+    });
+    
+    console.log(`✅ Data filtering test: ${allData.length} total rows → ${validData.length} valid riders`);
+    
+    // Step 4: Test if we can find active riders
+    let activeCount = 0;
+    const statusIdx = columnMap[CONFIG.columns.riders.status];
+    
+    validData.forEach(row => {
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+      const status = statusIdx !== undefined ? String(row[statusIdx] || '').trim().toLowerCase() : '';
+      
+      if (name.length > 0) {
+        // Count as active if no status or status is active/available
+        if (!status || status === '' || status === 'active' || status === 'available') {
+          activeCount++;
+        }
+      }
+    });
+    
+    console.log(`✅ Found ${activeCount} potentially active riders`);
+    
+    const result = {
+      success: true,
+      totalRows: allData.length,
+      validRiders: validData.length,
+      activeRiders: activeCount,
+      sampleRider: validData.length > 0 ? {
+        name: nameIdx !== undefined ? validData[0][nameIdx] : 'N/A',
+        id: idIdx !== undefined ? validData[0][idIdx] : 'N/A',
+        status: statusIdx !== undefined ? validData[0][statusIdx] : 'N/A'
+      } : null,
+      fix: 'The issue is in SheetServices.gs line 259. Replace getRidersData function with the fixed version provided.'
+    };
+    
+    console.log('✅ Quick fix diagnosis complete:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Quick fix failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      solution: 'Replace the getRidersData function in SheetServices.gs with the fixed version'
+    };
+  }
+}
+
+/**
+ * TEMPORARY WORKAROUND: Override the problematic getRidersData function
+ * Add this to your Code.gs file to immediately fix the issue
+ */
+function getRidersDataFixed(useCache = true) {
+  const cacheKey = `sheet_${CONFIG.sheets.riders}`;
+
+  if (useCache) {
+    const cached = dataCache.get(cacheKey);
+    if (cached && cached.data) {
+      return cached;
+    }
+  }
+
+  try {
+    const sheet = getSheet(CONFIG.sheets.riders);
+    const range = sheet.getDataRange();
+    const values = range.getValues();
+
+    if (values.length === 0) {
+      return {
+        headers: [],
+        data: [],
+        columnMap: {},
+        sheet: sheet
+      };
+    }
+
+    const headers = values[0];
+    const allData = values.slice(1);
+
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      columnMap[header] = index;
+    });
+
+    // Filter out empty rows without calling undefined function
+    const validData = allData.filter(row => {
+      const nameIdx = columnMap[CONFIG.columns.riders.name];
+      const idIdx = columnMap[CONFIG.columns.riders.jpNumber];
+      
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+      const riderId = idIdx !== undefined ? String(row[idIdx] || '').trim() : '';
+      
+      return name.length > 0 || riderId.length > 0;
+    });
+
+    const result = {
+      headers,
+      data: validData,
+      columnMap,
+      sheet
+    };
+
+    if (useCache) {
+      dataCache.set(cacheKey, result);
+    }
+
+    return result;
+
+  } catch (error) {
+    logError(`Error getting riders data`, error);
+    return {
+      headers: [],
+      data: [],
+      columnMap: {},
+      sheet: getSheet(CONFIG.sheets.riders)
+    };
+  }
+}
+
+/**
+ * Test the fixed function
+ */
+function testFixedRidersFunction() {
+  try {
+    console.log('🧪 Testing fixed riders function...');
+    
+    const ridersData = getRidersDataFixed(false);
+    console.log('✅ getRidersDataFixed works:', {
+      hasData: !!ridersData,
+      dataLength: ridersData.data ? ridersData.data.length : 0,
+      headers: ridersData.headers ? ridersData.headers.length : 0
+    });
+    
+    // Test active riders with fixed data
+    if (ridersData.data && ridersData.data.length > 0) {
+      const columnMap = ridersData.columnMap;
+      const nameIdx = columnMap[CONFIG.columns.riders.name];
+      const statusIdx = columnMap[CONFIG.columns.riders.status];
+      
+      let activeCount = 0;
+      ridersData.data.forEach(row => {
+        const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+        const status = statusIdx !== undefined ? String(row[statusIdx] || '').trim().toLowerCase() : '';
+        
+        if (name.length > 0 && (!status || status === 'active' || status === 'available' || status === '')) {
+          activeCount++;
+        }
+      });
+      
+      console.log(`✅ Found ${activeCount} active riders out of ${ridersData.data.length} total`);
+      
+      return {
+        success: true,
+        totalRiders: ridersData.data.length,
+        activeRiders: activeCount,
+        sampleRider: ridersData.data[0] ? {
+          name: nameIdx !== undefined ? ridersData.data[0][nameIdx] : 'N/A',
+          status: statusIdx !== undefined ? ridersData.data[0][statusIdx] : 'N/A'
+        } : null
+      };
+    }
+    
+    return { success: true, totalRiders: 0, activeRiders: 0 };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return { success: false, error: error.message };
+  }
+}

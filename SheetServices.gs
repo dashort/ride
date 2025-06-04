@@ -246,6 +246,7 @@ function getRequestsData(useCache = true) {
 /**
  * Retrieves all data from the "Riders" sheet.
  * Uses `getSheetData` which includes caching.
+ * FIXED: Removed reference to undefined filterValidRidersData function
  * @param {boolean} [useCache=true] Whether to use cached data.
  * @return {object} An object containing headers, data rows, columnMap, and sheet reference for "Riders".
  */
@@ -256,7 +257,7 @@ function getRidersData(useCache = true) {
     const cached = dataCache.get(cacheKey);
     if (cached) {
       // Apply filtering to cached data as well
-      return filterValidRidersData(cached);
+      return applyRidersDataFiltering(cached);
     }
   }
 
@@ -317,6 +318,33 @@ function getRidersData(useCache = true) {
       sheet: getSheet(CONFIG.sheets.riders)
     };
   }
+}
+
+/**
+ * Helper function to apply riders data filtering
+ * @param {object} ridersData - The riders data object
+ * @return {object} Filtered riders data
+ */
+function applyRidersDataFiltering(ridersData) {
+  if (!ridersData || !ridersData.data) {
+    return ridersData;
+  }
+
+  const filteredData = ridersData.data.filter(row => {
+    const nameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
+    const idIdx = ridersData.columnMap[CONFIG.columns.riders.jpNumber];
+    
+    const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+    const riderId = idIdx !== undefined ? String(row[idIdx] || '').trim() : '';
+    
+    // Only include rows that have either a name OR an ID
+    return name.length > 0 || riderId.length > 0;
+  });
+
+  return {
+    ...ridersData,
+    data: filteredData
+  };
 }
 function getTotalRiderCount() {
   try {
