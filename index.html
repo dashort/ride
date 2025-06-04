@@ -276,57 +276,57 @@
                 font-size: 1.4rem;
             }
 
-    .navigation {
-        flex-direction: column !important;
-        align-items: center !important;
-        padding: 0 1rem !important;
-        margin: 1rem auto 1rem auto !important;
-    }
+            .navigation {
+                flex-direction: column !important;
+                align-items: center !important;
+                padding: 0 1rem !important;
+                margin: 1rem auto 1rem auto !important;
+            }
     
-    .nav-button {
-        width: 100% !important;
-        max-width: 300px !important;
-        text-align: center !important;
-    }
+            .nav-button {
+                width: 100% !important;
+                max-width: 300px !important;
+                text-align: center !important;
+            }
 
             .quick-actions {
                 justify-content: center;
             }
         }
         /* Navigation styles for dashboard */
-.navigation {
-    display: flex !important;
-    gap: 1rem !important;
-    margin: 1rem auto 2rem auto !important;
-    max-width: 1400px !important;
-    padding: 0 2rem !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    position: relative !important;
-    z-index: 10 !important;
-}
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
 
-.nav-button {
-    padding: 0.75rem 1.5rem !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: none !important;
-    border-radius: 25px !important;
-    color: #2c3e50 !important;
-    text-decoration: none !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
 
-.nav-button:hover, .nav-button.active {
-    background: #3498db !important;
-    color: white !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-}
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
     </style>
 </head>
 <body>
@@ -673,16 +673,28 @@
             url = page + '.html?' + search.toString();
         }
 
-        try {
-            // Attempt normal navigation first
-            window.location.href = url;
-        } catch (error) {
-            // If we're in a restricted iframe, try to break out
+        const isInIframe = window !== window.top;
+
+        if (isInIframe) {
             try {
                 window.top.location.href = url;
-            } catch (topError) {
-                // Final fallback opens a new tab/window
-                window.open(url, '_blank');
+            } catch (error) {
+                try {
+                    window.parent.location.href = url;
+                } catch (parentError) {
+                    window.open(url, '_blank');
+                }
+            }
+        } else {
+            try {
+                window.location.href = url;
+                setTimeout(() => {
+                    if (window.location.href !== url) {
+                        window.location.replace(url);
+                    }
+                }, 500);
+            } catch (error) {
+                window.open(url, '_self');
             }
         }
     }
@@ -708,7 +720,6 @@
     function goToAssignments(range) {
         navigateTo('assignments', { date: range });
     }
-
 
     function sendBulkNotifications() {
         if (confirm('This will send notifications to all pending assignments. Continue?')) {
