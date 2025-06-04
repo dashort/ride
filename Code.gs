@@ -108,6 +108,7 @@ const CONFIG = {
     requestTypes: ['Wedding', 'Funeral', 'Float Movement', 'VIP', 'Other'],
     requestStatuses: ['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress', 'Completed', 'Cancelled'],
     riderStatuses: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
+    certificationTypes: ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'],
     assignmentStatuses: ['Assigned', 'Confirmed', 'En Route', 'In Progress', 'Completed', 'Cancelled', 'No Show']
   },
 
@@ -2053,6 +2054,69 @@ function getPageDataForDashboard() {
     };
   }
 }
+/**
+ * Get Page Data for Riders * 
+ */
+function getPageDataForRiders() {
+  try {
+    console.log('🔄 Loading riders page data with consistent counts...');
+    
+    const user = getCurrentUser();
+    const riders = getRiders(); // Uses consistent filtering
+    
+    // Calculate stats using consistent logic
+    const stats = {
+      totalRiders: riders.length, // Matches displayed count
+      activeRiders: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'active' || 
+        String(r.status || '').toLowerCase() === 'available' ||
+        String(r.status || '').trim() === ''
+      ).length,
+      inactiveRiders: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'inactive'
+      ).length,
+      onVacation: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'vacation'
+      ).length,
+      inTraining: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'training'
+      ).length
+    };
+    
+    console.log('✅ Riders page data loaded:', {
+      userEmail: user.email,
+      ridersCount: riders.length,
+      stats: stats
+    });
+    
+    return {
+      success: true,
+      user: user,
+      riders: riders,
+      stats: stats
+    };
+    
+  } catch (error) {
+    console.error('❌ Error loading riders page data:', error);
+    logError('Error in getPageDataForRiders', error);
+    
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(),
+      riders: [],
+      stats: {
+        totalRiders: 0,
+        activeRiders: 0,
+        inactiveRiders: 0,
+        onVacation: 0,
+        inTraining: 0
+      }
+    };
+  }
+}
+
+
 
 /**
  * Get current user information
@@ -2082,25 +2146,25 @@ function getCurrentUser() {
  */
 function getDashboardStats() {
   try {
+    console.log('📊 Calculating dashboard stats with consistent counts...');
+    
     const requestsData = getRequestsData();
     const ridersData = getRidersData();
     const assignmentsData = getAssignmentsData();
     
-    // Calculate active riders
-    const activeRiders = ridersData.data.filter(rider => {
-      const status = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status);
-      return status === 'Active';
-    }).length;
+    // Use consistent counting for all rider stats
+    const totalRiders = getTotalRiderCount(); // Uses consistent logic
+    const activeRiders = getActiveRidersCount(); // Uses consistent logic
     
-    // Calculate pending requests
+    // Calculate other stats
     const pendingRequests = requestsData.data.filter(request => {
       const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
       return ['New', 'Pending', 'Unassigned'].includes(status);
     }).length;
     
-    // Calculate today's assignments
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
     const todayAssignments = assignmentsData.data.filter(assignment => {
       const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
       if (!(eventDate instanceof Date)) return false;
@@ -2109,7 +2173,6 @@ function getDashboardStats() {
       return assignmentDate.getTime() === today.getTime();
     }).length;
     
-    // Calculate week's assignments
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay());
     const weekEnd = new Date(weekStart);
@@ -2122,15 +2185,21 @@ function getDashboardStats() {
       return eventDate >= weekStart && eventDate <= weekEnd;
     }).length;
     
-    return {
-      activeRiders: activeRiders,
+    const stats = {
+      totalRiders: totalRiders,        // Consistent count
+      activeRiders: activeRiders,      // Consistent count
       pendingRequests: pendingRequests,
       todayAssignments: todayAssignments,
       weekAssignments: weekAssignments
     };
+    
+    console.log('✅ Dashboard stats calculated:', stats);
+    return stats;
+    
   } catch (error) {
     logError('Error getting dashboard stats', error);
     return {
+      totalRiders: 0,
       activeRiders: 0,
       pendingRequests: 0,
       todayAssignments: 0,

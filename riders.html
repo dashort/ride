@@ -639,6 +639,7 @@
                                 <option value="Advanced">Advanced</option>
                                 <option value="Instructor">Instructor</option>
                                 <option value="Trainee">Trainee</option>
+                                <option value="Not Certified">Not Certified</option>
                             </select>
                         </div>
                     </div>
@@ -669,33 +670,52 @@
         setupEventListeners();
     });
 
-    function setupEventListeners() {
-        // Search box
-        const searchBox = document.getElementById('searchBox');
-        if (searchBox) {
-            searchBox.addEventListener('input', debounce(filterRiders, 300));
-        }
-
-        // Modal close on outside click
-        window.onclick = function(event) {
-            const modal = document.getElementById('riderModal');
-            if (event.target === modal) {
-                closeRiderModal();
-            }
-        }
+/**
+ * IMPROVED: Better event listener setup
+ * Replace the setupEventListeners function in riders.html
+ */
+function setupEventListeners() {
+  console.log('🔧 Setting up event listeners...');
+  
+  // Search box with multiple event types
+  const searchBox = document.getElementById('searchBox');
+  if (searchBox) {
+    console.log('✅ Search box found, adding listeners');
+    
+    // Remove any existing listeners
+    searchBox.removeEventListener('input', filterRiders);
+    searchBox.removeEventListener('keyup', filterRiders);
+    searchBox.removeEventListener('change', filterRiders);
+    
+    // Add multiple event listeners for better responsiveness
+    searchBox.addEventListener('input', debounce(filterRiders, 300));
+    searchBox.addEventListener('keyup', debounce(filterRiders, 300));
+    searchBox.addEventListener('change', filterRiders);
+    
+    console.log('✅ Search box listeners added');
+  } else {
+    console.error('❌ Search box not found!');
+  }
+  
+  // Status filter
+  const statusFilter = document.getElementById('statusFilter');
+  if (statusFilter) {
+    console.log('✅ Status filter found, adding listener');
+    statusFilter.addEventListener('change', filterRiders);
+  } else {
+    console.error('❌ Status filter not found!');
+  }
+  
+  // Modal close on outside click
+  window.onclick = function(event) {
+    const modal = document.getElementById('riderModal');
+    if (event.target === modal) {
+      closeRiderModal();
     }
-
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
+  }
+  
+  console.log('✅ Event listeners setup complete');
+}
 
     function loadRidersData() {
         showLoading();
@@ -779,31 +799,176 @@
         `).join('');
     }
 
-    function filterRiders() {
-        const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-        const statusFilter = document.getElementById('statusFilter').value;
+/**
+ * SEARCH FIX: Replace the filterRiders function in your riders.html
+ * This function handles both search and status filtering
+ */
 
-        app.filteredRiders = app.riders.filter(rider => {
-            const matchesSearch = !searchTerm || 
-                (rider.name || '').toLowerCase().includes(searchTerm) ||
-                (rider.jpNumber || '').toLowerCase().includes(searchTerm) ||
-                (rider.phone || '').toLowerCase().includes(searchTerm) ||
-                (rider.email || '').toLowerCase().includes(searchTerm);
-
-            const matchesStatus = statusFilter === 'All' || 
-                (rider.status || 'Active') === statusFilter;
-
-            return matchesSearch && matchesStatus;
-        });
-
-        renderRidersTable(app.filteredRiders);
-        
-        if (app.filteredRiders.length > 0) {
-            showTable();
-        } else {
-            showEmptyState();
-        }
+function filterRiders() {
+  console.log('🔍 filterRiders called');
+  
+  const searchBox = document.getElementById('searchBox');
+  const statusFilter = document.getElementById('statusFilter');
+  
+  if (!searchBox || !statusFilter) {
+    console.error('❌ Search elements not found');
+    return;
+  }
+  
+  const searchTerm = searchBox.value.toLowerCase().trim();
+  const statusFilter_value = statusFilter.value;
+  
+  console.log(`🔍 Filtering: search="${searchTerm}" status="${statusFilter_value}"`);
+  console.log(`📊 Total riders to filter: ${app.riders.length}`);
+  
+  if (!app.riders || app.riders.length === 0) {
+    console.warn('⚠️ No riders data to filter');
+    showEmptyState();
+    return;
+  }
+  
+  // Apply filters
+  app.filteredRiders = app.riders.filter((rider, index) => {
+    try {
+      // Get rider data with multiple field name options
+      const name = rider.name || rider['Full Name'] || '';
+      const riderId = rider.jpNumber || rider['Rider ID'] || '';
+      const phone = rider.phone || rider['Phone Number'] || '';
+      const email = rider.email || rider['Email'] || '';
+      const status = rider.status || rider['Status'] || 'Active';
+      
+      // Debug first few riders during filtering
+      if (index < 3 && searchTerm) {
+        console.log(`  Checking rider ${index + 1}: name="${name}" id="${riderId}" status="${status}"`);
+      }
+      
+      // Search filter (if search term provided)
+      let matchesSearch = true;
+      if (searchTerm) {
+        matchesSearch = 
+          name.toLowerCase().includes(searchTerm) ||
+          riderId.toLowerCase().includes(searchTerm) ||
+          phone.toLowerCase().includes(searchTerm) ||
+          email.toLowerCase().includes(searchTerm);
+      }
+      
+      // Status filter (if not "All")
+      let matchesStatus = true;
+      if (statusFilter_value && statusFilter_value !== 'All') {
+        matchesStatus = status === statusFilter_value;
+      }
+      
+      const shouldInclude = matchesSearch && matchesStatus;
+      
+      // Debug matches for first few riders
+      if (index < 3 && searchTerm) {
+        console.log(`    Search match: ${matchesSearch}, Status match: ${matchesStatus}, Include: ${shouldInclude}`);
+      }
+      
+      return shouldInclude;
+      
+    } catch (error) {
+      console.warn(`⚠️ Error filtering rider ${index}:`, error);
+      return false;
     }
+  });
+  
+  console.log(`✅ Filtered results: ${app.filteredRiders.length} riders`);
+  
+  // Update display
+  if (app.filteredRiders.length > 0) {
+    renderRidersTable(app.filteredRiders);
+    showTable();
+  } else {
+    showEmptyState();
+  }
+}
+
+/**
+ * IMPROVED: Better event listener setup
+ * Replace the setupEventListeners function in riders.html
+ */
+function setupEventListeners() {
+  console.log('🔧 Setting up event listeners...');
+  
+  // Search box with multiple event types
+  const searchBox = document.getElementById('searchBox');
+  if (searchBox) {
+    console.log('✅ Search box found, adding listeners');
+    
+    // Remove any existing listeners
+    searchBox.removeEventListener('input', filterRiders);
+    searchBox.removeEventListener('keyup', filterRiders);
+    searchBox.removeEventListener('change', filterRiders);
+    
+    // Add multiple event listeners for better responsiveness
+    searchBox.addEventListener('input', debounce(filterRiders, 300));
+    searchBox.addEventListener('keyup', debounce(filterRiders, 300));
+    searchBox.addEventListener('change', filterRiders);
+    
+    console.log('✅ Search box listeners added');
+  } else {
+    console.error('❌ Search box not found!');
+  }
+  
+  // Status filter
+  const statusFilter = document.getElementById('statusFilter');
+  if (statusFilter) {
+    console.log('✅ Status filter found, adding listener');
+    statusFilter.addEventListener('change', filterRiders);
+  } else {
+    console.error('❌ Status filter not found!');
+  }
+  
+  // Modal close on outside click
+  window.onclick = function(event) {
+    const modal = document.getElementById('riderModal');
+    if (event.target === modal) {
+      closeRiderModal();
+    }
+  }
+  
+  console.log('✅ Event listeners setup complete');
+}
+
+/**
+ * IMPROVED: Better debounce function
+ * Make sure this debounce function exists in riders.html
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * TEST SEARCH: Add this function to test search manually
+ * Add this to riders.html and call it from browser console
+ */
+function testSearch(searchTerm = 'test') {
+  console.log(`🧪 Testing search with term: "${searchTerm}"`);
+  
+  const searchBox = document.getElementById('searchBox');
+  if (!searchBox) {
+    console.error('❌ Search box not found');
+    return;
+  }
+  
+  // Set the search value
+  searchBox.value = searchTerm;
+  
+  // Trigger the search
+  console.log('🔍 Triggering filterRiders...');
+  filterRiders();
+  
+  console.log('✅ Search test complete');
+}
 
     function openAddRiderModal() {
         document.getElementById('modalTitle').textContent = 'Add New Rider';
@@ -812,29 +977,91 @@
         document.getElementById('riderModal').style.display = 'block';
     }
 
-    function editRider(riderId) {
-        const rider = app.riders.find(r => r.jpNumber === riderId);
-        if (!rider) {
-            showError('Rider not found');
-            return;
+function editRider(riderId) {
+  console.log('🖱️ Edit button clicked for rider ID:', riderId, 'Type:', typeof riderId);
+  console.log('🔍 Available riders in app.riders:', app.riders.length);
+  
+  // Debug: Show first few riders and their ID structure
+  if (app.riders.length > 0) {
+    console.log('📊 First 3 riders structure:');
+    app.riders.slice(0, 3).forEach((r, i) => {
+      console.log(`  ${i + 1}:`, {
+        jpNumber: r.jpNumber,
+        'Rider ID': r['Rider ID'],
+        name: r.name,
+        allKeys: Object.keys(r)
+      });
+    });
+  }
+  
+  // Try multiple search strategies
+  let rider = null;
+  let searchMethod = '';
+  
+  // Strategy 1: Search by jpNumber (exact match)
+  rider = app.riders.find(r => r.jpNumber === riderId);
+  if (rider) {
+    searchMethod = 'jpNumber exact match';
+  } else {
+    // Strategy 2: Search by jpNumber (string comparison)
+    rider = app.riders.find(r => String(r.jpNumber) === String(riderId));
+    if (rider) {
+      searchMethod = 'jpNumber string match';
+    } else {
+      // Strategy 3: Search by 'Rider ID' field (column name)
+      rider = app.riders.find(r => r['Rider ID'] === riderId);
+      if (rider) {
+        searchMethod = 'Rider ID field exact match';
+      } else {
+        // Strategy 4: Search by 'Rider ID' field (string comparison)
+        rider = app.riders.find(r => String(r['Rider ID']) === String(riderId));
+        if (rider) {
+          searchMethod = 'Rider ID field string match';
+        } else {
+          // Strategy 5: Search by any field that might contain the ID
+          rider = app.riders.find(r => {
+            return Object.values(r).some(value => String(value) === String(riderId));
+          });
+          if (rider) {
+            searchMethod = 'found in any field';
+          }
         }
-
-        document.getElementById('modalTitle').textContent = 'Edit Rider';
-        document.getElementById('originalRiderId').value = riderId;
-        document.getElementById('riderId').value = rider.jpNumber || '';
-        document.getElementById('riderName').value = rider.name || '';
-        document.getElementById('riderPhone').value = rider.phone || '';
-        document.getElementById('riderEmail').value = rider.email || '';
-        document.getElementById('riderStatus').value = rider.status || 'Active';
-        document.getElementById('riderCertification').value = rider.certification || 'Standard';
-        
-        document.getElementById('riderModal').style.display = 'block';
+      }
     }
+  }
+  
+  if (!rider) {
+    console.error('❌ Rider not found with any strategy');
+    console.log('🔍 All rider IDs available:');
+    app.riders.forEach((r, i) => {
+      console.log(`  ${i + 1}: jpNumber="${r.jpNumber}" | Rider ID="${r['Rider ID']}" | Name="${r.name}"`);
+    });
+    
+    showError(`Rider with ID "${riderId}" not found. Available riders: ${app.riders.length}`);
+    return;
+  }
+  
+  console.log(`✅ Found rider via ${searchMethod}:`, rider.name);
+  
+  // Proceed with edit modal
+  document.getElementById('modalTitle').textContent = 'Edit Rider';
+  document.getElementById('originalRiderId').value = riderId;
+  
+  // Use the correct field names based on what we found
+  document.getElementById('riderId').value = rider.jpNumber || rider['Rider ID'] || '';
+  document.getElementById('riderName').value = rider.name || rider['Full Name'] || '';
+  document.getElementById('riderPhone').value = rider.phone || rider['Phone Number'] || '';
+  document.getElementById('riderEmail').value = rider.email || rider['Email'] || '';
+  document.getElementById('riderStatus').value = rider.status || rider['Status'] || 'Active';
+  document.getElementById('riderCertification').value = rider.certification || rider['Certification'] || 'Standard';
+  
+  document.getElementById('riderModal').style.display = 'block';
+}
 
     function closeRiderModal() {
         document.getElementById('riderModal').style.display = 'none';
     }
-
+/**
     function saveRider() {
         const formData = new FormData(document.getElementById('riderForm'));
         const isUpdate = document.getElementById('originalRiderId').value;
@@ -880,18 +1107,90 @@
             .withFailureHandler(handleRiderOperationFailure)
             .handleRiderOperation('delete', { riderId: riderId });
     }
+*/
 
-    function handleRiderOperationSuccess(result) {
-        hideLoading();
-        
-        if (result && result.success) {
-            showSuccess(result.message || 'Operation completed successfully');
-            closeRiderModal();
-            loadRidersData(); // Refresh the list
-        } else {
-            showError('Operation failed: ' + (result ? result.message : 'Unknown error'));
-        }
-    }
+function saveRider() {
+  console.log('💾 saveRider called');
+  
+  const formData = new FormData(document.getElementById('riderForm'));
+  const isUpdate = document.getElementById('originalRiderId').value;
+  
+  // Debug: Show all form data
+  console.log('📋 Form data collected:');
+  for (let [key, value] of formData.entries()) {
+    console.log(`  ${key}: "${value}"`);
+  }
+  
+  // Map to your CONFIG column names
+  const riderData = {
+    'Rider ID': formData.get('riderId'),
+    'Full Name': formData.get('riderName'),
+    'Phone Number': formData.get('riderPhone'),
+    'Email': formData.get('riderEmail'),
+    'Status': formData.get('riderStatus'),
+    'Certification': formData.get('riderCertification') // ← Check this value
+  };
+  
+  console.log('🗂️ Mapped rider data:', riderData);
+  console.log(`📜 Certification value: "${riderData['Certification']}" (length: ${riderData['Certification']?.length})`);
+  
+  // Validate required fields
+  if (!riderData['Rider ID'] || !riderData['Full Name'] || !riderData['Phone Number']) {
+    const missingFields = [];
+    if (!riderData['Rider ID']) missingFields.push('Rider ID');
+    if (!riderData['Full Name']) missingFields.push('Full Name');
+    if (!riderData['Phone Number']) missingFields.push('Phone Number');
+    
+    console.error('❌ Missing required fields:', missingFields);
+    showError('Please fill in all required fields: ' + missingFields.join(', '));
+    return;
+  }
+  
+  // Special check for certification
+  const certification = riderData['Certification'];
+  if (!certification || certification.trim() === '') {
+    console.warn('⚠️ No certification selected, using default');
+    riderData['Certification'] = 'Standard';
+  }
+  
+  console.log('✅ Validation passed, sending to server...');
+  showLoading('Saving rider...');
+  
+  const action = isUpdate ? 'update' : 'create';
+  console.log(`📤 Calling handleRiderOperation: action="${action}"`);
+  
+  google.script.run
+    .withSuccessHandler(handleRiderOperationSuccess)
+    .withFailureHandler(handleRiderOperationFailure)
+    .handleRiderOperation(action, riderData);
+}
+/**
+ * INITIALIZE SEARCH: Make sure this runs after data loads
+ * Update your handleRidersDataSuccess function in riders.html
+ */
+function handleRidersDataSuccess(data) {
+  hideLoading();
+  
+  if (data && data.success) {
+    console.log('✅ Riders data loaded:', data);
+    app.user = data.user;
+    app.riders = data.riders || [];
+    app.filteredRiders = [...app.riders]; // Initialize filtered riders
+    
+    updateUserInfo(data.user);
+    updateStats(data.stats);
+    renderRidersTable(app.filteredRiders); // Use filtered riders
+    showTable();
+    
+    // IMPORTANT: Setup search after data is loaded
+    setupEventListeners();
+    
+    console.log(`🔍 Search ready with ${app.riders.length} riders`);
+  } else {
+    console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
+    showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
+  }
+}
 
     function handleRiderOperationFailure(error) {
         hideLoading();

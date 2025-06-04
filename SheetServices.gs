@@ -250,8 +250,106 @@ function getRequestsData(useCache = true) {
  * @return {object} An object containing headers, data rows, columnMap, and sheet reference for "Riders".
  */
 function getRidersData(useCache = true) {
-  const data = getSheetData(CONFIG.sheets.riders, useCache);
-  return data;
+  const cacheKey = `sheet_${CONFIG.sheets.riders}`;
+
+  if (useCache) {
+    const cached = dataCache.get(cacheKey);
+    if (cached) {
+      // Apply filtering to cached data as well
+      return filterValidRidersData(cached);
+    }
+  }
+
+  try {
+    const sheet = getSheet(CONFIG.sheets.riders);
+    const range = sheet.getDataRange();
+    const values = range.getValues();
+
+    if (values.length === 0) {
+      return {
+        headers: [],
+        data: [],
+        columnMap: {},
+        sheet: sheet
+      };
+    }
+
+    const headers = values[0];
+    const allData = values.slice(1);
+
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      columnMap[header] = index;
+    });
+
+    // FILTER OUT EMPTY ROWS HERE - this is the key fix
+    const validData = allData.filter(row => {
+      const nameIdx = columnMap[CONFIG.columns.riders.name];
+      const idIdx = columnMap[CONFIG.columns.riders.jpNumber];
+      
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+      const riderId = idIdx !== undefined ? String(row[idIdx] || '').trim() : '';
+      
+      // Only include rows that have either a name OR an ID
+      return name.length > 0 || riderId.length > 0;
+    });
+
+    const result = {
+      headers,
+      data: validData, // Use filtered data instead of allData
+      columnMap,
+      sheet
+    };
+
+    if (useCache) {
+      dataCache.set(cacheKey, result);
+    }
+
+    console.log(`✅ getRidersData: Filtered ${allData.length} total rows to ${validData.length} valid riders`);
+    return result;
+
+  } catch (error) {
+    logError(`Error getting data from ${CONFIG.sheets.riders}`, error);
+    return {
+      headers: [],
+      data: [],
+      columnMap: {},
+      sheet: getSheet(CONFIG.sheets.riders)
+    };
+  }
+}
+function getTotalRiderCount() {
+  try {
+    console.log('📊 Getting total rider count...');
+    const ridersData = getRidersData();
+
+    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
+      return 0;
+    }
+
+    const columnMap = ridersData.columnMap;
+    const nameIdx = columnMap[CONFIG.columns.riders.name];
+    const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
+
+    let totalCount = 0;
+    
+    for (let i = 0; i < ridersData.data.length; i++) {
+      const row = ridersData.data[i];
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+      const jpNumber = jpNumberIdx !== undefined ? String(row[jpNumberIdx] || '').trim() : '';
+      
+      // Count only rows with valid data
+      if (name.length > 0 || jpNumber.length > 0) {
+        totalCount++;
+      }
+    }
+    
+    console.log(`✅ Total riders count: ${totalCount}`);
+    return totalCount;
+  } catch (error) {
+    console.error('❌ Error getting total rider count:', error);
+    return 0;
+  }
 }
 
 /**
@@ -353,22 +451,62 @@ function getRiderAssignmentsForDate(riderName, date, rawAssignmentsData = null) 
  * @param {object} [rawRidersData=null] Optional raw riders data to use.
  * @return {Array<Array<any>>} An array of active rider data rows.
  */
-function getActiveRiders(rawRidersData = null) {
-  const ridersData = rawRidersData || getRidersData();
+function getActiveRidersCount(rawRidersData = null) {
+  try {
+    console.log('🔄 Getting active riders count with consistent logic...');
+    const currentRidersData = rawRidersData || getRidersData();
 
-  if (!ridersData || !ridersData.data) {
-    logError('No riders data available in getActiveRiders'); // Assumes logError is defined
-    return [];
+    if (!currentRidersData || !currentRidersData.data || currentRidersData.data.length === 0) {
+      console.log('📊 No rider data found.');
+      return 0;
+    }
+
+    const riders = currentRidersData.data;
+    const columnMap = currentRidersData.columnMap;
+
+    const statusIdx = columnMap[CONFIG.columns.riders.status];
+    const nameIdx = columnMap[CONFIG.columns.riders.name];
+    const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
+
+    let activeCount = 0;
+    
+    for (let i = 0; i < riders.length; i++) {
+      const row = riders[i];
+      try {
+        const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+        const jpNumber = jpNumberIdx !== undefined ? String(row[jpNumberIdx] || '').trim() : '';
+        
+        // CONSISTENT LOGIC: Must have either name OR JP number to be counted
+        const hasValidIdentifier = name.length > 0 || jpNumber.length > 0;
+        
+        if (!hasValidIdentifier) {
+          continue; // Skip rows without valid identifier
+        }
+        
+        // Check status (default to active if no status column or empty status)
+        if (statusIdx !== undefined) {
+          const status = String(row[statusIdx] || '').toLowerCase().trim();
+          if (!status || status === 'active' || status === 'available') {
+            activeCount++;
+          }
+        } else {
+          // If no status column, count as active
+          activeCount++;
+        }
+        
+      } catch (rowError) {
+        console.log(`⚠️ Error processing rider row ${i}:`, rowError);
+      }
+    }
+    
+    console.log(`✅ Active riders count (consistent): ${activeCount}`);
+    return activeCount;
+    
+  } catch (error) {
+    console.error('❌ Error getting active riders count:', error);
+    logError('Error getting active riders count:', error);
+    return 0;
   }
-  const statusColName = CONFIG.columns.riders.status;
-  const nameColName = CONFIG.columns.riders.name;
-
-  return ridersData.data.filter(row => {
-    const status = getColumnValue(row, ridersData.columnMap, statusColName);
-    const name = getColumnValue(row, ridersData.columnMap, nameColName);
-    return name && String(name).trim().length > 0 &&
-           (!status || String(status).trim().toLowerCase() === 'active' || String(status).trim().toLowerCase() === 'available');
-  });
 }
 
 /**

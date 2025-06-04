@@ -91,6 +91,70 @@ function getEscortDetailsForAssignment(requestIdInput) {
 }
 
 /**
+ * Get page data for riders page
+ * Add this function to AppServices.gs (or any .gs file)
+ */
+function getPageDataForRiders() {
+  try {
+    console.log('🔄 Loading riders page data...');
+    
+    const user = getCurrentUser();
+    const riders = getRiders(); // This should work now with our previous fixes
+    
+    // Calculate stats using the same filtered data
+    const stats = {
+      totalRiders: riders.length,
+      activeRiders: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'active' || 
+        String(r.status || '').toLowerCase() === 'available' ||
+        String(r.status || '').trim() === ''
+      ).length,
+      inactiveRiders: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'inactive'
+      ).length,
+      onVacation: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'vacation'
+      ).length,
+      inTraining: riders.filter(r => 
+        String(r.status || '').toLowerCase() === 'training'
+      ).length
+    };
+    
+    console.log('✅ Riders page data loaded:', {
+      userEmail: user.email,
+      ridersCount: riders.length,
+      stats: stats
+    });
+    
+    return {
+      success: true,
+      user: user,
+      riders: riders,
+      stats: stats
+    };
+    
+  } catch (error) {
+    console.error('❌ Error loading riders page data:', error);
+    logError('Error in getPageDataForRiders', error);
+    
+    return {
+      success: false,
+      error: error.message,
+      user: getCurrentUser(),
+      riders: [],
+      stats: {
+        totalRiders: 0,
+        activeRiders: 0,
+        inactiveRiders: 0,
+        onVacation: 0,
+        inTraining: 0
+      }
+    };
+  }
+}
+
+
+/**
  * Fetches upcoming assignments for the web application, typically for dashboard display.
  * Filters assignments for the next 30 days that are not completed or cancelled.
  *
