@@ -404,7 +404,7 @@ function getUserDisplayName(email) {
     const riderNameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
     if (riderEmailIdx !== undefined && riderNameIdx !== undefined) {
         const riderRow = ridersData.data.find(row => String(row[riderEmailIdx] || '').toLowerCase() === String(email || '').toLowerCase());
-        if (riderRow) return String(row[riderNameIdx] || '').trim();
+        if (riderRow) return String(riderRow[riderNameIdx] || '').trim();
     }
     const namePart = email.split('@')[0];
     return namePart.replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());

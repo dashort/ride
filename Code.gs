@@ -386,6 +386,7 @@ function getNavigationHtml(currentPage = '') {
       <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
       <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
       <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}">🏍️ Assignments</a>
+      <a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>
       <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}">📱 Notifications</a>
       <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}">📊 Reports</a>
     </nav>`;
@@ -507,13 +508,14 @@ function showExactPlaceholderLocations() {
 function createFallbackNavigation(currentPage = '') {
   const baseUrl = ScriptApp.getService().getUrl();
   
-  const pages = [
-    { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
-    { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
-    { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
-    { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
-    { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
-  ];
+    const pages = [
+      { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
+      { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
+      { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
+      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
+      { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
+      { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
+    ];
   
   const navButtons = pages.map(page => {
     const activeClass = page.id === currentPage ? ' active' : '';
@@ -3058,6 +3060,7 @@ function createFallbackNavigation(currentPage = '') {
     <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>
     <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>
     <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>
+    <a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>
     <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>
     <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>
   </nav>`;
@@ -3073,6 +3076,7 @@ function getNavigationHtmlWithDynamicUrls(currentPage = '') {
       { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
       { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
       { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
+      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
       { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
       { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
     ];
