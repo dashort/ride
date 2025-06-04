@@ -350,19 +350,19 @@
             <div class="card">
                 <h3>📊 System Overview</h3>
                 <div class="stats-grid">
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToRiders('Active')">
                         <span class="stat-number" id="activeRiders">-</span>
                         <div class="stat-label">Active Riders</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToRequests('Pending')">
                         <span class="stat-number" id="pendingRequests">-</span>
                         <div class="stat-label">Pending Requests</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToAssignments('today')">
                         <span class="stat-number" id="todayAssignments">-</span>
                         <div class="stat-label">Today's Assignments</div>
                     </div>
-                    <div class="stat-item">
+                    <div class="stat-item" style="cursor:pointer" onclick="goToAssignments('week')">
                         <span class="stat-number" id="weekAssignments">-</span>
                         <div class="stat-label">This Week</div>
                     </div>
@@ -660,14 +660,33 @@
         showMessage('Some dashboard data may not be current. Please try refreshing.', 'warning');
     }
 
+    function navigateTo(page, params = {}) {
+        const base = window.location.href.split('?')[0];
+        const search = new URLSearchParams(params);
+        search.set('page', page);
+        window.location.href = base + '?' + search.toString();
+    }
+
     function createNewRequest() {
         if (confirm('Navigate to Requests page to create a new request?')) {
-            window.location.href = '?page=requests&action=create';
+            navigateTo('requests', { action: 'create' });
         }
     }
 
     function openAssignments() {
-        window.location.href = '?page=assignments';
+        navigateTo('assignments');
+    }
+
+    function goToRiders(status) {
+        navigateTo('riders', { status: status });
+    }
+
+    function goToRequests(status) {
+        navigateTo('requests', { status: status });
+    }
+
+    function goToAssignments(range) {
+        navigateTo('assignments', { date: range });
     }
 
     function sendBulkNotifications() {
