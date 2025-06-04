@@ -365,13 +365,21 @@ function getNavigationHtml(currentPage = '') {
     
     // Add active class if needed
     if (currentPage) {
-      // Simple approach: add active class to matching data-page
-      const activePattern = new RegExp(`(data-page="${currentPage}"[^>]*class="[^"]*nav-button)([^"]*)(")`, 'i');
-      navContent = navContent.replace(activePattern, function(match, p1, p2, p3) {
-        if (!p2.includes('active')) {
-          return `${p1} active${p2}${p3}`;
-        }
-        return match;
+      // Find the anchor with the matching data-page attribute regardless of
+      // attribute order and ensure it has the "active" class
+      const linkPattern = new RegExp(
+        `<a[^>]*data-page="${currentPage}"[^>]*>`,
+        'i'
+      );
+      navContent = navContent.replace(linkPattern, function(anchorHtml) {
+        // Update the class attribute inside the matched anchor
+        return anchorHtml.replace(/class="([^"]*)"/, function(_, classes) {
+          const classList = classes.split(/\s+/);
+          if (!classList.includes('active')) {
+            classList.push('active');
+          }
+          return `class="${classList.join(' ')}"`;
+        });
       });
     }
     
@@ -2828,6 +2836,7 @@ document.addEventListener('DOMContentLoaded', function() {
           <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Dashboard</a>
           <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📋 Requests</a>
           <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button" onclick="window.open(this.href, '_self'); return false;">🏍️ Assignments</a>
+          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=riders" class="nav-button" onclick="window.open(this.href, '_self'); return false;">👥 Riders</a>
           <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📱 Notifications</a>
           <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Reports</a>
         </nav>
@@ -2851,6 +2860,7 @@ function getNavigationHtmlWithIframeSupport(currentPage = '') {
     `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" data-url="${BASE_URL}" onclick="handleNavigation(this); return false;">📊 Dashboard</a>`,
     `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="${BASE_URL}?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
     `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="${BASE_URL}?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" data-url="${BASE_URL}?page=riders" onclick="handleNavigation(this); return false;">👥 Riders</a>`,
     `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${BASE_URL}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
     `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${BASE_URL}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
   ];
@@ -2898,6 +2908,7 @@ function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
     `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>`,
     `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>`,
     `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>`,
     `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>`,
     `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>`
   ];
@@ -2992,6 +3003,7 @@ function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
     `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>`,
     `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>`,
     `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>`,
+    `<a href="${BASE_URL}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>`,
     `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>`,
     `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>`
   ];
