@@ -539,6 +539,8 @@
     var selectedRequest = null;
     /** @type {Set<string>} */
     var selectedRiders = new Set(); // Stores names of selected riders
+    /** Map of rider name to availability status */
+    var riderAvailability = {}; // e.g., {"John Doe": "Busy"}
     /** @type {AppStateAssignments} */
     var app = {
         user: null,
@@ -1243,6 +1245,9 @@ if (!document.getElementById('debug-styles')) {
             '👁️ Preview' +
             '</button>' +
             '</div>';
+
+        updateSelectedCount();
+        fetchRiderAvailabilityForRequest();
     }
 
     /**
@@ -1257,17 +1262,17 @@ if (!document.getElementById('debug-styles')) {
 
         return activeRiders.map(function(rider) {
             var isSelected = selectedRiders.has(rider.name);
-            var availability = getRiderAvailability(rider, selectedRequest); // Currently always returns 'Available'
+            var availability = riderAvailability[rider.name] || 'Available';
             var isUnavailable = availability !== 'Available';
-            
-            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
+
+            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" data-rider-name="' + rider.name.replace(/"/g,'&quot;') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
                 '<div class="rider-status status-' + availability.toLowerCase() + '"></div>' +
                 '<div class="rider-name">' + rider.name + '</div>' +
                 '<div class="rider-info">ID: ' + rider.jpNumber + '</div>' +
                 '<div class="rider-info">📞 ' + rider.phone + '</div>' +
                 '<div class="rider-info">📧 ' + rider.email + '</div>' +
                 '<div class="rider-info">📡 ' + rider.carrier + '</div>' +
-                (isUnavailable ? '<div class="rider-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
+                (isUnavailable ? '<div class="rider-info conflict-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
                 '</div>';
         }).join('');
     }
@@ -1279,8 +1284,8 @@ if (!document.getElementById('debug-styles')) {
      * @return {string} Availability status (e.g., "Available", "Busy", "Unavailable"). Currently always "Available".
      */
     function getRiderAvailability(rider, request) {
-        // Placeholder: Future logic could check rider's schedule against request time.
-        return 'Available';
+        if (!rider || !rider.name) return 'Available';
+        return riderAvailability[rider.name] || 'Available';
     }
 
     /**
@@ -1332,6 +1337,63 @@ if (!document.getElementById('debug-styles')) {
         if (saveBtn) {
             saveBtn.disabled = selectedRiders.size === 0;
             saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
+        }
+    }
+
+    /**
+     * Fetch availability/conflict status for each rider for the selected request.
+     * Updates riderAvailability map and the UI accordingly.
+     * @return {void}
+     */
+    function fetchRiderAvailabilityForRequest() {
+        if (!selectedRequest) return;
+
+        riderAvailability = {};
+
+        activeRiders.forEach(function(rider) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(conflict) {
+                        riderAvailability[rider.name] = conflict ? 'Busy' : 'Available';
+                        updateSingleRiderAvailability(rider.name);
+                    })
+                    .withFailureHandler(function(err) {
+                        console.error('Availability check failed for', rider.name, err);
+                    })
+                    .checkRiderTimeConflict(rider.name, selectedRequest.eventDate, selectedRequest.startTime);
+            }
+        });
+    }
+
+    /**
+     * Update the UI status for a single rider card based on riderAvailability map.
+     * @param {string} riderName
+     */
+    function updateSingleRiderAvailability(riderName) {
+        var availability = riderAvailability[riderName] || 'Available';
+        var card = document.querySelector('.rider-card[data-rider-name="' + riderName.replace(/"/g,'\\"') + '"]');
+        if (!card) return;
+        var statusDiv = card.querySelector('.rider-status');
+
+        card.classList.toggle('unavailable', availability !== 'Available');
+
+        if (statusDiv) {
+            statusDiv.classList.remove('status-available', 'status-busy', 'status-unavailable');
+            statusDiv.classList.add('status-' + availability.toLowerCase());
+        }
+
+        var info = card.querySelector('.conflict-info');
+        if (availability !== 'Available') {
+            if (!info) {
+                info = document.createElement('div');
+                info.className = 'rider-info conflict-info';
+                info.style.color = '#e74c3c';
+                info.style.fontWeight = 'bold';
+                card.appendChild(info);
+            }
+            info.textContent = '⚠️ ' + availability;
+        } else if (info) {
+            info.remove();
         }
     }
 

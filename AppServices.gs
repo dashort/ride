@@ -593,6 +593,55 @@ function getRiderAssignmentSummary(riderId, riderName) {
     };
   }
 }
+
+/**
+ * Checks if the rider has an assignment within one hour of the given start time on the given date.
+ * @param {string} riderName The rider name.
+ * @param {string} eventDateStr The event date string.
+ * @param {string} startTimeStr The start time string.
+ * @return {boolean} True if a conflict exists.
+ */
+function checkRiderTimeConflict(riderName, eventDateStr, startTimeStr) {
+  try {
+    if (!riderName || !eventDateStr || !startTimeStr) return false;
+
+    var eventDate = new Date(eventDateStr);
+    if (isNaN(eventDate.getTime())) return false;
+
+    var assignments = getRiderAssignmentsForDate(riderName, eventDate);
+    if (!assignments || assignments.length === 0) return false;
+
+    var assignmentsData = getAssignmentsData();
+    var colMap = assignmentsData.columnMap;
+    var startCol = CONFIG.columns.assignments.startTime;
+    var statusCol = CONFIG.columns.assignments.status;
+
+    var requestStart = parseTimeString(startTimeStr);
+    if (!requestStart) return false;
+    requestStart.setFullYear(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+
+    for (var i = 0; i < assignments.length; i++) {
+      var row = assignments[i];
+      var status = getColumnValue(row, colMap, statusCol);
+      if (['Completed', 'Cancelled', 'No Show'].indexOf(status) !== -1) continue;
+
+      var startVal = getColumnValue(row, colMap, startCol);
+      var rowStart = parseTimeString(startVal);
+      if (!rowStart) continue;
+      rowStart.setFullYear(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+
+      var diff = Math.abs(rowStart.getTime() - requestStart.getTime());
+      if (diff <= 60 * 60 * 1000) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    logError('Error in checkRiderTimeConflict', error);
+    return false;
+  }
+}
 /**
  * Get rider schedule with formatted dates/times for dashboard display.
  * Filters assignments for the upcoming week.
@@ -3300,3 +3349,4 @@ function testActiveRidersFix() {
     };
   }
 }
+
