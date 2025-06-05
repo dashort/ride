@@ -416,14 +416,14 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Dashboard loading...');
-        
+
         setTimeout(() => {
             if (document.getElementById('activeRiders').textContent === '-') {
                 console.log('⚠️ Loading timeout - setting fallback values');
                 setFallbackValues();
             }
         }, app.loadingTimeout);
-        
+
         initializeDashboard();
     });
 
@@ -468,7 +468,7 @@
     function handleUserDataSafely(user) {
         console.log('👤 Handling user data:', user);
         app.user = user;
-        
+
         setTimeout(() => {
             updateUserInfoSafely(user);
             updatePermissionBasedUI(user);
@@ -502,7 +502,7 @@
     function updatePermissionBasedUI(user) {
         try {
             const permissions = user.permissions || [];
-            
+
             const hideIfNoPermission = (elementId, permission) => {
                 const element = document.getElementById(elementId);
                 if (element && !permissions.includes(permission)) {
@@ -522,7 +522,7 @@
 
     function updateStats(stats) {
         console.log('📊 Updating stats display:', stats);
-        
+
         const safeUpdateStat = (id, value) => {
             try {
                 const element = document.getElementById(id);
@@ -547,12 +547,12 @@
     function updateRecentRequests(requests) {
         console.log('📋 Updating recent requests:', requests);
         const container = document.getElementById('recentRequestsList');
-        
+
         if (!container) {
             console.error('❌ Recent requests container not found');
             return;
         }
-        
+
         if (!requests || requests.length === 0) {
             container.innerHTML = `
                 <div class="empty-message">
@@ -577,7 +577,7 @@
                     </span>
                 </div>
             `).join('');
-            
+
             console.log('✅ Recent requests updated successfully');
         } catch (error) {
             console.error('❌ Error updating recent requests HTML:', error);
@@ -588,12 +588,12 @@
     function updateUpcomingAssignments(assignments) {
         console.log('🏍️ Updating upcoming assignments:', assignments);
         const container = document.getElementById('upcomingAssignmentsList');
-        
+
         if (!container) {
             console.error('❌ Upcoming assignments container not found');
             return;
         }
-        
+
         let assignmentsArray = [];
         if (Array.isArray(assignments)) {
             assignmentsArray = assignments;
@@ -602,9 +602,9 @@
         } else if (assignments && typeof assignments === 'object' && assignments.length !== undefined) {
             assignmentsArray = Array.from(assignments);
         }
-        
+
         console.log('📊 Processing', assignmentsArray.length, 'assignments');
-        
+
         if (assignmentsArray.length === 0) {
             container.innerHTML = `
                 <div class="empty-message">
@@ -623,7 +623,7 @@
                 const eventDate = assignment.eventDate || assignment.event_date || 'No Date';
                 const startTime = assignment.startTime || assignment.start_time || 'No Time';
                 const startLocation = assignment.startLocation || assignment.start_location || assignment.location || 'Location TBD';
-                
+
                 return `
                     <div class="assignment-item">
                         <div class="assignment-time">
@@ -636,7 +636,7 @@
                     </div>
                 `;
             }).join('');
-            
+
             console.log('✅ Upcoming assignments updated successfully');
         } catch (error) {
             console.error('❌ Error updating assignments HTML:', error);
@@ -646,17 +646,17 @@
 
     function setFallbackValues() {
         console.log('⚠️ Setting fallback values due to loading timeout or errors');
-        
+
         updateStats({
             activeRiders: 0,
             pendingRequests: 0,
             todayAssignments: 0,
             weekAssignments: 0
         });
-        
+
         updateRecentRequests([]);
         updateUpcomingAssignments([]);
-        
+
         showMessage('Some dashboard data may not be current. Please try refreshing.', 'warning');
     }
 
@@ -666,12 +666,11 @@
         Object.keys(params).forEach(key => search.set(key, params[key]));
 
         let url;
+
+        // If running inside Google Apps Script web app:
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             const base = window.location.origin + window.location.pathname;
             url = base + '?' + search.toString();
-        } else {
-            url = page + '.html?' + search.toString();
-        }
 
             try {
                 window.top.location.href = url;
@@ -682,7 +681,11 @@
                     window.open(url, '_blank');
                 }
             }
+
         } else {
+            // Standalone pages (non-GAS), navigate to page.html
+            url = page + '.html?' + search.toString();
+
             try {
                 window.location.href = url;
                 setTimeout(() => {
@@ -726,17 +729,17 @@
 
     function refreshDashboard() {
         showMessage('Refreshing dashboard...', 'info');
-        
+
         document.getElementById('activeRiders').textContent = '-';
         document.getElementById('pendingRequests').textContent = '-';
         document.getElementById('todayAssignments').textContent = '-';
         document.getElementById('weekAssignments').textContent = '-';
-        
+
         document.getElementById('recentRequestsList').innerHTML = '<div class="loading">Loading recent requests...</div>';
         document.getElementById('upcomingAssignmentsList').innerHTML = '<div class="loading">Loading assignments...</div>';
-        
+
         initializeDashboard();
-        
+
         setTimeout(() => {
             showMessage('Dashboard refreshed!', 'success');
         }, 2000);
@@ -761,9 +764,9 @@
         messageDiv.style.zIndex = '9999';
         messageDiv.style.maxWidth = '300px';
         messageDiv.textContent = message;
-        
+
         document.body.appendChild(messageDiv);
-        
+
         setTimeout(() => {
             messageDiv.remove();
         }, 3000);
@@ -783,7 +786,7 @@
     if (window.location.search.includes('debug=true')) {
         window.app = app;
         console.log('🐛 Debug mode enabled. Access app state via window.app');
-        
+
         setTimeout(() => {
             const debugBtn = document.createElement('button');
             debugBtn.textContent = '🐛 Debug Dashboard';
@@ -796,7 +799,7 @@
                 console.log('App state:', app);
                 console.log('User:', app.user);
                 console.log('Online:', app.isOnline);
-                
+
                 if (typeof google !== 'undefined' && google.script && google.script.run) {
                     google.script.run
                         .withSuccessHandler(result => console.log('Server test success:', result))
