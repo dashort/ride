@@ -391,10 +391,11 @@
         <h1>🏍️ Escort Requests</h1>
     </header>
 
-    <div class="container">
-        <!--NAVIGATION_MENU_PLACEHOLDER-->
 
-        <div class="controls">
+<!--NAVIGATION_MENU_PLACEHOLDER-->
+    
+<div class="controls">
+n
         <div class="filter-row">
             <label><strong>Filter:</strong></label>
             <select id="statusFilter">
@@ -1148,29 +1149,32 @@
         URL.revokeObjectURL(url);
     }
 
-    function navigateTo(page, params = {}) {
-        const search = new URLSearchParams();
-        search.set('page', page);
-        Object.keys(params).forEach(key => search.set(key, params[key]));
 
-        let url;
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const base = window.requestBaseUrl || (window.location.origin + '/exec');
-            url = base + '?' + search.toString();
-        } else {
-            url = page + '.html?' + search.toString();
-        }
 
+function navigateTo(page, params = {}) {
+    const search = new URLSearchParams();
+    search.set('page', page);
+    Object.keys(params).forEach(key => search.set(key, params[key]));
+
+    let url;
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        const base = window.location.origin + window.location.pathname;
+        url = base + '?' + search.toString();
+    } else {
+        url = page + '.html?' + search.toString();
+    }
+
+    try {
+        window.location.href = url;
+    } catch (error) {
         try {
-            window.location.href = url;
-        } catch (error) {
-            try {
-                window.top.location.href = url;
-            } catch (topError) {
-                window.open(url, '_blank');
-            }
+            window.top.location.href = url;
+        } catch (topError) {
+            window.open(url, '_blank');
         }
     }
+}
+
 
     function redirectToAssignmentPage() {
         if (currentEditingRequest && currentEditingRequest.requestId) {
