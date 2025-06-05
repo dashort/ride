@@ -375,6 +375,33 @@
             height: 50px;
             animation: spin 1s linear infinite;
         }
+
+        #toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 10px;
+            position: fixed;
+            z-index: 3000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+        }
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        @keyframes fadein {
+            from { bottom: 20px; opacity: 0; }
+            to { bottom: 30px; opacity: 1; }
+        }
+        @keyframes fadeout {
+            from { bottom: 30px; opacity: 1; }
+            to { bottom: 40px; opacity: 0; }
+        }
         
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -575,6 +602,8 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
     </div>
+
+    <div id="toast"></div>
 
 </div>
 
@@ -800,7 +829,7 @@
 
         const request = allRequests.find(r => r.requestId === requestId);
         if (!request) {
-            alert('Request not found: ' + requestId);
+            showToast('Request not found: ' + requestId);
             return;
         }
 
@@ -903,12 +932,12 @@
                 console.log('Save success handler received:', JSON.stringify(result, null, 2));
                 hideLoadingOverlay();
                 if (result.success) {
-                    alert(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
+                    showToast(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
                     closeEditModal();
                     loadPageData(); // Refresh the list (was loadRequests())
                 } else {
                     console.error('Save operation reported failure. Server result:', JSON.stringify(result, null, 2));
-                    alert('Error: ' + result.message);
+                    showToast('Error: ' + result.message);
                 }
             })
             .withFailureHandler((error) => {
@@ -917,9 +946,9 @@
                 console.error('Error message:', error.message);
                 console.error('Full error object:', error);
                 hideLoadingOverlay();
-                alert('Error saving request: ' + error.message);
+                showToast('Error saving request: ' + error.message);
             })
-            [functionName](requestData);
+            .[functionName](requestData);
     }
 
     /**
@@ -929,7 +958,7 @@
      */
     function deleteRequest() {
         if (!currentEditingRequest) {
-            alert('No request selected for deletion');
+            showToast('No request selected for deletion');
             return;
         }
 
@@ -943,16 +972,16 @@
             .withSuccessHandler((result) => {
                 hideLoadingOverlay();
                 if (result.success) {
-                    alert('Request deleted successfully!');
+                    showToast('Request deleted successfully!');
                     closeEditModal();
                     loadPageData(); // Refresh the list (was loadRequests())
                 } else {
-                    alert('Error deleting request: ' + result.message);
+                    showToast('Error deleting request: ' + result.message);
                 }
             })
             .withFailureHandler((error) => {
                 hideLoadingOverlay();
-                alert('Error deleting request: ' + error.message);
+                showToast('Error deleting request: ' + error.message);
             })
             .deleteRequest(currentEditingRequest.requestId);
     }
@@ -1020,6 +1049,15 @@
      */
     function hideLoadingOverlay() {
         document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    function showToast(message, duration = 3000) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, duration);
     }
 
     /**
@@ -1106,7 +1144,7 @@
      */
     function exportToCSV() {
         if (!allRequests || allRequests.length === 0) {
-            alert('No data to export');
+            showToast('No data to export');
             return;
         }
 
@@ -1180,7 +1218,7 @@ function navigateTo(page, params = {}) {
             console.log('Navigating to assignments page for request:', requestId);
             navigateTo('assignments', { requestId });
         } else {
-            alert('No request selected or request ID is missing. Cannot navigate to assignments.');
+            showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
         }
     }
