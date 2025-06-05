@@ -227,6 +227,15 @@
             font-size: 1rem;
         }
 
+        .currently-assigned {
+            margin-bottom: 1rem;
+        }
+
+        .currently-assigned ul {
+            padding-left: 1.25rem;
+            list-style: disc;
+        }
+
         .riders-section {
             flex: 1;
             display: flex;
@@ -1200,6 +1209,10 @@ if (!document.getElementById('debug-styles')) {
             selectedRiders.add(assignedRidersArray[i]);
         }
 
+        var assignedListHtml = assignedRidersArray.length > 0 ?
+            '<ul>' + assignedRidersArray.map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
+            '<ul><li>None</li></ul>';
+
         container.innerHTML = '<div class="request-info">' +
             '<h4>' + selectedRequest.id + ' - ' + selectedRequest.requesterName + '</h4>' +
             '<div class="info-grid">' +
@@ -1232,6 +1245,10 @@ if (!document.getElementById('debug-styles')) {
             '</div>' +
             '</div>' +
             '</div>' +
+            '</div>' +
+            '<div class="currently-assigned">' +
+            '<h4>Currently Assigned Riders</h4>' +
+            assignedListHtml +
             '</div>' +
             '<div class="assignment-summary">' +
             '<div>Selected Riders: <span class="selected-count" id="selectedCount">' + selectedRiders.size + '</span> / ' + selectedRequest.ridersNeeded + '</div>' +
