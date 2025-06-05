@@ -526,6 +526,10 @@
                     <option value="Training">In Training</option>
                     <option value="Suspended">Suspended</option>
                 </select>
+                <select class="filter-select" id="motorFilter" onchange="filterRiders()">
+                    <option value="All">All</option>
+                    <option value="Motors">Motors</option>
+                </select>
             </div>
             
             <button onclick="exportRiders()" class="btn btn-info">
@@ -649,7 +653,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="closeRiderModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRiderModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteRiderBtn" onclick="deleteCurrentRider()" style="display:none">🗑️ Delete</button>
                 <button type="button" class="btn btn-success" onclick="saveRider()">💾 Save Rider</button>
             </div>
         </div>
@@ -724,11 +729,19 @@ function setupEventListeners() {
   
   // Status filter
   const statusFilter = document.getElementById('statusFilter');
+  const motorFilter = document.getElementById('motorFilter');
   if (statusFilter) {
     console.log('✅ Status filter found, adding listener');
     statusFilter.addEventListener('change', filterRiders);
   } else {
     console.error('❌ Status filter not found!');
+  }
+
+  if (motorFilter) {
+    console.log('✅ Motor filter found, adding listener');
+    motorFilter.addEventListener('change', filterRiders);
+  } else {
+    console.error('❌ Motor filter not found!');
   }
   
   // Modal close on outside click
@@ -823,7 +836,8 @@ function filterRiders() {
   
   const searchBox = document.getElementById('searchBox');
   const statusFilter = document.getElementById('statusFilter');
-  
+  const motorFilter = document.getElementById('motorFilter');
+
   if (!searchBox || !statusFilter) {
     console.error('❌ Search elements not found');
     return;
@@ -831,8 +845,9 @@ function filterRiders() {
   
   const searchTerm = searchBox.value.toLowerCase().trim();
   const statusFilter_value = statusFilter.value;
+  const motorFilter_value = motorFilter ? motorFilter.value : 'All';
   
-  console.log(`🔍 Filtering: search="${searchTerm}" status="${statusFilter_value}"`);
+  console.log(`🔍 Filtering: search="${searchTerm}" status="${statusFilter_value}" motors="${motorFilter_value}"`);
   console.log(`📊 Total riders to filter: ${app.riders.length}`);
   
   if (!app.riders || app.riders.length === 0) {
@@ -850,6 +865,7 @@ function filterRiders() {
       const phone = rider.phone || rider['Phone Number'] || '';
       const email = rider.email || rider['Email'] || '';
       const status = rider.status || rider['Status'] || 'Active';
+      const certification = rider.certification || rider['Certification'] || '';
       
       // Debug first few riders during filtering
       if (index < 3 && searchTerm) {
@@ -871,12 +887,19 @@ function filterRiders() {
       if (statusFilter_value && statusFilter_value !== 'All') {
         matchesStatus = status === statusFilter_value;
       }
-      
-      const shouldInclude = matchesSearch && matchesStatus;
+
+      // Motor filter
+      let matchesMotor = true;
+      if (motorFilter_value === 'Motors') {
+        const certLower = certification.toLowerCase();
+        matchesMotor = certLower === 'standard' || certLower === 'instructor';
+      }
+
+      const shouldInclude = matchesSearch && matchesStatus && matchesMotor;
       
       // Debug matches for first few riders
       if (index < 3 && searchTerm) {
-        console.log(`    Search match: ${matchesSearch}, Status match: ${matchesStatus}, Include: ${shouldInclude}`);
+        console.log(`    Search match: ${matchesSearch}, Status match: ${matchesStatus}, Motor match: ${matchesMotor}, Include: ${shouldInclude}`);
       }
       
       return shouldInclude;
@@ -927,11 +950,19 @@ function setupEventListeners() {
   
   // Status filter
   const statusFilter = document.getElementById('statusFilter');
+  const motorFilter = document.getElementById('motorFilter');
   if (statusFilter) {
     console.log('✅ Status filter found, adding listener');
     statusFilter.addEventListener('change', filterRiders);
   } else {
     console.error('❌ Status filter not found!');
+  }
+
+  if (motorFilter) {
+    console.log('✅ Motor filter found, adding listener');
+    motorFilter.addEventListener('change', filterRiders);
+  } else {
+    console.error('❌ Motor filter not found!');
   }
   
   // Modal close on outside click
@@ -984,10 +1015,11 @@ function testSearch(searchTerm = 'test') {
   console.log('✅ Search test complete');
 }
 
-    function openAddRiderModal() {
+function openAddRiderModal() {
         document.getElementById('modalTitle').textContent = 'Add New Rider';
         document.getElementById('riderForm').reset();
         document.getElementById('originalRiderId').value = '';
+        document.getElementById('deleteRiderBtn').style.display = 'none';
         document.getElementById('riderModal').style.display = 'block';
     }
 
@@ -1068,13 +1100,24 @@ function editRider(riderId) {
   document.getElementById('riderEmail').value = rider.email || rider['Email'] || '';
   document.getElementById('riderStatus').value = rider.status || rider['Status'] || 'Active';
   document.getElementById('riderCertification').value = rider.certification || rider['Certification'] || 'Standard';
-  
+
+  document.getElementById('deleteRiderBtn').style.display = 'inline-block';
+
   document.getElementById('riderModal').style.display = 'block';
 }
 
-    function closeRiderModal() {
-        document.getElementById('riderModal').style.display = 'none';
-    }
+function closeRiderModal() {
+    document.getElementById('riderModal').style.display = 'none';
+}
+
+function deleteCurrentRider() {
+  const riderId = document.getElementById('originalRiderId').value;
+  if (!riderId) {
+    alert('No rider selected for deletion');
+    return;
+  }
+  deleteRider(riderId);
+}
 /**
     function saveRider() {
         const formData = new FormData(document.getElementById('riderForm'));
@@ -1492,24 +1535,7 @@ if (typeof handleRiderOperationFailure === 'undefined') {
             notification.remove();
         }, 3000);
     }
-    // Quick fix for delete buttons - add this to your riders.html script section
-document.addEventListener('DOMContentLoaded', function() {
-  // Add event delegation for delete buttons
-  document.addEventListener('click', function(event) {
-    if (event.target.closest('[onclick*="deleteRider"]')) {
-      const button = event.target.closest('button');
-      const onclickAttr = button.getAttribute('onclick');
-      
-      if (onclickAttr) {
-        const match = onclickAttr.match(/deleteRider\(['"]([^'"]+)['"]\)/);
-        if (match) {
-          event.preventDefault();
-          deleteRider(match[1]);
-        }
-      }
-    }
-  });
-});
+
 <!-- Add these functions to your riders.html <script> section -->
 
 // Enhanced renderRidersTable with clickable rider names
@@ -1555,9 +1581,6 @@ function renderRidersTable(riders) {
       <td class="actions-cell">
         <button onclick="editRider('${riderId}')" class="btn btn-sm btn-primary" title="Edit ${riderName}">
           ✏️ Edit
-        </button>
-        <button onclick="deleteRider('${riderId}')" class="btn btn-sm btn-danger" title="Delete ${riderName}">
-          🗑️ Delete
         </button>
       </td>
     `;
