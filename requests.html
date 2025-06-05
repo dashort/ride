@@ -19,6 +19,46 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
         
         .header h1 {
             margin: 0;
@@ -34,6 +74,13 @@
         }
         
         .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .sort-row {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -340,13 +387,14 @@
     </style>
 </head>
 <body>
-    <div class="header">
+    <header class="header">
         <h1>🏍️ Escort Requests</h1>
-    </div>
+    </header>
 
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
-    
-    <div class="controls">
+    <div class="container">
+        <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+        <div class="controls">
         <div class="filter-row">
             <label><strong>Filter:</strong></label>
             <select id="statusFilter">
@@ -359,9 +407,17 @@
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
             </select>
-            <button onclick="loadRequests()">🔄 Refresh</button>
+            <button onclick="loadPageData()">🔄 Refresh</button>
             <button onclick="exportToCSV()">📊 Export</button>
             <button class="btn-success add-request-btn" onclick="openNewRequestForm()">➕ Add New Request</button>
+        </div>
+        <div class="sort-row">
+            <label><strong>Sort by:</strong></label>
+            <select id="sortBy">
+                <option value="eventDate">Event Date</option>
+                <option value="requestId">Request ID</option>
+                <option value="requestType">Request Type</option>
+            </select>
         </div>
         <div class="stats" id="statsDisplay">Loading...</div>
     </div>
@@ -522,6 +578,8 @@
         <div class="spinner"></div>
     </div>
 
+</div>
+
 <script>
     /**
      * @typedef {object} RequestFull - Detailed request object, assuming structure from form fields.
@@ -574,8 +632,24 @@
             }
         }
 
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { window.requestBaseUrl = url; })
+                    .withFailureHandler(() => { window.requestBaseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                window.requestBaseUrl = null;
+            }
+        }
+
         loadPageData();
         document.getElementById('statusFilter').addEventListener('change', loadPageData);
+        const sortSelect = document.getElementById('sortBy');
+        if (sortSelect) {
+            sortSelect.value = 'eventDate';
+            sortSelect.addEventListener('change', sortAndDisplayRequests);
+        }
     });
 
     /**
@@ -628,7 +702,7 @@
                 showNoData();
                 updateStats([]);
             } else {
-                displayRequests(allRequests);
+                sortAndDisplayRequests();
                 updateStats(allRequests);
                 showTable();
             }
@@ -687,6 +761,35 @@
 
             tbody.appendChild(row);
         });
+    }
+
+    function sortAndDisplayRequests() {
+        const sortBy = document.getElementById('sortBy').value;
+        if (!allRequests || allRequests.length === 0) {
+            displayRequests([]);
+            return;
+        }
+
+        const requests = [...allRequests];
+
+        if (sortBy === 'requestId') {
+            requests.sort((a, b) => String(a.requestId).localeCompare(String(b.requestId)));
+        } else if (sortBy === 'requestType') {
+            requests.sort((a, b) => (a.requestType || '').localeCompare(b.requestType || ''));
+        } else {
+            requests.sort((a, b) => {
+                const dateA = new Date(a.eventDate);
+                const dateB = new Date(b.eventDate);
+
+                if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+                if (isNaN(dateA.getTime())) return 1;
+                if (isNaN(dateB.getTime())) return -1;
+
+                return dateA.getTime() - dateB.getTime();
+            });
+        }
+
+        displayRequests(requests);
     }
 
     /**
@@ -1045,15 +1148,35 @@
         URL.revokeObjectURL(url);
     }
 
+    function navigateTo(page, params = {}) {
+        const search = new URLSearchParams();
+        search.set('page', page);
+        Object.keys(params).forEach(key => search.set(key, params[key]));
+
+        let url;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            const base = window.requestBaseUrl || (window.location.origin + '/exec');
+            url = base + '?' + search.toString();
+        } else {
+            url = page + '.html?' + search.toString();
+        }
+
+        try {
+            window.location.href = url;
+        } catch (error) {
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
+            }
+        }
+    }
+
     function redirectToAssignmentPage() {
         if (currentEditingRequest && currentEditingRequest.requestId) {
             const requestId = currentEditingRequest.requestId;
-            // Construct URL based on how navigation is typically handled (e.g., using query parameters)
-            // Assuming current base path and adding query params.
-            // The doGet function uses ?page=assignments
-            const targetUrl = window.location.origin + window.location.pathname + '?page=assignments&requestId=' + encodeURIComponent(requestId);
-            console.log('Navigating to assignments page for request:', requestId, targetUrl);
-            window.location.href = targetUrl;
+            console.log('Navigating to assignments page for request:', requestId);
+            navigateTo('assignments', { requestId });
         } else {
             alert('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
