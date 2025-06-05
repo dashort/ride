@@ -942,6 +942,14 @@ if (!document.getElementById('debug-styles')) {
         }
 
         currentRequests = Array.isArray(data) ? data : [];
+        currentRequests.sort(function(a, b) {
+            var dateA = new Date(a.eventDate);
+            var dateB = new Date(b.eventDate);
+            if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+            if (isNaN(dateA.getTime())) return 1;
+            if (isNaN(dateB.getTime())) return -1;
+            return dateA.getTime() - dateB.getTime();
+        });
         console.log('📊 Stored requests count:', currentRequests.length);
 
         filterRequests();
