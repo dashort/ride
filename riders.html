@@ -892,7 +892,9 @@ function filterRiders() {
       let matchesMotor = true;
       if (motorFilter_value === 'Motors') {
         const certLower = certification.toLowerCase();
-        matchesMotor = certLower.includes('standard') || certLower.includes('instructor');
+
+matchesMotor = certLower === 'standard' || certLower === 'instructor';
+
       }
 
       const shouldInclude = matchesSearch && matchesStatus && matchesMotor;
