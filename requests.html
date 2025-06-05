@@ -411,6 +411,21 @@
         .add-request-btn {
             margin-left: 10px;
         }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ecf0f1;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .search-box:focus {
+            border-color: #3498db;
+        }
     </style>
 </head>
 <body>
@@ -444,6 +459,7 @@
                 <option value="requestType">Request Type</option>
             </select>
         </div>
+        <input type="text" id="requestSearch" class="search-box" placeholder="🔍 Search requests...">
         <div class="stats" id="statsDisplay">Loading...</div>
     </div>
     
@@ -677,6 +693,10 @@
             sortSelect.value = 'eventDate';
             sortSelect.addEventListener('change', sortAndDisplayRequests);
         }
+        const searchInput = document.getElementById('requestSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', sortAndDisplayRequests);
+        }
     });
 
     /**
@@ -794,10 +814,31 @@
         const sortBy = document.getElementById('sortBy').value;
         if (!allRequests || allRequests.length === 0) {
             displayRequests([]);
+            showNoData();
             return;
         }
 
-        const requests = [...allRequests];
+        const searchInput = document.getElementById('requestSearch');
+        const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+        let requests = [...allRequests];
+
+        if (term) {
+            requests = requests.filter(r =>
+                String(r.requestId).toLowerCase().includes(term) ||
+                String(r.requesterName).toLowerCase().includes(term) ||
+                String(r.requestType).toLowerCase().includes(term) ||
+                String(r.startLocation).toLowerCase().includes(term) ||
+                String(r.endLocation).toLowerCase().includes(term)
+            );
+        }
+
+        if (requests.length === 0) {
+            displayRequests([]);
+            updateStats([]);
+            showNoData();
+            return;
+        }
 
         if (sortBy === 'requestId') {
             requests.sort((a, b) => String(a.requestId).localeCompare(String(b.requestId)));
@@ -817,6 +858,8 @@
         }
 
         displayRequests(requests);
+        updateStats(requests);
+        showTable();
     }
 
     /**
