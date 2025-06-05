@@ -416,6 +416,18 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Dashboard loading...');
+
+        // Retrieve the web app URL when running inside Apps Script
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { app.baseUrl = url; })
+                    .withFailureHandler(() => { app.baseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                app.baseUrl = null;
+            }
+        }
         
         setTimeout(() => {
             if (document.getElementById('activeRiders').textContent === '-') {
@@ -661,15 +673,26 @@
     }
 
     function navigateTo(page, params = {}) {
-        const search = new URLSearchParams(params);
+        const search = new URLSearchParams();
+        search.set('page', page);
+        Object.keys(params).forEach(key => search.set(key, params[key]));
 
+        let url;
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const base = window.location.href.split('?')[0];
-            search.set('page', page);
-            window.location.href = base + '?' + search.toString();
+            const base = app.baseUrl || (window.location.origin + '/exec');
+            url = base + '?' + search.toString();
         } else {
-            // Fallback for local testing without Apps Script environment
-            window.location.href = page + '.html?' + search.toString();
+            url = page + '.html?' + search.toString();
+        }
+
+        try {
+            window.location.href = url;
+        } catch (error) {
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
+            }
         }
     }
 
