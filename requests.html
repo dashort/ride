@@ -588,6 +588,17 @@
             }
         }
 
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { window.requestBaseUrl = url; })
+                    .withFailureHandler(() => { window.requestBaseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                window.requestBaseUrl = null;
+            }
+        }
+
         loadPageData();
         document.getElementById('statusFilter').addEventListener('change', loadPageData);
         const sortSelect = document.getElementById('sortBy');
@@ -1093,29 +1104,30 @@
         URL.revokeObjectURL(url);
     }
 
-    function navigateTo(page, params = {}) {
-        const search = new URLSearchParams();
-        search.set('page', page);
-        Object.keys(params).forEach(key => search.set(key, params[key]));
+function navigateTo(page, params = {}) {
+    const search = new URLSearchParams();
+    search.set('page', page);
+    Object.keys(params).forEach(key => search.set(key, params[key]));
 
-        let url;
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const base = window.location.origin + window.location.pathname;
-            url = base + '?' + search.toString();
-        } else {
-            url = page + '.html?' + search.toString();
-        }
+    let url;
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        const base = window.location.origin + window.location.pathname;
+        url = base + '?' + search.toString();
+    } else {
+        url = page + '.html?' + search.toString();
+    }
 
+    try {
+        window.location.href = url;
+    } catch (error) {
         try {
-            window.location.href = url;
-        } catch (error) {
-            try {
-                window.top.location.href = url;
-            } catch (topError) {
-                window.open(url, '_blank');
-            }
+            window.top.location.href = url;
+        } catch (topError) {
+            window.open(url, '_blank');
         }
     }
+}
+
 
     function redirectToAssignmentPage() {
         if (currentEditingRequest && currentEditingRequest.requestId) {
