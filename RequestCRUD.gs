@@ -7,8 +7,8 @@
  * Creates a new escort request in the spreadsheet.
  *
  * @param {object} requestData An object containing all the necessary data for a new request.
- *                             Expected properties: requesterName, requesterEmail, requesterPhone,
- *                             requesterDepartment, eventDate, startTime, endTime,
+ *                             Expected properties: requesterName, requesterContact,
+ *                             eventDate, startTime, endTime,
  *                             startLocation, endLocation, secondaryLocation (optional),
  *                             requestType, ridersNeeded, notes (optional).
  * @param {string} [submittedBy=Session.getActiveUser().getEmail()] The email of the user submitting the request.
@@ -30,8 +30,9 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
 
     // --- Data Validation ---
     const requiredFields = [
-      'requesterName', 'requesterEmail', 'requesterPhone', 'requesterDepartment',
-      'eventDate', 'startTime', 'startLocation', 'endLocation', 'requestType', 'ridersNeeded'
+      'requesterName', 'requesterContact',
+      'eventDate', 'startTime', 'startLocation', 'endLocation',
+      'requestType', 'ridersNeeded'
     ];
     for (const field of requiredFields) {
       if (!requestData[field] && requestData[field] !== 0) { // Allow 0 for ridersNeeded if it makes sense
@@ -65,9 +66,7 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.submissionTimestamp: value = new Date(); break;
             case CONFIG.columns.requests.submittedBy:         value = submittedBy; break;
             case CONFIG.columns.requests.requesterName:       value = requestData.requesterName; break;
-            case CONFIG.columns.requests.requesterEmail:      value = requestData.requesterEmail; break;
-            case CONFIG.columns.requests.requesterPhone:      value = requestData.requesterPhone; break;
-            case CONFIG.columns.requests.requesterDepartment: value = requestData.requesterDepartment; break;
+            case CONFIG.columns.requests.requesterContact:    value = requestData.requesterContact; break;
             case CONFIG.columns.requests.eventDate:           value = new Date(requestData.eventDate); break;
             case CONFIG.columns.requests.startTime:           value = parseTimeString(requestData.startTime); break; // Ensure time object or formatted string
             case CONFIG.columns.requests.endTime:             value = requestData.endTime ? parseTimeString(requestData.endTime) : ''; break;
@@ -416,18 +415,20 @@ function getSheetHeaders(sheet) {
     return [];
   }
 }
+
 /**
- * Helper function to get sheet headers (if not available globally)
+ * Creates a map of header names to their column indices.
+ * @param {Array<string>} headers The array of header names.
+ * @return {Object<string, number>} Mapping of header name to index.
  */
-function getSheetHeaders(sheet) {
-  if (!sheet) return [];
-  try {
-    const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
-    return headerRange.getValues()[0];
-  } catch (error) {
-    console.error('Error getting sheet headers:', error);
-    return [];
+function createHeaderMap(headers) {
+  const map = {};
+  if (Array.isArray(headers)) {
+    headers.forEach((header, index) => {
+      map[header] = index;
+    });
   }
+  return map;
 }
 
 /**
