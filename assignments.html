@@ -359,6 +359,23 @@
             border-left: 4px solid #27ae60;
         }
 
+        .current-assigned {
+            background: #fff8e1;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #f39c12;
+        }
+
+        .current-assigned ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .current-assigned li {
+            margin-bottom: 0.25rem;
+        }
+
         .selected-count {
             font-weight: bold;
             color: #27ae60;
@@ -1246,9 +1263,13 @@ if (!document.getElementById('debug-styles')) {
             '</div>' +
             '</div>' +
             '</div>' +
-            '<div class="currently-assigned">' +
+
+            '<div class="current-assigned">' +
             '<h4>Currently Assigned Riders</h4>' +
-            assignedListHtml +
+            '<ul>' +
+            (assignedRidersArray.length === 0 ? '<li>None</li>' : assignedRidersArray.map(function(n){ return '<li>' + n + '</li>'; }).join('')) +
+            '</ul>' +
+
             '</div>' +
             '<div class="assignment-summary">' +
             '<div>Selected Riders: <span class="selected-count" id="selectedCount">' + selectedRiders.size + '</span> / ' + selectedRequest.ridersNeeded + '</div>' +
