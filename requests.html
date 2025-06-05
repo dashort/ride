@@ -19,6 +19,46 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
         
         .header h1 {
             margin: 0;
@@ -350,9 +390,9 @@
     <header class="header">
         <h1>🏍️ Escort Requests</h1>
     </header>
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
+<!--NAVIGATION_MENU_PLACEHOLDER-->
     
-    <div class="controls">
+<div class="controls">
 
         <div class="filter-row">
             <label><strong>Filter:</strong></label>
@@ -536,6 +576,8 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
     </div>
+
+</div>
 
 <script>
     /**
