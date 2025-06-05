@@ -39,6 +39,13 @@
             gap: 10px;
             margin-bottom: 10px;
         }
+
+        .sort-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
         
         select, button {
             padding: 6px 12px;
@@ -359,9 +366,17 @@
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
             </select>
-            <button onclick="loadRequests()">🔄 Refresh</button>
+            <button onclick="loadPageData()">🔄 Refresh</button>
             <button onclick="exportToCSV()">📊 Export</button>
             <button class="btn-success add-request-btn" onclick="openNewRequestForm()">➕ Add New Request</button>
+        </div>
+        <div class="sort-row">
+            <label><strong>Sort by:</strong></label>
+            <select id="sortBy">
+                <option value="eventDate">Event Date</option>
+                <option value="requestId">Request ID</option>
+                <option value="requestType">Request Type</option>
+            </select>
         </div>
         <div class="stats" id="statsDisplay">Loading...</div>
     </div>
@@ -574,8 +589,24 @@
             }
         }
 
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { window.requestBaseUrl = url; })
+                    .withFailureHandler(() => { window.requestBaseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                window.requestBaseUrl = null;
+            }
+        }
+
         loadPageData();
         document.getElementById('statusFilter').addEventListener('change', loadPageData);
+        const sortSelect = document.getElementById('sortBy');
+        if (sortSelect) {
+            sortSelect.value = 'eventDate';
+            sortSelect.addEventListener('change', sortAndDisplayRequests);
+        }
     });
 
     /**
@@ -628,7 +659,7 @@
                 showNoData();
                 updateStats([]);
             } else {
-                displayRequests(allRequests);
+                sortAndDisplayRequests();
                 updateStats(allRequests);
                 showTable();
             }
@@ -687,6 +718,35 @@
 
             tbody.appendChild(row);
         });
+    }
+
+    function sortAndDisplayRequests() {
+        const sortBy = document.getElementById('sortBy').value;
+        if (!allRequests || allRequests.length === 0) {
+            displayRequests([]);
+            return;
+        }
+
+        const requests = [...allRequests];
+
+        if (sortBy === 'requestId') {
+            requests.sort((a, b) => String(a.requestId).localeCompare(String(b.requestId)));
+        } else if (sortBy === 'requestType') {
+            requests.sort((a, b) => (a.requestType || '').localeCompare(b.requestType || ''));
+        } else {
+            requests.sort((a, b) => {
+                const dateA = new Date(a.eventDate);
+                const dateB = new Date(b.eventDate);
+
+                if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+                if (isNaN(dateA.getTime())) return 1;
+                if (isNaN(dateB.getTime())) return -1;
+
+                return dateA.getTime() - dateB.getTime();
+            });
+        }
+
+        displayRequests(requests);
     }
 
     /**
@@ -1045,15 +1105,35 @@
         URL.revokeObjectURL(url);
     }
 
+    function navigateTo(page, params = {}) {
+        const search = new URLSearchParams();
+        search.set('page', page);
+        Object.keys(params).forEach(key => search.set(key, params[key]));
+
+        let url;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            const base = window.requestBaseUrl || (window.location.origin + '/exec');
+            url = base + '?' + search.toString();
+        } else {
+            url = page + '.html?' + search.toString();
+        }
+
+        try {
+            window.location.href = url;
+        } catch (error) {
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
+            }
+        }
+    }
+
     function redirectToAssignmentPage() {
         if (currentEditingRequest && currentEditingRequest.requestId) {
             const requestId = currentEditingRequest.requestId;
-            // Construct URL based on how navigation is typically handled (e.g., using query parameters)
-            // Assuming current base path and adding query params.
-            // The doGet function uses ?page=assignments
-            const targetUrl = window.location.origin + window.location.pathname + '?page=assignments&requestId=' + encodeURIComponent(requestId);
-            console.log('Navigating to assignments page for request:', requestId, targetUrl);
-            window.location.href = targetUrl;
+            console.log('Navigating to assignments page for request:', requestId);
+            navigateTo('assignments', { requestId });
         } else {
             alert('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
