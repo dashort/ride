@@ -18,6 +18,8 @@
         .message.error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
         .message.info { background-color: #cce5ff; color: #004085; border-color: #b8daff; }
         .loading { text-align: center; margin-top: 50px; font-size: 1.2em; color: #555; }
+                .currently-assigned { margin: 20px 0; }
+        .currently-assigned ul { margin-left: 20px; list-style-type: disc; }
     </style>
 </head>
 <body>
@@ -25,6 +27,7 @@
         <h2>Assign Escort Riders</h2>
         <div id="loading" class="loading">Loading request details...</div>
         <div id="formContent" style="display: none;">
+
             <div class="request-details">
                 <h3>Request Details</h3>
                 <p><strong>ID:</strong> <span id="requestIdDisplay"></span></p>
@@ -35,6 +38,11 @@
                 <p><strong>End Location:</strong> <span id="endLocationDisplay"></span></p>
                 <p><strong>Riders Needed:</strong> <span id="ridersNeededDisplay"></span></p>
                 <p><strong>Current Status:</strong> <span id="statusDisplay"></span></p>
+            </div>
+
+            <div class="currently-assigned">
+                <h3>Currently Assigned Riders</h3>
+                <ul id="assignedRidersList"></ul>
             </div>
 
             <form id="assignmentForm">
@@ -116,6 +124,20 @@
 
         const assignedStr = data.request.ridersAssigned || '';
         const currentlyAssigned = assignedStr.split(',').map(n=>n.trim()).filter(n=>n);
+
+                const list = document.getElementById('assignedRidersList');
+        list.innerHTML = '';
+        if (currentlyAssigned.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'None';
+            list.appendChild(li);
+        } else {
+            currentlyAssigned.forEach(name => {
+                const li = document.createElement('li');
+                li.textContent = name;
+                list.appendChild(li);
+            });
+        }
 
         const div = document.getElementById('riderCheckboxes');
         div.innerHTML = ''; // Clear previous rider checkboxes
