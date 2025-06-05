@@ -279,6 +279,9 @@
             border-bottom: 1px solid #ecf0f1;
             vertical-align: middle;
         }
+        .rider-name-cell, .rider-phone-cell {
+            white-space: nowrap;
+        }
 
         .riders-table tr:hover {
             background: rgba(52, 152, 219, 0.05);
@@ -1212,6 +1215,7 @@ function handleRidersDataSuccess(data) {
     updateStats(data.stats);
     renderRidersTable(app.filteredRiders); // Use filtered riders
     showTable();
+    fetchAssignmentCountsForRiders(app.filteredRiders);
 
     // IMPORTANT: Setup search after data is loaded
     setupEventListeners();
@@ -1530,7 +1534,7 @@ function renderRidersTable(riders) {
       </td>
       <td>${riderId}</td>
       <td class="rider-name-cell">${riderNameCell}</td>
-      <td>${riderPhone}</td>
+      <td class="rider-phone-cell">${riderPhone}</td>
       <td>${riderEmail}</td>
       <td><span class="status-badge status-${riderStatus.toLowerCase()}">${riderStatus}</span></td>
       <td>${riderCertification}</td>
@@ -1555,19 +1559,65 @@ function renderRidersTable(riders) {
 // Create clickable rider name link
 function createRiderNameLink(riderName, riderId, totalAssignments) {
   const hasAssignments = totalAssignments && totalAssignments > 0;
-  const linkTitle = hasAssignments 
+  const linkTitle = hasAssignments
     ? `View ${totalAssignments} assignment(s) for ${riderName}`
     : `${riderName} - No current assignments`;
   
   return `
-    <a href="#" 
-       class="rider-name-link ${hasAssignments ? 'has-assignments' : 'no-assignments'}" 
+    <a href="#"
+       data-rider-id="${riderId}"
+       class="rider-name-link ${hasAssignments ? 'has-assignments' : 'no-assignments'}"
        onclick="viewRiderAssignments('${riderId}', '${riderName.replace(/'/g, "\\'")}'); return false;"
        title="${linkTitle}">
       ${riderName}
       ${hasAssignments ? ` <span class="assignment-count">(${totalAssignments})</span>` : ''}
     </a>
   `;
+}
+
+// Fetch assignment counts for each rider and update tooltips
+function fetchAssignmentCountsForRiders(riders) {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+    return; // Google Apps Script not available
+  }
+
+  riders.forEach(rider => {
+    const riderId = rider.jpNumber || rider['Rider ID'];
+    const riderName = rider.name || rider['Full Name'];
+    if (!riderId || !riderName) return;
+
+    google.script.run
+      .withSuccessHandler(summary => {
+        const count = summary && summary.summary ? summary.summary.total : 0;
+        const link = document.querySelector(
+          `.rider-name-link[data-rider-id="${riderId}"]`
+        );
+        if (link) {
+          if (count > 0) {
+            link.title = `View ${count} assignment(s) for ${riderName}`;
+            let span = link.querySelector('.assignment-count');
+            if (!span) {
+              span = document.createElement('span');
+              span.className = 'assignment-count';
+              link.appendChild(span);
+            }
+            span.textContent = `(${count})`;
+            link.classList.add('has-assignments');
+            link.classList.remove('no-assignments');
+          } else {
+            link.title = `${riderName} - No current assignments`;
+            const span = link.querySelector('.assignment-count');
+            if (span) span.remove();
+            link.classList.add('no-assignments');
+            link.classList.remove('has-assignments');
+          }
+        }
+      })
+      .withFailureHandler(err => {
+        console.error('Failed to fetch assignment summary', err);
+      })
+      .getRiderAssignmentSummary(riderId, riderName);
+  });
 }
 
 // Main function to view rider assignments
