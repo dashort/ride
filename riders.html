@@ -681,6 +681,18 @@
 
         loadRidersData();
         setupEventListeners();
+
+        // Fetch the web app URL when running inside Apps Script
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { window.ridersBaseUrl = url; })
+                    .withFailureHandler(() => { window.ridersBaseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                window.ridersBaseUrl = null;
+            }
+        }
     });
 
 /**
@@ -1802,7 +1814,9 @@ function createAssignmentRow(assignment, isPast = false) {
   return `
     <tr class="assignment-row ${isPast ? 'past-assignment' : 'upcoming-assignment'}">
       <td class="request-id">
-        <strong>${requestId}</strong>
+        <a href="#" class="request-link" onclick="openAssignment('${requestId}'); return false;">
+          ${requestId}
+        </a>
       </td>
       <td class="event-date">${eventDate}</td>
       <td class="start-time">${startTime}</td>
@@ -1819,10 +1833,16 @@ function createAssignmentRow(assignment, isPast = false) {
 function viewRequestDetails(requestId) {
   console.log(`📋 Viewing details for request: ${requestId}`);
   closeAssignmentsModal();
-  
+
   // Navigate to requests page with the specific request highlighted
-  const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-  window.open(`${baseUrl}?page=requests&highlight=${encodeURIComponent(requestId)}`, '_blank');
+  navigateTo('requests', { highlight: requestId });
+}
+
+// Open the assignments page for the given request
+function openAssignment(requestId) {
+  console.log(`🏍️ Opening assignment for request: ${requestId}`);
+  closeAssignmentsModal();
+  navigateTo('assignments', { requestId: requestId });
 }
 
 // Close assignments modal
@@ -1835,8 +1855,32 @@ function closeAssignmentsModal() {
 
 // Go to assignments page
 function goToAssignmentsPage() {
-  const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-  window.open(`${baseUrl}?page=assignments`, '_blank');
+  navigateTo('assignments');
+}
+
+// General navigation helper similar to other pages
+function navigateTo(page, params = {}) {
+  const search = new URLSearchParams();
+  search.set('page', page);
+  Object.keys(params).forEach(key => search.set(key, params[key]));
+
+  let url;
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    const base = window.ridersBaseUrl || (window.location.origin + '/exec');
+    url = base + '?' + search.toString();
+  } else {
+    url = page + '.html?' + search.toString();
+  }
+
+  try {
+    window.location.href = url;
+  } catch (error) {
+    try {
+      window.top.location.href = url;
+    } catch (topError) {
+      window.open(url, '_blank');
+    }
+  }
 }
 
 // Close modal when clicking outside
@@ -1883,6 +1927,16 @@ const riderLinkStyles = `
 
 .rider-name-link.no-assignments:hover {
   color: #7f8c8d;
+}
+
+.request-link {
+  color: #2980b9;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.request-link:hover {
+  text-decoration: underline;
 }
 
 .assignment-count {
@@ -1949,7 +2003,7 @@ const riderLinkStyles = `
   opacity: 0.8;
 }
 
-.request-id strong {
+.request-id .request-link {
   color: #2980b9;
 }
 
