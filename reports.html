@@ -621,10 +621,15 @@
                 status: status
             };
 
-            google.script.run
-                .withSuccessHandler(handleReportData)
-                .withFailureHandler(handleError)
-                .generateReportData(filters);
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleReportData)
+                    .withFailureHandler(handleError)
+                    .generateReportData(filters);
+            } else {
+                console.log('⚠️ Google Apps Script not available for reports page.');
+                setFallbackReportData();
+            }
         }
 
         function handleReportData(data) {
@@ -709,6 +714,7 @@
             }
 
             // Response Time Analysis
+            // Response Time Analysis
             if (tables.responseTime) {
                 const responseTable = `
                     <table class="stats-table">
@@ -722,4 +728,140 @@
                             <tr><td>Average Response Time</td><td>${tables.responseTime.average}</td></tr>
                             <tr><td>Fastest Response</td><td>${tables.responseTime.fastest}</td></tr>
                             <tr><td>Slowest Response</td><td>${tables.responseTime.slowest}</td></tr>
-                            <tr><td>Within SLA</td>
+                            <tr><td>Within SLA</td><td>${tables.responseTime.withinSLA}</td></tr>
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('responseTimeAnalysis').innerHTML = responseTable;
+            }
+
+            // Popular Locations Table
+            if (tables.locations) {
+                const locationsTable = `
+                    <table class="stats-table">
+                        <thead>
+                            <tr><th>Location</th><th>Count</th></tr>
+                        </thead>
+                        <tbody>
+                            ${tables.locations.map(loc => `<tr><td>${loc.name}</td><td>${loc.count}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('locationHotspots').innerHTML = locationsTable;
+            }
+        }
+
+        function formatDateForInput(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return '';
+                return date.toISOString().split('T')[0];
+            } catch (e) {
+                console.error('Error formatting date for input:', dateStr, e);
+                return '';
+            }
+        }
+
+        function formatTimeForInput(timeStr) {
+            if (!timeStr) return '';
+            try {
+                if (/^\d{1,2}:\d{2}$/.test(timeStr.trim())) {
+                    const parts = timeStr.trim().split(':');
+                    let hours = parseInt(parts[0], 10);
+                    const minutes = parseInt(parts[1], 10);
+                    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+                        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                    }
+                }
+
+                const tempDate = new Date(`1/1/1970 ${timeStr}`);
+                if (isNaN(tempDate.getTime())) return '';
+
+                const hours = tempDate.getHours();
+                const minutes = tempDate.getMinutes();
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            } catch (e) {
+                console.error('Error formatting time for input:', timeStr, e);
+                return '';
+            }
+        }
+
+        function setFallbackReportData() {
+            hideLoading();
+            console.log('⚠️ Using fallback data for reports');
+            const data = {
+                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0, avgResponseTime: '-' },
+                charts: {},
+                tables: {}
+            };
+            updateSummaryStats(data.summary);
+            updateCharts(data.charts);
+            updateTables(data.tables);
+            showNotification('Some report features are unavailable.', '#f39c12');
+        }
+
+        function generateComprehensiveReport(type) {
+            alert('Generate ' + type + ' report not implemented');
+        }
+
+        function exportChart(id) {
+            alert('Export chart ' + id + ' not implemented');
+        }
+
+        function exportTable(id) {
+            alert('Export table ' + id + ' not implemented');
+        }
+
+        function showLoading(message = 'Loading...') {
+            const overlay = document.createElement('div');
+            overlay.id = 'loading-overlay';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '50%';
+            overlay.style.left = '50%';
+            overlay.style.transform = 'translate(-50%, -50%)';
+            overlay.style.background = 'rgba(255, 255, 255, 0.95)';
+            overlay.style.padding = '2rem';
+            overlay.style.borderRadius = '10px';
+            overlay.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+            overlay.style.zIndex = '9999';
+            overlay.textContent = message;
+            document.body.appendChild(overlay);
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        function showNotification(message, color) {
+            const note = document.createElement('div');
+            note.style.position = 'fixed';
+            note.style.top = '20px';
+            note.style.right = '20px';
+            note.style.background = color;
+            note.style.color = 'white';
+            note.style.padding = '1rem';
+            note.style.borderRadius = '5px';
+            note.style.zIndex = '9999';
+            note.style.maxWidth = '300px';
+            note.textContent = message;
+            document.body.appendChild(note);
+            setTimeout(() => note.remove(), 3000);
+        }
+
+        function showSuccess(message) {
+            showNotification(message, '#27ae60');
+        }
+
+        function showError(message) {
+            showNotification('Error: ' + message, '#e74c3c');
+        }
+
+        function handleError(error) {
+            hideLoading();
+            showError(error.message || (typeof error === 'string' ? error : 'An unexpected error occurred'));
+        }
+    </script>
+</body>
+</html>
