@@ -664,11 +664,12 @@
             }
 
             if (charts.requestTypes) {
+                const totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
                 document.getElementById('requestTypesChart').innerHTML = `
                     <div style="padding: 2rem;">
                         <h4>Request Types</h4>
-                        ${Object.entries(charts.requestTypes).map(([type, count]) => 
-                            `<p>${type}: ${count} (${Math.round(count/charts.total*100)}%)</p>`
+                        ${Object.entries(charts.requestTypes).map(([type, count]) =>
+                            `<p>${type}: ${count} (${totalRequests > 0 ? Math.round(count/totalRequests*100) : 0}%)</p>`
                         ).join('')}
                     </div>
                 `;
