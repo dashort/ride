@@ -2726,8 +2726,6 @@ function processAssignmentAndPopulate(requestId, selectedRiders) {
     clearRequestsCache();
     clearDataCache();
 
-    // Post assignments to Google Calendar
-    postAssignmentsToCalendar();
 
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
@@ -2786,7 +2784,8 @@ function getRequestDetails(requestId) {
           type: getColumnValue(row, columnMap, CONFIG.columns.requests.type),
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded),
           status: getColumnValue(row, columnMap, CONFIG.columns.requests.status),
-          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes)
+          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes),
+          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || ''
         };
       }
     }

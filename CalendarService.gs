@@ -179,11 +179,20 @@ function syncRequestToCalendar(requestId) {
       endDate.setHours(details.endTime.getHours(), details.endTime.getMinutes());
     }
 
-    const title = `${details.type || 'Escort'} - ${details.requesterName || requestId}`;
-    let description = `Request ID: ${requestId}`;
-    if (details.startLocation) description += `\nFrom: ${details.startLocation}`;
-    if (details.endLocation) description += `\nTo: ${details.endLocation}`;
-    if (details.notes) description += `\nNotes: ${details.notes}`;
+  const title = `${details.type || 'Escort'} - ${details.requesterName || requestId}`;
+  let description = `Request ID: ${requestId}`;
+  if (details.startLocation) description += `\nFrom: ${details.startLocation}`;
+  if (details.endLocation) description += `\nTo: ${details.endLocation}`;
+  if (details.notes) description += `\nNotes: ${details.notes}`;
+  if (details.ridersAssigned) {
+    const riders = String(details.ridersAssigned)
+      .split(/[,\n]/)
+      .map(r => r.trim())
+      .filter(r => r);
+    if (riders.length > 0) {
+      description += `\nAssigned Riders: ${riders.join(', ')}`;
+    }
+  }
 
     let event = null;
     if (existingEventId) {
