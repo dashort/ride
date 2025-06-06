@@ -67,7 +67,13 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.submittedBy:         value = submittedBy; break;
             case CONFIG.columns.requests.requesterName:       value = requestData.requesterName; break;
             case CONFIG.columns.requests.requesterContact:    value = requestData.requesterContact; break;
-            case CONFIG.columns.requests.eventDate:           value = new Date(requestData.eventDate); break;
+            case CONFIG.columns.requests.eventDate:
+                value = new Date(requestData.eventDate);
+                break;
+            case CONFIG.columns.requests.date:
+                // Keep the legacy "Date" column in sync with Event Date if present
+                value = new Date(requestData.eventDate);
+                break;
             case CONFIG.columns.requests.startTime:           value = parseTimeString(requestData.startTime); break; // Ensure time object or formatted string
             case CONFIG.columns.requests.endTime:             value = requestData.endTime ? parseTimeString(requestData.endTime) : ''; break;
             case CONFIG.columns.requests.startLocation:       value = requestData.startLocation; break;
@@ -288,6 +294,7 @@ function updateExistingRequest(requestData) {
       requesterContact: CONFIG.columns.requests.requesterContact,
       requestType: CONFIG.columns.requests.type,
       eventDate: CONFIG.columns.requests.eventDate,
+      date: CONFIG.columns.requests.date,
       startTime: CONFIG.columns.requests.startTime,
       endTime: CONFIG.columns.requests.endTime,
       startLocation: CONFIG.columns.requests.startLocation,
@@ -309,10 +316,11 @@ function updateExistingRequest(requestData) {
         // Handle special data types
         switch (configColumn) {
           case CONFIG.columns.requests.eventDate:
+          case CONFIG.columns.requests.date:
             if (value) {
               value = new Date(value);
               if (isNaN(value.getTime())) {
-                console.warn(`Invalid date provided for eventDate: ${requestData[formField]}`);
+                console.warn(`Invalid date provided for ${formField}: ${requestData[formField]}`);
                 continue; // Skip this update
               }
             }
