@@ -565,6 +565,8 @@
     var selectedRequest = null;
     /** @type {Set<string>} */
     var selectedRiders = new Set(); // Stores names of selected riders
+    var preselectedRequestId = null;
+    var preselectAttempted = false;
     /** Map of rider name to availability status */
     var riderAvailability = {}; // e.g., {"John Doe": "Busy"}
     /** @type {AppStateAssignments} */
@@ -589,6 +591,7 @@
         if (dateParam) {
             app.dateFilter = dateParam.toLowerCase();
         }
+        preselectedRequestId = params.get('requestId');
 
         setTimeout(function() {
             if (currentRequests.length === 0 && activeRiders.length === 0) {
@@ -1139,6 +1142,7 @@ if (!document.getElementById('debug-styles')) {
         }).join('');
 
         container.innerHTML = html;
+        attemptPreselectRequest();
     }
 
     /**
@@ -1190,7 +1194,7 @@ if (!document.getElementById('debug-styles')) {
      * @deprecated This function seems redundant if selectRequest handles finding the request.
      *             The pre-selection logic is now mostly within handleAssignmentsDataSuccess.
      */
-    function selectRequestById(requestId) {
+function selectRequestById(requestId) {
         var request = null;
         for (var i = 0; i < currentRequests.length; i++) {
             if (currentRequests[i].id === requestId) {
@@ -1202,6 +1206,19 @@ if (!document.getElementById('debug-styles')) {
             selectRequest(requestId);
         } else {
             console.log('⚠️ Request ID not found in current requests:', requestId);
+        }
+    }
+
+    /**
+     * Attempts to auto-select the request provided via query parameter.
+     * This runs only once after the requests list is rendered.
+     */
+    function attemptPreselectRequest() {
+        if (preselectAttempted || !preselectedRequestId) return;
+        var elem = document.querySelector('[data-request-id="' + preselectedRequestId + '"]');
+        if (elem) {
+            selectRequest(preselectedRequestId, true);
+            preselectAttempted = true;
         }
     }
 
@@ -1226,8 +1243,8 @@ if (!document.getElementById('debug-styles')) {
             selectedRiders.add(assignedRidersArray[i]);
         }
 
-        var assignedListHtml = assignedRidersArray.length > 0 ?
-            '<ul>' + assignedRidersArray.map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
+        var assignedListHtml = selectedRiders.size > 0 ?
+            '<ul>' + Array.from(selectedRiders).map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
             '<ul><li>None</li></ul>';
 
         container.innerHTML = '<div class="request-info">' +
@@ -1265,10 +1282,8 @@ if (!document.getElementById('debug-styles')) {
             '</div>' +
 
             '<div class="current-assigned">' +
-            '<h4>Currently Assigned Riders</h4>' +
-            '<ul>' +
-            (assignedRidersArray.length === 0 ? '<li>None</li>' : assignedRidersArray.map(function(n){ return '<li>' + n + '</li>'; }).join('')) +
-            '</ul>' +
+            '<h4>Assigned Riders</h4>' +
+            '<div id="assignedRidersList">' + assignedListHtml + '</div>' +
 
             '</div>' +
             '<div class="assignment-summary">' +
@@ -1373,18 +1388,29 @@ if (!document.getElementById('debug-styles')) {
      * Updates the displayed count of selected riders and enables/disables the save button.
      * @return {void}
      */
-    function updateSelectedCount() {
-        var countElement = document.getElementById('selectedCount');
-        if (countElement) {
-            countElement.textContent = selectedRiders.size;
-        }
-
-        var saveBtn = document.querySelector('.btn-success');
-        if (saveBtn) {
-            saveBtn.disabled = selectedRiders.size === 0;
-            saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
-        }
+function updateSelectedCount() {
+    var countElement = document.getElementById('selectedCount');
+    if (countElement) {
+        countElement.textContent = selectedRiders.size;
     }
+
+    var saveBtn = document.querySelector('.btn-success');
+    if (saveBtn) {
+        saveBtn.disabled = selectedRiders.size === 0;
+        saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
+    }
+
+    updateAssignedRidersList();
+}
+
+function updateAssignedRidersList() {
+    var listContainer = document.getElementById('assignedRidersList');
+    if (!listContainer) return;
+    var html = selectedRiders.size > 0 ?
+        '<ul>' + Array.from(selectedRiders).map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
+        '<ul><li>None</li></ul>';
+    listContainer.innerHTML = html;
+}
 
     /**
      * Fetch availability/conflict status for each rider for the selected request.
