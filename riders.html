@@ -1562,8 +1562,8 @@ function renderRidersTable(riders) {
 function createRiderNameLink(riderName, riderId, totalAssignments) {
   const hasAssignments = totalAssignments && totalAssignments > 0;
   const linkTitle = hasAssignments
-    ? `View ${totalAssignments} assignment(s) for ${riderName}`
-    : `${riderName} - No current assignments`;
+    ? `View ${totalAssignments} upcoming assignment(s) for ${riderName}`
+    : `${riderName} - No upcoming assignments`;
   
   return `
     <a href="#"
@@ -1590,7 +1590,7 @@ function fetchAssignmentCountsForRiders(riders) {
 
     google.script.run
       .withSuccessHandler(summary => {
-        const count = summary && summary.summary ? summary.summary.total : 0;
+        const count = summary && summary.summary ? summary.summary.upcoming : 0;
         let lastDate = '';
         if (summary && summary.assignments && summary.assignments.length > 0) {
           const dates = summary.assignments
@@ -1610,7 +1610,7 @@ function fetchAssignmentCountsForRiders(riders) {
         );
         if (link) {
           if (count > 0) {
-            link.title = `View ${count} assignment(s) for ${riderName}`;
+            link.title = `View ${count} upcoming assignment(s) for ${riderName}`;
             let span = link.querySelector('.assignment-count');
             if (!span) {
               span = document.createElement('span');
@@ -1621,7 +1621,7 @@ function fetchAssignmentCountsForRiders(riders) {
             link.classList.add('has-assignments');
             link.classList.remove('no-assignments');
           } else {
-            link.title = `${riderName} - No current assignments`;
+            link.title = `${riderName} - No upcoming assignments`;
             const span = link.querySelector('.assignment-count');
             if (span) span.remove();
             link.classList.add('no-assignments');
