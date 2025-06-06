@@ -115,6 +115,7 @@ function getPageDataForRiders() {
       onVacation: riders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
+
       inTraining: riders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
       ).length,
@@ -150,8 +151,10 @@ function getPageDataForRiders() {
         activeRiders: 0,
         inactiveRiders: 0,
         onVacation: 0,
+
         inTraining: 0,
         partTimeRiders: 0
+
       }
     };
   }
