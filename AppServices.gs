@@ -3496,8 +3496,13 @@ function saveUserAvailability(entry) {
     const repeat = entry.repeat || 'none';
     const untilDate = entry.repeatUntil ? new Date(entry.repeatUntil) : new Date(entry.date);
 
+    // Ensure the Availability sheet exists with the expected headers
+    const sheet = getOrCreateSheet(
+      CONFIG.sheets.availability,
+      Object.values(CONFIG.columns.availability)
+    );
+
     const sheetData = getSheetData(CONFIG.sheets.availability, false);
-    const sheet = sheetData.sheet;
     const map = sheetData.columnMap;
 
     const emailCol = map[CONFIG.columns.availability.email] + 1;
