@@ -69,7 +69,8 @@ const CONFIG = {
       notes: 'Notes',
       ridersAssigned: 'Riders Assigned',
       courtesy: 'Courtesy',
-      lastUpdated: 'Last Updated'
+      lastUpdated: 'Last Updated',
+      calendarEventId: 'Calendar Event ID'
     },
     riders: {
       jpNumber: 'Rider ID',
@@ -249,6 +250,8 @@ function createMenu() {
     )
     .addSeparator()
     .addItem('📊 Notification Report', 'generateNotificationReport')
+    .addSeparator()
+    .addItem('🔄 Sync All Assigned to Calendar', 'syncAllAssignedRequestsToCalendar')
     .addSeparator()
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();

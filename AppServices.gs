@@ -2893,6 +2893,14 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
 
     console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
 
+    if (typeof syncRequestToCalendar === 'function') {
+      try {
+        syncRequestToCalendar(requestId);
+      } catch (syncError) {
+        logError(`Failed to sync request ${requestId} to calendar`, syncError);
+      }
+    }
+
   } catch (error) {
     logError('Error updating request with assigned riders', error);
     throw new Error(`Failed to update request with riders: ${error.message}`);
