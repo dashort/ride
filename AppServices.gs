@@ -3493,6 +3493,8 @@ function saveUserAvailability(entry) {
 
     const user = getCurrentUser();
     const email = entry.email || user.email;
+    const repeat = entry.repeat || 'none';
+    const untilDate = entry.repeatUntil ? new Date(entry.repeatUntil) : new Date(entry.date);
 
     const sheetData = getSheetData(CONFIG.sheets.availability, false);
     const sheet = sheetData.sheet;
@@ -3504,32 +3506,47 @@ function saveUserAvailability(entry) {
     const endCol = map[CONFIG.columns.availability.endTime] + 1;
     const notesCol = map[CONFIG.columns.availability.notes] + 1;
 
-    let targetRow = -1;
-    for (let i = 0; i < sheetData.data.length; i++) {
-      const row = sheetData.data[i];
-      const rowEmail = row[map[CONFIG.columns.availability.email]];
-      const rowDate = row[map[CONFIG.columns.availability.date]];
-      const rowStart = row[map[CONFIG.columns.availability.startTime]];
-      if (String(rowEmail).toLowerCase() === String(email).toLowerCase() &&
-          Utilities.formatDate(new Date(rowDate), CONFIG.system.timezone, 'yyyy-MM-dd') === entry.date &&
-          String(rowStart) === entry.startTime) {
-        targetRow = i + 2; // account for header
+    function saveSingle(dateStr) {
+      let targetRow = -1;
+      for (let i = 0; i < sheetData.data.length; i++) {
+        const row = sheetData.data[i];
+        const rowEmail = row[map[CONFIG.columns.availability.email]];
+        const rowDate = row[map[CONFIG.columns.availability.date]];
+        const rowStart = row[map[CONFIG.columns.availability.startTime]];
+        if (String(rowEmail).toLowerCase() === String(email).toLowerCase() &&
+            Utilities.formatDate(new Date(rowDate), CONFIG.system.timezone, 'yyyy-MM-dd') === dateStr &&
+            String(rowStart) === entry.startTime) {
+          targetRow = i + 2; // account for header
+          break;
+        }
+      }
+
+      const rowValues = [email, new Date(dateStr), entry.startTime, entry.endTime, entry.notes || ''];
+
+      if (targetRow > 0) {
+        sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+      } else {
+        sheet.appendRow(rowValues);
+      }
+    }
+
+    let curDate = new Date(entry.date);
+    const endDate = untilDate;
+    while (curDate <= endDate) {
+      const dateStr = Utilities.formatDate(curDate, CONFIG.system.timezone, 'yyyy-MM-dd');
+      saveSingle(dateStr);
+
+      if (repeat === 'daily') {
+        curDate.setDate(curDate.getDate() + 1);
+      } else if (repeat === 'weekly') {
+        curDate.setDate(curDate.getDate() + 7);
+      } else {
         break;
       }
     }
 
-    const rowValues = [email, new Date(entry.date), entry.startTime, entry.endTime, entry.notes || ''];
-
-    if (targetRow > 0) {
-      sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
-    } else {
-      sheet.appendRow(rowValues);
-      targetRow = sheet.getLastRow();
-    }
-
     clearDataCache();
-
-    return { success: true, row: targetRow };
+    return { success: true };
   } catch (error) {
     logError('Error in saveUserAvailability', error);
     return { success: false, error: error.message };

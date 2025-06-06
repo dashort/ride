@@ -46,6 +46,7 @@ const CONFIG = {
     assignments: "Assignments",
 
     riderAvailability: "Rider Availability",
+    availability: "Rider Availability",
 
     history: "History",
     settings: "Settings",
@@ -113,6 +114,14 @@ const CONFIG = {
       startTime: 'Start Time',
       endTime: 'End Time',
       status: 'Status'
+
+    },
+    availability: {
+      email: 'Email',
+      date: 'Date',
+      startTime: 'Start Time',
+      endTime: 'End Time',
+      notes: 'Notes'
 
     }
   },
@@ -2325,6 +2334,10 @@ function ensureSheetsExist() {
 
       } else if (sheetName === CONFIG.sheets.riderAvailability) {
         const headers = Object.values(CONFIG.columns.riderAvailability);
+
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      } else if (sheetName === CONFIG.sheets.availability) {
+        const headers = Object.values(CONFIG.columns.availability);
 
         newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       }
