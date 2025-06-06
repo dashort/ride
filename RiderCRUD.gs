@@ -397,13 +397,20 @@ function updateRider(riderData) {
       throw new Error(`Rider with ID "${riderId}" not found`);
     }
     
-    // Create updated row array
+    // Normalize update data keys to handle header inconsistencies
+    const normalizedData = {};
+    Object.keys(riderData).forEach(key => {
+      normalizedData[String(key).trim().toLowerCase()] = riderData[key];
+    });
+
+    // Create updated row array using normalized matching
     const updatedRowArray = sheetData.headers.map((header, headerIndex) => {
-      // If update data has this field, use the new value
-      if (riderData.hasOwnProperty(header)) {
-        return riderData[header];
+      const normalizedHeader = String(header).trim().toLowerCase();
+
+      if (normalizedData.hasOwnProperty(normalizedHeader)) {
+        return normalizedData[normalizedHeader];
       }
-      
+
       // Otherwise, preserve the existing value
       return sheetData.data[targetRowIndex][headerIndex];
     });

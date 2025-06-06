@@ -499,8 +499,8 @@
                     <div class="stat-label">Inactive</div>
                 </div>
                 <div class="stat-card warning">
-                    <span class="stat-number" id="onVacation">-</span>
-                    <div class="stat-label">On Vacation</div>
+                    <span class="stat-number" id="partTimeRiders">-</span>
+                    <div class="stat-label">Part Time Riders</div>
                 </div>
                 <div class="stat-card danger">
                     <span class="stat-number" id="fullTimeRiders">-</span>
@@ -813,8 +813,10 @@ function setupEventListeners() {
         document.getElementById('totalRiders').textContent = stats.totalRiders || 0;
         document.getElementById('activeRiders').textContent = stats.activeRiders || 0;
         document.getElementById('inactiveRiders').textContent = stats.inactiveRiders || 0;
-        document.getElementById('onVacation').textContent = stats.onVacation || 0;
-        document.getElementById('fullTimeRiders').textContent = stats.fullTimeRiders || 0;
+
+        document.getElementById('partTimeRiders').textContent = stats.partTimeRiders || 0;
+        document.getElementById('inTraining').textContent = stats.inTraining || 0;
+
     }
 
 
