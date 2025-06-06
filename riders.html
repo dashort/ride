@@ -2061,24 +2061,27 @@ function addScheduleLinks() {
   const params = new URLSearchParams(window.location.search);
   const currentPage = params.get('page');
 
-  const mySchedule = document.createElement('a');
-  mySchedule.href = '?page=rider-schedule';
-  mySchedule.className = 'nav-button';
-  mySchedule.id = 'nav-rider-schedule';
-  mySchedule.dataset.page = 'rider-schedule';
-  mySchedule.textContent = '📆 My Schedule';
-  if (currentPage === 'rider-schedule') mySchedule.classList.add('active');
+  if (!document.getElementById('nav-rider-schedule')) {
+    const mySchedule = document.createElement('a');
+    mySchedule.href = '?page=rider-schedule';
+    mySchedule.className = 'nav-button';
+    mySchedule.id = 'nav-rider-schedule';
+    mySchedule.dataset.page = 'rider-schedule';
+    mySchedule.textContent = '📆 My Schedule';
+    if (currentPage === 'rider-schedule') mySchedule.classList.add('active');
+    nav.appendChild(mySchedule);
+  }
 
-  const manageSchedules = document.createElement('a');
-  manageSchedules.href = '?page=admin-schedule';
-  manageSchedules.className = 'nav-button';
-  manageSchedules.id = 'nav-admin-schedule';
-  manageSchedules.dataset.page = 'admin-schedule';
-  manageSchedules.textContent = '🗓️ Manage Schedules';
-  if (currentPage === 'admin-schedule') manageSchedules.classList.add('active');
-
-  nav.appendChild(mySchedule);
-  nav.appendChild(manageSchedules);
+  if (!document.getElementById('nav-admin-schedule')) {
+    const manageSchedules = document.createElement('a');
+    manageSchedules.href = '?page=admin-schedule';
+    manageSchedules.className = 'nav-button';
+    manageSchedules.id = 'nav-admin-schedule';
+    manageSchedules.dataset.page = 'admin-schedule';
+    manageSchedules.textContent = '🗓️ Manage Schedules';
+    if (currentPage === 'admin-schedule') manageSchedules.classList.add('active');
+    nav.appendChild(manageSchedules);
+  }
 }
 
 // Add styles to document head
