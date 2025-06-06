@@ -2605,6 +2605,9 @@ function processAssignmentAndPopulate(requestId, selectedRiders) {
     clearRequestsCache();
     clearDataCache();
 
+    // Post assignments to Google Calendar
+    postAssignmentsToCalendar();
+
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
