@@ -5,4 +5,21 @@
     <a href="?page=riders" class="nav-button" id="nav-riders" data-page="riders">👥 Riders</a>
     <a href="?page=notifications" class="nav-button" id="nav-notifications" data-page="notifications">📱 Notifications</a>
     <a href="?page=reports" class="nav-button" id="nav-reports" data-page="reports">📊 Reports</a>
+    <a href="?page=login" class="nav-button" id="nav-login" data-page="login">🔐 Login</a>
 </nav>
+<script>
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(function(loggedIn) {
+      var loginLink = document.getElementById('nav-login');
+      if (loggedIn) {
+        loginLink.textContent = '🚪 Logout';
+        loginLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          google.script.run.withSuccessHandler(function(){
+            window.location.href = '?page=login';
+          }).logoutUser();
+        });
+      }
+    }).isUserLoggedIn();
+  }
+</script>
