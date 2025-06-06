@@ -1,6 +1,7 @@
 /**
  * @fileoverview Utility functions for interacting with Google Calendar.
  * Provides a method to post assigned escorts to the host account calendar.
+ * Calls to CalendarApp are throttled to avoid hitting service quotas.
  */
 
 /**
@@ -87,10 +88,13 @@ function postAssignmentsToCalendar() {
 
       if (event) {
         event.setTitle(title);
+        Utilities.sleep(500); // Throttle to avoid Apps Script service quota errors
         event.setDescription(description);
         event.setTime(startDate, endDate || startDate);
+        Utilities.sleep(500); // Throttle after event update
       } else {
         event = calendar.createEvent(title, startDate, endDate || startDate, { description });
+        Utilities.sleep(500); // Throttle after event creation
       }
 
       if (idCol !== undefined) {
@@ -171,10 +175,13 @@ function syncRequestToCalendar(requestId) {
 
     if (event) {
       event.setTitle(title);
+      Utilities.sleep(500); // Throttle to avoid Apps Script service quota errors
       event.setDescription(description);
       event.setTime(startDate, endDate || startDate);
+      Utilities.sleep(500); // Throttle after event update
     } else {
       event = calendar.createEvent(title, startDate, endDate || startDate, { description });
+      Utilities.sleep(500); // Throttle after event creation
     }
 
     if (rowIndex !== -1 && idCol !== undefined) {
