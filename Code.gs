@@ -2336,7 +2336,11 @@ function formatTimeForDisplay(time) {
  * Get column value safely
  */
 function normalizeColumnName(name) {
-  return String(name || '').trim().toLowerCase();
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ');
 }
 
 function getColumnIndex(columnMap, columnName) {

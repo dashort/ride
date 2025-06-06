@@ -315,6 +315,7 @@ function addRider(riderData) {
     // Support common variations of the part time field
     const normalizedPartTime =
       normalizedData['part time'] ||
+      normalizedData['part-time'] ||
       normalizedData['parttimerider'] ||
       normalizedData['part time rider'] ||
       normalizedData['parttime'];
@@ -421,6 +422,7 @@ function updateRider(riderData) {
     // Handle possible variations of the part time field
     const normalizedPartTime =
       normalizedData['part time'] ||
+      normalizedData['part-time'] ||
       normalizedData['parttimerider'] ||
       normalizedData['part time rider'] ||
       normalizedData['parttime'];
@@ -577,7 +579,14 @@ function mapRowToRiderObject(row, columnMap, headers) {
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
-  rider.partTime = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime) || 'No';
+  let partTimeVal = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
+  if (partTimeVal === null || partTimeVal === '') {
+    partTimeVal = getColumnValue(row, columnMap, 'Part Time Rider');
+  }
+  if (partTimeVal === null || partTimeVal === '') {
+    partTimeVal = getColumnValue(row, columnMap, 'Part-Time');
+  }
+  rider.partTime = partTimeVal || 'No';
   rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
   rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
   rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
