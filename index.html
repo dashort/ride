@@ -679,7 +679,7 @@
 
         let url;
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const base = app.baseUrl || (window.location.origin + '/exec');
+            const base = window.location.origin + window.location.pathname;
             url = base + '?' + search.toString();
         } else {
             url = page + '.html?' + search.toString();
