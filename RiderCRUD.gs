@@ -305,13 +305,28 @@ function addRider(riderData) {
     
     const sheetData = getSheetData(CONFIG.sheets.riders);
     const headers = sheetData.headers;
-    
+
+    // Normalize incoming data keys for flexible mapping
+    const normalizedData = {};
+    Object.keys(riderData).forEach(key => {
+      normalizedData[normalizeColumnName(key)] = riderData[key];
+    });
+
+    // Support common variations of the part time field
+    const normalizedPartTime =
+      normalizedData['part time'] ||
+      normalizedData['parttimerider'] ||
+      normalizedData['part time rider'] ||
+      normalizedData['parttime'];
+
     // Create new row array based on headers
     const newRowArray = headers.map(header => {
-      if (riderData.hasOwnProperty(header)) {
-        return riderData[header];
+      const normalizedHeader = normalizeColumnName(header);
+
+      if (normalizedData.hasOwnProperty(normalizedHeader)) {
+        return normalizedData[normalizedHeader];
       }
-      
+
       // Set default values for specific columns
       switch (header) {
         case CONFIG.columns.riders.status:
@@ -321,7 +336,7 @@ function addRider(riderData) {
         case CONFIG.columns.riders.lastAssignmentDate:
           return '';
         case CONFIG.columns.riders.partTime:
-          return riderData[header] || 'No';
+          return normalizedPartTime || 'No';
         case CONFIG.columns.riders.certification:
           return riderData[header] || 'Standard';
         default:
@@ -400,12 +415,22 @@ function updateRider(riderData) {
     // Normalize update data keys to handle header inconsistencies
     const normalizedData = {};
     Object.keys(riderData).forEach(key => {
-      normalizedData[String(key).trim().toLowerCase()] = riderData[key];
+      normalizedData[normalizeColumnName(key)] = riderData[key];
     });
+
+    // Handle possible variations of the part time field
+    const normalizedPartTime =
+      normalizedData['part time'] ||
+      normalizedData['parttimerider'] ||
+      normalizedData['part time rider'] ||
+      normalizedData['parttime'];
+    if (normalizedPartTime !== undefined) {
+      normalizedData['part time'] = normalizedPartTime;
+    }
 
     // Create updated row array using normalized matching
     const updatedRowArray = sheetData.headers.map((header, headerIndex) => {
-      const normalizedHeader = String(header).trim().toLowerCase();
+      const normalizedHeader = normalizeColumnName(header);
 
       if (normalizedData.hasOwnProperty(normalizedHeader)) {
         return normalizedData[normalizedHeader];
