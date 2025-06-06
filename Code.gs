@@ -77,6 +77,7 @@ const CONFIG = {
       phone: 'Phone Number',
       email: 'Email',
       status: 'Status',
+      partTime: 'Part Time',
       certification: 'Certification',
       totalAssignments: 'Total Assignments',
       lastAssignmentDate: 'Last Assignment Date'  // Fixed: was 'LastAssignmentDate'
@@ -3339,6 +3340,7 @@ function diagnoseRealRidersIssue() {
         phone: CONFIG.columns.riders.phone,
         email: CONFIG.columns.riders.email,
         status: CONFIG.columns.riders.status,
+        partTime: CONFIG.columns.riders.partTime,
         certification: CONFIG.columns.riders.certification
       };
       
