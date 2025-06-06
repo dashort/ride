@@ -532,11 +532,8 @@
         });
         
         function loadInitialReportData() {
-            // This function will first get user data, then trigger report generation.
-            // For reports.html, the main data is from generateReportData,
-            // but user info is also needed.
-            // The getPageDataForReports wrapper will handle getting both.
-            generateReports(); // This will now call the wrapper.
+            // Initial load should retrieve user info and report data together
+            generateReports();
         }
 
         function setDefaultDates() {
@@ -623,12 +620,60 @@
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(handleReportData)
-                    .withFailureHandler(handleError)
-                    .generateReportData(filters);
+                    .withSuccessHandler(handlePageDataSuccess)
+                    .withFailureHandler(handlePageDataFailure)
+                    .getPageDataForReports(filters);
             } else {
                 console.log('⚠️ Google Apps Script not available for reports page.');
-                setFallbackReportData();
+                handlePageDataFailure({ message: 'Google Apps Script not available.' });
+            }
+        }
+
+        function handlePageDataSuccess(data) {
+            hideLoading();
+
+            if (data && data.success) {
+                updateUserInfoSafely(data.user);
+                handleReportData(data.reportData);
+            } else {
+                console.error('❌ Failed to load reports data:', data ? data.error : 'No data');
+                handlePageDataFailure(data || { message: 'Received success:false or no data.' });
+            }
+        }
+
+        function handlePageDataFailure(error) {
+            hideLoading();
+            console.error('❌ Error loading reports data:', error && error.message ? error.message : error);
+
+            const fallbackUser = (error && error.user) ? error.user : {
+                name: 'System User',
+                email: 'user@system.com',
+                roles: ['admin'],
+                permissions: ['view_reports']
+            };
+
+            updateUserInfoSafely(fallbackUser);
+            setFallbackReportData();
+        }
+
+        function updateUserInfoSafely(user) {
+            try {
+                const safeUpdate = (id, value, property = 'textContent') => {
+                    try {
+                        const element = document.getElementById(id);
+                        if (element && element[property] !== undefined) {
+                            element[property] = value;
+                        }
+                    } catch (e) {
+                        console.log(`❌ Error updating ${id}:`, e.message);
+                    }
+                };
+
+                safeUpdate('userName', user.name || 'User');
+                safeUpdate('userRole', (user.roles || ['user']).join(', '));
+                safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
+            } catch (error) {
+                console.log('❌ Error in updateUserInfoSafely:', error);
             }
         }
 
