@@ -1346,7 +1346,7 @@ function navigateTo(page, params = {}) {
 
     let url;
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        const base = window.location.origin + window.location.pathname;
+        const base = window.requestBaseUrl || (window.location.origin + '/exec');
         url = base + '?' + search.toString();
     } else {
         url = page + '.html?' + search.toString();
