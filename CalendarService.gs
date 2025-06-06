@@ -6,121 +6,65 @@
 
 /**
  * Posts all assignments with status "Assigned" to the configured calendar.
- * Creates the calendar if it does not exist and records the event ID in
- * the "Calendar Event ID" column when available.
+ * Entries are grouped by request so only one calendar event exists per request.
+ * Assigned rider names are written back to the request record and used in the
+ * event description. The resulting calendar event ID is stored on each
+ * assignment row.
  * @return {void}
  */
 function postAssignmentsToCalendar() {
   try {
-    const calendar =
-      CalendarApp.getCalendarsByName(CONFIG.system.calendarName)[0] ||
-      CalendarApp.createCalendar(CONFIG.system.calendarName);
-
     const assignmentsData = getAssignmentsData();
     const map = assignmentsData.columnMap;
     const sheet = assignmentsData.sheet;
 
-    // Build a map of request IDs to assigned rider names for quick lookup
-    const ridersByRequest = {};
-    assignmentsData.data.forEach(row => {
+    // Group assigned riders and row indexes by request ID
+    const grouped = {};
+    assignmentsData.data.forEach((row, idx) => {
       const status = getColumnValue(row, map, CONFIG.columns.assignments.status);
       if (status !== 'Assigned') return;
 
       const reqId = getColumnValue(row, map, CONFIG.columns.assignments.requestId);
       const rider = getColumnValue(row, map, CONFIG.columns.assignments.riderName);
-      if (!reqId || !rider) return;
+      if (!reqId) return;
 
-      if (!ridersByRequest[reqId]) ridersByRequest[reqId] = [];
-      ridersByRequest[reqId].push(rider);
+      if (!grouped[reqId]) {
+        grouped[reqId] = { riders: [], rows: [] };
+      }
+      if (rider) grouped[reqId].riders.push(rider);
+      grouped[reqId].rows.push(idx);
     });
 
-    assignmentsData.data.forEach((row, index) => {
-      const status = getColumnValue(row, map, CONFIG.columns.assignments.status);
-      if (status !== 'Assigned') return;
+    Object.keys(grouped).forEach(requestId => {
+      const info = grouped[requestId];
+      // Update request row with riders and sync to calendar
+      updateRequestWithAssignedRiders(requestId, info.riders);
 
-      const requestId = getColumnValue(row, map, CONFIG.columns.assignments.requestId);
-      const eventDate = getColumnValue(row, map, CONFIG.columns.assignments.eventDate);
-      const startTime = getColumnValue(row, map, CONFIG.columns.assignments.startTime);
-      const endTime = getColumnValue(row, map, CONFIG.columns.assignments.endTime);
-
-      const riderName = getColumnValue(row, map, CONFIG.columns.assignments.riderName);
-      const startLoc = getColumnValue(row, map, CONFIG.columns.assignments.startLocation);
-      const endLoc = getColumnValue(row, map, CONFIG.columns.assignments.endLocation);
-
-      const title = `${riderName} escort`;
-
-      let description = `From ${startLoc || 'N/A'} to ${endLoc || 'N/A'}`;
-
-      if (requestId) {
-        const requestDetails = getRequestDetails(requestId);
-        if (requestDetails) {
-          description += `\nRequest ID: ${requestDetails.id}`;
-          if (requestDetails.requesterName) {
-            description += `\nRequester: ${requestDetails.requesterName}`;
-          }
-          if (requestDetails.type) {
-            description += `\nType: ${requestDetails.type}`;
-          }
-          if (requestDetails.notes) {
-            description += `\nNotes: ${requestDetails.notes}`;
-          }
-        }
-
-        const riders = ridersByRequest[requestId];
-        if (riders && riders.length > 0) {
-          description += `\nAssigned Riders: ${riders.join(', ')}`;
+      // Retrieve the calendar event ID from the request row
+      const requestsData = getRequestsData(false);
+      const rMap = requestsData.columnMap;
+      const rSheet = requestsData.sheet;
+      let rowIndex = -1;
+      for (let i = 0; i < requestsData.data.length; i++) {
+        const idVal = getColumnValue(requestsData.data[i], rMap, CONFIG.columns.requests.id);
+        if (String(idVal).trim() === String(requestId).trim()) {
+          rowIndex = i + 2;
+          break;
         }
       }
-      // Ensure event date/time objects are correctly constructed
-      let startDate = eventDate instanceof Date
-        ? new Date(eventDate)
-        : parseDateString(eventDate);
-      const startTimeObj = startTime instanceof Date
-        ? startTime
-        : parseTimeString(startTime);
-      if (startDate && startTimeObj) {
-        startDate.setHours(startTimeObj.getHours(), startTimeObj.getMinutes());
+      let eventId = '';
+      if (rowIndex !== -1 && rMap[CONFIG.columns.requests.calendarEventId] !== undefined) {
+        eventId = rSheet.getRange(rowIndex, rMap[CONFIG.columns.requests.calendarEventId] + 1).getValue();
       }
 
-      let endDate = null;
-      if (endTime) {
-        endDate = eventDate instanceof Date
-          ? new Date(eventDate)
-          : parseDateString(eventDate);
-        const endTimeObj = endTime instanceof Date
-          ? endTime
-          : parseTimeString(endTime);
-        if (endDate && endTimeObj) {
-          endDate.setHours(endTimeObj.getHours(), endTimeObj.getMinutes());
+      // Write the event ID to each assignment row for this request
+      if (eventId) {
+        const idCol = map[CONFIG.columns.assignments.calendarEventId];
+        if (idCol !== undefined) {
+          info.rows.forEach(i => {
+            sheet.getRange(i + 2, idCol + 1).setValue(eventId);
+          });
         }
-      }
-
-      const idCol = map[CONFIG.columns.assignments.calendarEventId];
-      const existingEventId = idCol !== undefined ? getColumnValue(row, map, CONFIG.columns.assignments.calendarEventId) : null;
-      let event = null;
-
-      if (existingEventId) {
-        try {
-          event = calendar.getEventById(existingEventId);
-        } catch (e) {
-          event = null;
-        }
-      }
-
-      if (event) {
-        event.setTitle(title);
-        Utilities.sleep(500); // Throttle to avoid Apps Script service quota errors
-        event.setDescription(description);
-        event.setTime(startDate, endDate || startDate);
-        Utilities.sleep(500); // Throttle after event update
-      } else {
-        event = calendar.createEvent(title, startDate, endDate || startDate, { description });
-        Utilities.sleep(500); // Throttle after event creation
-      }
-
-      if (idCol !== undefined) {
-        const rowIndex = index + 2; // data array is zero-based and skips header
-        sheet.getRange(rowIndex, idCol + 1).setValue(event.getId());
       }
     });
   } catch (error) {
