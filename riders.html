@@ -1543,8 +1543,8 @@ function renderRidersTable(riders) {
       <td><span class="status-badge status-${riderStatus.toLowerCase()}">${riderStatus}</span></td>
       <td>${riderPartTime}</td>
       <td>${riderCertification}</td>
-      <td>${totalAssignments}</td>
-      <td>${lastAssignment}</td>
+      <td id="assign-count-${riderId}">${totalAssignments}</td>
+      <td id="last-assignment-${riderId}">${lastAssignment}</td>
       <td class="actions-cell">
         <button onclick="editRider('${riderId}')" class="btn btn-sm btn-primary" title="Edit ${riderName}">
           ✏️ Edit
@@ -1591,6 +1591,20 @@ function fetchAssignmentCountsForRiders(riders) {
     google.script.run
       .withSuccessHandler(summary => {
         const count = summary && summary.summary ? summary.summary.total : 0;
+        let lastDate = '';
+        if (summary && summary.assignments && summary.assignments.length > 0) {
+          const dates = summary.assignments
+            .map(a => new Date(a.eventDate))
+            .filter(d => !isNaN(d));
+          if (dates.length > 0) {
+            const latest = new Date(Math.max(...dates.map(d => d.getTime())));
+            lastDate = latest.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            });
+          }
+        }
         const link = document.querySelector(
           `.rider-name-link[data-rider-id="${riderId}"]`
         );
@@ -1613,6 +1627,15 @@ function fetchAssignmentCountsForRiders(riders) {
             link.classList.add('no-assignments');
             link.classList.remove('has-assignments');
           }
+        }
+
+        const countCell = document.getElementById(`assign-count-${riderId}`);
+        if (countCell) {
+          countCell.textContent = count;
+        }
+        const lastCell = document.getElementById(`last-assignment-${riderId}`);
+        if (lastCell) {
+          lastCell.textContent = lastDate || 'Never';
         }
       })
       .withFailureHandler(err => {
