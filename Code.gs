@@ -1911,8 +1911,7 @@ function generateReportData(filters) {
         riderPerformance.push({
           name: riderName,
           assignments: assignments.length,
-          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0,
-          rating: 4.5 
+          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
         });
       }
     });
