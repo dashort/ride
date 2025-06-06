@@ -3368,3 +3368,97 @@ function testActiveRidersFix() {
   }
 }
 
+/**
+ * Save an availability entry for the current user or specified email.
+ * If an entry with the same email, date and start time exists, it will be updated.
+ * @param {object} entry Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
+ * @return {object} Result object with success boolean and row number.
+ */
+function saveUserAvailability(entry) {
+  try {
+    if (!entry) throw new Error('No availability data provided');
+
+    const user = getCurrentUser();
+    const email = entry.email || user.email;
+
+    const sheetData = getSheetData(CONFIG.sheets.availability, false);
+    const sheet = sheetData.sheet;
+    const map = sheetData.columnMap;
+
+    const emailCol = map[CONFIG.columns.availability.email] + 1;
+    const dateCol = map[CONFIG.columns.availability.date] + 1;
+    const startCol = map[CONFIG.columns.availability.startTime] + 1;
+    const endCol = map[CONFIG.columns.availability.endTime] + 1;
+    const notesCol = map[CONFIG.columns.availability.notes] + 1;
+
+    let targetRow = -1;
+    for (let i = 0; i < sheetData.data.length; i++) {
+      const row = sheetData.data[i];
+      const rowEmail = row[map[CONFIG.columns.availability.email]];
+      const rowDate = row[map[CONFIG.columns.availability.date]];
+      const rowStart = row[map[CONFIG.columns.availability.startTime]];
+      if (String(rowEmail).toLowerCase() === String(email).toLowerCase() &&
+          Utilities.formatDate(new Date(rowDate), CONFIG.system.timezone, 'yyyy-MM-dd') === entry.date &&
+          String(rowStart) === entry.startTime) {
+        targetRow = i + 2; // account for header
+        break;
+      }
+    }
+
+    const rowValues = [email, new Date(entry.date), entry.startTime, entry.endTime, entry.notes || ''];
+
+    if (targetRow > 0) {
+      sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+      targetRow = sheet.getLastRow();
+    }
+
+    clearDataCache();
+
+    return { success: true, row: targetRow };
+  } catch (error) {
+    logError('Error in saveUserAvailability', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Retrieve availability entries for the specified email or current user.
+ * @param {string} [email] Optional email address. Defaults to current user.
+ * @return {Array<object>} Array of availability objects.
+ */
+function getUserAvailability(email) {
+  try {
+    const user = getCurrentUser();
+    const targetEmail = email || user.email;
+
+    const sheetData = getSheetData(CONFIG.sheets.availability, true);
+    const map = sheetData.columnMap;
+
+    const results = [];
+    sheetData.data.forEach(row => {
+      const rowEmail = row[map[CONFIG.columns.availability.email]];
+      if (String(rowEmail).toLowerCase() !== String(targetEmail).toLowerCase()) return;
+
+      const dateVal = row[map[CONFIG.columns.availability.date]];
+      results.push({
+        email: rowEmail,
+        date: formatDateForDisplay(new Date(dateVal)),
+        startTime: formatTimeForDisplay(row[map[CONFIG.columns.availability.startTime]]),
+        endTime: formatTimeForDisplay(row[map[CONFIG.columns.availability.endTime]]),
+        notes: row[map[CONFIG.columns.availability.notes]] || ''
+      });
+    });
+
+    results.sort((a, b) => {
+      try { return new Date(a.date) - new Date(b.date); } catch(e) { return 0; }
+    });
+
+    return results;
+  } catch (error) {
+    logError('Error in getUserAvailability', error);
+    return [];
+  }
+}
+

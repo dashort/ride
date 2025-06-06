@@ -44,6 +44,7 @@ const CONFIG = {
     requests: "Requests",
     riders: "Riders",
     assignments: "Assignments",
+    availability: "Availability",
     history: "History",
     settings: "Settings",
     log: "Log"
@@ -101,6 +102,13 @@ const CONFIG = {
       emailSent: 'Email Sent',
       completedDate: 'Completed Date',
       calendarEventId: 'Calendar Event ID',
+      notes: 'Notes'
+    },
+    availability: {
+      email: 'Email',
+      date: 'Date',
+      startTime: 'Start Time',
+      endTime: 'End Time',
       notes: 'Notes'
     }
   },
@@ -525,6 +533,8 @@ function createFallbackNavigation(currentPage = '') {
       { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
       { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
       { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
+      { id: 'rider-schedule', url: `${baseUrl}?page=rider-schedule`, label: '📆 My Schedule' },
+      { id: 'admin-schedule', url: `${baseUrl}?page=admin-schedule`, label: '🗓️ Manage Schedules' },
       { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
       { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
     ];
@@ -2295,6 +2305,9 @@ function ensureSheetsExist() {
       } else if (sheetName === CONFIG.sheets.assignments) {
         const headers = Object.values(CONFIG.columns.assignments);
         newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      } else if (sheetName === CONFIG.sheets.availability) {
+        const headers = Object.values(CONFIG.columns.availability);
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       }
     }
   });
@@ -2597,10 +2610,11 @@ function doGet(e) {
       case 'dashboard': fileName = 'index'; break;
       case 'requests': fileName = 'requests'; break;
       case 'assignments': fileName = 'assignments'; break;
+      case 'riders': fileName = 'riders'; break;
+      case 'rider-schedule': fileName = 'rider-schedule'; break;
+      case 'admin-schedule': fileName = 'admin-schedule'; break;
       case 'notifications': fileName = 'notifications'; break;
       case 'reports': fileName = 'reports'; break;
-      case 'riders': fileName = 'riders';
-  break;
       default: fileName = 'index';
     }
     
@@ -2893,6 +2907,8 @@ function getNavigationHtmlWithIframeSupport(currentPage = '') {
     `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="${BASE_URL}?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
     `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="${BASE_URL}?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
     `<a href="${BASE_URL}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" data-url="${BASE_URL}?page=riders" onclick="handleNavigation(this); return false;">👥 Riders</a>`,
+    `<a href="${BASE_URL}?page=rider-schedule" class="nav-button ${currentPage === 'rider-schedule' ? 'active' : ''}" data-page="rider-schedule" data-url="${BASE_URL}?page=rider-schedule" onclick="handleNavigation(this); return false;">📆 My Schedule</a>`,
+    `<a href="${BASE_URL}?page=admin-schedule" class="nav-button ${currentPage === 'admin-schedule' ? 'active' : ''}" data-page="admin-schedule" data-url="${BASE_URL}?page=admin-schedule" onclick="handleNavigation(this); return false;">🗓️ Manage Schedules</a>`,
     `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${BASE_URL}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
     `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${BASE_URL}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
   ];
@@ -3105,6 +3121,8 @@ function createFallbackNavigation(currentPage = '') {
     <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>
     <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>
     <a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>
+    <a href="${baseUrl}?page=rider-schedule" class="nav-button ${currentPage === 'rider-schedule' ? 'active' : ''}" data-page="rider-schedule">📆 My Schedule</a>
+    <a href="${baseUrl}?page=admin-schedule" class="nav-button ${currentPage === 'admin-schedule' ? 'active' : ''}" data-page="admin-schedule">🗓️ Manage Schedules</a>
     <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>
     <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>
   </nav>`;
@@ -3121,6 +3139,8 @@ function getNavigationHtmlWithDynamicUrls(currentPage = '') {
       { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
       { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
       { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
+      { id: 'rider-schedule', url: `${baseUrl}?page=rider-schedule`, label: '📆 My Schedule' },
+      { id: 'admin-schedule', url: `${baseUrl}?page=admin-schedule`, label: '🗓️ Manage Schedules' },
       { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
       { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
     ];

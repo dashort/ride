@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Schedule - Motorcycle Escort Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        form input, form button {
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+        #availabilityList ul {
+            list-style: none;
+            padding: 0;
+        }
+        #availabilityList li {
+            padding: 0.25rem 0;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+    </header>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <div class="container">
+        <h2>📆 My Availability</h2>
+        <form id="availabilityForm">
+            <input type="date" id="availDate" required>
+            <input type="time" id="availStart" required>
+            <input type="time" id="availEnd" required>
+            <input type="text" id="availNotes" placeholder="Notes">
+            <button type="submit">Save</button>
+        </form>
+        <div id="availabilityList">Loading...</div>
+    </div>
+
+    <script>
+        function loadAvailability() {
+            if (google && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(renderAvailability).getUserAvailability();
+            }
+        }
+        function renderAvailability(data) {
+            const list = document.getElementById('availabilityList');
+            if (!data || data.length === 0) {
+                list.textContent = 'No availability set.';
+                return;
+            }
+            list.innerHTML = '<ul>' + data.map(e => `<li>${e.date} ${e.startTime} - ${e.endTime} ${e.notes}</li>`).join('') + '</ul>';
+        }
+        document.getElementById('availabilityForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const entry = {
+                date: document.getElementById('availDate').value,
+                startTime: document.getElementById('availStart').value,
+                endTime: document.getElementById('availEnd').value,
+                notes: document.getElementById('availNotes').value
+            };
+            if (google && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(loadAvailability).saveUserAvailability(entry);
+            }
+        });
+        document.addEventListener('DOMContentLoaded', loadAvailability);
+    </script>
+</body>
+</html>
