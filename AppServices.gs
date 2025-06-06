@@ -378,6 +378,36 @@ function getActiveRidersForWebApp() {
 }
 
 /**
+ * Returns riders for the assignments page optionally filtered by active status.
+ * When `filterActive` is true, only active riders are returned. Otherwise all
+ * riders are provided in the same simplified format used by the web app.
+ *
+ * @param {boolean} filterActive Whether to filter by active status.
+ * @return {Array<object>} Array of rider objects.
+ */
+function getRidersWithAvailability(filterActive) {
+  try {
+    if (filterActive) {
+      return getActiveRidersForWebApp();
+    }
+
+    const allRiders = getRiders();
+    return allRiders.map(rider => ({
+      jpNumber: rider.jpNumber || '',
+      name: rider.name || '',
+      phone: rider.phone || '',
+      email: rider.email || '',
+      carrier: rider.carrier || 'Unknown'
+    }));
+
+  } catch (error) {
+    console.error('❌ Error in getRidersWithAvailability:', error);
+    logError('Error in getRidersWithAvailability', error);
+    return [];
+  }
+}
+
+/**
  * Provides general dashboard data structure including statistics, formatted requests, and formatted rider schedule.
  * This function might be an older approach to dashboard data consolidation.
  * The newer `getPageDataForDashboard` is preferred for client-side calls.

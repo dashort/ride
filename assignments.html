@@ -732,6 +732,33 @@ function loadActiveRidersEnhanced() {
   }
 }
 
+// Load riders based on availability filter
+function loadRidersWithAvailability(filterActive) {
+  showLoading('Loading riders...');
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(riders) {
+        hideLoading();
+        activeRiders = Array.isArray(riders) ? riders : [];
+        var grid = document.getElementById('ridersGrid');
+        if (grid) {
+          grid.innerHTML = renderRidersGrid();
+        }
+        fetchRiderAvailabilityForRequest();
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        console.error('❌ Failed loading riders with availability:', error);
+        showError('Error loading riders: ' + (error.message || error));
+      })
+      .getRidersWithAvailability(filterActive);
+  } else {
+    hideLoading();
+    console.error('❌ Google Apps Script not available');
+  }
+}
+
 // Display no riders message with more info
 function displayNoRiders(message) {
   const ridersContainer = document.getElementById('ridersContainer') || 
@@ -1066,6 +1093,13 @@ if (!document.getElementById('debug-styles')) {
                 filterRequests();
             });
         }
+
+        var availCheckbox = document.getElementById('filterAvailability');
+        if (availCheckbox) {
+            availCheckbox.addEventListener('change', function() {
+                loadRidersWithAvailability(availCheckbox.checked);
+            });
+        }
     }
 
     /**
@@ -1291,6 +1325,8 @@ function selectRequestById(requestId) {
             '</div>' +
             '<div class="riders-section">' +
             '<h4>Available Riders</h4>' +
+            '<label style="margin-left:10px; font-weight:normal;">' +
+            '<input type="checkbox" id="filterAvailability"> Show only available</label>' +
             '<div class="riders-grid" id="ridersGrid">' +
             renderRidersGrid() +
             '</div>' +
@@ -1317,11 +1353,19 @@ function selectRequestById(requestId) {
      * @return {string} HTML string for the riders grid.
      */
     function renderRidersGrid() {
-        if (activeRiders.length === 0) {
+        var ridersList = activeRiders;
+        var availCheckbox = document.getElementById('filterAvailability');
+        if (availCheckbox && availCheckbox.checked) {
+            ridersList = activeRiders.filter(function(r) {
+                return (riderAvailability[r.name] || 'Available') === 'Available';
+            });
+        }
+
+        if (ridersList.length === 0) {
             return '<div class="empty-state"><h3>No active riders</h3><p>No riders available for assignment</p></div>';
         }
 
-        return activeRiders.map(function(rider) {
+        return ridersList.map(function(rider) {
             var isSelected = selectedRiders.has(rider.name);
             var availability = riderAvailability[rider.name] || 'Available';
             var isUnavailable = availability !== 'Available';
