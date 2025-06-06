@@ -683,6 +683,7 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Riders page loading...');
+        addScheduleLinks();
 
         const params = new URLSearchParams(window.location.search);
         const statusParam = params.get('status');
@@ -2050,8 +2051,35 @@ const riderLinkStyles = `
     padding: 0.5rem;
   }
 }
-</style>
+  </style>
 `;
+
+function addScheduleLinks() {
+  const nav = document.querySelector('nav.navigation');
+  if (!nav) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const currentPage = params.get('page');
+
+  const mySchedule = document.createElement('a');
+  mySchedule.href = '?page=rider-schedule';
+  mySchedule.className = 'nav-button';
+  mySchedule.id = 'nav-rider-schedule';
+  mySchedule.dataset.page = 'rider-schedule';
+  mySchedule.textContent = '📆 My Schedule';
+  if (currentPage === 'rider-schedule') mySchedule.classList.add('active');
+
+  const manageSchedules = document.createElement('a');
+  manageSchedules.href = '?page=admin-schedule';
+  manageSchedules.className = 'nav-button';
+  manageSchedules.id = 'nav-admin-schedule';
+  manageSchedules.dataset.page = 'admin-schedule';
+  manageSchedules.textContent = '🗓️ Manage Schedules';
+  if (currentPage === 'admin-schedule') manageSchedules.classList.add('active');
+
+  nav.appendChild(mySchedule);
+  nav.appendChild(manageSchedules);
+}
 
 // Add styles to document head
 if (!document.getElementById('rider-link-styles')) {
