@@ -487,6 +487,7 @@
                         <th>Status</th>
                         <th>Assigned</th>
                         <th>Notes</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="requestsBody">
@@ -608,8 +609,9 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button> 
-                <button type="button" class="btn btn-primary" onclick="saveRequest()">💾 Save Changes</button>
+                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button>
+                <button type="button" class="btn btn-primary" id="saveChangesBtn" onclick="saveRequest()">💾 Save Changes</button>
+                <button type="button" class="btn btn-success" id="completeRequestBtn" onclick="completeRequest()" style="display:none;">✅ Complete Request</button>
             </div>
         </div>
     </div>
@@ -790,6 +792,8 @@
                 '';
 
             const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
+            const actionButton = (request.status !== 'Completed' && request.status !== 'Cancelled') ?
+                `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${request.requestId || ''}')">Complete</button>` : '';
 
             row.innerHTML = `
                 <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
@@ -804,6 +808,7 @@
                 <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
                 <td>${assigned}</td>
                 <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
+                <td>${actionButton}</td>
             `;
 
             tbody.appendChild(row);
@@ -895,8 +900,10 @@
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
-        document.getElementById('deleteBtn').style.display = 'inline-block'; 
+        document.getElementById('deleteBtn').style.display = 'inline-block';
         document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Show Assign Riders button
+        document.getElementById('saveChangesBtn').style.display = 'inline-block';
+        document.getElementById('completeRequestBtn').style.display = 'none';
         document.getElementById('editRequestModal').style.display = 'block';
     }
 
@@ -914,9 +921,21 @@
         document.getElementById('editRidersNeeded').value = 1;
 
         document.getElementById('modalTitle').textContent = 'Add New Request';
-        document.getElementById('deleteBtn').style.display = 'none'; 
+        document.getElementById('deleteBtn').style.display = 'none';
         document.getElementById('assignRidersBtnModal').style.display = 'none'; // Hide Assign Riders button
+        document.getElementById('saveChangesBtn').style.display = 'inline-block';
+        document.getElementById('completeRequestBtn').style.display = 'none';
         document.getElementById('editRequestModal').style.display = 'block';
+    }
+
+    function openCompleteModal(requestId) {
+        openEditModal(requestId);
+        document.getElementById('modalTitle').textContent = `Complete Request ${requestId}`;
+        document.getElementById('deleteBtn').style.display = 'none';
+        document.getElementById('assignRidersBtnModal').style.display = 'none';
+        document.getElementById('saveChangesBtn').style.display = 'none';
+        document.getElementById('completeRequestBtn').style.display = 'inline-block';
+        document.getElementById('editStatus').value = 'Completed';
     }
 
     /**
@@ -926,8 +945,10 @@
     function closeEditModal() {
         document.getElementById('editRequestModal').style.display = 'none';
         currentEditingRequest = null;
-        document.getElementById('deleteBtn').style.display = 'inline-block'; 
+        document.getElementById('deleteBtn').style.display = 'inline-block';
         document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Reset to default visible
+        document.getElementById('saveChangesBtn').style.display = 'inline-block';
+        document.getElementById('completeRequestBtn').style.display = 'none';
     }
 
     /**
@@ -992,6 +1013,61 @@
                 showToast('Error saving request: ' + error.message);
             })
             [functionName](requestData);
+    }
+
+    function completeRequest() {
+        const endTimeField = document.getElementById('editEndTime');
+        if (!endTimeField.value.trim()) {
+            alert('Please provide an end time to complete this request.');
+            endTimeField.focus();
+            return;
+        }
+
+        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
+        for (const fieldId of requiredFields) {
+            const field = document.getElementById(fieldId);
+            if (!field.value.trim()) {
+                alert(`Please fill in the required field: ${field.previousElementSibling.textContent.replace('*','').trim()}`);
+                field.focus();
+                return;
+            }
+        }
+
+        const requestData = {
+            requestId: document.getElementById('editRequestId').value,
+            requesterName: document.getElementById('editRequesterName').value.trim(),
+            requesterContact: document.getElementById('editRequesterContact').value.trim(),
+            requestType: document.getElementById('editRequestType').value,
+            eventDate: document.getElementById('editEventDate').value,
+            startTime: document.getElementById('editStartTime').value,
+            endTime: document.getElementById('editEndTime').value,
+            startLocation: document.getElementById('editStartLocation').value.trim(),
+            endLocation: document.getElementById('editEndLocation').value.trim(),
+            secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
+            ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
+            status: 'Completed',
+            courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
+            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
+            notes: document.getElementById('editNotes').value.trim()
+        };
+
+        showLoadingOverlay();
+        google.script.run
+            .withSuccessHandler((result) => {
+                hideLoadingOverlay();
+                if (result.success) {
+                    showToast('Request completed successfully!');
+                    closeEditModal();
+                    loadPageData();
+                } else {
+                    showToast('Error: ' + result.message);
+                }
+            })
+            .withFailureHandler((error) => {
+                hideLoadingOverlay();
+                showToast('Error completing request: ' + error.message);
+            })
+            .updateExistingRequest(requestData);
     }
 
     /**
