@@ -479,7 +479,7 @@
                         <th>Request ID</th>
                         <th>Event Date</th>
                         <th>Start Time</th>
-                        <th>End Time</th>
+                        <th id="endTimeHeader">End Time</th>
                         <th>Requester</th>
                         <th>Type</th>
                         <th>Start Location</th>
@@ -831,7 +831,7 @@
                 <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
                 <td>${request.eventDate || ''}</td>
                 <td>${request.startTime || ''}</td>
-                <td>${request.endTime || ''}</td>
+                <td class="end-time-cell">${request.endTime || ''}</td>
                 <td>${request.requesterName || ''}</td>
                 <td>${request.requestType || ''}</td>
                 <td>${request.startLocation || ''}</td>
@@ -844,6 +844,17 @@
             `;
 
             tbody.appendChild(row);
+        });
+
+        toggleEndTimeColumn(document.getElementById('showCompleted').checked);
+    }
+
+    function toggleEndTimeColumn(show) {
+        const display = show ? '' : 'none';
+        const header = document.getElementById('endTimeHeader');
+        if (header) header.style.display = display;
+        document.querySelectorAll('.end-time-cell').forEach(cell => {
+            cell.style.display = display;
         });
     }
 
