@@ -545,7 +545,6 @@
      * @property {string} jpNumber - Rider's JP Number or ID.
      * @property {string} phone - Rider's phone number.
      * @property {string} email - Rider's email address.
-     * @property {string} carrier - Rider's phone carrier.
      * @property {string} [status] - Rider's current status (e.g., "Available").
      */
 
@@ -1333,7 +1332,6 @@ function selectRequestById(requestId) {
                 '<div class="rider-info">ID: ' + rider.jpNumber + '</div>' +
                 '<div class="rider-info">📞 ' + rider.phone + '</div>' +
                 '<div class="rider-info">📧 ' + rider.email + '</div>' +
-                '<div class="rider-info">📡 ' + rider.carrier + '</div>' +
                 (isUnavailable ? '<div class="rider-info conflict-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
                 '</div>';
         }).join('');
@@ -1494,8 +1492,7 @@ function updateAssignedRidersList() {
                 name: rider ? rider.name : name,
                 jpNumber: rider ? rider.jpNumber : '',
                 phone: rider ? rider.phone : '',
-                email: rider ? rider.email : '',
-                carrier: rider ? rider.carrier : ''
+                email: rider ? rider.email : ''
             });
         });
 
