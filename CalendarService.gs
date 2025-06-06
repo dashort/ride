@@ -73,9 +73,26 @@ function postAssignmentsToCalendar() {
       const startDate = new Date(`${eventDate} ${startTime}`);
       const endDate = endTime ? new Date(`${eventDate} ${endTime}`) : null;
 
-      const event = calendar.createEvent(title, startDate, endDate || startDate, { description });
-
       const idCol = map[CONFIG.columns.assignments.calendarEventId];
+      const existingEventId = idCol !== undefined ? getColumnValue(row, map, CONFIG.columns.assignments.calendarEventId) : null;
+      let event = null;
+
+      if (existingEventId) {
+        try {
+          event = calendar.getEventById(existingEventId);
+        } catch (e) {
+          event = null;
+        }
+      }
+
+      if (event) {
+        event.setTitle(title);
+        event.setDescription(description);
+        event.setTime(startDate, endDate || startDate);
+      } else {
+        event = calendar.createEvent(title, startDate, endDate || startDate, { description });
+      }
+
       if (idCol !== undefined) {
         const rowIndex = index + 2; // data array is zero-based and skips header
         sheet.getRange(rowIndex, idCol + 1).setValue(event.getId());
