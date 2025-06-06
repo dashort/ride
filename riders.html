@@ -527,8 +527,8 @@
                     <option value="Suspended">Suspended</option>
                 </select>
                 <select class="filter-select" id="motorFilter" onchange="filterRiders()">
+                    <option value="Motors" selected>Motors</option>
                     <option value="All">All</option>
-                    <option value="Motors">Motors</option>
                 </select>
             </div>
             
@@ -800,7 +800,7 @@ function filterRiders() {
   
   const searchTerm = searchBox.value.toLowerCase().trim();
   const statusFilter_value = statusFilter.value;
-  const motorFilter_value = motorFilter ? motorFilter.value : 'All';
+  const motorFilter_value = motorFilter ? motorFilter.value : 'Motors';
   
   console.log(`🔍 Filtering: search="${searchTerm}" status="${statusFilter_value}" motors="${motorFilter_value}"`);
   console.log(`📊 Total riders to filter: ${app.riders.length}`);
