@@ -1,7 +1,8 @@
 /**
  * @fileoverview Utility functions for interacting with Google Calendar.
- * Provides a method to post assigned escorts to the host account calendar.
- * Calls to CalendarApp are throttled to avoid hitting service quotas.
+ * Provides helper methods to post assigned escorts to the host account calendar
+ * and to remove events when needed. Calls to CalendarApp are throttled to avoid
+ * hitting service quotas.
  */
 
 /**
@@ -184,5 +185,64 @@ function syncAllAssignedRequestsToCalendar() {
     const day = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
     if (day < startOfToday) return;
     syncRequestToCalendar(id);
+  });
+}
+
+/**
+ * Deletes the calendar event associated with the given request ID.
+ * The event ID is read from the Requests sheet and cleared after deletion.
+ * @param {string} requestId The ID of the request whose event should be removed.
+ * @return {void}
+ */
+function deleteRequestCalendarEvent(requestId) {
+  try {
+    const requestsData = getRequestsData();
+    const map = requestsData.columnMap;
+    const sheet = requestsData.sheet;
+
+    let rowIndex = -1;
+    for (let i = 0; i < requestsData.data.length; i++) {
+      const idVal = getColumnValue(requestsData.data[i], map, CONFIG.columns.requests.id);
+      if (String(idVal).trim() === String(requestId).trim()) {
+        rowIndex = i + 2; // account for header row
+        break;
+      }
+    }
+    if (rowIndex === -1) return;
+
+    const idCol = map[CONFIG.columns.requests.calendarEventId];
+    if (idCol === undefined) return;
+    const eventId = sheet.getRange(rowIndex, idCol + 1).getValue();
+    if (!eventId) return;
+
+    const calendar = CalendarApp.getCalendarsByName(CONFIG.system.calendarName)[0];
+    if (calendar) {
+      try {
+        const event = calendar.getEventById(eventId);
+        if (event) {
+          event.deleteEvent();
+          Utilities.sleep(500); // Throttle to avoid service quota errors
+        }
+      } catch (e) {
+        // Ignore if event not found or cannot be deleted
+      }
+    }
+
+    sheet.getRange(rowIndex, idCol + 1).setValue('');
+  } catch (error) {
+    logError(`Error deleting calendar event for request ${requestId}`, error);
+  }
+}
+
+/**
+ * Deletes all calendar events referenced in the Requests sheet.
+ * Useful for cleaning up duplicate events.
+ * @return {void}
+ */
+function deleteAllCalendarEvents() {
+  const requestsData = getRequestsData();
+  requestsData.data.forEach(row => {
+    const requestId = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+    deleteRequestCalendarEvent(requestId);
   });
 }
