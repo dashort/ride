@@ -2332,9 +2332,27 @@ function formatTimeForDisplay(time) {
 /**
  * Get column value safely
  */
+function normalizeColumnName(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function getColumnIndex(columnMap, columnName) {
+  if (!columnMap || !columnName) return undefined;
+  if (columnMap.hasOwnProperty(columnName)) {
+    return columnMap[columnName];
+  }
+  const normalized = normalizeColumnName(columnName);
+  for (const [name, idx] of Object.entries(columnMap)) {
+    if (normalizeColumnName(name) === normalized) {
+      return idx;
+    }
+  }
+  return undefined;
+}
+
 function getColumnValue(row, columnMap, columnName) {
   try {
-    const columnIndex = columnMap[columnName];
+    const columnIndex = getColumnIndex(columnMap, columnName);
     if (columnIndex === undefined || columnIndex < 0 || columnIndex >= row.length) {
       return null;
     }
