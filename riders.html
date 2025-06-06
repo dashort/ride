@@ -1291,6 +1291,11 @@ function handleRidersDataSuccess(data) {
     // IMPORTANT: Setup search after data is loaded
     setupEventListeners();
 
+    // Ensure initial results are visible even if no filter is applied
+    // Using the same filtering logic as the dropdowns avoids cases where the
+    // table remains empty until a filter change triggers re-rendering.
+    filterRiders();
+
     // Apply filter from URL if provided
     const params = new URLSearchParams(window.location.search);
     const statusParam = params.get('status');
