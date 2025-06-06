@@ -68,11 +68,11 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.requesterName:       value = requestData.requesterName; break;
             case CONFIG.columns.requests.requesterContact:    value = requestData.requesterContact; break;
             case CONFIG.columns.requests.eventDate:
-                value = new Date(requestData.eventDate);
+                value = parseDateString(requestData.eventDate);
                 break;
             case CONFIG.columns.requests.date:
                 // Keep the legacy "Date" column in sync with Event Date if present
-                value = new Date(requestData.eventDate);
+                value = parseDateString(requestData.eventDate);
                 break;
             case CONFIG.columns.requests.startTime:           value = parseTimeString(requestData.startTime); break; // Ensure time object or formatted string
             case CONFIG.columns.requests.endTime:             value = requestData.endTime ? parseTimeString(requestData.endTime) : ''; break;
@@ -233,6 +233,39 @@ function parseTimeString(timeInput) {
 }
 
 /**
+ * Parses a date string in YYYY-MM-DD format to a Date object in local timezone.
+ * If the input is already a Date, it is returned as-is.
+ * Returns null if parsing fails.
+ *
+ * @param {string|Date} dateInput The date string or Date object.
+ * @return {Date|null} A Date object or null on failure.
+ */
+function parseDateString(dateInput) {
+    if (dateInput instanceof Date) {
+        return dateInput;
+    }
+    if (typeof dateInput !== 'string' || dateInput.trim() === '') {
+        return null;
+    }
+
+    // Handle ISO format (YYYY-MM-DD) explicitly to avoid timezone shifts
+    var isoMatch = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        var year = parseInt(isoMatch[1], 10);
+        var month = parseInt(isoMatch[2], 10) - 1; // zero-based month
+        var day = parseInt(isoMatch[3], 10);
+        return new Date(year, month, day);
+    }
+
+    var parsed = new Date(dateInput);
+    if (!isNaN(parsed.getTime())) {
+        return parsed;
+    }
+    console.warn('Could not parse date string:', dateInput);
+    return null;
+}
+
+/**
  * Updates an existing request in the 'Requests' sheet.
  * @param {object} requestData - An object containing the request data to update.
  * @return {object} An object indicating success or failure, with a message.
@@ -318,8 +351,8 @@ function updateExistingRequest(requestData) {
           case CONFIG.columns.requests.eventDate:
           case CONFIG.columns.requests.date:
             if (value) {
-              value = new Date(value);
-              if (isNaN(value.getTime())) {
+              value = parseDateString(value);
+              if (!value) {
                 console.warn(`Invalid date provided for ${formField}: ${requestData[formField]}`);
                 continue; // Skip this update
               }
