@@ -71,8 +71,29 @@ function postAssignmentsToCalendar() {
           description += `\nAssigned Riders: ${riders.join(', ')}`;
         }
       }
-      const startDate = new Date(`${eventDate} ${startTime}`);
-      const endDate = endTime ? new Date(`${eventDate} ${endTime}`) : null;
+      // Ensure event date/time objects are correctly constructed
+      let startDate = eventDate instanceof Date
+        ? new Date(eventDate)
+        : parseDateString(eventDate);
+      const startTimeObj = startTime instanceof Date
+        ? startTime
+        : parseTimeString(startTime);
+      if (startDate && startTimeObj) {
+        startDate.setHours(startTimeObj.getHours(), startTimeObj.getMinutes());
+      }
+
+      let endDate = null;
+      if (endTime) {
+        endDate = eventDate instanceof Date
+          ? new Date(eventDate)
+          : parseDateString(eventDate);
+        const endTimeObj = endTime instanceof Date
+          ? endTime
+          : parseTimeString(endTime);
+        if (endDate && endTimeObj) {
+          endDate.setHours(endTimeObj.getHours(), endTimeObj.getMinutes());
+        }
+      }
 
       const idCol = map[CONFIG.columns.assignments.calendarEventId];
       const existingEventId = idCol !== undefined ? getColumnValue(row, map, CONFIG.columns.assignments.calendarEventId) : null;
