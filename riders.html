@@ -746,7 +746,20 @@
         document.getElementById('inactiveRiders').textContent = stats.inactiveRiders || 0;
 
         document.getElementById('partTimeRiders').textContent = stats.partTimeRiders || 0;
-        document.getElementById('inTraining').textContent = stats.inTraining || 0;
+
+        const fullTimeEl = document.getElementById('fullTimeRiders');
+        if (fullTimeEl) {
+            const fullTimeCount =
+                stats.fullTimeRiders !== undefined
+                    ? stats.fullTimeRiders
+                    : (stats.totalRiders || 0) - (stats.partTimeRiders || 0);
+            fullTimeEl.textContent = fullTimeCount;
+        }
+
+        const trainingEl = document.getElementById('inTraining');
+        if (trainingEl) {
+            trainingEl.textContent = stats.inTraining || 0;
+        }
 
     }
 
