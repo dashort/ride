@@ -2635,6 +2635,14 @@ function doGet(e) {
     
     const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
     console.log(`📄 Loading page: ${pageName}`);
+
+    if (!isUserLoggedIn() && pageName !== 'login') {
+      console.log('User not authenticated, redirecting to login');
+      const loginHtml = HtmlService.createHtmlOutputFromFile('login');
+      return loginHtml
+        .setTitle('Login')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
     
     // Determine file name
     let fileName;
@@ -2647,6 +2655,7 @@ function doGet(e) {
       case 'admin-schedule': fileName = 'admin-schedule'; break;
       case 'notifications': fileName = 'notifications'; break;
       case 'reports': fileName = 'reports'; break;
+      case 'login': fileName = 'login'; break;
       default: fileName = 'index';
     }
     
@@ -2860,6 +2869,22 @@ document.addEventListener('DOMContentLoaded', function() {
         activeButton.style.transform = 'translateY(-2px)';
         activeButton.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
     }
+
+    // Toggle Login/Logout link
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(function(loggedIn) {
+            var loginLink = document.getElementById('nav-login');
+            if (loginLink && loggedIn) {
+                loginLink.textContent = '🚪 Logout';
+                loginLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    google.script.run.withSuccessHandler(function() {
+                        window.location.href = '?page=login';
+                    }).logoutUser();
+                });
+            }
+        }).isUserLoggedIn();
+    }
 });
 </script>`;
       
@@ -2930,27 +2955,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function getNavigationHtmlWithIframeSupport(currentPage = '') {
   console.log(`🔗 Creating centered navigation for: ${currentPage}`);
-  
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-  
-  // Create links with multiple navigation strategies
+
+  // Use relative links so the navigation works regardless of deployment URL
   const links = [
-    `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" data-url="${BASE_URL}" onclick="handleNavigation(this); return false;">📊 Dashboard</a>`,
-    `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="${BASE_URL}?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
-    `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="${BASE_URL}?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
-    `<a href="${BASE_URL}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" data-url="${BASE_URL}?page=riders" onclick="handleNavigation(this); return false;">👥 Riders</a>`
+    `<a href="?page=dashboard" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" data-url="?page=dashboard" onclick="handleNavigation(this); return false;">📊 Dashboard</a>`,
+    `<a href="?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
+    `<a href="?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
+    `<a href="?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" data-url="?page=riders" onclick="handleNavigation(this); return false;">👥 Riders</a>`
   ];
 
   if (['riders', 'rider-schedule', 'admin-schedule'].includes(currentPage)) {
     links.push(
-      `<a href="${BASE_URL}?page=rider-schedule" class="nav-button ${currentPage === 'rider-schedule' ? 'active' : ''}" data-page="rider-schedule" data-url="${BASE_URL}?page=rider-schedule" onclick="handleNavigation(this); return false;">📆 My Schedule</a>`,
-      `<a href="${BASE_URL}?page=admin-schedule" class="nav-button ${currentPage === 'admin-schedule' ? 'active' : ''}" data-page="admin-schedule" data-url="${BASE_URL}?page=admin-schedule" onclick="handleNavigation(this); return false;">🗓️ Manage Schedules</a>`
+      `<a href="?page=rider-schedule" class="nav-button ${currentPage === 'rider-schedule' ? 'active' : ''}" data-page="rider-schedule" data-url="?page=rider-schedule" onclick="handleNavigation(this); return false;">📆 My Schedule</a>`,
+      `<a href="?page=admin-schedule" class="nav-button ${currentPage === 'admin-schedule' ? 'active' : ''}" data-page="admin-schedule" data-url="?page=admin-schedule" onclick="handleNavigation(this); return false;">🗓️ Manage Schedules</a>`
     );
   }
 
   links.push(
-    `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${BASE_URL}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
-    `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${BASE_URL}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
+    `<a href="?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
+    `<a href="?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`,
+    `<a href="?page=login" class="nav-button ${currentPage === 'login' ? 'active' : ''}" id="nav-login" data-page="login" data-url="?page=login" onclick="handleNavigation(this); return false;">🔐 Login</a>`
   );
   
   const navigation = `<nav class="navigation" id="main-navigation">
