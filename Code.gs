@@ -78,6 +78,7 @@ const CONFIG = {
       email: 'Email',
       status: 'Status',
       certification: 'Certification',
+      employmentType: 'Employment Type', // Added new field
       totalAssignments: 'Total Assignments',
       lastAssignmentDate: 'Last Assignment Date'  // Fixed: was 'LastAssignmentDate'
     },
@@ -108,6 +109,7 @@ const CONFIG = {
     requestTypes: ['Wedding', 'Funeral', 'Float Movement', 'VIP', 'Other'],
     requestStatuses: ['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress', 'Completed', 'Cancelled'],
     riderStatuses: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
+    riderEmploymentTypes: ['Full-Time', 'Part-Time', 'Volunteer'], // Added new options
     certificationTypes: ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'],
     assignmentStatuses: ['Assigned', 'Confirmed', 'En Route', 'In Progress', 'Completed', 'Cancelled', 'No Show']
   },
@@ -2103,7 +2105,12 @@ function getPageDataForRiders() {
       success: true,
       user: user,
       riders: riders,
-      stats: stats
+      stats: stats,
+      options: { // Added options to be passed to the client
+        riderStatuses: CONFIG.options.riderStatuses,
+        riderEmploymentTypes: CONFIG.options.riderEmploymentTypes,
+        certificationTypes: CONFIG.options.certificationTypes
+      }
     };
     
   } catch (error) {
@@ -2121,6 +2128,11 @@ function getPageDataForRiders() {
         inactiveRiders: 0,
         onVacation: 0,
         inTraining: 0
+      },
+      options: { // Ensure options are available even on error
+        riderStatuses: CONFIG.options.riderStatuses || [],
+        riderEmploymentTypes: CONFIG.options.riderEmploymentTypes || [],
+        certificationTypes: CONFIG.options.certificationTypes || []
       }
     };
   }
@@ -2576,6 +2588,20 @@ function doGet(e) {
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
     let content = htmlOutput.getContent();
     console.log(`📝 Original content: ${content.length} chars`);
+
+    if (fileName === 'index') {
+      const webAppBaseUrl = ScriptApp.getService().getUrl();
+      const scriptTag = `<script>const SCRIPT_BASE_URL = "${webAppBaseUrl}";</script>`;
+      if (content.includes('<!--SCRIPT_BASE_URL_PLACEHOLDER-->')) {
+        content = content.replace('<!--SCRIPT_BASE_URL_PLACEHOLDER-->', scriptTag);
+        console.log('✅ Injected SCRIPT_BASE_URL into index.html placeholder.');
+      } else if (content.includes('</head>')) {
+        content = content.replace('</head>', `${scriptTag}\n</head>`);
+        console.log('✅ Injected SCRIPT_BASE_URL into index.html before </head>.');
+      } else {
+        console.warn('⚠️ Could not find a suitable place to inject SCRIPT_BASE_URL in index.html.');
+      }
+    }
     
     // Get centered navigation
     const navigationHtml = getNavigationHtmlWithIframeSupport(pageName);

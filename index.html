@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!--SCRIPT_BASE_URL_PLACEHOLDER-->
     <title>Dashboard - Motorcycle Escort Management</title>
     <style>
         * {
@@ -669,8 +670,22 @@
 
         // If running inside Google Apps Script web app:
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const base = window.location.origin + window.location.pathname;
-            url = base + '?' + search.toString();
+           let tempUrl;
+           if (typeof SCRIPT_BASE_URL === 'undefined' || SCRIPT_BASE_URL === 'null' || SCRIPT_BASE_URL === '') { // Check for 'null' string if placeholder replaced with empty/null
+               console.warn('SCRIPT_BASE_URL is not defined or invalid. Falling back to pathname-based URL. This might not work correctly.');
+               const base = window.location.origin + window.location.pathname;
+               tempUrl = base + '?' + search.toString();
+           } else {
+               // Ensure SCRIPT_BASE_URL doesn't already have query params if search is also empty
+               if (SCRIPT_BASE_URL.includes('?') && search.toString() === '') {
+                   tempUrl = SCRIPT_BASE_URL;
+               } else if (SCRIPT_BASE_URL.includes('?')) {
+                   tempUrl = SCRIPT_BASE_URL + '&' + search.toString();
+               } else {
+                   tempUrl = SCRIPT_BASE_URL + '?' + search.toString();
+               }
+           }
+           url = tempUrl; // Assign to the outer scope url variable
 
             try {
                 window.top.location.href = url;
