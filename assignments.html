@@ -568,7 +568,7 @@
     var preselectedRequestId = null;
     var preselectAttempted = false;
     /** Map of rider name to availability status */
-    var riderAvailability = {}; // e.g., {"John Doe": "Busy"}
+    var riderAvailability = {}; // e.g., {"John Doe": "Unavailable"}
     /** @type {AppStateAssignments} */
     var app = {
         user: null,
@@ -1342,7 +1342,7 @@ function selectRequestById(requestId) {
      * Determines rider availability for a given request. (Placeholder implementation)
      * @param {RiderItemAssignmentsPage} rider - The rider object.
      * @param {RequestItemAssignmentsPage} request - The request object.
-     * @return {string} Availability status (e.g., "Available", "Busy", "Unavailable"). Currently always "Available".
+     * @return {string} Availability status (e.g., "Available", "Unavailable"). Currently always "Available".
      */
     function getRiderAvailability(rider, request) {
         if (!rider || !rider.name) return 'Available';
@@ -1426,7 +1426,7 @@ function updateAssignedRidersList() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(function(conflict) {
-                        riderAvailability[rider.name] = conflict ? 'Busy' : 'Available';
+                        riderAvailability[rider.name] = conflict ? 'Unavailable' : 'Available';
                         updateSingleRiderAvailability(rider.name);
                     })
                     .withFailureHandler(function(err) {
