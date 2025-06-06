@@ -2635,6 +2635,14 @@ function doGet(e) {
     
     const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
     console.log(`📄 Loading page: ${pageName}`);
+
+    if (!isUserLoggedIn() && pageName !== 'login') {
+      console.log('User not authenticated, redirecting to login');
+      const loginHtml = HtmlService.createHtmlOutputFromFile('login');
+      return loginHtml
+        .setTitle('Login')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    }
     
     // Determine file name
     let fileName;
@@ -2647,6 +2655,7 @@ function doGet(e) {
       case 'admin-schedule': fileName = 'admin-schedule'; break;
       case 'notifications': fileName = 'notifications'; break;
       case 'reports': fileName = 'reports'; break;
+      case 'login': fileName = 'login'; break;
       default: fileName = 'index';
     }
     
