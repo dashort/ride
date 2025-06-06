@@ -652,6 +652,10 @@
      * @type {Array<RequestFull>}
      */
     let allRequests = [];
+
+    // Flag to hide completed requests on the initial page load when no status
+    // filter is provided via query parameters.
+    let hideCompletedOnFirstLoad = true;
     /**
      * Holds the data of the request currently being edited or null if creating a new one.
      * @type {RequestFull|null}
@@ -675,6 +679,7 @@
             if (statusFilter) {
                 statusFilter.value = statusParam;
             }
+            hideCompletedOnFirstLoad = false; // Respect explicit status filter
         }
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -709,16 +714,20 @@
     function loadPageData() {
         showLoading();
         const filter = document.getElementById('statusFilter').value;
+        const hideCompleted = hideCompletedOnFirstLoad && filter === 'All';
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run
-                .withSuccessHandler(handlePageDataSuccess)
+                .withSuccessHandler(data => handlePageDataSuccess(data, hideCompleted))
                 .withFailureHandler(handlePageDataError)
                 .getPageDataForRequests(filter);
         } else {
             console.log('⚠️ Google Apps Script not available for requests page.');
             handlePageDataError({ message: "Google Apps Script not available." });
         }
+
+        // Only hide completed on the very first automatic load
+        hideCompletedOnFirstLoad = false;
     }
 
     /**
@@ -731,7 +740,7 @@
      * @param {string} [data.error] - Error message if not successful.
      * @return {void}
      */
-    function handlePageDataSuccess(data) {
+    function handlePageDataSuccess(data, hideCompleted) {
         hideLoading();
 
         if (data && data.success) {
@@ -739,12 +748,16 @@
             currentUser = data.user;
             // updateUserInfo(currentUser); // TODO: Implement if user info needs display on this page.
 
-            const requests = data.requests;
+            let requests = data.requests;
             if (!requests || !Array.isArray(requests)) {
                 showError('Invalid requests data received from server');
                 allRequests = [];
             } else {
                 allRequests = requests;
+            }
+
+            if (hideCompleted) {
+                allRequests = allRequests.filter(r => r.status !== 'Completed');
             }
 
             if (allRequests.length === 0) {
