@@ -1163,6 +1163,8 @@ if (!document.getElementById('debug-styles')) {
         var requestElement = document.querySelector('[data-request-id="' + requestId + '"]');
         if (requestElement) {
             requestElement.classList.add('selected');
+            // Ensure the selected request is visible when navigated via URL
+            requestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         selectedRequest = null;
