@@ -102,24 +102,29 @@ function getPageDataForRiders() {
     const riders = getRiders(); // This should work now with our previous fixes
     
     // Calculate stats using the same filtered data
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
+
     const stats = {
-      totalRiders: riders.length,
-      activeRiders: riders.filter(r => 
-        String(r.status || '').toLowerCase() === 'active' || 
+      totalRiders: certifiedRiders.length,
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
         String(r.status || '').toLowerCase() === 'available' ||
         String(r.status || '').trim() === ''
       ).length,
-      inactiveRiders: riders.filter(r => 
+      inactiveRiders: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'inactive'
       ).length,
-      onVacation: riders.filter(r =>
+      onVacation: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
 
-      inTraining: riders.filter(r =>
+      inTraining: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
       ).length,
-      partTimeRiders: riders.filter(r =>
+      partTimeRiders: certifiedRiders.filter(r =>
         String(r.partTime || '').toLowerCase() === 'yes'
       ).length
     };
