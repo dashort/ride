@@ -323,8 +323,8 @@
             margin: 2% auto;
             padding: 0;
             border-radius: 15px;
-            width: 90%;
-            max-width: 800px;
+            width: 95%;
+            max-width: 1000px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -713,56 +713,6 @@
  * IMPROVED: Better event listener setup
  * Replace the setupEventListeners function in riders.html
  */
-function setupEventListeners() {
-  console.log('🔧 Setting up event listeners...');
-  
-  // Search box with multiple event types
-  const searchBox = document.getElementById('searchBox');
-  if (searchBox) {
-    console.log('✅ Search box found, adding listeners');
-    
-    // Remove any existing listeners
-    searchBox.removeEventListener('input', filterRiders);
-    searchBox.removeEventListener('keyup', filterRiders);
-    searchBox.removeEventListener('change', filterRiders);
-    
-    // Add multiple event listeners for better responsiveness
-    searchBox.addEventListener('input', debounce(filterRiders, 300));
-    searchBox.addEventListener('keyup', debounce(filterRiders, 300));
-    searchBox.addEventListener('change', filterRiders);
-    
-    console.log('✅ Search box listeners added');
-  } else {
-    console.error('❌ Search box not found!');
-  }
-  
-  // Status filter
-  const statusFilter = document.getElementById('statusFilter');
-  const motorFilter = document.getElementById('motorFilter');
-  if (statusFilter) {
-    console.log('✅ Status filter found, adding listener');
-    statusFilter.addEventListener('change', filterRiders);
-  } else {
-    console.error('❌ Status filter not found!');
-  }
-
-  if (motorFilter) {
-    console.log('✅ Motor filter found, adding listener');
-    motorFilter.addEventListener('change', filterRiders);
-  } else {
-    console.error('❌ Motor filter not found!');
-  }
-  
-  // Modal close on outside click
-  window.onclick = function(event) {
-    const modal = document.getElementById('riderModal');
-    if (event.target === modal) {
-      closeRiderModal();
-    }
-  }
-  
-  console.log('✅ Event listeners setup complete');
-}
 
     function loadRidersData() {
         showLoading();
@@ -775,25 +725,6 @@ function setupEventListeners() {
         } else {
             console.log('⚠️ Google Apps Script not available');
             handleRidersDataFailure({ message: "Google Apps Script not available." });
-        }
-    }
-
-    function handleRidersDataSuccess(data) {
-        hideLoading();
-        
-        if (data && data.success) {
-            console.log('✅ Riders data loaded:', data);
-            app.user = data.user;
-            app.riders = data.riders || [];
-            app.filteredRiders = [...app.riders];
-            
-            updateUserInfo(data.user);
-            updateStats(data.stats);
-            renderRidersTable(app.filteredRiders);
-            showTable();
-        } else {
-            console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
-            showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
         }
     }
 
@@ -1993,7 +1924,7 @@ const riderLinkStyles = `
 
 /* Assignments modal styles */
 .assignments-modal-content {
-  max-width: 900px;
+  max-width: 1000px;
   max-height: 80vh;
   overflow-y: auto;
 }
