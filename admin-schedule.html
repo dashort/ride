@@ -47,6 +47,12 @@
             <input type="date" id="availDate" required>
             <input type="time" id="availStart" required>
             <input type="time" id="availEnd" required>
+            <select id="availRepeat">
+                <option value="none">No Repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+            </select>
+            <input type="date" id="repeatUntil" placeholder="Repeat Until">
             <input type="text" id="availNotes" placeholder="Notes">
             <button type="submit">Save</button>
         </form>
@@ -86,6 +92,8 @@
                 date: document.getElementById('availDate').value,
                 startTime: document.getElementById('availStart').value,
                 endTime: document.getElementById('availEnd').value,
+                repeat: document.getElementById('availRepeat').value,
+                repeatUntil: document.getElementById('repeatUntil').value,
                 notes: document.getElementById('availNotes').value
             };
             if (google && google.script && google.script.run) {
