@@ -102,24 +102,29 @@ function getPageDataForRiders() {
     const riders = getRiders(); // This should work now with our previous fixes
     
     // Calculate stats using the same filtered data
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
+
     const stats = {
-      totalRiders: riders.length,
-      activeRiders: riders.filter(r => 
-        String(r.status || '').toLowerCase() === 'active' || 
+      totalRiders: certifiedRiders.length,
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
         String(r.status || '').toLowerCase() === 'available' ||
         String(r.status || '').trim() === ''
       ).length,
-      inactiveRiders: riders.filter(r => 
+      inactiveRiders: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'inactive'
       ).length,
-      onVacation: riders.filter(r =>
+      onVacation: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
 
-      inTraining: riders.filter(r =>
+      inTraining: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
       ).length,
-      partTimeRiders: riders.filter(r =>
+      partTimeRiders: certifiedRiders.filter(r =>
         String(r.partTime || '').toLowerCase() === 'yes'
       ).length
     };
@@ -369,6 +374,36 @@ function getActiveRidersForWebApp() {
       email: 'webapp@example.com',
       carrier: 'Unknown'
     }];
+  }
+}
+
+/**
+ * Returns riders for the assignments page optionally filtered by active status.
+ * When `filterActive` is true, only active riders are returned. Otherwise all
+ * riders are provided in the same simplified format used by the web app.
+ *
+ * @param {boolean} filterActive Whether to filter by active status.
+ * @return {Array<object>} Array of rider objects.
+ */
+function getRidersWithAvailability(filterActive) {
+  try {
+    if (filterActive) {
+      return getActiveRidersForWebApp();
+    }
+
+    const allRiders = getRiders();
+    return allRiders.map(rider => ({
+      jpNumber: rider.jpNumber || '',
+      name: rider.name || '',
+      phone: rider.phone || '',
+      email: rider.email || '',
+      carrier: rider.carrier || 'Unknown'
+    }));
+
+  } catch (error) {
+    console.error('❌ Error in getRidersWithAvailability:', error);
+    logError('Error in getRidersWithAvailability', error);
+    return [];
   }
 }
 
@@ -648,6 +683,85 @@ function checkRiderTimeConflict(riderName, eventDateStr, startTimeStr) {
     logError('Error in checkRiderTimeConflict', error);
     return false;
   }
+}
+
+/**
+ * Checks the rider's availability schedule for a specific datetime.
+ * @param {string|number} riderId Rider identifier or name.
+ * @param {Date|string} datetime Date and time to check.
+ * @return {boolean} True if the rider is available at that time.
+ */
+function getRiderAvailabilityForDate(riderId, datetime) {
+  try {
+    if (!riderId || !datetime) return true;
+    const checkDate = datetime instanceof Date ? new Date(datetime) : new Date(datetime);
+    if (isNaN(checkDate.getTime())) return true;
+
+    const availData = getRiderAvailabilityData();
+    if (!availData || !availData.data) return true;
+
+    const cm = availData.columnMap;
+    const idCol = CONFIG.columns.riderAvailability.riderId;
+    const dateCol = CONFIG.columns.riderAvailability.date;
+    const startCol = CONFIG.columns.riderAvailability.startTime;
+    const endCol = CONFIG.columns.riderAvailability.endTime;
+    const statusCol = CONFIG.columns.riderAvailability.status;
+
+    for (let i = 0; i < availData.data.length; i++) {
+      const row = availData.data[i];
+      const rowId = getColumnValue(row, cm, idCol);
+      if (String(rowId).trim() !== String(riderId).trim()) continue;
+
+      let rowDate = getColumnValue(row, cm, dateCol);
+      rowDate = rowDate instanceof Date ? new Date(rowDate) : parseDateString(rowDate);
+      if (!rowDate) continue;
+      rowDate.setHours(0, 0, 0, 0);
+      const cmp = new Date(checkDate); cmp.setHours(0,0,0,0);
+      if (rowDate.getTime() !== cmp.getTime()) continue;
+
+      let start = getColumnValue(row, cm, startCol);
+      let end = getColumnValue(row, cm, endCol);
+      const startDt = start ? parseTimeString(start) : null;
+      const endDt = end ? parseTimeString(end) : null;
+      const checkDt = new Date(checkDate);
+      if (startDt) startDt.setFullYear(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+      if (endDt) endDt.setFullYear(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+
+      const matchesTime = (!startDt && !endDt) ||
+                          (startDt && !endDt && checkDt >= startDt) ||
+                          (!startDt && endDt && checkDt <= endDt) ||
+                          (startDt && endDt && checkDt >= startDt && checkDt <= endDt);
+
+      if (matchesTime) {
+        const status = String(getColumnValue(row, cm, statusCol) || '').toLowerCase();
+        return status === '' || status === 'available';
+      }
+    }
+    return true;
+  } catch (err) {
+    logError('Error in getRiderAvailabilityForDate', err);
+    return true;
+  }
+}
+
+/**
+ * Determines overall availability of a rider combining assignments and schedule.
+ * @param {string} riderName Rider name used in assignments sheet.
+ * @param {string} dateStr Event date string.
+ * @param {string} startTimeStr Start time string of the event.
+ * @return {boolean} True if the rider is available.
+ */
+function isRiderAvailable(riderName, dateStr, startTimeStr) {
+  const conflict = checkRiderTimeConflict(riderName, dateStr, startTimeStr);
+  if (conflict) return false;
+
+  const rider = getRiderDetails(riderName);
+  const riderId = rider ? rider.jpNumber || rider.riderId || rider.id : riderName;
+  const start = parseTimeString(startTimeStr);
+  const date = new Date(dateStr);
+  if (start) start.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+  const available = getRiderAvailabilityForDate(riderId, start || date);
+  return available;
 }
 /**
  * Get rider schedule with formatted dates/times for dashboard display.

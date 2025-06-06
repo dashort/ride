@@ -44,7 +44,9 @@ const CONFIG = {
     requests: "Requests",
     riders: "Riders",
     assignments: "Assignments",
-    availability: "Availability",
+
+    riderAvailability: "Rider Availability",
+
     history: "History",
     settings: "Settings",
     log: "Log"
@@ -104,12 +106,14 @@ const CONFIG = {
       calendarEventId: 'Calendar Event ID',
       notes: 'Notes'
     },
-    availability: {
-      email: 'Email',
+
+    riderAvailability: {
+      riderId: 'Rider ID',
       date: 'Date',
       startTime: 'Start Time',
       endTime: 'End Time',
-      notes: 'Notes'
+      status: 'Status'
+
     }
   },
 
@@ -2088,24 +2092,29 @@ function getPageDataForRiders() {
     const riders = getRiders(); // Uses consistent filtering
     
     // Calculate stats using consistent logic
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
+
     const stats = {
-      totalRiders: riders.length, // Matches displayed count
-      activeRiders: riders.filter(r => 
-        String(r.status || '').toLowerCase() === 'active' || 
+      totalRiders: certifiedRiders.length, // Matches displayed count
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
         String(r.status || '').toLowerCase() === 'available' ||
         String(r.status || '').trim() === ''
       ).length,
-      inactiveRiders: riders.filter(r =>
+      inactiveRiders: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'inactive'
       ).length,
-      onVacation: riders.filter(r =>
+      onVacation: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
 
-      inTraining: riders.filter(r =>
+      inTraining: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
       ).length,
-      partTimeRiders: riders.filter(r =>
+      partTimeRiders: certifiedRiders.filter(r =>
         String(r.partTime || '').toLowerCase() === 'yes'
       ).length
     };
@@ -2305,8 +2314,10 @@ function ensureSheetsExist() {
       } else if (sheetName === CONFIG.sheets.assignments) {
         const headers = Object.values(CONFIG.columns.assignments);
         newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      } else if (sheetName === CONFIG.sheets.availability) {
-        const headers = Object.values(CONFIG.columns.availability);
+
+      } else if (sheetName === CONFIG.sheets.riderAvailability) {
+        const headers = Object.values(CONFIG.columns.riderAvailability);
+
         newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       }
     }
