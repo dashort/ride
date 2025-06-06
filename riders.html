@@ -578,6 +578,7 @@
                             <th>Phone</th>
                             <th>Email</th>
                             <th>Status</th>
+                            <th>Part Time</th>
                             <th>Certification</th>
                             <th>Assignments</th>
                             <th>Last Assignment</th>
@@ -638,7 +639,15 @@
                                 <option value="Suspended">Suspended</option>
                             </select>
                         </div>
-                        
+
+                        <div class="form-group">
+                            <label for="riderPartTime">Part Time Rider</label>
+                            <select id="riderPartTime" name="riderPartTime">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+
                         <div class="form-group">
                             <label for="riderCertification">Certification</label>
                             <select id="riderCertification" name="riderCertification">
@@ -1102,6 +1111,7 @@ function editRider(riderId) {
   document.getElementById('riderPhone').value = rider.phone || rider['Phone Number'] || '';
   document.getElementById('riderEmail').value = rider.email || rider['Email'] || '';
   document.getElementById('riderStatus').value = rider.status || rider['Status'] || 'Active';
+  document.getElementById('riderPartTime').value = rider.partTime || rider['Part Time'] || 'No';
   document.getElementById('riderCertification').value = rider.certification || rider['Certification'] || 'Standard';
 
   document.getElementById('deleteRiderBtn').style.display = 'inline-block';
@@ -1220,6 +1230,7 @@ function saveRider() {
     'Phone Number': formData.get('riderPhone'),
     'Email': formData.get('riderEmail'),
     'Status': formData.get('riderStatus'),
+    'Part Time': formData.get('riderPartTime'),
     'Certification': formData.get('riderCertification') // ← Check this value
   };
   
@@ -1560,6 +1571,7 @@ function renderRidersTable(riders) {
     const riderPhone = rider.phone || rider['Phone Number'] || '';
     const riderEmail = rider.email || rider['Email'] || '';
     const riderStatus = rider.status || rider['Status'] || 'Active';
+    const riderPartTime = rider.partTime || rider['Part Time'] || 'No';
     const riderCertification = rider.certification || rider['Certification'] || 'Standard';
     const totalAssignments = rider.totalAssignments || rider['Total Assignments'] || 0;
     const lastAssignment = rider.lastAssignmentDate || rider['Last Assignment Date'] || 'Never';
@@ -1578,6 +1590,7 @@ function renderRidersTable(riders) {
       <td class="rider-phone-cell">${riderPhone}</td>
       <td>${riderEmail}</td>
       <td><span class="status-badge status-${riderStatus.toLowerCase()}">${riderStatus}</span></td>
+      <td>${riderPartTime}</td>
       <td>${riderCertification}</td>
       <td>${totalAssignments}</td>
       <td>${lastAssignment}</td>

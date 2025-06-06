@@ -320,6 +320,8 @@ function addRider(riderData) {
           return 0;
         case CONFIG.columns.riders.lastAssignmentDate:
           return '';
+        case CONFIG.columns.riders.partTime:
+          return riderData[header] || 'No';
         case CONFIG.columns.riders.certification:
           return riderData[header] || 'Standard';
         default:
@@ -543,6 +545,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
+  rider.partTime = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime) || 'No';
   rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
   rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
   rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
