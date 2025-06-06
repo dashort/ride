@@ -2061,7 +2061,7 @@ function addScheduleLinks() {
   const params = new URLSearchParams(window.location.search);
   const currentPage = params.get('page');
 
-  if (!document.getElementById('nav-rider-schedule')) {
+  if (!nav.querySelector('[data-page="rider-schedule"]')) {
     const mySchedule = document.createElement('a');
     mySchedule.href = '?page=rider-schedule';
     mySchedule.className = 'nav-button';
@@ -2072,7 +2072,7 @@ function addScheduleLinks() {
     nav.appendChild(mySchedule);
   }
 
-  if (!document.getElementById('nav-admin-schedule')) {
+  if (!nav.querySelector('[data-page="admin-schedule"]')) {
     const manageSchedules = document.createElement('a');
     manageSchedules.href = '?page=admin-schedule';
     manageSchedules.className = 'nav-button';
