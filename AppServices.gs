@@ -112,11 +112,14 @@ function getPageDataForRiders() {
       inactiveRiders: riders.filter(r => 
         String(r.status || '').toLowerCase() === 'inactive'
       ).length,
-      onVacation: riders.filter(r => 
+      onVacation: riders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
-      inTraining: riders.filter(r => 
+      inTraining: riders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
+      ).length,
+      partTimeRiders: riders.filter(r =>
+        String(r.partTime || '').toLowerCase() === 'yes'
       ).length
     };
     
@@ -147,7 +150,8 @@ function getPageDataForRiders() {
         activeRiders: 0,
         inactiveRiders: 0,
         onVacation: 0,
-        inTraining: 0
+        inTraining: 0,
+        partTimeRiders: 0
       }
     };
   }
