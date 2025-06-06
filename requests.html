@@ -776,6 +776,25 @@
     }
 
     /**
+     * Determines if the escort has started based on event date and start time.
+     * @param {string} eventDate - Date string (YYYY-MM-DD or similar).
+     * @param {string} startTime - Start time string (e.g. "14:00" or "2:00 PM").
+     * @return {boolean} True if the current time is on or after the start.
+     */
+    function escortHasStarted(eventDate, startTime) {
+        if (!eventDate || !startTime) return false;
+        const date = new Date(eventDate);
+        if (isNaN(date.getTime())) return false;
+
+        const formattedTime = formatTimeForInput(startTime);
+        if (!formattedTime) return false;
+
+        const [hours, minutes] = formattedTime.split(':').map(Number);
+        date.setHours(hours, minutes, 0, 0);
+        return new Date() >= date;
+    }
+
+    /**
      * Renders the requests data into the HTML table.
      * @param {Array<RequestFull>} requests - Array of request objects to display.
      * @return {void}
@@ -792,7 +811,8 @@
                 '';
 
             const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
-            const actionButton = (request.status !== 'Completed' && request.status !== 'Cancelled') ?
+            const showComplete = escortHasStarted(request.eventDate, request.startTime);
+            const actionButton = (request.status !== 'Completed' && request.status !== 'Cancelled' && showComplete) ?
                 `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${request.requestId || ''}')">Complete</button>` : '';
 
             row.innerHTML = `
