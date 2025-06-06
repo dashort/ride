@@ -1424,14 +1424,14 @@ function updateAssignedRidersList() {
         activeRiders.forEach(function(rider) {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(function(conflict) {
-                        riderAvailability[rider.name] = conflict ? 'Unavailable' : 'Available';
+                    .withSuccessHandler(function(available) {
+                        riderAvailability[rider.name] = available ? 'Available' : 'Unavailable';
                         updateSingleRiderAvailability(rider.name);
                     })
                     .withFailureHandler(function(err) {
                         console.error('Availability check failed for', rider.name, err);
                     })
-                    .checkRiderTimeConflict(rider.name, selectedRequest.eventDate, selectedRequest.startTime);
+                    .isRiderAvailable(rider.name, selectedRequest.eventDate, selectedRequest.startTime);
             }
         });
     }
