@@ -705,6 +705,11 @@
         if (searchInput) {
             searchInput.addEventListener('input', sortAndDisplayRequests);
         }
+
+        const actionParam = params.get('action');
+        if (actionParam && actionParam.toLowerCase() === 'create') {
+            openNewRequestForm();
+        }
     });
 
     /**
