@@ -19,10 +19,25 @@ function postAssignmentsToCalendar() {
     const map = assignmentsData.columnMap;
     const sheet = assignmentsData.sheet;
 
+    // Build a map of request IDs to assigned rider names for quick lookup
+    const ridersByRequest = {};
+    assignmentsData.data.forEach(row => {
+      const status = getColumnValue(row, map, CONFIG.columns.assignments.status);
+      if (status !== 'Assigned') return;
+
+      const reqId = getColumnValue(row, map, CONFIG.columns.assignments.requestId);
+      const rider = getColumnValue(row, map, CONFIG.columns.assignments.riderName);
+      if (!reqId || !rider) return;
+
+      if (!ridersByRequest[reqId]) ridersByRequest[reqId] = [];
+      ridersByRequest[reqId].push(rider);
+    });
+
     assignmentsData.data.forEach((row, index) => {
       const status = getColumnValue(row, map, CONFIG.columns.assignments.status);
       if (status !== 'Assigned') return;
 
+      const requestId = getColumnValue(row, map, CONFIG.columns.assignments.requestId);
       const eventDate = getColumnValue(row, map, CONFIG.columns.assignments.eventDate);
       const startTime = getColumnValue(row, map, CONFIG.columns.assignments.startTime);
       const endTime = getColumnValue(row, map, CONFIG.columns.assignments.endTime);
@@ -32,7 +47,29 @@ function postAssignmentsToCalendar() {
       const endLoc = getColumnValue(row, map, CONFIG.columns.assignments.endLocation);
 
       const title = `${riderName} escort`;
-      const description = `From ${startLoc || 'N/A'} to ${endLoc || 'N/A'}`;
+
+      let description = `From ${startLoc || 'N/A'} to ${endLoc || 'N/A'}`;
+
+      if (requestId) {
+        const requestDetails = getRequestDetails(requestId);
+        if (requestDetails) {
+          description += `\nRequest ID: ${requestDetails.id}`;
+          if (requestDetails.requesterName) {
+            description += `\nRequester: ${requestDetails.requesterName}`;
+          }
+          if (requestDetails.type) {
+            description += `\nType: ${requestDetails.type}`;
+          }
+          if (requestDetails.notes) {
+            description += `\nNotes: ${requestDetails.notes}`;
+          }
+        }
+
+        const riders = ridersByRequest[requestId];
+        if (riders && riders.length > 0) {
+          description += `\nAssigned Riders: ${riders.join(', ')}`;
+        }
+      }
       const startDate = new Date(`${eventDate} ${startTime}`);
       const endDate = endTime ? new Date(`${eventDate} ${endTime}`) : null;
 
