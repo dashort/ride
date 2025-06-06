@@ -447,6 +447,7 @@
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
             </select>
+            <label><input type="checkbox" id="showCompleted"> Completed</label>
             <button onclick="loadPageData()">🔄 Refresh</button>
             <button onclick="exportToCSV()">📊 Export</button>
             <button class="btn-success add-request-btn" onclick="openNewRequestForm()">➕ Add New Request</button>
@@ -653,9 +654,6 @@
      */
     let allRequests = [];
 
-    // Flag to hide completed requests on the initial page load when no status
-    // filter is provided via query parameters.
-    let hideCompletedOnFirstLoad = true;
     /**
      * Holds the data of the request currently being edited or null if creating a new one.
      * @type {RequestFull|null}
@@ -679,7 +677,6 @@
             if (statusFilter) {
                 statusFilter.value = statusParam;
             }
-            hideCompletedOnFirstLoad = false; // Respect explicit status filter
         }
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -695,6 +692,10 @@
 
         loadPageData();
         document.getElementById('statusFilter').addEventListener('change', loadPageData);
+        const completedCheckbox = document.getElementById('showCompleted');
+        if (completedCheckbox) {
+            completedCheckbox.addEventListener('change', loadPageData);
+        }
         const sortSelect = document.getElementById('sortBy');
         if (sortSelect) {
             sortSelect.value = 'eventDate';
@@ -714,7 +715,8 @@
     function loadPageData() {
         showLoading();
         const filter = document.getElementById('statusFilter').value;
-        const hideCompleted = hideCompletedOnFirstLoad && filter === 'All';
+        const includeCompleted = document.getElementById('showCompleted').checked;
+        const hideCompleted = !includeCompleted;
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run
@@ -725,9 +727,6 @@
             console.log('⚠️ Google Apps Script not available for requests page.');
             handlePageDataError({ message: "Google Apps Script not available." });
         }
-
-        // Only hide completed on the very first automatic load
-        hideCompletedOnFirstLoad = false;
     }
 
     /**
