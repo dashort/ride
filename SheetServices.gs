@@ -145,9 +145,27 @@ function findColumn(headers, searchTerm) {
  * @param {string} columnName The name of the column to retrieve.
  * @return {any} The value of the column, or null if not found or if row/columnMap is invalid.
  */
+function normalizeColumnName(name) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function getColumnIndex(columnMap, columnName) {
+  if (!columnMap || !columnName) return undefined;
+  if (columnMap.hasOwnProperty(columnName)) {
+    return columnMap[columnName];
+  }
+  const normalized = normalizeColumnName(columnName);
+  for (const [name, idx] of Object.entries(columnMap)) {
+    if (normalizeColumnName(name) === normalized) {
+      return idx;
+    }
+  }
+  return undefined;
+}
+
 function getColumnValue(row, columnMap, columnName) {
   if (!row || !columnMap || !columnName) return null; // Basic validation
-  const index = columnMap[columnName];
+  const index = getColumnIndex(columnMap, columnName);
   return index !== undefined && index < row.length ? row[index] : null;
 }
 
@@ -161,12 +179,9 @@ function getColumnValue(row, columnMap, columnName) {
  */
 function setColumnValue(row, columnMap, columnName, value) {
   if (!row || !columnMap || !columnName) return; // Basic validation
-  const index = columnMap[columnName];
-  if (index !== undefined && index < row.length) { // Ensure index is within bounds for existing rows
-    row[index] = value;
-  } else if (index !== undefined) { // For new rows being constructed, allow setting if index is known
-     row[index] = value;
-  }
+  const index = getColumnIndex(columnMap, columnName);
+  if (index === undefined) return;
+  row[index] = value;
 }
 
 /**
