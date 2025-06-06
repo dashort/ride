@@ -102,3 +102,106 @@ function postAssignmentsToCalendar() {
     logError('Error posting assignments to calendar', error);
   }
 }
+
+/**
+ * Creates or updates a calendar event for a single request if it is assigned.
+ * Only future events are synced.
+ * @param {string} requestId The ID of the request to sync.
+ * @return {void}
+ */
+function syncRequestToCalendar(requestId) {
+  try {
+    const details = getRequestDetails(requestId);
+    if (!details || details.status !== 'Assigned') return;
+
+    const eventDate = details.eventDate;
+    if (!(eventDate instanceof Date)) return;
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    if (eventDay < startOfToday) return; // Only future events
+
+    const calendar =
+      CalendarApp.getCalendarsByName(CONFIG.system.calendarName)[0] ||
+      CalendarApp.createCalendar(CONFIG.system.calendarName);
+
+    const requestsData = getRequestsData();
+    const map = requestsData.columnMap;
+    const sheet = requestsData.sheet;
+
+    let rowIndex = -1;
+    for (let i = 0; i < requestsData.data.length; i++) {
+      const idVal = getColumnValue(requestsData.data[i], map, CONFIG.columns.requests.id);
+      if (String(idVal).trim() === String(requestId).trim()) {
+        rowIndex = i + 2; // account for header row
+        break;
+      }
+    }
+
+    const idCol = map[CONFIG.columns.requests.calendarEventId];
+    let existingEventId = null;
+    if (rowIndex !== -1 && idCol !== undefined) {
+      existingEventId = sheet.getRange(rowIndex, idCol + 1).getValue();
+    }
+
+    const startDate = new Date(eventDate);
+    if (details.startTime instanceof Date) {
+      startDate.setHours(details.startTime.getHours(), details.startTime.getMinutes());
+    }
+    let endDate = null;
+    if (details.endTime instanceof Date) {
+      endDate = new Date(eventDate);
+      endDate.setHours(details.endTime.getHours(), details.endTime.getMinutes());
+    }
+
+    const title = `${details.type || 'Escort'} - ${details.requesterName || requestId}`;
+    let description = `Request ID: ${requestId}`;
+    if (details.startLocation) description += `\nFrom: ${details.startLocation}`;
+    if (details.endLocation) description += `\nTo: ${details.endLocation}`;
+    if (details.notes) description += `\nNotes: ${details.notes}`;
+
+    let event = null;
+    if (existingEventId) {
+      try {
+        event = calendar.getEventById(existingEventId);
+      } catch (e) {
+        event = null;
+      }
+    }
+
+    if (event) {
+      event.setTitle(title);
+      event.setDescription(description);
+      event.setTime(startDate, endDate || startDate);
+    } else {
+      event = calendar.createEvent(title, startDate, endDate || startDate, { description });
+    }
+
+    if (rowIndex !== -1 && idCol !== undefined) {
+      sheet.getRange(rowIndex, idCol + 1).setValue(event.getId());
+    }
+  } catch (error) {
+    logError(`Error syncing request ${requestId} to calendar`, error);
+  }
+}
+
+/**
+ * Synchronizes all assigned requests with future dates to the calendar.
+ * Can be called from a custom menu button.
+ * @return {void}
+ */
+function syncAllAssignedRequestsToCalendar() {
+  const requestsData = getRequestsData();
+  requestsData.data.forEach(row => {
+    const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+    if (status !== 'Assigned') return;
+    const id = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+    const eventDate = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+    if (!(eventDate instanceof Date)) return;
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const day = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    if (day < startOfToday) return;
+    syncRequestToCalendar(id);
+  });
+}

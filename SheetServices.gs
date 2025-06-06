@@ -652,6 +652,14 @@ function onEditRequestsSheet(e) {
       console.log(`onEditRequestsSheet: Edit in column ${col} (not a trigger column for status update) for ID ${requestId}, skipping status update.`);
     }
 
+    if (typeof syncRequestToCalendar === 'function') {
+      try {
+        syncRequestToCalendar(requestId);
+      } catch (syncError) {
+        logError(`Failed to sync request ${requestId} to calendar`, syncError);
+      }
+    }
+
   } catch (error) {
     logError("Error in onEditRequestsSheet", error); // Assumes logError is defined
   }

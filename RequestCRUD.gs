@@ -121,6 +121,15 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
     }
 
 
+    // Sync to calendar if applicable
+    if (typeof syncRequestToCalendar === 'function') {
+      try {
+        syncRequestToCalendar(newRequestId);
+      } catch (syncError) {
+        logError(`Failed to sync request ${newRequestId} to calendar`, syncError);
+      }
+    }
+
     return {
       success: true,
       requestId: newRequestId,
@@ -425,9 +434,18 @@ function updateExistingRequest(requestData) {
     
     console.log(`✅ Successfully updated request ${requestData.requestId}`);
 
-    return { 
-      success: true, 
-      message: 'Request updated successfully.', 
+    // Sync calendar if feature is available
+    if (typeof syncRequestToCalendar === 'function') {
+      try {
+        syncRequestToCalendar(requestData.requestId);
+      } catch (syncError) {
+        logError(`Failed to sync request ${requestData.requestId} to calendar`, syncError);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Request updated successfully.',
       requestId: requestData.requestId,
       updatedFields: updates.length
     };
