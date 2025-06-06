@@ -159,7 +159,6 @@
                 cb.dataset.jpNumber = rider.jpNumber;
                 cb.dataset.phone    = rider.phone;
                 cb.dataset.email    = rider.email;
-                cb.dataset.carrier  = rider.carrier;
                 if (currentlyAssigned.includes(rider.name)) cb.checked = true;
 
                 label.appendChild(cb);
@@ -178,8 +177,7 @@
                     name:     cb.value,
                     jpNumber: cb.dataset.jpNumber,
                     phone:    cb.dataset.phone,
-                    email:    cb.dataset.email,
-                    carrier:  cb.dataset.carrier
+                    email:    cb.dataset.email
                 };
             });
             showMessage('info', 'Assigning riders…');
