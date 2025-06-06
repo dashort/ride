@@ -146,7 +146,11 @@ function findColumn(headers, searchTerm) {
  * @return {any} The value of the column, or null if not found or if row/columnMap is invalid.
  */
 function normalizeColumnName(name) {
-  return String(name || '').trim().toLowerCase();
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ');
 }
 
 function getColumnIndex(columnMap, columnName) {
