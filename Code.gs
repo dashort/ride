@@ -1475,6 +1475,119 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
 }
 
 /**
+ * Find rider by email address
+ */
+function findRiderByEmail(emailAddress) {
+  try {
+    const ridersData = getRidersData();
+    const cleanEmail = String(emailAddress).trim().toLowerCase();
+
+    for (let i = 0; i < ridersData.data.length; i++) {
+      const row = ridersData.data[i];
+      const riderEmail = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.email);
+      const riderName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+
+      if (riderEmail && riderName && String(riderEmail).trim().toLowerCase() === cleanEmail) {
+        return {
+          name: riderName,
+          email: riderEmail,
+          phone: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.phone) || '',
+          jpNumber: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber) || ''
+        };
+      }
+    }
+
+    console.log(`❌ No rider found for email: ${emailAddress}`);
+    return null;
+
+  } catch (error) {
+    console.error('❌ Error finding rider by email:', error);
+    logError('Error finding rider by email', error);
+    return null;
+  }
+}
+
+/**
+ * Process unread email replies from riders
+ * Intended to run via time-based trigger
+ */
+function processEmailResponses() {
+  try {
+    const threads = GmailApp.search('is:unread in:inbox');
+    threads.forEach(thread => {
+      const messages = thread.getMessages();
+      messages.forEach(msg => {
+        if (!msg.isUnread()) return;
+        const fromEmail = msg.getFrom().replace(/.*<|>.*/g, '').trim().toLowerCase();
+        const body = msg.getPlainBody();
+        const result = handleEmailMessage(fromEmail, body);
+        logEmailResponse(fromEmail, body, result);
+        msg.markRead();
+      });
+    });
+
+    logActivity(`Processed ${threads.length} email thread(s)`);
+
+  } catch (error) {
+    logError('Error processing email responses', error);
+  }
+}
+
+/**
+ * Handle a single email message from a rider
+ */
+function handleEmailMessage(fromEmail, messageBody) {
+  try {
+    const cleanBody = String(messageBody).trim().toLowerCase();
+    const rider = findRiderByEmail(fromEmail);
+    if (!rider) {
+      return { action: 'unknown_email', rider: null };
+    }
+
+    let action = 'general_response';
+
+    if (cleanBody.includes('confirm') || cleanBody === 'yes' || cleanBody === 'y') {
+      action = 'confirm';
+      updateAssignmentStatus(rider.name, 'Confirmed');
+    } else if (cleanBody.includes('decline') || cleanBody.includes('cancel') || cleanBody === 'no' || cleanBody === 'n') {
+      action = 'decline';
+      updateAssignmentStatus(rider.name, 'Declined');
+    }
+
+    return { action: action, rider: rider.name };
+
+  } catch (error) {
+    logError('Error handling email message', error);
+    return { action: 'error', error: error.message };
+  }
+}
+
+/**
+ * Log email responses to tracking sheet
+ */
+function logEmailResponse(fromEmail, messageBody, result) {
+  try {
+    const sheet = getOrCreateSheet('Email_Responses', [
+      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Action'
+    ]);
+
+    sheet.appendRow([
+      new Date(),
+      fromEmail,
+      result.rider || 'Unknown',
+      messageBody,
+      result.action
+    ]);
+
+    console.log(`📝 Email response logged: ${result.action}`);
+
+  } catch (error) {
+    console.error('❌ Error logging email response:', error);
+    logError('Error logging email response', error);
+  }
+}
+
+/**
  * Create empty TwiML response required by Twilio
  */
 function createTwiMLResponse() {
