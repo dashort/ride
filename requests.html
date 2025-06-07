@@ -1361,12 +1361,14 @@ function navigateTo(page, params = {}) {
     search.set('page', page);
     Object.keys(params).forEach(key => search.set(key, params[key]));
 
+    let base = window.location.origin + window.location.pathname;
     let url;
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        const base = window.location.origin + window.location.pathname;
+        // When running in Apps Script use the current deployment URL
         url = base + '?' + search.toString();
     } else {
-        url = page + '.html?' + search.toString();
+        // Local environments may not support separate HTML pages
+        url = base + '?' + search.toString();
     }
 
     try {
