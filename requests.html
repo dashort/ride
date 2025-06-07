@@ -1385,7 +1385,8 @@ function navigateTo(page, params = {}) {
         if (currentEditingRequest && currentEditingRequest.requestId) {
             const requestId = currentEditingRequest.requestId;
             console.log('Navigating to assignments page for request:', requestId);
-            navigateTo('assignments', { requestId });
+            const params = new URLSearchParams({ page: 'assignments', requestId });
+            window.location.href = window.location.origin + window.location.pathname + '?' + params.toString();
         } else {
             showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
