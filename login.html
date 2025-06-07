@@ -30,7 +30,9 @@
         google.script.run
           .withSuccessHandler(function(res) {
             if (res && res.success) {
-              window.location.href = '?page=dashboard';
+              google.script.run.withSuccessHandler(function(url) {
+                window.location.href = url + '?page=dashboard';
+              }).getWebAppUrl();
             } else {
               msg.textContent = 'Invalid credentials';
             }

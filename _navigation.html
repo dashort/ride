@@ -9,17 +9,23 @@
 </nav>
 <script>
   if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run.withSuccessHandler(function(loggedIn) {
-      var loginLink = document.getElementById('nav-login');
-      if (loggedIn) {
-        loginLink.textContent = '🚪 Logout';
-        loginLink.addEventListener('click', function(e) {
-          e.preventDefault();
-          google.script.run.withSuccessHandler(function(){
-            window.location.href = '?page=login';
-          }).logoutUser();
-        });
-      }
-    }).isUserLoggedIn();
+    google.script.run.withSuccessHandler(function(url) {
+      document.querySelectorAll('nav.navigation a').forEach(function(a) {
+        var page = a.getAttribute('data-page');
+        a.href = page === 'dashboard' ? url : url + '?page=' + page;
+      });
+      google.script.run.withSuccessHandler(function(loggedIn) {
+        var loginLink = document.getElementById('nav-login');
+        if (loggedIn) {
+          loginLink.textContent = '🚪 Logout';
+          loginLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            google.script.run.withSuccessHandler(function(){
+              window.location.href = url + '?page=login';
+            }).logoutUser();
+          });
+        }
+      }).isUserLoggedIn();
+    }).getWebAppUrl();
   }
 </script>
