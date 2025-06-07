@@ -357,7 +357,7 @@ function debugPlaceholderIssues() {
 // ISSUE 2: doGet function problems
 // Your current doGet might have issues. Here's a corrected version:
 function testNavigationUrls() {
-  const baseUrl = ScriptApp.getService().getUrl();
+  const baseUrl = getWebAppUrl();
   console.log('Web app URL:', baseUrl);
   
   const nav = getNavigationHtmlWithDynamicUrls('requests');
@@ -414,7 +414,7 @@ function getNavigationHtml(currentPage = '') {
     console.error('❌ Error in getNavigationHtml:', error);
     
     // Return basic fallback navigation
-    const baseUrl = ScriptApp.getService().getUrl();
+    const baseUrl = getWebAppUrl();
     return `<nav class="navigation">
       <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
       <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
@@ -539,7 +539,7 @@ function showExactPlaceholderLocations() {
  * Create fallback navigation HTML
  */
 function createFallbackNavigation(currentPage = '') {
-  const baseUrl = ScriptApp.getService().getUrl();
+  const baseUrl = getWebAppUrl();
   
     const pages = [
       { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
@@ -679,7 +679,7 @@ function checkDeploymentStatus() {
     console.log('=== DEPLOYMENT TROUBLESHOOTING ===');
     
     // Get the web app URL
-    const webAppUrl = ScriptApp.getService().getUrl();
+    const webAppUrl = getWebAppUrl();
     console.log(`Web App URL: ${webAppUrl}`);
     
     // Check if we can create HTML outputs
@@ -965,7 +965,7 @@ function _onEdit(e) {
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    Logger.log("Base Script URL: " + ScriptApp.getService().getUrl()); // Added for URL context
+    Logger.log("Base Script URL: " + getWebAppUrl()); // Added for URL context
     let navHtmlFromFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
     Logger.log('Fetched _navigation.html content: ' + navHtmlFromFile);
 
@@ -3024,12 +3024,12 @@ document.addEventListener('DOMContentLoaded', function() {
         <h1 style="text-align: center;">🏍️ Escort Management</h1>
         
         <nav class="navigation">
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Dashboard</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📋 Requests</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button" onclick="window.open(this.href, '_self'); return false;">🏍️ Assignments</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=riders" class="nav-button" onclick="window.open(this.href, '_self'); return false;">👥 Riders</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📱 Notifications</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Reports</a>
+          <a href="${getWebAppUrl()}" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Dashboard</a>
+          <a href="${getWebAppUrl()}?page=requests" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📋 Requests</a>
+          <a href="${getWebAppUrl()}?page=assignments" class="nav-button" onclick="window.open(this.href, '_self'); return false;">🏍️ Assignments</a>
+          <a href="${getWebAppUrl()}?page=riders" class="nav-button" onclick="window.open(this.href, '_self'); return false;">👥 Riders</a>
+          <a href="${getWebAppUrl()}?page=notifications" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📱 Notifications</a>
+          <a href="${getWebAppUrl()}?page=reports" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Reports</a>
         </nav>
         
         <div style="text-align: center; margin-top: 40px;">
@@ -3076,8 +3076,8 @@ function getNavigationHtmlWithIframeSupport(currentPage = '') {
 
 function getNavigationHtmlWithForcedClicks(currentPage = '') {
   console.log(`🔗 Creating navigation with forced click handling for: ${currentPage}`);
-  
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+
+  const BASE_URL = getWebAppUrl();
   
   // Create links with both href AND onclick for maximum compatibility
   const links = [
@@ -3100,9 +3100,8 @@ function getNavigationHtmlWithForcedClicks(currentPage = '') {
  */
 function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
   console.log(`🔗 Creating navigation with absolute URLs for: ${currentPage}`);
-  
-  // Your exact web app URL
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+
+  const BASE_URL = getWebAppUrl();
   
   // Create each link with full absolute URL
   const links = [
@@ -3196,8 +3195,8 @@ After deploying, check the browser console for the navigation debug messages.
 function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
   console.log(`🔗 Creating navigation with absolute URLs for: ${currentPage}`);
   
-  // Your exact web app URL - make sure this is correct
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  // Base URL retrieved once for consistency
+  const BASE_URL = getWebAppUrl();
   
   // Create each link with full absolute URL
   const links = [
@@ -3267,7 +3266,7 @@ function testForNavigationDuplicates() {
  * Create fallback navigation (same as before)
  */
 function createFallbackNavigation(currentPage = '') {
-  const baseUrl = ScriptApp.getService().getUrl();
+  const baseUrl = getWebAppUrl();
 
   const links = [
     `<a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>`,
@@ -3294,8 +3293,8 @@ function getNavigationHtmlWithDynamicUrls(currentPage = '') {
   try {
     console.log(`🧭 Getting navigation for page: ${currentPage}`);
     
-    // Use hardcoded URL for consistency across all pages
-    const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+    // Use cached URL for consistency across all pages
+    const baseUrl = getWebAppUrl();
     
     const pages = [
       { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
@@ -3437,13 +3436,13 @@ function showQuickAssignDialog() {
     // ===== IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WEB APP DEPLOYMENT URL =====
     // If you don't have one yet, deploy your script as a Web App (Deploy -> New Deployment -> Web App)
     // Make sure "Execute as" is "Me" and "Who has access" is "Anyone".
-    const WEB_APP_BASE_URL = "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec"; // Example: "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec";
+    const WEB_APP_BASE_URL = getWebAppUrl(); // Example: "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec";
 
     // IMPORTANT: If you see a generic URL like "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec" you MUST
     // get your unique web app URL from Deploy -> Manage Deployments -> Your Web App Deployment -> Web app URL
     // Each deployment generates a unique URL.
 
-    if (WEB_APP_BASE_URL === "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec") {
+    if (!WEB_APP_BASE_URL) {
         ui.alert('Configuration Error', 'Please deploy your script as a Web App and update WEB_APP_BASE_URL in the script with the actual URL from your deployment settings.', ui.ButtonSet.OK);
         return;
     }
