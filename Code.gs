@@ -2635,18 +2635,6 @@ function doGet(e) {
     
     let pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
     console.log(`📄 Loading page: ${pageName}`);
-
-    if (isUserLoggedIn() && pageName === 'login') {
-      console.log('User already logged in, redirecting to dashboard');
-      return HtmlService.createHtmlOutput("<script>window.location.href='?page=dashboard';</script>")
-        .setTitle('Redirect');
-    }
-
-    if (!isUserLoggedIn() && pageName !== 'login') {
-      console.log('User not authenticated, redirecting to login');
-      pageName = 'login';
-    }
-    
     // Determine file name
     let fileName;
     switch(pageName) {
@@ -2658,7 +2646,6 @@ function doGet(e) {
       case 'admin-schedule': fileName = 'admin-schedule'; break;
       case 'notifications': fileName = 'notifications'; break;
       case 'reports': fileName = 'reports'; break;
-      case 'login': fileName = 'login'; break;
       default: fileName = 'index';
     }
     
@@ -2873,22 +2860,7 @@ document.addEventListener('DOMContentLoaded', function() {
         activeButton.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
     }
 
-    // Toggle Login/Logout link
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(function(loggedIn) {
-            var loginLink = document.getElementById('nav-login');
-            if (loginLink && loggedIn) {
-                loginLink.textContent = '🚪 Logout';
-                loginLink.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    google.script.run.withSuccessHandler(function() {
-                        window.location.href = '?page=login';
-                    }).logoutUser();
-                });
-            }
-        }).isUserLoggedIn();
-    }
-});
+  });
 </script>`;
       
       content = content.replace('</body>', cleanNavigationScript + '\n</body>');
@@ -2978,8 +2950,7 @@ function getNavigationHtmlWithIframeSupport(currentPage = '') {
 
   links.push(
     `<a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${baseUrl}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
-    `<a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${baseUrl}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`,
-    `<a href="${baseUrl}?page=login" class="nav-button ${currentPage === 'login' ? 'active' : ''}" id="nav-login" data-page="login" data-url="${baseUrl}?page=login" onclick="handleNavigation(this); return false;">🔐 Login</a>`
+    `<a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${baseUrl}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
   );
   
   const navigation = `<nav class="navigation" id="main-navigation">
