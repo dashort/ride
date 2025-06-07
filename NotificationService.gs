@@ -847,10 +847,7 @@ function formatNotificationMessage(assignment, includeLinks = true) {
  */
 function getWebAppUrl() {
   try {
-    // Try to get the current web app URL
-    // You'll need to set this to your actual web app URL
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec";
-    return WEB_APP_URL;
+    return ScriptApp.getService().getUrl();
   } catch (error) {
     console.log('Could not determine web app URL');
     return null;

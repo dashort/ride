@@ -2063,7 +2063,7 @@ function addScheduleLinks() {
 
   if (!nav.querySelector('[data-page="rider-schedule"]')) {
     const mySchedule = document.createElement('a');
-    mySchedule.href = '?page=rider-schedule';
+    google.script.run.withSuccessHandler(url => { mySchedule.href = url + '?page=rider-schedule'; }).getWebAppUrl();
     mySchedule.className = 'nav-button';
     mySchedule.id = 'nav-rider-schedule';
     mySchedule.dataset.page = 'rider-schedule';
@@ -2074,7 +2074,7 @@ function addScheduleLinks() {
 
   if (!nav.querySelector('[data-page="admin-schedule"]')) {
     const manageSchedules = document.createElement('a');
-    manageSchedules.href = '?page=admin-schedule';
+    google.script.run.withSuccessHandler(url => { manageSchedules.href = url + '?page=admin-schedule'; }).getWebAppUrl();
     manageSchedules.className = 'nav-button';
     manageSchedules.id = 'nav-admin-schedule';
     manageSchedules.dataset.page = 'admin-schedule';

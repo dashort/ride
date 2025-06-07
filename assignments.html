@@ -777,7 +777,7 @@ function displayNoRiders(message) {
           <button onclick="loadActiveRidersEnhanced()" class="btn btn-primary">
             🔄 Retry Loading
           </button>
-          <button onclick="window.open('?page=riders', '_blank')" class="btn btn-secondary">
+          <button onclick="google.script.run.withSuccessHandler(url => window.open(url + '?page=riders', '_blank')).getWebAppUrl();" class="btn btn-secondary">
             👥 Go to Riders Page
           </button>
         </div>
