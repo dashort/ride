@@ -1385,7 +1385,15 @@ function navigateTo(page, params = {}) {
         if (currentEditingRequest && currentEditingRequest.requestId) {
             const requestId = currentEditingRequest.requestId;
             console.log('Navigating to assignments page for request:', requestId);
-            navigateTo('assignments', { requestId });
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(function(baseUrl) {
+                    const url = baseUrl + '?page=assignments&requestId=' + encodeURIComponent(requestId);
+                    window.location.href = url;
+                }).getWebAppUrl();
+            } else {
+                navigateTo('assignments', { requestId });
+            }
         } else {
             showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
