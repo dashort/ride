@@ -1111,7 +1111,12 @@ if (!document.getElementById('debug-styles')) {
                 request.requesterName.toLowerCase().indexOf(searchTerm) !== -1 ||
                 (request.ridersAssigned && request.ridersAssigned.toLowerCase().indexOf(searchTerm) !== -1);
 
-            var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
+            var matchesStatus;
+            if (activeStatus === 'Unassigned') {
+                matchesStatus = request.status !== 'Assigned';
+            } else {
+                matchesStatus = activeStatus === 'all' || request.status === activeStatus;
+            }
 
             var matchesDate = true;
             if (app.dateFilter === 'today') {
