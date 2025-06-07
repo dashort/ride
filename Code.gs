@@ -2063,7 +2063,39 @@ function generateReportData(filters) {
         });
       }
     });
-    
+
+    // Calculate total escort hours per rider within the period
+    const riderHours = [];
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName) return;
+
+      let totalHours = 0;
+
+      assignmentsData.data.forEach(assignment => {
+        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+
+        let dateMatches = true;
+        if (eventDate instanceof Date) {
+          dateMatches = eventDate >= startDate && eventDate <= endDate;
+        }
+
+        if (assignmentRider === riderName && status === 'Completed' && dateMatches) {
+          const start = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
+          const end = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
+          if (start && end && end > start) {
+            totalHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+        }
+      });
+
+      if (totalHours > 0) {
+        riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
+      }
+    });
+
     const reportData = {
       summary: {
         totalRequests: totalRequests,
@@ -2082,6 +2114,7 @@ function generateReportData(filters) {
       },
       tables: {
         riderPerformance: riderPerformance.sort((a, b) => b.assignments - a.assignments),
+        riderHours: riderHours.sort((a, b) => b.hours - a.hours),
         // Placeholder for response time
         responseTime: {}
       }

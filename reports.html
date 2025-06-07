@@ -452,6 +452,19 @@
                 </div>
             </div>
 
+            <!-- Monthly Escort Hours -->
+            <div class="report-card">
+                <h3 class="report-title">⏰ Monthly Escort Hours</h3>
+                <div id="riderHoursTable">
+                    <div class="loading">Loading hours...</div>
+                </div>
+                <div class="export-section">
+                    <button class="btn btn-success" onclick="exportTable('riderHours')">
+                        📥 Export Data
+                    </button>
+                </div>
+            </div>
+
             <!-- Monthly Trends -->
             <div class="report-card">
                 <h3 class="report-title">📅 Monthly Trends</h3>
@@ -755,6 +768,21 @@
                     </table>
                 `;
                 document.getElementById('riderPerformanceTable').innerHTML = riderTable;
+            }
+
+            // Rider Hours Table
+            if (tables.riderHours) {
+                const hoursTable = `
+                    <table class="stats-table">
+                        <thead>
+                            <tr><th>Rider</th><th>Hours</th></tr>
+                        </thead>
+                        <tbody>
+                            ${tables.riderHours.map(r => `<tr><td>${r.name}</td><td>${r.hours}</td></tr>`).join('')}
+                        </tbody>
+                    </table>
+                `;
+                document.getElementById('riderHoursTable').innerHTML = hoursTable;
             }
 
             // Response Time Analysis
