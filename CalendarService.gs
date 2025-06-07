@@ -148,6 +148,21 @@ function syncRequestToCalendar(requestId) {
       }
     }
 
+    // If no event found by ID, attempt to locate an existing event
+    // matching the same title and start time. This helps prevent
+    // creating duplicate calendar entries when the stored ID is missing
+    // or invalid.
+    if (!event) {
+      const eventsForDay = calendar.getEventsForDay(startDate);
+      for (let i = 0; i < eventsForDay.length; i++) {
+        const evt = eventsForDay[i];
+        if (evt.getTitle() === title && evt.getStartTime().getTime() === startDate.getTime()) {
+          event = evt;
+          break;
+        }
+      }
+    }
+
     if (event) {
       event.setTitle(title);
       Utilities.sleep(500); // Throttle to avoid Apps Script service quota errors
