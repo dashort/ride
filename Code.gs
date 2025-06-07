@@ -2127,6 +2127,59 @@ function generateReportData(filters) {
     throw error;
   }
 }
+/**
+ * Generates a rider activity report for the given date range.
+ * @param {string} startDate Start date in YYYY-MM-DD format.
+ * @param {string} endDate End date in YYYY-MM-DD format.
+ * @return {object} Result object with success flag and data array.
+ */
+function generateRiderActivityReport(startDate, endDate) {
+  try {
+    const assignmentsData = getAssignmentsData();
+    const start = parseDateString(startDate);
+    const end = parseDateString(endDate);
+    if (!start || !end) {
+      throw new Error('Invalid date range');
+    }
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const riderMap = {};
+
+    assignmentsData.data.forEach(row => {
+      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (eventDate instanceof Date) {
+        if (eventDate < start || eventDate > end) return;
+      }
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      if (status !== 'Completed') return;
+      const rider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      if (!rider) return;
+
+      const startTime = parseTimeString(getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
+      const endTime = parseTimeString(getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
+
+      if (!riderMap[rider]) {
+        riderMap[rider] = { escorts: 0, hours: 0 };
+      }
+      riderMap[rider].escorts++;
+      if (startTime && endTime && endTime > startTime) {
+        riderMap[rider].hours += (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+      }
+    });
+
+    const data = Object.keys(riderMap).map(name => ({
+      name: name,
+      escorts: riderMap[name].escorts,
+      hours: Math.round(riderMap[name].hours * 100) / 100
+    })).sort((a, b) => b.hours - a.hours);
+
+    return { success: true, data };
+  } catch (error) {
+    logError('Error in generateRiderActivityReport', error);
+    return { success: false, error: error.message };
+  }
+}
 
 /**
  * Fetches and formats recent requests for web app display.

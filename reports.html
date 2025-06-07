@@ -874,7 +874,43 @@
         }
 
         function generateComprehensiveReport(type) {
-            alert('Generate ' + type + ' report not implemented');
+            if (type === 'rider') {
+                const start = document.getElementById('startDate').value;
+                const end = document.getElementById('endDate').value;
+                if (!start || !end) {
+                    showError('Please select a date range');
+                    return;
+                }
+
+                showLoading('Generating rider activity...');
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(displayRiderActivityReport)
+                        .withFailureHandler(handleError)
+                        .generateRiderActivityReport(start, end);
+                } else {
+                    hideLoading();
+                    showError('Google Apps Script not available.');
+                }
+            } else {
+                alert('Generate ' + type + ' report not implemented');
+            }
+        }
+
+        function displayRiderActivityReport(result) {
+            hideLoading();
+            if (!result || !result.success) {
+                showError(result && result.error ? result.error : 'Failed to generate report');
+                return;
+            }
+
+            const rows = result.data.map(r => `<tr><td>${r.name}</td><td>${r.escorts}</td><td>${r.hours}</td></tr>`).join('');
+            const html = `<!DOCTYPE html><html><head><title>Rider Activity Report</title><style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style></head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th><th>Total Hours</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+            const w = window.open('', '_blank');
+            if (w) {
+                w.document.write(html);
+                w.document.close();
+            }
         }
 
         function exportChart(id) {
