@@ -816,14 +816,6 @@ function hideLoading() {
   // Add your hide loading code here
 }
 
-// Auto-run debug when page loads (temporary)
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait a bit for the page to fully load
-  setTimeout(function() {
-    console.log('🔍 Auto-running riders debug...');
-    debugRidersLoading();
-  }, 2000);
-});
 
 // Add CSS for the no-riders message
 const debugStyles = `
