@@ -859,15 +859,27 @@ function formatNotificationMessage(assignment, includeLinks = true) {
 }
 
 /**
- * Get the web app URL for creating links
+ * Cached web app URL so we only fetch it once.
+ * @type {?string}
+ */
+let WEB_APP_URL;
+
+/**
+ * Get the web app URL for creating links. The URL is retrieved once and then
+ * cached for subsequent calls.
+ * @return {?string} The deployed web app URL or null if unavailable.
  */
 function getWebAppUrl() {
+  if (WEB_APP_URL !== undefined) {
+    return WEB_APP_URL;
+  }
   try {
-    return ScriptApp.getService().getUrl();
+    WEB_APP_URL = ScriptApp.getService().getUrl();
   } catch (error) {
     console.log('Could not determine web app URL');
-    return null;
+    WEB_APP_URL = null;
   }
+  return WEB_APP_URL;
 }
 
 // ===== 2. TWILIO WEBHOOK SETUP FOR RESPONSES =====
