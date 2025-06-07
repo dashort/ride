@@ -2633,7 +2633,7 @@ function doGet(e) {
     console.log('🚀 doGet with centered navigation...');
     console.log('Parameters:', JSON.stringify(e.parameter));
     
-    const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
+    let pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
     console.log(`📄 Loading page: ${pageName}`);
 
     if (isUserLoggedIn() && pageName === 'login') {
@@ -2644,10 +2644,7 @@ function doGet(e) {
 
     if (!isUserLoggedIn() && pageName !== 'login') {
       console.log('User not authenticated, redirecting to login');
-      const loginHtml = HtmlService.createHtmlOutputFromFile('login');
-      return loginHtml
-        .setTitle('Login')
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      pageName = 'login';
     }
     
     // Determine file name
