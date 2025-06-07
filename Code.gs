@@ -2174,10 +2174,49 @@ function generateRiderActivityReport(startDate, endDate) {
       hours: Math.round(riderMap[name].hours * 100) / 100
     })).sort((a, b) => b.hours - a.hours);
 
-    return { success: true, data };
+  return { success: true, data };
   } catch (error) {
     logError('Error in generateRiderActivityReport', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Exports rider activity report as CSV.
+ * @param {string} startDate Start date in YYYY-MM-DD format.
+ * @param {string} endDate End date in YYYY-MM-DD format.
+ * @return {object} Result object with CSV content or error message.
+ */
+function exportRiderActivityCSV(startDate, endDate) {
+  try {
+    const report = generateRiderActivityReport(startDate, endDate);
+    if (!report.success) {
+      throw new Error(report.error || 'Failed to generate rider activity');
+    }
+
+    const headers = ['Rider', 'Escorts', 'Hours'];
+    const csvRows = [headers.join(',')];
+    report.data.forEach(r => {
+      const row = [
+        `"${String(r.name).replace(/"/g, '""')}"`,
+        r.escorts,
+        r.hours
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const filename = `rider_activity_${startDate}_to_${endDate}.csv`;
+
+    return {
+      success: true,
+      csvContent: csvContent,
+      filename: filename,
+      count: report.data.length
+    };
+  } catch (error) {
+    logError('Error in exportRiderActivityCSV', error);
+    return { success: false, message: error.message };
   }
 }
 

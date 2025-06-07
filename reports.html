@@ -524,6 +524,9 @@
                 <button class="btn btn-primary" onclick="generateComprehensiveReport('rider')">
                     🏍️ Rider Activity Report
                 </button>
+                <button class="btn btn-success" onclick="exportRiderActivityCSV()">
+                    📥 Rider CSV
+                </button>
                 <button class="btn btn-primary" onclick="generateComprehensiveReport('financial')">
                     💰 Cost Analysis
                 </button>
@@ -911,6 +914,41 @@
                 w.document.write(html);
                 w.document.close();
             }
+        }
+
+        function exportRiderActivityCSV() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            if (!start || !end) {
+                showError('Please select a date range');
+                return;
+            }
+            showLoading('Exporting rider activity...');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleRiderActivityCSV)
+                    .withFailureHandler(handleError)
+                    .exportRiderActivityCSV(start, end);
+            } else {
+                hideLoading();
+                showError('Google Apps Script not available.');
+            }
+        }
+
+        function handleRiderActivityCSV(result) {
+            hideLoading();
+            if (!result || !result.success) {
+                showError(result && result.message ? result.message : 'Failed to export');
+                return;
+            }
+            const blob = new Blob([result.csvContent], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            showSuccess(`Exported ${result.count} records`);
         }
 
         function exportChart(id) {
