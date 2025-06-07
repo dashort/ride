@@ -2636,6 +2636,12 @@ function doGet(e) {
     const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
     console.log(`📄 Loading page: ${pageName}`);
 
+    if (isUserLoggedIn() && pageName === 'login') {
+      console.log('User already logged in, redirecting to dashboard');
+      return HtmlService.createHtmlOutput("<script>window.location.href='?page=dashboard';</script>")
+        .setTitle('Redirect');
+    }
+
     if (!isUserLoggedIn() && pageName !== 'login') {
       console.log('User not authenticated, redirecting to login');
       const loginHtml = HtmlService.createHtmlOutputFromFile('login');

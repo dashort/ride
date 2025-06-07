@@ -37,13 +37,16 @@ function authenticateUser(email, password) {
  * @return {Object} Result of the login attempt.
  */
 function loginUser(email, password) {
+  console.log('Login attempt for: ' + email);
   if (authenticateUser(email, password)) {
     const props = PropertiesService.getUserProperties();
     const token = Utilities.getUuid();
     props.setProperty('authToken', token);
     props.setProperty('authEmail', email);
+    console.log('✅ Login successful');
     return { success: true };
   }
+  console.warn('❌ Invalid credentials for ' + email);
   return { success: false, message: 'Invalid credentials' };
 }
 

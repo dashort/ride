@@ -22,19 +22,25 @@
     <button type="submit">Login</button>
   </form>
   <script>
-    const form = document.getElementById('loginForm');
-    const msg = document.getElementById('message');
-    form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      msg.textContent = '';
-      google.script.run.withSuccessHandler(function(res) {
-        if (res && res.success) {
-          window.location.href = '?page=dashboard';
-        } else {
-          msg.textContent = 'Invalid credentials';
-        }
-      }).loginUser(form.email.value, form.password.value);
-    });
+      const form = document.getElementById('loginForm');
+      const msg = document.getElementById('message');
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        msg.textContent = '';
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              window.location.href = '?page=dashboard';
+            } else {
+              msg.textContent = 'Invalid credentials';
+            }
+          })
+          .withFailureHandler(function(err) {
+            console.error('Login error', err);
+            msg.textContent = 'Error during login';
+          })
+          .loginUser(form.email.value, form.password.value);
+      });
   </script>
 </body>
 </html>
