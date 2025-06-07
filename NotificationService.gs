@@ -391,14 +391,30 @@ function sendAssignmentNotification(assignmentId, type) {
     
     // Enhanced message formatting with request details
     const message = formatNotificationMessage({
-      assignmentId, 
-      requestId, 
-      riderName, 
-      eventDate, 
-      startTime, 
-      startLocation, 
+      assignmentId,
+      requestId,
+      riderName,
+      eventDate,
+      startTime,
+      startLocation,
       endLocation
     });
+
+    // Build an email-specific message that includes other assigned riders
+    let emailMessage = message;
+    if (type === 'Email' || type === 'Both') {
+      try {
+        const relatedAssignments = getAssignmentsForRequest(requestId);
+        const otherRiders = relatedAssignments
+          .map(row => getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName))
+          .filter(name => name && name !== riderName);
+        if (otherRiders.length > 0) {
+          emailMessage += `\n\nOther riders assigned: ${otherRiders.join(', ')}`;
+        }
+      } catch (otherError) {
+        console.log(`Could not retrieve other riders for ${requestId}: ${otherError}`);
+      }
+    }
     
     let smsResult = { success: true };
     let emailResult = { success: true };
@@ -407,7 +423,7 @@ function sendAssignmentNotification(assignmentId, type) {
       smsResult = sendSMS(riderPhone, riderCarrier, message);
     }
     if ((type === 'Email' || type === 'Both') && riderEmail) {
-      emailResult = sendEmail(riderEmail, `Assignment ${assignmentId} - ${requestId}`, message);
+      emailResult = sendEmail(riderEmail, `Assignment ${assignmentId} - ${requestId}`, emailMessage);
     }
     
     try {
