@@ -1047,11 +1047,15 @@ function processAssignmentsForNotifications(assignments) {
         if (index < 3) {
             console.log(`Assignment ${index}:`, assignment);
         }
-        
+
+        const realId = assignment.id || assignment.assignmentId || `ASG-${index}`;
+        const riderName = assignment.riderName || assignment.rider_name || 'Unknown Rider';
+
         return {
-            id: assignment.id || assignment.assignmentId || `ASG-${index}`,
+            uid: `${realId}__${riderName}`,
+            assignmentId: realId,
             requestId: assignment.requestId || assignment.request_id || 'Unknown Request',
-            riderName: assignment.riderName || assignment.rider_name || 'Unknown Rider',
+            riderName: riderName,
             riderPhone: assignment.riderPhone || assignment.rider_phone || 'N/A',
             riderEmail: assignment.riderEmail || assignment.rider_email || 'N/A',
             riderCarrier: assignment.riderCarrier || assignment.rider_carrier || 'N/A',
@@ -1226,12 +1230,12 @@ function processAssignmentsForNotifications(assignments) {
             }
 
             container.innerHTML = app.filteredAssignments.map((assignment, index) => {
-                const isSelected = app.selectedAssignments.has(assignment.id);
+                const isSelected = app.selectedAssignments.has(assignment.uid);
                 const notificationStatus = assignment.notificationStatus || 'none';
                 const lastNotified = assignment.lastNotified ? new Date(assignment.lastNotified).toLocaleString() : 'Never';
                 
                 const riderName = assignment.riderName || assignment.rider_name || assignment.name || 'Unknown Rider';
-                const requestId = assignment.requestId || assignment.request_id || assignment.id || 'Unknown ID';
+                const requestId = assignment.requestId || assignment.request_id || assignment.assignmentId || 'Unknown ID';
                 const riderPhone = assignment.riderPhone || assignment.rider_phone || assignment.phone || 'N/A';
                 const riderEmail = assignment.riderEmail || assignment.rider_email || assignment.email || 'N/A';
                 const eventDate = assignment.eventDate || assignment.event_date || 'N/A';
@@ -1240,12 +1244,12 @@ function processAssignmentsForNotifications(assignments) {
                 const endLocation = assignment.endLocation || assignment.end_location || '';
                 
                 return `
-                    <div class="assignment-item ${isSelected ? 'selected' : ''}" data-assignment-id="${assignment.id}">
+                    <div class="assignment-item ${isSelected ? 'selected' : ''}" data-assignment-id="${assignment.uid}">
                         <div class="assignment-header">
                             <div class="assignment-id">
-                                <input type="checkbox" class="select-checkbox" 
-                                       ${isSelected ? 'checked' : ''} 
-                                       onchange="toggleAssignmentSelection('${assignment.id}')">
+                                <input type="checkbox" class="select-checkbox"
+                                       ${isSelected ? 'checked' : ''}
+                                       onchange="toggleAssignmentSelection('${assignment.uid}')">
                                 ${requestId} - ${riderName}
                             </div>
                             <span class="notification-status status-${notificationStatus}">
@@ -1263,16 +1267,16 @@ function processAssignmentsForNotifications(assignments) {
                             Last notification: ${lastNotified}
                         </div>
                         <div class="assignment-actions">
-                            <button class="btn btn-sms" onclick="sendIndividualNotification('${assignment.id}', 'SMS')">
+                            <button class="btn btn-sms" onclick="sendIndividualNotification('${assignment.uid}', 'SMS')">
                                 📱 SMS
                             </button>
-                            <button class="btn btn-email" onclick="sendIndividualNotification('${assignment.id}', 'Email')">
+                            <button class="btn btn-email" onclick="sendIndividualNotification('${assignment.uid}', 'Email')">
                                 📧 Email
                             </button>
-                            <button class="btn btn-both" onclick="sendIndividualNotification('${assignment.id}', 'Both')">
+                            <button class="btn btn-both" onclick="sendIndividualNotification('${assignment.uid}', 'Both')">
                                 📨 Both
                             </button>
-                            <button class="btn" style="background: #f39c12; color: white;" onclick="sendReminder('${assignment.id}')">
+                            <button class="btn" style="background: #f39c12; color: white;" onclick="sendReminder('${assignment.uid}')">
                                 🔔 Reminder
                             </button>
                         </div>
@@ -1339,7 +1343,7 @@ function processAssignmentsForNotifications(assignments) {
             } else {
                 app.selectedAssignments.clear();
                 app.filteredAssignments.forEach(assignment => {
-                    app.selectedAssignments.add(assignment.id);
+                    app.selectedAssignments.add(assignment.uid);
                 });
             }
             
@@ -1366,7 +1370,7 @@ function processAssignmentsForNotifications(assignments) {
         }
 
         function sendIndividualNotification(assignmentId, type) {
-            const assignment = app.assignments.find(a => a.id === assignmentId);
+            const assignment = app.assignments.find(a => a.uid === assignmentId);
             if (!assignment) {
                 showError('Assignment not found');
                 return;
@@ -1394,7 +1398,7 @@ function processAssignmentsForNotifications(assignments) {
                             hideLoading();
                             showError('Error sending notification: ' + error.message);
                         })
-                        .sendAssignmentNotification(assignmentId, type);
+                        .sendAssignmentNotification(assignment.assignmentId, type);
                 } catch (error) {
                     hideLoading();
                     showError('Error: ' + error.message);
@@ -1412,8 +1416,9 @@ function processAssignmentsForNotifications(assignments) {
                 return;
             }
 
-            const selectedIds = Array.from(app.selectedAssignments);
-            const selectedAssignments = app.assignments.filter(a => selectedIds.includes(a.id));
+            const selectedUids = Array.from(app.selectedAssignments);
+            const selectedAssignments = app.assignments.filter(a => selectedUids.includes(a.uid));
+            const assignmentIds = selectedAssignments.map(a => a.assignmentId);
             
             const previouslyNotified = selectedAssignments.filter(a => a.notificationStatus && a.notificationStatus !== 'none').length;
             const neverNotified = selectedAssignments.length - previouslyNotified;
@@ -1440,7 +1445,7 @@ function processAssignmentsForNotifications(assignments) {
                             hideLoading();
                             showError('Bulk notification error: ' + error.message);
                         })
-                        .sendBulkNotificationsToSelected(selectedIds, type);
+                        .sendBulkNotificationsToSelected(assignmentIds, type);
                 } catch (error) {
                     hideLoading();
                     showError('Error: ' + error.message);
