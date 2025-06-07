@@ -1104,6 +1104,7 @@ if (!document.getElementById('debug-styles')) {
 
     /**
      * Filters the displayed list of requests based on search term and active status tab.
+     * The search now matches request ID, requester name, or any assigned rider names.
      * @return {void}
      */
     function filterRequests() {
@@ -1115,7 +1116,8 @@ if (!document.getElementById('debug-styles')) {
         var filtered = currentRequests.filter(function(request) {
             var matchesSearch = !searchTerm ||
                 request.id.toLowerCase().indexOf(searchTerm) !== -1 ||
-                request.requesterName.toLowerCase().indexOf(searchTerm) !== -1;
+                request.requesterName.toLowerCase().indexOf(searchTerm) !== -1 ||
+                (request.ridersAssigned && request.ridersAssigned.toLowerCase().indexOf(searchTerm) !== -1);
 
             var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
 
