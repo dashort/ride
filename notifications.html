@@ -1070,6 +1070,11 @@ function processAssignmentsForNotifications(assignments) {
     }).filter(assignment => assignment.riderName !== 'Unknown Rider'); // Filter out assignments without riders
 }
 
+// Alias used by older code
+function convertAssignmentsToNotificationFormat(assignments) {
+    return processAssignmentsForNotifications(assignments);
+}
+
         function updateStats(stats) {
             console.log('📊 Updating stats:', stats);
             app.stats = stats;
@@ -1101,12 +1106,17 @@ function processAssignmentsForNotifications(assignments) {
 
         function handleAssignmentsLoaded(assignments) {
             console.log('Assignments loaded:', assignments);
-            
+
             if (assignments === null || assignments === undefined) {
                 console.log('⚠️ Server returned null/undefined');
                 assignments = [];
             }
-            
+
+            // Ensure assignments include uid/assignmentId fields
+            if (assignments && assignments.length > 0 && !assignments[0].uid) {
+                assignments = processAssignmentsForNotifications(assignments);
+            }
+
             app.assignments = Array.isArray(assignments) ? assignments : [];
             app.filteredAssignments = [...app.assignments];
             
