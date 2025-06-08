@@ -848,7 +848,7 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   
   if (requestDetails) {
     if (requestDetails.courtesy === 'Yes') {
-      message += `\n⭐ **COURTESY** ⭐\n`;
+      message += `\n⭐ COURTESY REQUEST ⭐\n`;
     }
     
     if (requestDetails.notes && requestDetails.notes.trim()) {
@@ -898,7 +898,13 @@ function formatRequestDetails(details) {
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
   if (details.notes) parts.push(`Notes: ${details.notes}`);
-  if (details.courtesy) parts.push(`Courtesy: ${details.courtesy}`);
+  if (details.courtesy) {
+    if (String(details.courtesy).toLowerCase() === 'yes') {
+      parts.push('⭐ COURTESY REQUEST ⭐');
+    } else {
+      parts.push(`Courtesy: ${details.courtesy}`);
+    }
+  }
   if (details.status) parts.push(`Status: ${details.status}`);
 
   return parts.join('\n');
