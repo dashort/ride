@@ -509,6 +509,57 @@
                 align-items: stretch;
             }
         }
+
+        /* Modal styles reused from admin dashboard */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            margin: 0;
+            font-size: 20px;
+        }
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close:hover {
+            opacity: 0.7;
+        }
+        .modal-body {
+            padding: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -698,6 +749,32 @@
 
         <!-- Messages Area -->
         <div id="messages"></div>
+
+        <!-- Audit Logs Modal -->
+        <div id="auditLogsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Audit Logs</h2>
+                    <span class="close" onclick="closeAuditLogsModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <pre id="auditLogsContent">Loading...</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles Modal -->
+        <div id="rolesModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">User Roles</h2>
+                    <span class="close" onclick="closeRolesModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="rolesContent">Loading...</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -1114,6 +1191,44 @@
                     </div>
                 `;
             }
+        }
+
+        function displayAuditLogs(logs) {
+            const pre = document.getElementById('auditLogsContent');
+            if (Array.isArray(logs)) {
+                pre.textContent = logs.map(log => {
+                    const time = log.timestamp ? new Date(log.timestamp).toLocaleString() : '';
+                    const type = log.type || '';
+                    const msg = log.message || '';
+                    const details = log.details ? ' - ' + log.details : '';
+                    return `[${time}] [${type}] ${msg}${details}`;
+                }).join('\n');
+            } else if (typeof logs === 'string') {
+                pre.textContent = logs;
+            } else {
+                pre.textContent = 'No logs available';
+            }
+            document.getElementById('auditLogsModal').style.display = 'block';
+        }
+
+        function closeAuditLogsModal() {
+            document.getElementById('auditLogsModal').style.display = 'none';
+        }
+
+        function displayUserRoles(summary) {
+            const container = document.getElementById('rolesContent');
+            if (summary && typeof summary === 'object') {
+                container.innerHTML = Object.keys(summary).map(role =>
+                    `<div><strong>${role}:</strong> ${summary[role]}</div>`
+                ).join('');
+            } else {
+                container.textContent = 'No data';
+            }
+            document.getElementById('rolesModal').style.display = 'block';
+        }
+
+        function closeRolesModal() {
+            document.getElementById('rolesModal').style.display = 'none';
         }
 
         // Utility Functions
