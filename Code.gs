@@ -5941,6 +5941,36 @@ function formatTimeAgo(timestamp) {
 }
 
 /**
+ * Get recent system logs from the Log sheet.
+ * @param {number} limit Number of log entries to return.
+ * @return {Array<Object>} Array of log objects.
+ */
+function getSystemLogs(limit) {
+  try {
+    const maxRows = limit && Number(limit) > 0 ? Number(limit) : 50;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = ss.getSheetByName(CONFIG.sheets.log);
+    if (!logSheet) {
+      return [];
+    }
+    const lastRow = logSheet.getLastRow();
+    if (lastRow < 2) {
+      return [];
+    }
+    const startRow = Math.max(2, lastRow - maxRows + 1);
+    const data = logSheet.getRange(startRow, 1, lastRow - startRow + 1, 4).getValues();
+    return data.map(row => ({
+      timestamp: row[0],
+      type: row[1],
+      message: row[2],
+      details: row[3]
+    }));
+  } catch (error) {
+    console.error('Error fetching system logs:', error);
+    return [];
+  }
+}
+/**
  * Test function to debug what's working
  */
 function testDashboardData() {
