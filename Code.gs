@@ -3997,6 +3997,14 @@ function createErrorPageWithSignIn(error) {
 }
 
 // 🛡️ SAFE WRAPPER FUNCTIONS (add these to prevent errors)
+// Preserve any previously defined implementations so we don't overwrite the
+// more complete versions that may be declared in other script files.
+var __original_getAdminUsersSafe =
+  typeof getAdminUsersSafe === 'function' ? getAdminUsersSafe : null;
+var __original_getDispatcherUsersSafe =
+  typeof getDispatcherUsersSafe === 'function' ? getDispatcherUsersSafe : null;
+var __original_getUserManagementData =
+  typeof getUserManagementData === 'function' ? getUserManagementData : null;
 
 function getRiderByGoogleEmailSafe(email) {
   try {
@@ -4011,6 +4019,10 @@ function getRiderByGoogleEmailSafe(email) {
 }
 
 function getAdminUsersSafe() {
+  // If a previous implementation was captured, prefer it
+  if (typeof __original_getAdminUsersSafe === 'function') {
+    return __original_getAdminUsersSafe();
+  }
   try {
     if (typeof getAdminUsers === 'function') {
       return getAdminUsers();
@@ -4023,6 +4035,9 @@ function getAdminUsersSafe() {
 }
 
 function getDispatcherUsersSafe() {
+  if (typeof __original_getDispatcherUsersSafe === 'function') {
+    return __original_getDispatcherUsersSafe();
+  }
   try {
     if (typeof getDispatcherUsers === 'function') {
       return getDispatcherUsers();
@@ -5771,6 +5786,9 @@ function getRidersDataFallback() {
  * Get user management data - enhanced version
  */
 function getUserManagementData() {
+  if (typeof __original_getUserManagementData === 'function') {
+    return __original_getUserManagementData();
+  }
   try {
     console.log('📊 Getting user management data...');
     
