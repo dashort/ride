@@ -1353,7 +1353,38 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
     logError('Error notifying admin of response', error);
   }
 }
+function notifyRiderAssignment(assignmentId) {
+  const assignment = getAssignmentById(assignmentId);
+  const rider = getRiderByEmail(assignment.riderEmail);
+  
+  if (rider && rider.googleEmail) {
+    // Send email notification
+    GmailApp.sendEmail(
+      rider.googleEmail,
+      '🏍️ New Escort Assignment',
+      `You have been assigned to escort request ${assignment.requestId}. 
+       Please log in to the system to view details.`
+    );
+  }
+}
 
+function getWelcomeMessage(user) {
+  const rider = getRiderByEmail(user.email);
+  if (rider) {
+    const pending = getAssignmentsForRider(rider.id, 'Pending');
+    return `Welcome back, ${rider.name}! You have ${pending.length} pending assignments.`;
+  }
+  return `Welcome, ${user.name}!`;
+}
+function getNavigationMenu(userRole) {
+  const menus = {
+    admin: ['Dashboard', 'Requests', 'Riders', 'Assignments', 'Reports', 'Settings'],
+    dispatcher: ['Dashboard', 'Requests', 'Assignments', 'Reports'],
+    rider: ['My Dashboard', 'My Assignments', 'My Schedule']
+  };
+  
+  return menus[userRole] || ['Dashboard'];
+}
 /**
  * Gets additional request details for notification purposes.
  * @param {string} requestId - The request ID to look up.

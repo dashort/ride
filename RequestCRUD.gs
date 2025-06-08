@@ -543,3 +543,1274 @@ function deleteRequest(requestId) {
     return { success: false, message: 'Error deleting request: ' + error.message };
   }
 }
+// 🛠️ SETUP FUNCTIONS FOR GOOGLE AUTHENTICATION
+
+/**
+ * One-time setup function to prepare your sheets for Google authentication
+ * Run this once to add the necessary columns
+ */
+function setupGoogleAuthentication() {
+  try {
+    console.log('🛠️ Setting up Google Authentication...');
+    
+    // Setup Riders sheet
+    setupRidersSheetForAuth();
+    
+    // Setup Settings sheet for admin/dispatcher emails
+    setupSettingsSheet();
+    
+    // Create authentication log sheet
+    setupAuthLogSheet();
+    
+    console.log('✅ Google Authentication setup complete!');
+    return { success: true, message: 'Setup completed successfully' };
+    
+  } catch (error) {
+    console.error('❌ Setup error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Add Google authentication columns to Riders sheet
+ */
+function setupRidersSheetForAuth() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let ridersSheet = spreadsheet.getSheetByName('Riders');
+  
+  if (!ridersSheet) {
+    console.log('Creating Riders sheet...');
+    ridersSheet = spreadsheet.insertSheet('Riders');
+    
+    // Add basic headers if sheet is new
+    const headers = [
+      'Rider ID', 'Full Name', 'Phone', 'Email', 'Carrier', 'Status', 
+      'Certification', 'Total Assignments', 'Last Assignment Date'
+    ];
+    ridersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
+  
+  // Get existing headers
+  const lastColumn = ridersSheet.getLastColumn();
+  const headers = ridersSheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  
+  // Add new columns if they don't exist
+  const newColumns = [
+    'Google Email',
+    'Auth Status', 
+    'Last Login',
+    'Login Count',
+    'Account Created'
+  ];
+  
+  let nextColumn = lastColumn + 1;
+  
+  newColumns.forEach(columnName => {
+    if (!headers.includes(columnName)) {
+      ridersSheet.getRange(1, nextColumn).setValue(columnName);
+      console.log(`Added column: ${columnName}`);
+      nextColumn++;
+    }
+  });
+  
+  // Format the new columns
+  if (nextColumn > lastColumn + 1) {
+    const newRange = ridersSheet.getRange(1, lastColumn + 1, 1, nextColumn - lastColumn - 1);
+    newRange.setFontWeight('bold');
+    newRange.setBackground('#e8f4f8');
+  }
+}
+
+/**
+ * Create Settings sheet for admin and dispatcher emails
+ */
+function setupSettingsSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let settingsSheet = spreadsheet.getSheetByName('Settings');
+  
+  if (!settingsSheet) {
+    settingsSheet = spreadsheet.insertSheet('Settings');
+  }
+  
+  // Setup the settings structure
+  const settingsData = [
+    ['Setting', 'Admin Emails', 'Dispatcher Emails', 'System Settings'],
+    ['Description', 'Users with full admin access', 'Users with dispatch access', 'General system configuration'],
+    ['', 'admin@example.com', 'dispatcher@example.com', 'setting=value'],
+    ['', 'manager@example.com', 'operator@example.com', ''],
+    ['', '', '', ''],
+    ['', '(Add more admin emails)', '(Add more dispatcher emails)', ''],
+    ['', '', '', ''],
+    ['AUTH CONFIG', '', '', ''],
+    ['require_2fa', 'false', '', ''],
+    ['session_timeout', '24', '', 'hours'],
+    ['auto_logout', 'true', '', '']
+  ];
+  
+  settingsSheet.getRange(1, 1, settingsData.length, settingsData[0].length).setValues(settingsData);
+  
+  // Format headers
+  settingsSheet.getRange(1, 1, 1, 4).setFontWeight('bold').setBackground('#4285f4').setFontColor('white');
+  settingsSheet.getRange(8, 1, 1, 4).setFontWeight('bold').setBackground('#34a853').setFontColor('white');
+  
+  // Auto-resize columns
+  settingsSheet.autoResizeColumns(1, 4);
+}
+
+/**
+ * Create authentication log sheet
+ */
+function setupAuthLogSheet() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let logSheet = spreadsheet.getSheetByName('Auth Log');
+  
+  if (!logSheet) {
+    logSheet = spreadsheet.insertSheet('Auth Log');
+    
+    const headers = [
+      'Timestamp', 'User Email', 'User Name', 'Action', 'Role', 
+      'IP Address', 'User Agent', 'Success', 'Error Message'
+    ];
+    
+    logSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    logSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#ff9800').setFontColor('white');
+    logSheet.autoResizeColumns(1, headers.length);
+  }
+}
+
+/**
+ * Map existing riders to Google accounts
+ * This helps transition your current riders to the new auth system
+ */
+function mapExistingRidersToGoogle() {
+  try {
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    const data = ridersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const emailCol = headers.indexOf('Email');
+    const googleEmailCol = headers.indexOf('Google Email');
+    const authStatusCol = headers.indexOf('Auth Status');
+    
+    if (emailCol === -1 || googleEmailCol === -1) {
+      throw new Error('Required columns not found. Run setupGoogleAuthentication() first.');
+    }
+    
+    let mappedCount = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const email = data[i][emailCol];
+      const existingGoogleEmail = data[i][googleEmailCol];
+      
+      // If no Google email is set but regular email exists and is Gmail
+      if (!existingGoogleEmail && email && email.includes('@gmail.com')) {
+        ridersSheet.getRange(i + 1, googleEmailCol + 1).setValue(email);
+        ridersSheet.getRange(i + 1, authStatusCol + 1).setValue('Pending');
+        mappedCount++;
+        console.log(`Mapped rider ${data[i][headers.indexOf('Full Name')]} to ${email}`);
+      }
+    }
+    
+    return { 
+      success: true, 
+      message: `Mapped ${mappedCount} riders to Google accounts`,
+      count: mappedCount 
+    };
+    
+  } catch (error) {
+    console.error('Error mapping riders:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Create a rider registration form for new Google users
+ */
+function createRiderRegistrationForm() {
+  const formHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rider Registration - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Rider Registration</h1>
+        <p>Register your Google account with the Motorcycle Escort Management System</p>
+        
+        <form id="registrationForm">
+            <div class="form-group">
+                <label>Full Name:</label>
+                <input type="text" id="fullName" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Phone Number:</label>
+                <input type="tel" id="phone" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Google Email (must match your Google account):</label>
+                <input type="email" id="googleEmail" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Carrier (for SMS notifications):</label>
+                <select id="carrier">
+                    <option value="verizon">Verizon</option>
+                    <option value="att">AT&T</option>
+                    <option value="tmobile">T-Mobile</option>
+                    <option value="sprint">Sprint</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Certification Level:</label>
+                <select id="certification">
+                    <option value="Basic">Basic</option>
+                    <option value="Advanced">Advanced</option>
+                    <option value="Instructor">Instructor</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn">🚀 Register Account</button>
+        </form>
+        
+        <div id="message"></div>
+    </div>
+    
+    <script>
+        document.getElementById('registrationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                fullName: document.getElementById('fullName').value,
+                phone: document.getElementById('phone').value,
+                googleEmail: document.getElementById('googleEmail').value,
+                carrier: document.getElementById('carrier').value,
+                certification: document.getElementById('certification').value
+            };
+            
+            document.getElementById('message').innerHTML = '<p>Registering...</p>';
+            
+            google.script.run
+                .withSuccessHandler(handleRegistrationSuccess)
+                .withFailureHandler(handleRegistrationError)
+                .registerNewRider(formData);
+        });
+        
+        function handleRegistrationSuccess(result) {
+            if (result.success) {
+                document.getElementById('message').innerHTML = 
+                    '<p class="success">✅ Registration successful! Your account is pending approval.</p>';
+                document.getElementById('registrationForm').reset();
+            } else {
+                document.getElementById('message').innerHTML = 
+                    '<p class="error">❌ Registration failed: ' + result.error + '</p>';
+            }
+        }
+        
+        function handleRegistrationError(error) {
+            document.getElementById('message').innerHTML = 
+                '<p class="error">❌ Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(formHtml)
+    .setTitle('Rider Registration')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Handle new rider registration from the form
+ */
+function registerNewRider(formData) {
+  try {
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    const nextId = generateNewRiderId();
+    
+    const newRiderData = [
+      nextId,                           // Rider ID
+      formData.fullName,               // Full Name
+      formData.phone,                  // Phone
+      formData.googleEmail,            // Email (use Google email as primary)
+      formData.carrier,                // Carrier
+      'Pending',                       // Status
+      formData.certification,          // Certification
+      0,                               // Total Assignments
+      '',                              // Last Assignment Date
+      formData.googleEmail,            // Google Email
+      'Pending Approval',              // Auth Status
+      '',                              // Last Login
+      0,                               // Login Count
+      new Date()                       // Account Created
+    ];
+    
+    const lastRow = ridersSheet.getLastRow();
+    ridersSheet.getRange(lastRow + 1, 1, 1, newRiderData.length).setValues([newRiderData]);
+    
+    // Log the registration
+    logAuthEvent(formData.googleEmail, formData.fullName, 'REGISTRATION', 'rider', true);
+    
+    // Notify admins of new registration
+    notifyAdminsOfNewRegistration(formData);
+    
+    return { 
+      success: true, 
+      message: 'Registration submitted successfully',
+      riderId: nextId 
+    };
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    logAuthEvent(formData.googleEmail, formData.fullName, 'REGISTRATION', 'rider', false, error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate a new rider ID
+ */
+function generateNewRiderId() {
+  const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+  const data = ridersSheet.getDataRange().getValues();
+  
+  let maxId = 0;
+  for (let i = 1; i < data.length; i++) {
+    const id = data[i][0];
+    if (typeof id === 'string' && id.startsWith('R-')) {
+      const num = parseInt(id.split('-')[1]);
+      if (num > maxId) maxId = num;
+    }
+  }
+  
+  return `R-${(maxId + 1).toString().padStart(3, '0')}`;
+}
+
+/**
+ * Log authentication events
+ */
+function logAuthEvent(email, name, action, role, success, errorMessage = '') {
+  try {
+    const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Auth Log');
+    if (!logSheet) return;
+    
+    const logData = [
+      new Date(),
+      email,
+      name,
+      action,
+      role,
+      '', // IP Address (not available in Apps Script)
+      '', // User Agent (not available in Apps Script)
+      success,
+      errorMessage
+    ];
+    
+    const lastRow = logSheet.getLastRow();
+    logSheet.getRange(lastRow + 1, 1, 1, logData.length).setValues([logData]);
+    
+  } catch (error) {
+    console.error('Error logging auth event:', error);
+  }
+}
+
+/**
+ * Notify admins of new rider registration
+ */
+function notifyAdminsOfNewRegistration(formData) {
+  try {
+    const adminEmails = getAdminUsers();
+    const subject = '🏍️ New Rider Registration - Approval Required';
+    const body = `
+New rider registration received:
+
+Name: ${formData.fullName}
+Email: ${formData.googleEmail}
+Phone: ${formData.phone}
+Certification: ${formData.certification}
+
+Please review and approve this registration in the Riders management section.
+
+Access the system: ${getWebAppUrl()}?page=riders
+    `;
+    
+    adminEmails.forEach(email => {
+      if (email && email.trim()) {
+        GmailApp.sendEmail(email, subject, body);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error notifying admins:', error);
+  }
+}
+
+/**
+ * Quick test function to verify authentication setup
+ */
+function testAuthentication() {
+  try {
+    const user = Session.getActiveUser();
+    const email = user.getEmail();
+    
+    console.log('Current user:', user.getName(), email);
+    
+    const rider = getRiderByGoogleEmail(email);
+    console.log('Rider mapping:', rider);
+    
+    const admins = getAdminUsers();
+    console.log('Admin users:', admins);
+    
+    const dispatchers = getDispatcherUsers();
+    console.log('Dispatcher users:', dispatchers);
+    
+    return {
+      user: { name: user.getName(), email: email },
+      rider: rider,
+      admins: admins,
+      dispatchers: dispatchers
+    };
+    
+  } catch (error) {
+    console.error('Test error:', error);
+    return { error: error.message };
+  }
+}
+/**
+ * FIXED AUTHENTICATION MAPPING FUNCTIONS
+ * Place these in your RequestCRUD.gs or create a new AuthMapping.gs file
+ */
+
+/**
+ * Fixed createAuthMappingPage function with proper error handling
+ */
+function createAuthMappingPage() {
+  try {
+    console.log('📋 Creating authentication mapping page...');
+    
+    // Get riders data with error handling
+    let riders = [];
+    try {
+      riders = getRidersData();
+      console.log(`Found ${riders ? riders.length : 0} riders`);
+    } catch (error) {
+      console.error('❌ Error getting riders data:', error);
+      return createErrorMappingPage('Error loading riders data: ' + error.message);
+    }
+    
+    // Ensure riders is an array
+    if (!Array.isArray(riders)) {
+      console.error('❌ Riders data is not an array:', typeof riders);
+      return createErrorMappingPage('Invalid riders data format');
+    }
+    
+    if (riders.length === 0) {
+      console.log('⚠️ No riders found');
+      return createEmptyMappingPage();
+    }
+    
+    // Create the mapping page HTML
+    let html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🔐 Google Authentication Setup</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1200px; 
+            margin: 20px auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #3498db;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background: #f5f5f5;
+        }
+        input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #229954;
+        }
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-inactive { background: #f8d7da; color: #721c24; }
+        .status-mapped { background: #cce5ff; color: #0056b3; }
+        .bulk-actions {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .info { background: #cce5ff; color: #0056b3; border: 1px solid #b3d9ff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Google Authentication Setup</h1>
+            <p>Map your existing riders to Google accounts for secure system access</p>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalRiders">${riders.length}</div>
+                <div class="stat-label">Total Riders</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="mappedRiders">${countMappedRiders(riders)}</div>
+                <div class="stat-label">Already Mapped</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="unmappedRiders">${riders.length - countMappedRiders(riders)}</div>
+                <div class="stat-label">Need Mapping</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeRiders">${countActiveRiders(riders)}</div>
+                <div class="stat-label">Active Riders</div>
+            </div>
+        </div>
+        
+        <!-- Bulk Actions -->
+        <div class="bulk-actions">
+            <h3>📋 Bulk Actions</h3>
+            <button class="btn btn-primary" onclick="autoMapGmailUsers()">
+                🚀 Auto-Map Gmail Users
+            </button>
+            <button class="btn btn-warning" onclick="clearAllMappings()">
+                🗑️ Clear All Mappings
+            </button>
+            <button class="btn btn-success" onclick="exportMappings()">
+                📥 Export Mappings
+            </button>
+        </div>
+        
+        <!-- Riders Table -->
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rider ID</th>
+                        <th>Name</th>
+                        <th>Current Email</th>
+                        <th>Status</th>
+                        <th>Google Email</th>
+                        <th>Auth Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+    
+    // Add each rider row
+    riders.forEach((rider, index) => {
+      const riderId = rider.id || rider['Rider ID'] || `R-${index + 1}`;
+      const name = rider.name || rider['Full Name'] || 'Unknown';
+      const email = rider.email || rider['Email'] || '';
+      const status = rider.status || rider['Status'] || 'Unknown';
+      const googleEmail = rider.googleEmail || rider['Google Email'] || '';
+      const authStatus = rider.authStatus || rider['Auth Status'] || 'Not Set';
+      
+      const statusClass = getStatusClass(status);
+      const authStatusClass = getAuthStatusClass(authStatus);
+      const isGmail = email.includes('@gmail.com');
+      
+      html += `
+                    <tr id="rider_${index}">
+                        <td><strong>${riderId}</strong></td>
+                        <td>${name}</td>
+                        <td>${email} ${isGmail ? '<span style="color: #27ae60;">📧</span>' : ''}</td>
+                        <td><span class="status ${statusClass}">${status}</span></td>
+                        <td>
+                            <input type="email" 
+                                   id="google_${index}" 
+                                   value="${googleEmail}"
+                                   placeholder="${isGmail ? email : 'user@gmail.com'}"
+                                   style="width: 200px;">
+                        </td>
+                        <td><span class="status ${authStatusClass}">${authStatus}</span></td>
+                        <td>
+                            <button class="btn btn-primary" onclick="mapSingleRider(${index}, '${riderId}', '${name}')">
+                                ${googleEmail ? '🔄 Update' : '🔗 Map'}
+                            </button>
+                        </td>
+                    </tr>`;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Messages Area -->
+        <div id="messages"></div>
+    </div>
+    
+    <script>
+        function mapSingleRider(index, riderId, riderName) {
+            const googleEmail = document.getElementById('google_' + index).value.trim();
+            
+            if (!googleEmail) {
+                showMessage('Please enter a Google email address', 'error');
+                return;
+            }
+            
+            if (!isValidEmail(googleEmail)) {
+                showMessage('Please enter a valid email address', 'error');
+                return;
+            }
+            
+            showMessage('Mapping rider...', 'info');
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    handleMappingResult(result, index, riderName);
+                })
+                .withFailureHandler(function(error) {
+                    showMessage('Error mapping rider: ' + error.message, 'error');
+                })
+                .mapRiderToGoogleAccount(riderId, googleEmail);
+        }
+        
+        function autoMapGmailUsers() {
+            showMessage('Auto-mapping Gmail users...', 'info');
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result.success) {
+                        showMessage('Successfully mapped ' + result.count + ' Gmail users', 'success');
+                        setTimeout(() => location.reload(), 2000);
+                    } else {
+                        showMessage('Auto-mapping failed: ' + result.error, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    showMessage('Error during auto-mapping: ' + error.message, 'error');
+                })
+                .autoMapExistingGmailUsers();
+        }
+        
+        function clearAllMappings() {
+            if (!confirm('Are you sure you want to clear all Google email mappings?')) {
+                return;
+            }
+            
+            showMessage('Clearing all mappings...', 'warning');
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result.success) {
+                        showMessage('All mappings cleared', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showMessage('Failed to clear mappings: ' + result.error, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    showMessage('Error clearing mappings: ' + error.message, 'error');
+                })
+                .clearAllGoogleMappings();
+        }
+        
+        function exportMappings() {
+            showMessage('Exporting mappings...', 'info');
+            
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    if (result.success) {
+                        const blob = new Blob([result.csvContent], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'rider_google_mappings.csv';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        showMessage('Mappings exported successfully', 'success');
+                    } else {
+                        showMessage('Export failed: ' + result.error, 'error');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    showMessage('Export error: ' + error.message, 'error');
+                })
+                .exportRiderMappings();
+        }
+        
+        function handleMappingResult(result, index, riderName) {
+            if (result.success) {
+                showMessage('Successfully mapped ' + riderName + ' to Google account', 'success');
+                
+                // Update the auth status in the table
+                const row = document.getElementById('rider_' + index);
+                const authStatusCell = row.cells[5];
+                authStatusCell.innerHTML = '<span class="status status-mapped">Mapped</span>';
+                
+                // Update button text
+                const button = row.querySelector('button');
+                button.innerHTML = '🔄 Update';
+                
+                // Update stats
+                updateStats();
+                
+            } else {
+                showMessage('Failed to map ' + riderName + ': ' + result.error, 'error');
+            }
+        }
+        
+        function updateStats() {
+            // Recalculate and update statistics
+            const rows = document.querySelectorAll('tbody tr');
+            let mapped = 0;
+            
+            rows.forEach(row => {
+                const input = row.querySelector('input[type="email"]');
+                if (input && input.value.trim()) {
+                    mapped++;
+                }
+            });
+            
+            document.getElementById('mappedRiders').textContent = mapped;
+            document.getElementById('unmappedRiders').textContent = rows.length - mapped;
+        }
+        
+        function showMessage(message, type) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type;
+            messageDiv.textContent = message;
+            
+            messagesDiv.appendChild(messageDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
+            
+            // Scroll to message
+            messageDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function isValidEmail(email) {
+            const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+            return emailRegex.test(email);
+        }
+        
+        // Auto-save functionality
+        document.addEventListener('input', function(e) {
+            if (e.target.type === 'email') {
+                // Auto-save after 2 seconds of no typing
+                clearTimeout(e.target.saveTimeout);
+                e.target.saveTimeout = setTimeout(() => {
+                    if (e.target.value.trim() && isValidEmail(e.target.value.trim())) {
+                        e.target.style.borderColor = '#27ae60';
+                    } else if (e.target.value.trim()) {
+                        e.target.style.borderColor = '#e74c3c';
+                    } else {
+                        e.target.style.borderColor = '#ddd';
+                    }
+                }, 500);
+            }
+        });
+    </script>
+</body>
+</html>`;
+    
+    return HtmlService.createHtmlOutput(html)
+      .setTitle('Google Authentication Setup')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+  } catch (error) {
+    console.error('❌ Error in createAuthMappingPage:', error);
+    return createErrorMappingPage('System error: ' + error.message);
+  }
+}
+
+/**
+ * Helper function to count mapped riders
+ */
+function countMappedRiders(riders) {
+  if (!Array.isArray(riders)) return 0;
+  
+  return riders.filter(rider => {
+    const googleEmail = rider.googleEmail || rider['Google Email'] || '';
+    return googleEmail.trim() !== '';
+  }).length;
+}
+
+/**
+ * Helper function to count active riders
+ */
+function countActiveRiders(riders) {
+  if (!Array.isArray(riders)) return 0;
+  
+  return riders.filter(rider => {
+    const status = rider.status || rider['Status'] || '';
+    return status.toLowerCase() === 'active';
+  }).length;
+}
+
+/**
+ * Helper function to get CSS class for status
+ */
+function getStatusClass(status) {
+  switch (status.toLowerCase()) {
+    case 'active': return 'status-active';
+    case 'pending': return 'status-pending';
+    case 'inactive': return 'status-inactive';
+    default: return 'status-inactive';
+  }
+}
+
+/**
+ * Helper function to get CSS class for auth status
+ */
+function getAuthStatusClass(authStatus) {
+  switch (authStatus.toLowerCase()) {
+    case 'mapped':
+    case 'active': return 'status-mapped';
+    case 'pending': 
+    case 'pending approval': return 'status-pending';
+    default: return 'status-inactive';
+  }
+}
+
+/**
+ * Create error page when riders data can't be loaded
+ */
+function createErrorMappingPage(errorMessage) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - Authentication Setup</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .error { color: #e74c3c; }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>❌ Error Loading Authentication Setup</h1>
+        <p class="error">${errorMessage}</p>
+        <p>Please check:</p>
+        <ul style="text-align: left;">
+            <li>Riders sheet exists and has data</li>
+            <li>Required columns are present</li>
+            <li>getRidersData() function is working</li>
+        </ul>
+        <a href="#" onclick="location.reload()" class="btn">🔄 Retry</a>
+        <a href="${getWebAppUrl()}" class="btn">🏠 Back to Dashboard</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Error - Auth Setup');
+}
+
+/**
+ * Create page when no riders exist
+ */
+function createEmptyMappingPage() {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>No Riders - Authentication Setup</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 No Riders Found</h1>
+        <p>There are no riders in the system to map to Google accounts.</p>
+        <p>Please add riders first, then return to set up authentication.</p>
+        <a href="${getWebAppUrl()}?page=riders" class="btn">👥 Manage Riders</a>
+        <a href="${getWebAppUrl()}" class="btn">🏠 Back to Dashboard</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('No Riders Found');
+}
+
+/**
+ * Backend function to map a rider to Google account
+ */
+function mapRiderToGoogleAccount(riderId, googleEmail) {
+  try {
+    console.log(`🔗 Mapping rider ${riderId} to ${googleEmail}`);
+    
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    if (!ridersSheet) {
+      return { success: false, error: 'Riders sheet not found' };
+    }
+    
+    const data = ridersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const idCol = headers.indexOf('Rider ID');
+    const googleEmailCol = headers.indexOf('Google Email');
+    const authStatusCol = headers.indexOf('Auth Status');
+    
+    if (idCol === -1) {
+      return { success: false, error: 'Rider ID column not found' };
+    }
+    
+    if (googleEmailCol === -1) {
+      return { success: false, error: 'Google Email column not found. Run setupGoogleAuthentication() first.' };
+    }
+    
+    // Find the rider row
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idCol] === riderId) {
+        // Update Google email
+        ridersSheet.getRange(i + 1, googleEmailCol + 1).setValue(googleEmail);
+        
+        // Update auth status if column exists
+        if (authStatusCol !== -1) {
+          ridersSheet.getRange(i + 1, authStatusCol + 1).setValue('Mapped');
+        }
+        
+        console.log(`✅ Successfully mapped rider ${riderId}`);
+        return { success: true, message: 'Rider mapped successfully' };
+      }
+    }
+    
+    return { success: false, error: 'Rider not found' };
+    
+  } catch (error) {
+    console.error('❌ Error mapping rider:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Auto-map existing Gmail users
+ */
+function autoMapExistingGmailUsers() {
+  try {
+    console.log('🚀 Auto-mapping Gmail users...');
+    
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    if (!ridersSheet) {
+      return { success: false, error: 'Riders sheet not found' };
+    }
+    
+    const data = ridersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const emailCol = headers.indexOf('Email');
+    const googleEmailCol = headers.indexOf('Google Email');
+    const authStatusCol = headers.indexOf('Auth Status');
+    
+    if (emailCol === -1 || googleEmailCol === -1) {
+      return { success: false, error: 'Required columns not found' };
+    }
+    
+    let mappedCount = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const email = data[i][emailCol];
+      const existingGoogleEmail = data[i][googleEmailCol];
+      
+      // If no Google email is set but regular email is Gmail
+      if (!existingGoogleEmail && email && email.includes('@gmail.com')) {
+        ridersSheet.getRange(i + 1, googleEmailCol + 1).setValue(email);
+        
+        if (authStatusCol !== -1) {
+          ridersSheet.getRange(i + 1, authStatusCol + 1).setValue('Auto-Mapped');
+        }
+        
+        mappedCount++;
+      }
+    }
+    
+    console.log(`✅ Auto-mapped ${mappedCount} Gmail users`);
+    return { success: true, count: mappedCount };
+    
+  } catch (error) {
+    console.error('❌ Error auto-mapping Gmail users:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Clear all Google email mappings
+ */
+function clearAllGoogleMappings() {
+  try {
+    console.log('🗑️ Clearing all Google mappings...');
+    
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    if (!ridersSheet) {
+      return { success: false, error: 'Riders sheet not found' };
+    }
+    
+    const data = ridersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const googleEmailCol = headers.indexOf('Google Email');
+    const authStatusCol = headers.indexOf('Auth Status');
+    
+    if (googleEmailCol === -1) {
+      return { success: false, error: 'Google Email column not found' };
+    }
+    
+    // Clear all Google email mappings
+    for (let i = 1; i < data.length; i++) {
+      ridersSheet.getRange(i + 1, googleEmailCol + 1).setValue('');
+      
+      if (authStatusCol !== -1) {
+        ridersSheet.getRange(i + 1, authStatusCol + 1).setValue('Not Set');
+      }
+    }
+    
+    console.log('✅ All mappings cleared');
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Error clearing mappings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Export rider mappings to CSV
+ */
+function exportRiderMappings() {
+  try {
+    console.log('📥 Exporting rider mappings...');
+    
+    const riders = getRidersData();
+    if (!Array.isArray(riders)) {
+      return { success: false, error: 'Invalid riders data' };
+    }
+    
+    let csvContent = 'Rider ID,Name,Email,Google Email,Auth Status,Status\\n';
+    
+    riders.forEach(rider => {
+      const riderId = rider.id || rider['Rider ID'] || '';
+      const name = rider.name || rider['Full Name'] || '';
+      const email = rider.email || rider['Email'] || '';
+      const googleEmail = rider.googleEmail || rider['Google Email'] || '';
+      const authStatus = rider.authStatus || rider['Auth Status'] || '';
+      const status = rider.status || rider['Status'] || '';
+      
+      csvContent += `"${riderId}","${name}","${email}","${googleEmail}","${authStatus}","${status}"\\n`;
+    });
+    
+    return { 
+      success: true, 
+      csvContent: csvContent,
+      filename: `rider_mappings_${new Date().toISOString().split('T')[0]}.csv`
+    };
+    
+  } catch (error) {
+    console.error('❌ Error exporting mappings:', error);
+    return { success: false, error: error.message };
+  }
+}

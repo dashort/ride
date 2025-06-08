@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Motorcycle Escort Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .user-role {
+            font-size: 0.8rem;
+            color: #e74c3c;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .admin-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .admin-title {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-subtitle {
+            color: #e74c3c;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border-left: 5px solid #e74c3c;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card.requests {
+            border-left-color: #3498db;
+        }
+
+        .stat-card.riders {
+            border-left-color: #27ae60;
+        }
+
+        .stat-card.assignments {
+            border-left-color: #f39c12;
+        }
+
+        .stat-card.system {
+            border-left-color: #9b59b6;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .admin-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .action-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .action-title {
+            font-size: 1.4rem;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .action-description {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .recent-activity {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .activity-title {
+            font-size: 1.4rem;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .activity-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            padding: 1rem;
+            border-bottom: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-description {
+            flex: 1;
+        }
+
+        .activity-time {
+            color: #7f8c8d;
+            font-size: 0.8rem;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .quick-stat {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            border-left: 3px solid #3498db;
+        }
+
+        .quick-stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .quick-stat-label {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .admin-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .action-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <div class="user-details">
+                <div class="user-name" id="userName">Administrator</div>
+                <div class="user-role" id="userRole">Admin</div>
+            </div>
+        </div>
+    </header>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <div class="container">
+        <!-- Admin Header -->
+        <div class="admin-header">
+            <div class="admin-title">🛡️ Administrator Dashboard</div>
+            <div class="admin-subtitle">System Management & Control Center</div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="quick-stats">
+            <div class="quick-stat">
+                <div class="quick-stat-number" id="todayRequests">-</div>
+                <div class="quick-stat-label">Today's Requests</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-number" id="activeEscorts">-</div>
+                <div class="quick-stat-label">Active Escorts</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-number" id="onlineRiders">-</div>
+                <div class="quick-stat-label">Online Riders</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-number" id="systemHealth">100%</div>
+                <div class="quick-stat-label">System Health</div>
+            </div>
+        </div>
+
+        <!-- Main Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card requests">
+                <div class="stat-number" id="totalRequests">-</div>
+                <div class="stat-label">Total Requests</div>
+            </div>
+            <div class="stat-card riders">
+                <div class="stat-number" id="totalRiders">-</div>
+                <div class="stat-label">Active Riders</div>
+            </div>
+            <div class="stat-card assignments">
+                <div class="stat-number" id="totalAssignments">-</div>
+                <div class="stat-label">Assignments</div>
+            </div>
+            <div class="stat-card system">
+                <div class="stat-number" id="systemUsers">-</div>
+                <div class="stat-label">System Users</div>
+            </div>
+        </div>
+
+        <!-- Admin Actions -->
+        <div class="admin-actions">
+            <!-- User Management -->
+            <div class="action-section">
+                <div class="action-title">
+                    👥 User Management
+                </div>
+                <div class="action-description">
+                    Manage user accounts, permissions, and authentication settings for the entire system.
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="openUserManagement()">
+                        🔐 User Management
+                    </button>
+                    <button class="btn btn-success" onclick="openAuthSetup()">
+                        🛠️ Auth Setup
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Operations -->
+            <div class="action-section">
+                <div class="action-title">
+                    ⚙️ System Operations
+                </div>
+                <div class="action-description">
+                    Monitor system performance, manage configurations, and perform maintenance tasks.
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="viewSystemLogs()">
+                        📋 System Logs
+                    </button>
+                    <button class="btn btn-warning" onclick="runDiagnostics()">
+                        🔧 Diagnostics
+                    </button>
+                </div>
+            </div>
+
+            <!-- Data Management -->
+            <div class="action-section">
+                <div class="action-title">
+                    📊 Data Management
+                </div>
+                <div class="action-description">
+                    Export system data, generate reports, and manage database operations.
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="exportAllData()">
+                        📥 Export Data
+                    </button>
+                    <button class="btn btn-primary" onclick="generateReports()">
+                        📊 Generate Reports
+                    </button>
+                </div>
+            </div>
+
+            <!-- Emergency Controls -->
+            <div class="action-section">
+                <div class="action-title">
+                    🚨 Emergency Controls
+                </div>
+                <div class="action-description">
+                    Emergency system controls for critical situations and maintenance windows.
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-danger" onclick="emergencyLockdown()">
+                        🔒 System Lockdown
+                    </button>
+                    <button class="btn btn-warning" onclick="resetAllSessions()">
+                        🔄 Reset Sessions
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="recent-activity">
+            <div class="activity-title">
+                📈 Recent System Activity
+            </div>
+            <div class="activity-list" id="activityList">
+                <div class="activity-item">
+                    <div class="activity-description">Loading recent activity...</div>
+                    <div class="activity-time">--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize admin dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAdminDashboardData();
+            loadRecentActivity();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadAdminDashboardData, 30000);
+        });
+
+        function loadAdminDashboardData() {
+            console.log('📊 Loading admin dashboard data...');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(updateDashboardStats)
+                    .withFailureHandler(handleDashboardError)
+                    .getAdminDashboardData();
+            } else {
+                console.log('⚠️ Google Apps Script not available, using demo data');
+                updateDashboardStats(getDemoData());
+            }
+        }
+
+        function updateDashboardStats(data) {
+            try {
+                // Update main stats
+                document.getElementById('totalRequests').textContent = data.totalRequests || 0;
+                document.getElementById('totalRiders').textContent = data.totalRiders || 0;
+                document.getElementById('totalAssignments').textContent = data.totalAssignments || 0;
+                document.getElementById('systemUsers').textContent = data.systemUsers || 0;
+
+                // Update quick stats
+                document.getElementById('todayRequests').textContent = data.todayRequests || 0;
+                document.getElementById('activeEscorts').textContent = data.activeEscorts || 0;
+                document.getElementById('onlineRiders').textContent = data.onlineRiders || 0;
+                document.getElementById('systemHealth').textContent = (data.systemHealth || 100) + '%';
+
+                console.log('✅ Dashboard stats updated');
+            } catch (error) {
+                console.error('❌ Error updating dashboard stats:', error);
+            }
+        }
+
+        function loadRecentActivity() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(updateRecentActivity)
+                    .withFailureHandler(handleActivityError)
+                    .getRecentSystemActivity();
+            } else {
+                updateRecentActivity(getDemoActivity());
+            }
+        }
+
+        function updateRecentActivity(activities) {
+            const activityList = document.getElementById('activityList');
+            
+            if (activities && activities.length > 0) {
+                activityList.innerHTML = activities.map(activity => `
+                    <div class="activity-item">
+                        <div class="activity-description">${activity.description}</div>
+                        <div class="activity-time">${activity.time}</div>
+                    </div>
+                `).join('');
+            } else {
+                activityList.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-description">No recent activity</div>
+                        <div class="activity-time">--</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Admin Action Functions
+        function openUserManagement() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.open(baseUrl + '?page=user-management', '_blank');
+        }
+
+        function openAuthSetup() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.open(baseUrl + '?page=auth-setup', '_blank');
+        }
+
+        function viewSystemLogs() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(logs) {
+                        displaySystemLogs(logs);
+                    })
+                    .withFailureHandler(handleError)
+                    .getSystemLogs();
+            } else {
+                alert('System logs feature requires Google Apps Script connection');
+            }
+        }
+
+        function runDiagnostics() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                showMessage('Running system diagnostics...', 'info');
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        showMessage('Diagnostics completed: ' + result.status, 'success');
+                        console.log('Diagnostics result:', result);
+                    })
+                    .withFailureHandler(handleError)
+                    .runSystemDiagnostics();
+            } else {
+                alert('Diagnostics feature requires Google Apps Script connection');
+            }
+        }
+
+        function exportAllData() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                showMessage('Exporting system data...', 'info');
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        if (result.success) {
+                            // Create download link
+                            const blob = new Blob([result.csvContent], { type: 'text/csv' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = result.filename;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            showMessage('Data exported successfully', 'success');
+                        } else {
+                            showMessage('Export failed: ' + result.error, 'error');
+                        }
+                    })
+                    .withFailureHandler(handleError)
+                    .exportSystemData();
+            } else {
+                alert('Export feature requires Google Apps Script connection');
+            }
+        }
+
+        function generateReports() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.open(baseUrl + '?page=reports', '_blank');
+        }
+
+        function emergencyLockdown() {
+            const confirmation = prompt('Type "EMERGENCY" to confirm system lockdown:');
+            if (confirmation === 'EMERGENCY') {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    showMessage('Activating emergency lockdown...', 'error');
+                    google.script.run
+                        .withSuccessHandler(function(result) {
+                            showMessage('Emergency lockdown activated', 'error');
+                        })
+                        .withFailureHandler(handleError)
+                        .activateEmergencyLockdown();
+                } else {
+                    alert('Emergency lockdown requires Google Apps Script connection');
+                }
+            }
+        }
+
+        function resetAllSessions() {
+            if (confirm('Are you sure you want to reset all user sessions?')) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    showMessage('Resetting all sessions...', 'warning');
+                    google.script.run
+                        .withSuccessHandler(function(result) {
+                            showMessage('All sessions reset', 'success');
+                        })
+                        .withFailureHandler(handleError)
+                        .resetAllUserSessions();
+                } else {
+                    alert('Session reset requires Google Apps Script connection');
+                }
+            }
+        }
+
+        // Utility Functions
+        function showMessage(message, type) {
+            // Create a temporary message element
+            const messageDiv = document.createElement('div');
+            messageDiv.style.position = 'fixed';
+            messageDiv.style.top = '20px';
+            messageDiv.style.right = '20px';
+            messageDiv.style.padding = '1rem';
+            messageDiv.style.borderRadius = '5px';
+            messageDiv.style.zIndex = '9999';
+            messageDiv.style.maxWidth = '300px';
+            messageDiv.textContent = message;
+            
+            switch(type) {
+                case 'success':
+                    messageDiv.style.background = '#27ae60';
+                    break;
+                case 'error':
+                    messageDiv.style.background = '#e74c3c';
+                    break;
+                case 'warning':
+                    messageDiv.style.background = '#f39c12';
+                    break;
+                default:
+                    messageDiv.style.background = '#3498db';
+            }
+            messageDiv.style.color = 'white';
+            
+            document.body.appendChild(messageDiv);
+            setTimeout(() => messageDiv.remove(), 3000);
+        }
+
+        function handleDashboardError(error) {
+            console.error('Dashboard error:', error);
+            showMessage('Error loading dashboard data', 'error');
+        }
+
+        function handleActivityError(error) {
+            console.error('Activity error:', error);
+        }
+
+        function handleError(error) {
+            console.error('Error:', error);
+            showMessage('An error occurred: ' + error.message, 'error');
+        }
+
+        // Demo data for when Google Apps Script is not available
+        function getDemoData() {
+            return {
+                totalRequests: 156,
+                totalRiders: 23,
+                totalAssignments: 89,
+                systemUsers: 45,
+                todayRequests: 12,
+                activeEscorts: 3,
+                onlineRiders: 8,
+                systemHealth: 97
+            };
+        }
+
+        function getDemoActivity() {
+            return [
+                { description: 'New escort request created by Dispatcher', time: '2 min ago' },
+                { description: 'Rider John Smith completed assignment E-123-25', time: '15 min ago' },
+                { description: 'System backup completed successfully', time: '1 hour ago' },
+                { description: 'New user registration pending approval', time: '2 hours ago' }
+            ];
+        }
+    </script>
+</body>
+</html>

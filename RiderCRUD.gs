@@ -76,6 +76,14 @@ function getRiders() {
     return [];
   }
 }
+function getRiderDashboard(riderId) {
+  return {
+    myAssignments: getAssignmentsForRider(riderId),
+    upcomingEscorts: getUpcomingEscorts(riderId),
+    completedThisMonth: getCompletedCount(riderId),
+    notifications: getRiderNotifications(riderId)
+  };
+}
 
 /**
  * Fetches details for a specific rider by their Rider ID.

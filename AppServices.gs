@@ -89,7 +89,479 @@ function getEscortDetailsForAssignment(requestIdInput) {
     throw new Error(`Could not retrieve escort details: ${error.message}`);
   }
 }
+// 🔒 SECURED WEBAPP FUNCTIONS - Update your WebAppService.js with these
 
+/**
+ * Enhanced getPageData with access control
+ */
+function getPageDataForDashboard(user) {
+  try {
+    // Validate user authentication
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    // Check page access
+    if (!canAccessPage(user, 'dashboard')) {
+      return { success: false, error: 'Access denied to dashboard' };
+    }
+    
+    // Get role-based dashboard data
+    const dashboardData = getDashboardDataForUser(user);
+    
+    return {
+      success: true,
+      user: user,
+      data: dashboardData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForDashboard:', error);
+    return { success: false, error: 'Failed to load dashboard data' };
+  }
+}
+
+/**
+ * Secured requests data with role-based filtering
+ */
+function getPageDataForRequests(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'requests')) {
+      return { success: false, error: 'Access denied to requests' };
+    }
+    
+    // Get filtered requests based on user role
+    const requests = getFilteredRequests(user, filters);
+    
+    // Additional data based on permissions
+    const pageData = {
+      requests: requests,
+      canCreate: hasPermission(user, 'requests', 'create'),
+      canEdit: hasPermission(user, 'requests', 'update'),
+      canDelete: hasPermission(user, 'requests', 'delete'),
+      canExport: hasPermission(user, 'requests', 'export'),
+      totalCount: requests.length
+    };
+    
+    // Add riders list if user can assign
+    if (hasPermission(user, 'assignments', 'assign_any')) {
+      pageData.availableRiders = getFilteredRiders(user);
+    }
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForRequests:', error);
+    return { success: false, error: 'Failed to load requests data' };
+  }
+}
+
+/**
+ * Secured assignments data
+ */
+function getPageDataForAssignments(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'assignments')) {
+      return { success: false, error: 'Access denied to assignments' };
+    }
+    
+    const assignments = getFilteredAssignments(user, filters);
+    
+    const pageData = {
+      assignments: assignments,
+      canCreate: hasPermission(user, 'assignments', 'create'),
+      canEdit: hasPermission(user, 'assignments', 'update'),
+      canDelete: hasPermission(user, 'assignments', 'delete'),
+      canBulkAssign: hasPermission(user, 'assignments', 'bulk_assign'),
+      totalCount: assignments.length
+    };
+    
+    // Add additional data for assignment creation
+    if (hasPermission(user, 'assignments', 'create')) {
+      pageData.availableRequests = getFilteredRequests(user, { status: 'Open' });
+      pageData.availableRiders = getFilteredRiders(user);
+    }
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForAssignments:', error);
+    return { success: false, error: 'Failed to load assignments data' };
+  }
+}
+
+/**
+ * Secured riders management
+ */
+function getPageDataForRiders(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'riders')) {
+      return { success: false, error: 'Access denied to riders' };
+    }
+    
+    const riders = getFilteredRiders(user);
+    
+    const pageData = {
+      riders: riders,
+      canCreate: hasPermission(user, 'riders', 'create'),
+      canEdit: hasPermission(user, 'riders', 'update'),
+      canDelete: hasPermission(user, 'riders', 'delete'),
+      canApprove: hasPermission(user, 'riders', 'approve'),
+      canDeactivate: hasPermission(user, 'riders', 'deactivate'),
+      totalCount: riders.length
+    };
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForRiders:', error);
+    return { success: false, error: 'Failed to load riders data' };
+  }
+}
+
+/**
+ * Secured reports data
+ */
+function getPageDataForReports(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'reports')) {
+      return { success: false, error: 'Access denied to reports' };
+    }
+    
+    const reportData = {
+      summary: {},
+      charts: {},
+      tables: {}
+    };
+    
+    // Generate reports based on user permissions
+    if (hasPermission(user, 'reports', 'view_all')) {
+      // Full system reports for admin/dispatcher
+      reportData.summary = getSystemSummaryStats();
+      reportData.charts = getSystemCharts(filters);
+      reportData.tables = getSystemTables(filters);
+      
+    } else if (user.role === 'rider') {
+      // Personal reports for rider
+      reportData.summary = getRiderSummaryStats(user.riderId);
+      reportData.charts = getRiderCharts(user.riderId, filters);
+      reportData.tables = getRiderTables(user.riderId, filters);
+    }
+    
+    const pageData = {
+      reportData: reportData,
+      canExportAll: hasPermission(user, 'reports', 'export_all'),
+      canViewFinancial: hasPermission(user, 'reports', 'financial'),
+      canViewSystemLogs: hasPermission(user, 'reports', 'system_logs'),
+      canViewRiderPerformance: hasPermission(user, 'reports', 'rider_performance')
+    };
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForReports:', error);
+    return { success: false, error: 'Failed to load reports data' };
+  }
+}
+
+/**
+ * Secured request creation
+ */
+function createNewRequestSecured(user, requestData) {
+  try {
+    // Validate permissions
+    const validation = validateRequestOperation(user, 'create', requestData);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Add audit fields
+    requestData.createdBy = user.email;
+    requestData.createdByRole = user.role;
+    requestData.createdDate = new Date();
+    
+    // Call your existing create function
+    const result = createNewRequest(requestData);
+    
+    // Log the action
+    logUserAction(user, 'CREATE_REQUEST', requestData.id || 'NEW', true);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in createNewRequestSecured:', error);
+    logUserAction(user, 'CREATE_REQUEST', 'FAILED', false, error.message);
+    return { success: false, error: 'Failed to create request' };
+  }
+}
+
+/**
+ * Secured request update
+ */
+function updateExistingRequestSecured(user, requestData) {
+  try {
+    const validation = validateRequestOperation(user, 'update', requestData, requestData.id);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Add audit fields
+    requestData.lastModifiedBy = user.email;
+    requestData.lastModifiedByRole = user.role;
+    requestData.lastModifiedDate = new Date();
+    
+    const result = updateExistingRequest(requestData);
+    
+    logUserAction(user, 'UPDATE_REQUEST', requestData.id, true);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in updateExistingRequestSecured:', error);
+    logUserAction(user, 'UPDATE_REQUEST', requestData.id, false, error.message);
+    return { success: false, error: 'Failed to update request' };
+  }
+}
+
+/**
+ * Secured request deletion
+ */
+function deleteRequestSecured(user, requestId) {
+  try {
+    const validation = validateRequestOperation(user, 'delete', {}, requestId);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    const result = deleteRequest(requestId);
+    
+    logUserAction(user, 'DELETE_REQUEST', requestId, result.success);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in deleteRequestSecured:', error);
+    logUserAction(user, 'DELETE_REQUEST', requestId, false, error.message);
+    return { success: false, error: 'Failed to delete request' };
+  }
+}
+
+/**
+ * Secured rider assignment
+ */
+function assignRidersToRequestSecured(user, requestId, riderNames) {
+  try {
+    if (!hasPermission(user, 'assignments', 'assign_any')) {
+      return { success: false, error: 'You do not have permission to assign riders' };
+    }
+    
+    const result = assignRidersToRequest(requestId, riderNames);
+    
+    if (result.success) {
+      logUserAction(user, 'ASSIGN_RIDERS', `${requestId}:${riderNames.join(',')}`, true);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in assignRidersToRequestSecured:', error);
+    logUserAction(user, 'ASSIGN_RIDERS', requestId, false, error.message);
+    return { success: false, error: 'Failed to assign riders' };
+  }
+}
+
+/**
+ * Secured assignment status update (for riders)
+ */
+function updateAssignmentStatusSecured(user, assignmentId, newStatus, notes = '') {
+  try {
+    const validation = validateAssignmentOperation(user, 'update', { status: newStatus, notes: notes }, assignmentId);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Get the assignment to verify ownership (for riders)
+    if (user.role === 'rider') {
+      if (!canAccessResource(user, 'assignments', assignmentId)) {
+        return { success: false, error: 'You can only update your own assignments' };
+      }
+    }
+    
+    const result = updateAssignmentStatus(assignmentId, newStatus, notes, user.email);
+    
+    logUserAction(user, 'UPDATE_ASSIGNMENT_STATUS', assignmentId, result.success);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in updateAssignmentStatusSecured:', error);
+    logUserAction(user, 'UPDATE_ASSIGNMENT_STATUS', assignmentId, false, error.message);
+    return { success: false, error: 'Failed to update assignment status' };
+  }
+}
+
+/**
+ * User action logging
+ */
+function logUserAction(user, action, resourceId, success, errorMessage = '') {
+  try {
+    const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('User Actions Log');
+    
+    if (!logSheet) {
+      // Create log sheet if it doesn't exist
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const newLogSheet = spreadsheet.insertSheet('User Actions Log');
+      const headers = [
+        'Timestamp', 'User Email', 'User Name', 'Role', 'Action', 
+        'Resource ID', 'Success', 'Error Message', 'IP Address'
+      ];
+      newLogSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      newLogSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#4285f4').setFontColor('white');
+    }
+    
+    const logData = [
+      new Date(),
+      user.email,
+      user.name,
+      user.role,
+      action,
+      resourceId,
+      success,
+      errorMessage,
+      '' // IP Address not available in Apps Script
+    ];
+    
+    const lastRow = logSheet.getLastRow();
+    logSheet.getRange(lastRow + 1, 1, 1, logData.length).setValues([logData]);
+    
+  } catch (error) {
+    console.error('❌ Error logging user action:', error);
+  }
+}
+
+/**
+ * Get rider-specific data (for rider dashboard)
+ */
+function getRiderDashboardData(user) {
+  try {
+    if (user.role !== 'rider' || !user.riderId) {
+      return { success: false, error: 'Invalid rider access' };
+    }
+    
+    const myAssignments = getAssignmentsForRider(user.riderId);
+    const upcomingAssignments = myAssignments.filter(a => 
+      a.status === 'Pending' && new Date(a.eventDate) > new Date()
+    );
+    const completedThisMonth = myAssignments.filter(a => 
+      a.status === 'Completed' && isThisMonth(a.completionDate)
+    );
+    
+    return {
+      success: true,
+      data: {
+        myStats: {
+          totalAssignments: myAssignments.length,
+          upcomingAssignments: upcomingAssignments.length,
+          completedThisMonth: completedThisMonth.length,
+          totalHoursThisMonth: calculateRiderHours(user.riderId, 'this_month')
+        },
+        upcomingEscorts: upcomingAssignments.slice(0, 5),
+        recentActivity: getRiderRecentActivity(user.riderId),
+        notifications: getRiderNotifications(user.riderId)
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting rider dashboard data:', error);
+    return { success: false, error: 'Failed to load rider data' };
+  }
+}
+
+/**
+ * Master page data function with authentication
+ */
+function getSecuredPageData(pageName, user, filters = {}) {
+  try {
+    // Map page names to secured functions
+    const pageHandlers = {
+      'dashboard': () => getPageDataForDashboard(user),
+      'requests': () => getPageDataForRequests(user, filters),
+      'assignments': () => getPageDataForAssignments(user, filters),
+      'riders': () => getPageDataForRiders(user, filters),
+      'reports': () => getPageDataForReports(user, filters),
+      'rider-schedule': () => getRiderDashboardData(user),
+      'my-assignments': () => getPageDataForAssignments(user, { riderId: user.riderId })
+    };
+    
+    const handler = pageHandlers[pageName];
+    if (!handler) {
+      return { success: false, error: `Unknown page: ${pageName}` };
+    }
+    
+    return handler();
+    
+  } catch (error) {
+    console.error(`❌ Error getting secured page data for ${pageName}:`, error);
+    return { success: false, error: 'Failed to load page data' };
+  }
+}
+
+// Helper functions for date/time calculations
+function isThisMonth(date) {
+  if (!date) return false;
+  const checkDate = new Date(date);
+  const now = new Date();
+  return checkDate.getMonth() === now.getMonth() && 
+         checkDate.getFullYear() === now.getFullYear();
+}
+
+function calculateRiderHours(riderId, period) {
+  // Implement your hour calculation logic here
+  // This would typically look at assignment start/end times
+  return 0; // Placeholder
+}
+
+function getRiderRecentActivity(riderId) {
+  // Get recent assignments and status changes for this rider
+  return []; // Placeholder
+}
+
+function getRiderNotifications(riderId) {
+  // Get notifications for this specific rider
+  return []; // Placeholder
+}
 /**
  * Get page data for riders page
  * Add this function to AppServices.gs (or any .gs file)
