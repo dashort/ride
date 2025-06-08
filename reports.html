@@ -484,6 +484,7 @@
     <script>
         let reportData = {};
         let currentPeriod = { start: null, end: null };
+        const DEFAULT_REPORT_RANGE_DAYS = 30;
 
         document.addEventListener('DOMContentLoaded', function() {
             setDefaultDates();
@@ -497,10 +498,10 @@
 
         function setDefaultDates() {
             var today = new Date();
-            var thirtyDaysAgo = new Date(today);
-            thirtyDaysAgo.setDate(today.getDate() - 30);
+            var startDate = new Date(today);
+            startDate.setDate(today.getDate() - DEFAULT_REPORT_RANGE_DAYS);
 
-            document.getElementById('startDate').value = formatDateForInput(thirtyDaysAgo);
+            document.getElementById('startDate').value = formatDateForInput(startDate);
             document.getElementById('endDate').value = formatDateForInput(today);
         }
 
