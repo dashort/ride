@@ -761,7 +761,20 @@ function displayRiderActivityReport(result) {
                 var r = result.data[i];
                 rows += '<tr><td>' + r.name + '</td><td>' + r.escorts + '</td><td>' + r.hours + '</td></tr>';
             }
-            var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title><style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style></head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th><th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+
+            var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
+                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
+                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
+                '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
+                '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+
+            var reportWindow = window.open('', '_blank');
+            if (reportWindow) {
+                reportWindow.document.write(html);
+                reportWindow.document.close();
+            } else {
+                showError('Unable to open report window.');
+            }
         }
 
         function showLoading(message) {
