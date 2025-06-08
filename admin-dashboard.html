@@ -550,13 +550,25 @@
 
         // Admin Action Functions
         function openUserManagement() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=user-management', '_blank');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => window.open(url + '?page=user-management', '_blank'))
+                    .getWebAppUrl();
+            } else {
+                const baseUrl = window.location.origin + window.location.pathname;
+                window.open(baseUrl + '?page=user-management', '_blank');
+            }
         }
 
         function openAuthSetup() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=auth-setup', '_blank');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => window.open(url + '?page=auth-setup', '_blank'))
+                    .getWebAppUrl();
+            } else {
+                const baseUrl = window.location.origin + window.location.pathname;
+                window.open(baseUrl + '?page=auth-setup', '_blank');
+            }
         }
 
         function viewSystemLogs() {
@@ -614,8 +626,14 @@
         }
 
         function generateReports() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=reports', '_blank');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => window.open(url + '?page=reports', '_blank'))
+                    .getWebAppUrl();
+            } else {
+                const baseUrl = window.location.origin + window.location.pathname;
+                window.open(baseUrl + '?page=reports', '_blank');
+            }
         }
 
         function emergencyLockdown() {
