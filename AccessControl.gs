@@ -411,7 +411,7 @@ function getUserManagementData() {
     // Add riders
     riders.forEach(rider => {
       allUsers.push({
-        id: rider.id || rider['Rider ID'],
+        id: rider.id || rider.jpNumber || rider['Rider ID'],
         name: rider.name || rider['Full Name'],
         email: rider.email || rider['Email'],
         googleEmail: rider.googleEmail || rider['Google Email'],
