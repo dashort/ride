@@ -572,6 +572,7 @@
                             <th>Email</th>
                             <th>Status</th>
                             <th>Certification</th>
+                            <th>Part-Time Rider</th>
                             <th>Assignments</th>
                             <th>Last Assignment</th>
                             <th>Actions</th>
@@ -635,12 +636,12 @@
                         <div class="form-group">
                             <label for="riderCertification">Certification</label>
                             <select id="riderCertification" name="riderCertification">
-                                <option value="Standard">Standard</option>
-                                <option value="Advanced">Advanced</option>
-                                <option value="Instructor">Instructor</option>
-                                <option value="Trainee">Trainee</option>
-                                <option value="Not Certified">Not Certified</option>
+                                <!-- Options populated by JS -->
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="riderIsPartTime" style="display: inline-block; margin-right: 10px;">Part-Time Rider</label>
+                            <input type="checkbox" id="riderIsPartTime" name="riderIsPartTime" value="Yes" style="width: auto; vertical-align: middle;">
                         </div>
                     </div>
                 </form>
@@ -660,8 +661,29 @@
         filteredRiders: [],
         selectedRiders: new Set(),
         bulkMode: false,
-        isOnline: navigator.onLine
+        isOnline: navigator.onLine,
+        config: {} // To store config options from server
     };
+
+    // Helper function to populate dropdowns
+    function populateDropdown(selectId, options, defaultText = 'Select...') {
+        const selectElement = document.getElementById(selectId);
+        if (!selectElement) {
+            console.error(`Dropdown element ${selectId} not found.`);
+            return;
+        }
+        selectElement.innerHTML = `<option value="">${defaultText}</option>`; // Clear existing & add default
+        if (options && Array.isArray(options)) {
+            options.forEach(optionValue => { // Changed variable name from option to optionValue to avoid conflict
+                const opt = document.createElement('option');
+                opt.value = optionValue;
+                opt.textContent = optionValue;
+                selectElement.appendChild(opt);
+            });
+        } else {
+            console.warn(`No options provided for dropdown ${selectId}`);
+        }
+    }
 
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
@@ -749,6 +771,7 @@ function setupEventListeners() {
             app.user = data.user;
             app.riders = data.riders || [];
             app.filteredRiders = [...app.riders];
+            app.config = data.options || {}; // Store config options
             
             updateUserInfo(data.user);
             updateStats(data.stats);
@@ -973,6 +996,13 @@ function testSearch(searchTerm = 'test') {
         document.getElementById('modalTitle').textContent = 'Add New Rider';
         document.getElementById('riderForm').reset();
         document.getElementById('originalRiderId').value = '';
+
+        // Populate dropdowns
+        populateDropdown('riderStatus', app.config.riderStatuses || ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'], 'Select Status');
+        populateDropdown('riderCertification', app.config.certificationTypes || ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'], 'Select Certification');
+        // No longer populating riderEmploymentType dropdown
+        document.getElementById('riderIsPartTime').checked = false; // Ensure checkbox is unchecked for new rider
+
         document.getElementById('riderModal').style.display = 'block';
     }
 
@@ -1048,11 +1078,17 @@ function editRider(riderId) {
   
   // Use the correct field names based on what we found
   document.getElementById('riderId').value = rider.jpNumber || rider['Rider ID'] || '';
+  // Populate dropdowns first
+  populateDropdown('riderStatus', app.config.riderStatuses || ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'], 'Select Status');
+  populateDropdown('riderCertification', app.config.certificationTypes || ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'], 'Select Certification');
+  // No longer populating riderEmploymentType dropdown
+
   document.getElementById('riderName').value = rider.name || rider['Full Name'] || '';
   document.getElementById('riderPhone').value = rider.phone || rider['Phone Number'] || '';
   document.getElementById('riderEmail').value = rider.email || rider['Email'] || '';
   document.getElementById('riderStatus').value = rider.status || rider['Status'] || 'Active';
   document.getElementById('riderCertification').value = rider.certification || rider['Certification'] || 'Standard';
+  document.getElementById('riderIsPartTime').checked = (String(rider.isPartTime).toLowerCase() === 'yes' || rider.isPartTime === true); // Set checkbox state
   
   document.getElementById('riderModal').style.display = 'block';
 }
@@ -1159,8 +1195,10 @@ function saveRider() {
     'Phone Number': formData.get('riderPhone'),
     'Email': formData.get('riderEmail'),
     'Status': formData.get('riderStatus'),
-    'Certification': formData.get('riderCertification') // ← Check this value
+    'Certification': formData.get('riderCertification')
+    // 'Employment Type' is removed, 'Part-Time Rider' added below
   };
+  riderData['Part-Time Rider'] = document.getElementById('riderIsPartTime').checked ? 'Yes' : 'No';
   
   console.log('🗂️ Mapped rider data:', riderData);
   console.log(`📜 Certification value: "${riderData['Certification']}" (length: ${riderData['Certification']?.length})`);
@@ -1534,6 +1572,7 @@ function renderRidersTable(riders) {
       <td>${riderEmail}</td>
       <td><span class="status-badge status-${riderStatus.toLowerCase()}">${riderStatus}</span></td>
       <td>${riderCertification}</td>
+      <td>${rider.isPartTime || 'No'}</td>
       <td>${totalAssignments}</td>
       <td>${lastAssignment}</td>
       <td class="actions-cell">
