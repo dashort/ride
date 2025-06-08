@@ -39,6 +39,18 @@
             align-items: center;
             gap: 0.75rem;
         }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
         .navigation {
     justify-content: center !important;
     text-align: center !important;
@@ -477,6 +489,7 @@
                 <div class="user-name" id="userName">Loading...</div>
                 <div class="user-role" id="userRole">User</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -1715,6 +1728,16 @@ function updateAssignedRidersList() {
     function handleError(error) {
         hideLoading();
         showError(error.message || (typeof error === 'string' ? error : 'An unexpected error occurred'));
+    }
+
+    function logout() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(url => { window.location.href = url; })
+                .logout();
+        } else {
+            window.location.href = 'https://accounts.google.com/Logout';
+        }
     }
 
 </script>

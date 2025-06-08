@@ -34,6 +34,37 @@
             font-weight: 600;
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
@@ -335,6 +366,7 @@
                 <div class="user-name" id="userName">Loading...</div>
                 <div class="user-role" id="userRole">User</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -819,6 +851,16 @@ function displayRiderActivityReport(result) {
         function handleError(error) {
             hideLoading();
             showError(error && error.message ? error.message : error);
+        }
+
+        function logout() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => { window.location.href = url; })
+                    .logout();
+            } else {
+                window.location.href = 'https://accounts.google.com/Logout';
+            }
         }
     </script>
 </body>

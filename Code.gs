@@ -6232,6 +6232,21 @@ function getRoleBasedNavigationSafe(currentPage, user, rider) {
 }
 
 /**
+ * Log out the current user and return a Google sign-out URL
+ */
+function logout() {
+  try {
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
+  } catch (error) {
+    console.error('Error clearing cached user info during logout:', error);
+  }
+
+  const baseUrl = getWebAppUrlSafe();
+  return `https://accounts.google.com/Logout?continue=${encodeURIComponent(baseUrl)}`;
+}
+
+/**
  * Test function - run this to debug your setup
  */
 function debugSystemSetup() {
