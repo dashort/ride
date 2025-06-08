@@ -402,6 +402,7 @@ function sendAssignmentNotification(assignmentId, type) {
 
     // Build an email-specific message (without links) that includes other assigned riders
     let emailMessage = smsMessage;
+
     if (type === 'Email' || type === 'Both') {
       emailMessage = formatNotificationMessage({
         assignmentId,
@@ -418,7 +419,15 @@ function sendAssignmentNotification(assignmentId, type) {
           .map(row => getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName))
           .filter(name => name && name !== riderName);
         if (otherRiders.length > 0) {
-          emailMessage += `\n\nOther riders assigned: ${otherRiders.join(', ')}`;
+          emailMessage += `\n\nRiders Assigned: ${otherRiders.concat(riderName).join(', ')}`;
+        } else {
+          emailMessage += `\n\nRiders Assigned: ${riderName}`;
+        }
+
+        const requestDetails = getRequestDetailsForNotification(requestId);
+        const formattedDetails = formatRequestDetails(requestDetails);
+        if (formattedDetails) {
+          emailMessage += `\n\nRequest Details:\n${formattedDetails}`;
         }
       } catch (otherError) {
         console.log(`Could not retrieve other riders for ${requestId}: ${otherError}`);
@@ -865,6 +874,34 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   
   message += `\n-- Rider Integration and Deployment Engine`;
   return message;
+}
+
+/**
+ * Formats full request details for inclusion in email notifications.
+ * @param {Object|null} details - Object returned from getRequestDetailsForNotification.
+ * @return {string} Multiline string with formatted request information.
+ */
+function formatRequestDetails(details) {
+  if (!details) return '';
+
+  const parts = [];
+  if (details.requesterName) parts.push(`Requester: ${details.requesterName}`);
+  if (details.requesterContact) parts.push(`Contact: ${details.requesterContact}`);
+  if (details.requestType) parts.push(`Type: ${details.requestType}`);
+  if (details.eventDate) parts.push(`Event Date: ${formatDateForDisplay(details.eventDate)}`);
+  if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
+  if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
+  if (details.startLocation) parts.push(`Start Location: ${details.startLocation}`);
+  if (details.endLocation) parts.push(`End Location: ${details.endLocation}`);
+  if (details.secondaryLocation) parts.push(`Secondary Location: ${details.secondaryLocation}`);
+  if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
+  if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
+  if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
+  if (details.notes) parts.push(`Notes: ${details.notes}`);
+  if (details.courtesy) parts.push(`Courtesy: ${details.courtesy}`);
+  if (details.status) parts.push(`Status: ${details.status}`);
+
+  return parts.join('\n');
 }
 
 /**
@@ -1319,28 +1356,42 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
 function getRequestDetailsForNotification(requestId) {
   try {
     if (!requestId) return null;
-    
+
     const requestsData = getRequestsData();
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
       return null;
     }
-    
+
     const columnMap = requestsData.columnMap;
-    
-    // Find the matching request
+
+    // Find the matching request row
     for (let i = 0; i < requestsData.data.length; i++) {
       const row = requestsData.data[i];
       const rowRequestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-      
+
       if (String(rowRequestId).trim().toLowerCase() === String(requestId).trim().toLowerCase()) {
         return {
+          requesterName: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '',
+          requesterContact: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '',
+          requestType: getColumnValue(row, columnMap, CONFIG.columns.requests.type) || '',
+          eventDate: getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate) || '',
+          date: getColumnValue(row, columnMap, CONFIG.columns.requests.date) || '',
+          startTime: getColumnValue(row, columnMap, CONFIG.columns.requests.startTime) || '',
+          endTime: getColumnValue(row, columnMap, CONFIG.columns.requests.endTime) || '',
+          startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || '',
+          endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
+          secondaryLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
+          ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || '',
+          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
+          requirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
+          status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
-          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || ''
+          lastUpdated: getColumnValue(row, columnMap, CONFIG.columns.requests.lastUpdated) || ''
         };
       }
     }
-    
+
     return null;
   } catch (error) {
     logError('Error getting request details for notification:', error);
