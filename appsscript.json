@@ -21,11 +21,13 @@
     "https://www.googleapis.com/auth/script.webapp.deploy"
   ],
   "webapp": {
+
     "executeAs": "USER_ACCESSING",
     "access": "ANYONE"
   },
   "urlFetchWhitelist": [
     "https://script.google.com/",
     "https://accounts.google.com/"
+
   ]
 }

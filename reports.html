@@ -684,6 +684,7 @@
         }
 
         function updateCharts(charts) {
+
             if (charts.requestVolume) {
                 document.getElementById('requestVolumeChart').innerHTML = 
                     '<div style="padding: 2rem; text-align: center;">' +
@@ -729,6 +730,7 @@
                 }
                 var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
                 document.getElementById('locationHotspots').innerHTML = locationsTable;
+
             }
         }
 

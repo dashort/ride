@@ -596,6 +596,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   }
   rider.partTime = partTimeVal || 'No';
   rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
+  rider.isPartTime = getColumnValue(row, columnMap, CONFIG.columns.riders.isPartTime) || 'No'; // Changed from employmentType, default to 'No'
   rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
   rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
   
