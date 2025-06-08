@@ -401,10 +401,6 @@
                 <div class="metric-value" id="activeRiders">-</div>
                 <div class="metric-label">Active Riders</div>
             </div>
-            <div class="summary-card danger">
-                <div class="metric-value" id="avgResponseTime">-</div>
-                <div class="metric-label">Avg Response Time</div>
-            </div>
         </div>
 
         <!-- Charts and Reports Grid -->
@@ -437,18 +433,6 @@
                 </div>
             </div>
 
-            <!-- Rider Performance -->
-            <div class="report-card">
-                <h3 class="report-title">🏍️ Rider Performance</h3>
-                <div id="riderPerformanceTable">
-                    <div class="loading">Loading rider performance data...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('riderPerformance')">
-                        📥 Export Data
-                    </button>
-                </div>
-            </div>
 
             <!-- Monthly Escort Hours -->
             <div class="report-card">
@@ -477,18 +461,6 @@
                 </div>
             </div>
 
-            <!-- Response Time Analysis -->
-            <div class="report-card">
-                <h3 class="report-title">⏱️ Response Time Analysis</h3>
-                <div id="responseTimeAnalysis">
-                    <div class="loading">Loading response time data...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('responseTime')">
-                        📥 Export Data
-                    </button>
-                </div>
-            </div>
 
             <!-- Location Hotspots -->
             <div class="report-card">
@@ -519,9 +491,6 @@
                 </button>
                 <button class="btn btn-success" onclick="exportRiderActivityCSV()">
                     📥 Rider CSV
-                </button>
-                <button class="btn btn-primary" onclick="generateComprehensiveReport('financial')">
-                    💰 Cost Analysis
                 </button>
             </div>
         </div>
@@ -694,7 +663,6 @@
             document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
             document.getElementById('completedRequests').textContent = summary.completedRequests || 0;
             document.getElementById('activeRiders').textContent = summary.activeRiders || 0;
-            document.getElementById('avgResponseTime').textContent = summary.avgResponseTime || '-';
         }
 
         function updateCharts(charts) {
@@ -731,15 +699,6 @@
         }
 
         function updateTables(tables) {
-            if (tables.riderPerformance) {
-                var rows = '';
-                for (var i = 0; i < tables.riderPerformance.length; i++) {
-                    var rider = tables.riderPerformance[i];
-                    rows += '<tr><td>' + rider.name + '</td><td>' + rider.assignments + '</td><td>' + rider.completionRate + '%</td></tr>';
-                }
-                var riderTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Assignments</th><th>Completion Rate</th></tr></thead><tbody>' + rows + '</tbody></table>';
-                document.getElementById('riderPerformanceTable').innerHTML = riderTable;
-            }
 
             if (tables.riderHours) {
                 var hoursRows = '';
@@ -751,15 +710,6 @@
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             }
 
-            if (tables.responseTime) {
-                var responseTable = '<table class="stats-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' +
-                    '<tr><td>Average Response Time</td><td>' + tables.responseTime.average + '</td></tr>' +
-                    '<tr><td>Fastest Response</td><td>' + tables.responseTime.fastest + '</td></tr>' +
-                    '<tr><td>Slowest Response</td><td>' + tables.responseTime.slowest + '</td></tr>' +
-                    '<tr><td>Within SLA</td><td>' + tables.responseTime.withinSLA + '</td></tr>' +
-                    '</tbody></table>';
-                document.getElementById('responseTimeAnalysis').innerHTML = responseTable;
-            }
 
             if (tables.locations) {
                 var locRows = '';
@@ -787,7 +737,7 @@
             hideLoading();
             console.log('Using fallback data for reports');
             var data = {
-                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0, avgResponseTime: '-' },
+                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
                 charts: {},
                 tables: {}
             };
