@@ -41,6 +41,18 @@
             gap: 0.75rem;
         }
 
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+
         .user-avatar {
             width: 32px;
             height: 32px;
@@ -283,7 +295,7 @@
                 padding: 0 1rem !important;
                 margin: 1rem auto 1rem auto !important;
             }
-    
+
             .nav-button {
                 width: 100% !important;
                 max-width: 300px !important;
@@ -340,6 +352,7 @@
                 <div id="userName">Loading...</div>
                 <div id="userRole">User</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -418,6 +431,18 @@
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Dashboard loading...');
 
+        // Retrieve the web app URL when running inside Apps Script
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { app.baseUrl = url; })
+                    .withFailureHandler(() => { app.baseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                app.baseUrl = null;
+            }
+        }
+        
         setTimeout(() => {
             if (document.getElementById('activeRiders').textContent === '-') {
                 console.log('⚠️ Loading timeout - setting fallback values');
@@ -666,50 +691,27 @@
         search.set('page', page);
         Object.keys(params).forEach(key => search.set(key, params[key]));
 
+        let base = window.location.origin + window.location.pathname;
         let url;
-
-        // If running inside Google Apps Script web app:
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-           let tempUrl;
-           if (typeof SCRIPT_BASE_URL === 'undefined' || SCRIPT_BASE_URL === 'null' || SCRIPT_BASE_URL === '') { // Check for 'null' string if placeholder replaced with empty/null
-               console.warn('SCRIPT_BASE_URL is not defined or invalid. Falling back to pathname-based URL. This might not work correctly.');
-               const base = window.location.origin + window.location.pathname;
-               tempUrl = base + '?' + search.toString();
-           } else {
-               // Ensure SCRIPT_BASE_URL doesn't already have query params if search is also empty
-               if (SCRIPT_BASE_URL.includes('?') && search.toString() === '') {
-                   tempUrl = SCRIPT_BASE_URL;
-               } else if (SCRIPT_BASE_URL.includes('?')) {
-                   tempUrl = SCRIPT_BASE_URL + '&' + search.toString();
-               } else {
-                   tempUrl = SCRIPT_BASE_URL + '?' + search.toString();
-               }
-           }
-           url = tempUrl; // Assign to the outer scope url variable
 
-            try {
-                window.top.location.href = url;
-            } catch (error) {
-                try {
-                    window.parent.location.href = url;
-                } catch (parentError) {
-                    window.open(url, '_blank');
-                }
-            }
+            // In Apps Script the base already points to the deployed web app
+            url = base + '?' + search.toString();
 
         } else {
-            // Standalone pages (non-GAS), navigate to page.html
-            url = page + '.html?' + search.toString();
+            // When running locally fall back to current page with query params
+            // instead of trying to load separate HTML files which may not be
+            // routed correctly in some environments.
+            url = base + '?' + search.toString();
+        }
 
+        try {
+            window.location.href = url;
+        } catch (error) {
             try {
-                window.location.href = url;
-                setTimeout(() => {
-                    if (window.location.href !== url) {
-                        window.location.replace(url);
-                    }
-                }, 500);
-            } catch (error) {
-                window.open(url, '_self');
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
             }
         }
     }
@@ -739,6 +741,16 @@
     function sendBulkNotifications() {
         if (confirm('This will send notifications to all pending assignments. Continue?')) {
             showMessage('Notification feature will be available soon!', 'info');
+        }
+    }
+
+    function logout() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(url => { window.location.href = url; })
+                .logout();
+        } else {
+            window.location.href = 'https://accounts.google.com/Logout';
         }
     }
 

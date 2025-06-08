@@ -19,6 +19,46 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
         
         .header h1 {
             margin: 0;
@@ -335,6 +375,33 @@
             height: 50px;
             animation: spin 1s linear infinite;
         }
+
+        #toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 10px;
+            position: fixed;
+            z-index: 3000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+        }
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+        @keyframes fadein {
+            from { bottom: 20px; opacity: 0; }
+            to { bottom: 30px; opacity: 1; }
+        }
+        @keyframes fadeout {
+            from { bottom: 30px; opacity: 1; }
+            to { bottom: 40px; opacity: 0; }
+        }
         
         @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -344,15 +411,32 @@
         .add-request-btn {
             margin-left: 10px;
         }
+
+        .search-box {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ecf0f1;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+            margin-bottom: 1rem;
+        }
+
+        .search-box:focus {
+            border-color: #3498db;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
+    <header class="header">
         <h1>🏍️ Escort Requests</h1>
-    </div>
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
-    
-    <div class="controls">
+
+    </header>
+
+<!--NAVIGATION_MENU_PLACEHOLDER-->
+
+
         <div class="filter-row">
             <label><strong>Filter:</strong></label>
             <select id="statusFilter">
@@ -365,6 +449,7 @@
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
             </select>
+            <label><input type="checkbox" id="showCompleted"> Completed</label>
             <button onclick="loadPageData()">🔄 Refresh</button>
             <button onclick="exportToCSV()">📊 Export</button>
             <button class="btn-success add-request-btn" onclick="openNewRequestForm()">➕ Add New Request</button>
@@ -377,6 +462,7 @@
                 <option value="requestType">Request Type</option>
             </select>
         </div>
+        <input type="text" id="requestSearch" class="search-box" placeholder="🔍 Search requests...">
         <div class="stats" id="statsDisplay">Loading...</div>
     </div>
     
@@ -395,7 +481,7 @@
                         <th>Request ID</th>
                         <th>Event Date</th>
                         <th>Start Time</th>
-                        <th>End Time</th>
+                        <th id="endTimeHeader">End Time</th>
                         <th>Requester</th>
                         <th>Type</th>
                         <th>Start Location</th>
@@ -404,6 +490,7 @@
                         <th>Status</th>
                         <th>Assigned</th>
                         <th>Notes</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="requestsBody">
@@ -525,8 +612,9 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button> 
-                <button type="button" class="btn btn-primary" onclick="saveRequest()">💾 Save Changes</button>
+                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button>
+                <button type="button" class="btn btn-primary" id="saveChangesBtn" onclick="saveRequest()">💾 Save Changes</button>
+                <button type="button" class="btn btn-success" id="completeRequestBtn" onclick="completeRequest()" style="display:none;">✅ Complete Request</button>
             </div>
         </div>
     </div>
@@ -535,6 +623,10 @@
     <div id="loadingOverlay" class="loading-overlay">
         <div class="spinner"></div>
     </div>
+
+    <div id="toast"></div>
+
+</div>
 
 <script>
     /**
@@ -563,6 +655,7 @@
      * @type {Array<RequestFull>}
      */
     let allRequests = [];
+
     /**
      * Holds the data of the request currently being edited or null if creating a new one.
      * @type {RequestFull|null}
@@ -588,12 +681,36 @@
             }
         }
 
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { window.requestBaseUrl = url; })
+                    .withFailureHandler(() => { window.requestBaseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                window.requestBaseUrl = null;
+            }
+        }
+
         loadPageData();
         document.getElementById('statusFilter').addEventListener('change', loadPageData);
+        const completedCheckbox = document.getElementById('showCompleted');
+        if (completedCheckbox) {
+            completedCheckbox.addEventListener('change', loadPageData);
+        }
         const sortSelect = document.getElementById('sortBy');
         if (sortSelect) {
             sortSelect.value = 'eventDate';
             sortSelect.addEventListener('change', sortAndDisplayRequests);
+        }
+        const searchInput = document.getElementById('requestSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', sortAndDisplayRequests);
+        }
+
+        const actionParam = params.get('action');
+        if (actionParam && actionParam.toLowerCase() === 'create') {
+            openNewRequestForm();
         }
     });
 
@@ -605,10 +722,12 @@
     function loadPageData() {
         showLoading();
         const filter = document.getElementById('statusFilter').value;
+        const includeCompleted = document.getElementById('showCompleted').checked;
+        const hideCompleted = !includeCompleted;
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run
-                .withSuccessHandler(handlePageDataSuccess)
+                .withSuccessHandler(data => handlePageDataSuccess(data, hideCompleted))
                 .withFailureHandler(handlePageDataError)
                 .getPageDataForRequests(filter);
         } else {
@@ -627,7 +746,7 @@
      * @param {string} [data.error] - Error message if not successful.
      * @return {void}
      */
-    function handlePageDataSuccess(data) {
+    function handlePageDataSuccess(data, hideCompleted) {
         hideLoading();
 
         if (data && data.success) {
@@ -635,12 +754,16 @@
             currentUser = data.user;
             // updateUserInfo(currentUser); // TODO: Implement if user info needs display on this page.
 
-            const requests = data.requests;
+            let requests = data.requests;
             if (!requests || !Array.isArray(requests)) {
                 showError('Invalid requests data received from server');
                 allRequests = [];
             } else {
                 allRequests = requests;
+            }
+
+            if (hideCompleted) {
+                allRequests = allRequests.filter(r => r.status !== 'Completed');
             }
 
             if (allRequests.length === 0) {
@@ -672,6 +795,25 @@
     }
 
     /**
+     * Determines if the escort has started based on event date and start time.
+     * @param {string} eventDate - Date string (YYYY-MM-DD or similar).
+     * @param {string} startTime - Start time string (e.g. "14:00" or "2:00 PM").
+     * @return {boolean} True if the current time is on or after the start.
+     */
+    function escortHasStarted(eventDate, startTime) {
+        if (!eventDate || !startTime) return false;
+        const date = new Date(eventDate);
+        if (isNaN(date.getTime())) return false;
+
+        const formattedTime = formatTimeForInput(startTime);
+        if (!formattedTime) return false;
+
+        const [hours, minutes] = formattedTime.split(':').map(Number);
+        date.setHours(hours, minutes, 0, 0);
+        return new Date() >= date;
+    }
+
+    /**
      * Renders the requests data into the HTML table.
      * @param {Array<RequestFull>} requests - Array of request objects to display.
      * @return {void}
@@ -688,12 +830,15 @@
                 '';
 
             const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
+            const showComplete = escortHasStarted(request.eventDate, request.startTime);
+            const actionButton = (request.status !== 'Completed' && request.status !== 'Cancelled' && showComplete) ?
+                `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${request.requestId || ''}')">Complete</button>` : '';
 
             row.innerHTML = `
                 <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
                 <td>${request.eventDate || ''}</td>
                 <td>${request.startTime || ''}</td>
-                <td>${request.endTime || ''}</td>
+                <td class="end-time-cell">${request.endTime || ''}</td>
                 <td>${request.requesterName || ''}</td>
                 <td>${request.requestType || ''}</td>
                 <td>${request.startLocation || ''}</td>
@@ -702,9 +847,21 @@
                 <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
                 <td>${assigned}</td>
                 <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
+                <td>${actionButton}</td>
             `;
 
             tbody.appendChild(row);
+        });
+
+        toggleEndTimeColumn(document.getElementById('showCompleted').checked);
+    }
+
+    function toggleEndTimeColumn(show) {
+        const display = show ? '' : 'none';
+        const header = document.getElementById('endTimeHeader');
+        if (header) header.style.display = display;
+        document.querySelectorAll('.end-time-cell').forEach(cell => {
+            cell.style.display = display;
         });
     }
 
@@ -712,10 +869,31 @@
         const sortBy = document.getElementById('sortBy').value;
         if (!allRequests || allRequests.length === 0) {
             displayRequests([]);
+            showNoData();
             return;
         }
 
-        const requests = [...allRequests];
+        const searchInput = document.getElementById('requestSearch');
+        const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+        let requests = [...allRequests];
+
+        if (term) {
+            requests = requests.filter(r =>
+                String(r.requestId).toLowerCase().includes(term) ||
+                String(r.requesterName).toLowerCase().includes(term) ||
+                String(r.requestType).toLowerCase().includes(term) ||
+                String(r.startLocation).toLowerCase().includes(term) ||
+                String(r.endLocation).toLowerCase().includes(term)
+            );
+        }
+
+        if (requests.length === 0) {
+            displayRequests([]);
+            updateStats([]);
+            showNoData();
+            return;
+        }
 
         if (sortBy === 'requestId') {
             requests.sort((a, b) => String(a.requestId).localeCompare(String(b.requestId)));
@@ -735,6 +913,8 @@
         }
 
         displayRequests(requests);
+        updateStats(requests);
+        showTable();
     }
 
     /**
@@ -747,7 +927,7 @@
 
         const request = allRequests.find(r => r.requestId === requestId);
         if (!request) {
-            alert('Request not found: ' + requestId);
+            showToast('Request not found: ' + requestId);
             return;
         }
 
@@ -770,8 +950,10 @@
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
-        document.getElementById('deleteBtn').style.display = 'inline-block'; 
+        document.getElementById('deleteBtn').style.display = 'inline-block';
         document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Show Assign Riders button
+        document.getElementById('saveChangesBtn').style.display = 'inline-block';
+        document.getElementById('completeRequestBtn').style.display = 'none';
         document.getElementById('editRequestModal').style.display = 'block';
     }
 
@@ -789,9 +971,21 @@
         document.getElementById('editRidersNeeded').value = 1;
 
         document.getElementById('modalTitle').textContent = 'Add New Request';
-        document.getElementById('deleteBtn').style.display = 'none'; 
+        document.getElementById('deleteBtn').style.display = 'none';
         document.getElementById('assignRidersBtnModal').style.display = 'none'; // Hide Assign Riders button
+        document.getElementById('saveChangesBtn').style.display = 'inline-block';
+        document.getElementById('completeRequestBtn').style.display = 'none';
         document.getElementById('editRequestModal').style.display = 'block';
+    }
+
+    function openCompleteModal(requestId) {
+        openEditModal(requestId);
+        document.getElementById('modalTitle').textContent = `Complete Request ${requestId}`;
+        document.getElementById('deleteBtn').style.display = 'none';
+        document.getElementById('assignRidersBtnModal').style.display = 'none';
+        document.getElementById('saveChangesBtn').style.display = 'none';
+        document.getElementById('completeRequestBtn').style.display = 'inline-block';
+        document.getElementById('editStatus').value = 'Completed';
     }
 
     /**
@@ -801,8 +995,10 @@
     function closeEditModal() {
         document.getElementById('editRequestModal').style.display = 'none';
         currentEditingRequest = null;
-        document.getElementById('deleteBtn').style.display = 'inline-block'; 
+        document.getElementById('deleteBtn').style.display = 'inline-block';
         document.getElementById('assignRidersBtnModal').style.display = 'inline-block'; // Reset to default visible
+        document.getElementById('saveChangesBtn').style.display = 'inline-block';
+        document.getElementById('completeRequestBtn').style.display = 'none';
     }
 
     /**
@@ -827,6 +1023,7 @@
             requesterContact: document.getElementById('editRequesterContact').value.trim(),
             requestType: document.getElementById('editRequestType').value,
             eventDate: document.getElementById('editEventDate').value,
+            date: document.getElementById('editEventDate').value,
             startTime: document.getElementById('editStartTime').value,
             endTime: document.getElementById('editEndTime').value,
             startLocation: document.getElementById('editStartLocation').value.trim(),
@@ -850,12 +1047,12 @@
                 console.log('Save success handler received:', JSON.stringify(result, null, 2));
                 hideLoadingOverlay();
                 if (result.success) {
-                    alert(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
+                    showToast(isNewRequest ? 'Request created successfully!' : 'Request updated successfully!');
                     closeEditModal();
                     loadPageData(); // Refresh the list (was loadRequests())
                 } else {
                     console.error('Save operation reported failure. Server result:', JSON.stringify(result, null, 2));
-                    alert('Error: ' + result.message);
+                    showToast('Error: ' + result.message);
                 }
             })
             .withFailureHandler((error) => {
@@ -864,9 +1061,65 @@
                 console.error('Error message:', error.message);
                 console.error('Full error object:', error);
                 hideLoadingOverlay();
-                alert('Error saving request: ' + error.message);
+                showToast('Error saving request: ' + error.message);
             })
             [functionName](requestData);
+    }
+
+    function completeRequest() {
+        const endTimeField = document.getElementById('editEndTime');
+        if (!endTimeField.value.trim()) {
+            alert('Please provide an end time to complete this request.');
+            endTimeField.focus();
+            return;
+        }
+
+        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
+        for (const fieldId of requiredFields) {
+            const field = document.getElementById(fieldId);
+            if (!field.value.trim()) {
+                alert(`Please fill in the required field: ${field.previousElementSibling.textContent.replace('*','').trim()}`);
+                field.focus();
+                return;
+            }
+        }
+
+        const requestData = {
+            requestId: document.getElementById('editRequestId').value,
+            requesterName: document.getElementById('editRequesterName').value.trim(),
+            requesterContact: document.getElementById('editRequesterContact').value.trim(),
+            requestType: document.getElementById('editRequestType').value,
+            eventDate: document.getElementById('editEventDate').value,
+            date: document.getElementById('editEventDate').value,
+            startTime: document.getElementById('editStartTime').value,
+            endTime: document.getElementById('editEndTime').value,
+            startLocation: document.getElementById('editStartLocation').value.trim(),
+            endLocation: document.getElementById('editEndLocation').value.trim(),
+            secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
+            ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
+            status: 'Completed',
+            courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
+            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
+            notes: document.getElementById('editNotes').value.trim()
+        };
+
+        showLoadingOverlay();
+        google.script.run
+            .withSuccessHandler((result) => {
+                hideLoadingOverlay();
+                if (result.success) {
+                    showToast('Request completed successfully!');
+                    closeEditModal();
+                    loadPageData();
+                } else {
+                    showToast('Error: ' + result.message);
+                }
+            })
+            .withFailureHandler((error) => {
+                hideLoadingOverlay();
+                showToast('Error completing request: ' + error.message);
+            })
+            .updateExistingRequest(requestData);
     }
 
     /**
@@ -876,7 +1129,7 @@
      */
     function deleteRequest() {
         if (!currentEditingRequest) {
-            alert('No request selected for deletion');
+            showToast('No request selected for deletion');
             return;
         }
 
@@ -890,16 +1143,16 @@
             .withSuccessHandler((result) => {
                 hideLoadingOverlay();
                 if (result.success) {
-                    alert('Request deleted successfully!');
+                    showToast('Request deleted successfully!');
                     closeEditModal();
                     loadPageData(); // Refresh the list (was loadRequests())
                 } else {
-                    alert('Error deleting request: ' + result.message);
+                    showToast('Error deleting request: ' + result.message);
                 }
             })
             .withFailureHandler((error) => {
                 hideLoadingOverlay();
-                alert('Error deleting request: ' + error.message);
+                showToast('Error deleting request: ' + error.message);
             })
             .deleteRequest(currentEditingRequest.requestId);
     }
@@ -967,6 +1220,15 @@
      */
     function hideLoadingOverlay() {
         document.getElementById('loadingOverlay').style.display = 'none';
+    }
+
+    function showToast(message, duration = 3000) {
+        const toast = document.getElementById('toast');
+        toast.textContent = message;
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, duration);
     }
 
     /**
@@ -1053,7 +1315,7 @@
      */
     function exportToCSV() {
         if (!allRequests || allRequests.length === 0) {
-            alert('No data to export');
+            showToast('No data to export');
             return;
         }
 
@@ -1093,29 +1355,35 @@
         URL.revokeObjectURL(url);
     }
 
-    function navigateTo(page, params = {}) {
-        const search = new URLSearchParams();
-        search.set('page', page);
-        Object.keys(params).forEach(key => search.set(key, params[key]));
 
-        let url;
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const base = window.location.origin + window.location.pathname;
-            url = base + '?' + search.toString();
-        } else {
-            url = page + '.html?' + search.toString();
-        }
 
+
+function navigateTo(page, params = {}) {
+    const search = new URLSearchParams();
+    search.set('page', page);
+    Object.keys(params).forEach(key => search.set(key, params[key]));
+
+    let base = window.location.origin + window.location.pathname;
+    let url;
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        // When running in Apps Script use the current deployment URL
+        url = base + '?' + search.toString();
+    } else {
+        // Local environments may not support separate HTML pages
+        url = base + '?' + search.toString();
+    }
+
+    try {
+        window.location.href = url;
+    } catch (error) {
         try {
-            window.location.href = url;
-        } catch (error) {
-            try {
-                window.top.location.href = url;
-            } catch (topError) {
-                window.open(url, '_blank');
-            }
+            window.top.location.href = url;
+        } catch (topError) {
+            window.open(url, '_blank');
         }
     }
+}
+
 
     function redirectToAssignmentPage() {
         if (currentEditingRequest && currentEditingRequest.requestId) {
@@ -1123,7 +1391,7 @@
             console.log('Navigating to assignments page for request:', requestId);
             navigateTo('assignments', { requestId });
         } else {
-            alert('No request selected or request ID is missing. Cannot navigate to assignments.');
+            showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
         }
     }

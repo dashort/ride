@@ -76,6 +76,14 @@ function getRiders() {
     return [];
   }
 }
+function getRiderDashboard(riderId) {
+  return {
+    myAssignments: getAssignmentsForRider(riderId),
+    upcomingEscorts: getUpcomingEscorts(riderId),
+    completedThisMonth: getCompletedCount(riderId),
+    notifications: getRiderNotifications(riderId)
+  };
+}
 
 /**
  * Fetches details for a specific rider by their Rider ID.
@@ -305,13 +313,29 @@ function addRider(riderData) {
     
     const sheetData = getSheetData(CONFIG.sheets.riders);
     const headers = sheetData.headers;
-    
+
+    // Normalize incoming data keys for flexible mapping
+    const normalizedData = {};
+    Object.keys(riderData).forEach(key => {
+      normalizedData[normalizeColumnName(key)] = riderData[key];
+    });
+
+    // Support common variations of the part time field
+    const normalizedPartTime =
+      normalizedData['part time'] ||
+      normalizedData['part-time'] ||
+      normalizedData['parttimerider'] ||
+      normalizedData['part time rider'] ||
+      normalizedData['parttime'];
+
     // Create new row array based on headers
     const newRowArray = headers.map(header => {
-      if (riderData.hasOwnProperty(header)) {
-        return riderData[header];
+      const normalizedHeader = normalizeColumnName(header);
+
+      if (normalizedData.hasOwnProperty(normalizedHeader)) {
+        return normalizedData[normalizedHeader];
       }
-      
+
       // Set default values for specific columns
       switch (header) {
         case CONFIG.columns.riders.status:
@@ -320,6 +344,8 @@ function addRider(riderData) {
           return 0;
         case CONFIG.columns.riders.lastAssignmentDate:
           return '';
+        case CONFIG.columns.riders.partTime:
+          return normalizedPartTime || 'No';
         case CONFIG.columns.riders.certification:
           return riderData[header] || 'Standard';
         default:
@@ -395,13 +421,31 @@ function updateRider(riderData) {
       throw new Error(`Rider with ID "${riderId}" not found`);
     }
     
-    // Create updated row array
+    // Normalize update data keys to handle header inconsistencies
+    const normalizedData = {};
+    Object.keys(riderData).forEach(key => {
+      normalizedData[normalizeColumnName(key)] = riderData[key];
+    });
+
+    // Handle possible variations of the part time field
+    const normalizedPartTime =
+      normalizedData['part time'] ||
+      normalizedData['part-time'] ||
+      normalizedData['parttimerider'] ||
+      normalizedData['part time rider'] ||
+      normalizedData['parttime'];
+    if (normalizedPartTime !== undefined) {
+      normalizedData['part time'] = normalizedPartTime;
+    }
+
+    // Create updated row array using normalized matching
     const updatedRowArray = sheetData.headers.map((header, headerIndex) => {
-      // If update data has this field, use the new value
-      if (riderData.hasOwnProperty(header)) {
-        return riderData[header];
+      const normalizedHeader = normalizeColumnName(header);
+
+      if (normalizedData.hasOwnProperty(normalizedHeader)) {
+        return normalizedData[normalizedHeader];
       }
-      
+
       // Otherwise, preserve the existing value
       return sheetData.data[targetRowIndex][headerIndex];
     });
@@ -543,6 +587,14 @@ function mapRowToRiderObject(row, columnMap, headers) {
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
+  let partTimeVal = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
+  if (partTimeVal === null || partTimeVal === '') {
+    partTimeVal = getColumnValue(row, columnMap, 'Part Time Rider');
+  }
+  if (partTimeVal === null || partTimeVal === '') {
+    partTimeVal = getColumnValue(row, columnMap, 'Part-Time');
+  }
+  rider.partTime = partTimeVal || 'No';
   rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
   rider.isPartTime = getColumnValue(row, columnMap, CONFIG.columns.riders.isPartTime) || 'No'; // Changed from employmentType, default to 'No'
   rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;

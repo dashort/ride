@@ -390,24 +390,58 @@ function sendAssignmentNotification(assignmentId, type) {
     }
     
     // Enhanced message formatting with request details
-    const message = formatNotificationMessage({
-      assignmentId, 
-      requestId, 
-      riderName, 
-      eventDate, 
-      startTime, 
-      startLocation, 
+    const smsMessage = formatNotificationMessage({
+      assignmentId,
+      requestId,
+      riderName,
+      eventDate,
+      startTime,
+      startLocation,
       endLocation
-    });
+    }, true);
+
+    // Build an email-specific message (without links) that includes other assigned riders
+    let emailMessage = smsMessage;
+
+    if (type === 'Email' || type === 'Both') {
+      emailMessage = formatNotificationMessage({
+        assignmentId,
+        requestId,
+        riderName,
+        eventDate,
+        startTime,
+        startLocation,
+        endLocation
+      }, false);
+      try {
+        const relatedAssignments = getAssignmentsForRequest(requestId);
+        const otherRiders = relatedAssignments
+          .map(row => getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName))
+          .filter(name => name && name !== riderName);
+        if (otherRiders.length > 0) {
+          emailMessage += `\n\nRiders Assigned: ${otherRiders.concat(riderName).join(', ')}`;
+        } else {
+          emailMessage += `\n\nRiders Assigned: ${riderName}`;
+        }
+
+        const requestDetails = getRequestDetailsForNotification(requestId);
+        const formattedDetails = formatRequestDetails(requestDetails);
+        if (formattedDetails) {
+          emailMessage += `\n\nRequest Details:\n${formattedDetails}`;
+        }
+      } catch (otherError) {
+        console.log(`Could not retrieve other riders for ${requestId}: ${otherError}`);
+      }
+    }
     
     let smsResult = { success: true };
     let emailResult = { success: true };
     
     if ((type === 'SMS' || type === 'Both') && riderPhone) {
-      smsResult = sendSMS(riderPhone, riderCarrier, message);
+      smsResult = sendSMS(riderPhone, riderCarrier, smsMessage);
     }
     if ((type === 'Email' || type === 'Both') && riderEmail) {
-      emailResult = sendEmail(riderEmail, `Assignment ${assignmentId} - ${requestId}`, message);
+      emailResult = sendEmail(riderEmail, `Assignment ${assignmentId} - ${requestId}`, emailMessage);
     }
     
     try {
@@ -814,7 +848,7 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   
   if (requestDetails) {
     if (requestDetails.courtesy === 'Yes') {
-      message += `\n⭐ **COURTESY** ⭐\n`;
+      message += `\n⭐ COURTESY REQUEST ⭐\n`;
     }
     
     if (requestDetails.notes && requestDetails.notes.trim()) {
@@ -843,18 +877,61 @@ function formatNotificationMessage(assignment, includeLinks = true) {
 }
 
 /**
- * Get the web app URL for creating links
+ * Formats full request details for inclusion in email notifications.
+ * @param {Object|null} details - Object returned from getRequestDetailsForNotification.
+ * @return {string} Multiline string with formatted request information.
+ */
+function formatRequestDetails(details) {
+  if (!details) return '';
+
+  const parts = [];
+  if (details.requesterName) parts.push(`Requester: ${details.requesterName}`);
+  if (details.requesterContact) parts.push(`Contact: ${details.requesterContact}`);
+  if (details.requestType) parts.push(`Type: ${details.requestType}`);
+  if (details.eventDate) parts.push(`Event Date: ${formatDateForDisplay(details.eventDate)}`);
+  if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
+  if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
+  if (details.startLocation) parts.push(`Start Location: ${details.startLocation}`);
+  if (details.endLocation) parts.push(`End Location: ${details.endLocation}`);
+  if (details.secondaryLocation) parts.push(`Secondary Location: ${details.secondaryLocation}`);
+  if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
+  if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
+  if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
+  if (details.notes) parts.push(`Notes: ${details.notes}`);
+  if (details.courtesy) {
+    if (String(details.courtesy).toLowerCase() === 'yes') {
+      parts.push('⭐ COURTESY REQUEST ⭐');
+    } else {
+      parts.push(`Courtesy: ${details.courtesy}`);
+    }
+  }
+  if (details.status) parts.push(`Status: ${details.status}`);
+
+  return parts.join('\n');
+}
+
+/**
+ * Cached web app URL so we only fetch it once.
+ * @type {?string}
+ */
+let WEB_APP_URL;
+
+/**
+ * Get the web app URL for creating links. The URL is retrieved once and then
+ * cached for subsequent calls.
+ * @return {?string} The deployed web app URL or null if unavailable.
  */
 function getWebAppUrl() {
-  try {
-    // Try to get the current web app URL
-    // You'll need to set this to your actual web app URL
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec";
+  if (WEB_APP_URL !== undefined) {
     return WEB_APP_URL;
+  }
+  try {
+    WEB_APP_URL = ScriptApp.getService().getUrl();
   } catch (error) {
     console.log('Could not determine web app URL');
-    return null;
+    WEB_APP_URL = null;
   }
+  return WEB_APP_URL;
 }
 
 // ===== 2. TWILIO WEBHOOK SETUP FOR RESPONSES =====
@@ -1276,7 +1353,38 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
     logError('Error notifying admin of response', error);
   }
 }
+function notifyRiderAssignment(assignmentId) {
+  const assignment = getAssignmentById(assignmentId);
+  const rider = getRiderByEmail(assignment.riderEmail);
+  
+  if (rider && rider.googleEmail) {
+    // Send email notification
+    GmailApp.sendEmail(
+      rider.googleEmail,
+      '🏍️ New Escort Assignment',
+      `You have been assigned to escort request ${assignment.requestId}. 
+       Please log in to the system to view details.`
+    );
+  }
+}
 
+function getWelcomeMessage(user) {
+  const rider = getRiderByEmail(user.email);
+  if (rider) {
+    const pending = getAssignmentsForRider(rider.id, 'Pending');
+    return `Welcome back, ${rider.name}! You have ${pending.length} pending assignments.`;
+  }
+  return `Welcome, ${user.name}!`;
+}
+function getNavigationMenu(userRole) {
+  const menus = {
+    admin: ['Dashboard', 'Requests', 'Riders', 'Assignments', 'Reports', 'Settings'],
+    dispatcher: ['Dashboard', 'Requests', 'Assignments', 'Reports'],
+    rider: ['My Dashboard', 'My Assignments', 'My Schedule']
+  };
+  
+  return menus[userRole] || ['Dashboard'];
+}
 /**
  * Gets additional request details for notification purposes.
  * @param {string} requestId - The request ID to look up.
@@ -1285,28 +1393,42 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
 function getRequestDetailsForNotification(requestId) {
   try {
     if (!requestId) return null;
-    
+
     const requestsData = getRequestsData();
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
       return null;
     }
-    
+
     const columnMap = requestsData.columnMap;
-    
-    // Find the matching request
+
+    // Find the matching request row
     for (let i = 0; i < requestsData.data.length; i++) {
       const row = requestsData.data[i];
       const rowRequestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-      
+
       if (String(rowRequestId).trim().toLowerCase() === String(requestId).trim().toLowerCase()) {
         return {
+          requesterName: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '',
+          requesterContact: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '',
+          requestType: getColumnValue(row, columnMap, CONFIG.columns.requests.type) || '',
+          eventDate: getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate) || '',
+          date: getColumnValue(row, columnMap, CONFIG.columns.requests.date) || '',
+          startTime: getColumnValue(row, columnMap, CONFIG.columns.requests.startTime) || '',
+          endTime: getColumnValue(row, columnMap, CONFIG.columns.requests.endTime) || '',
+          startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || '',
+          endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
+          secondaryLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
+          ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || '',
+          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
+          requirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
+          status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
-          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || ''
+          lastUpdated: getColumnValue(row, columnMap, CONFIG.columns.requests.lastUpdated) || ''
         };
       }
     }
-    
+
     return null;
   } catch (error) {
     logError('Error getting request details for notification:', error);

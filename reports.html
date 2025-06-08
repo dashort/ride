@@ -34,45 +34,76 @@
             font-weight: 600;
         }
 
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+
         .container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 2rem;
         }
 
-.navigation {
-    display: flex !important;
-    gap: 1rem !important;
-    margin: 1rem auto 2rem auto !important;
-    max-width: 1400px !important;
-    padding: 0 2rem !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    position: relative !important;
-    z-index: 10 !important;
-}
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
 
-.nav-button {
-    padding: 0.75rem 1.5rem !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: none !important;
-    border-radius: 25px !important;
-    color: #2c3e50 !important;
-    text-decoration: none !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
 
-.nav-button:hover, .nav-button.active {
-    background: #3498db !important;
-    color: white !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-}
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
 
         .reports-header {
             background: rgba(255, 255, 255, 0.95);
@@ -326,17 +357,18 @@
 </head>
 <body>
     <header class="header">
-    <h1>🏍️ Motorcycle Escort Management</h1>
-    
-    <!-- SIMPLIFIED USER INFO -->
-    <div class="user-info">
-        <div class="user-avatar" id="userAvatar">?</div>
-        <div class="user-details">
-            <div class="user-name" id="userName">Loading...</div>
-            <div class="user-role" id="userRole">User</div>
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        
+        <!-- SIMPLIFIED USER INFO -->
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div class="user-details">
+                <div class="user-name" id="userName">Loading...</div>
+                <div class="user-role" id="userRole">User</div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-    </div>
-</header>
+    </header>
 
     <!--NAVIGATION_MENU_PLACEHOLDER-->
 
@@ -401,10 +433,6 @@
                 <div class="metric-value" id="activeRiders">-</div>
                 <div class="metric-label">Active Riders</div>
             </div>
-            <div class="summary-card danger">
-                <div class="metric-value" id="avgResponseTime">-</div>
-                <div class="metric-label">Avg Response Time</div>
-            </div>
         </div>
 
         <!-- Charts and Reports Grid -->
@@ -414,7 +442,6 @@
                 <h3 class="report-title">📈 Request Volume Over Time</h3>
                 <div class="chart-container">
                     <div class="chart-placeholder" id="requestVolumeChart">
-                        Request volume chart will appear here
                     </div>
                 </div>
                 <div class="export-section">
@@ -429,7 +456,6 @@
                 <h3 class="report-title">🥧 Request Types Distribution</h3>
                 <div class="chart-container">
                     <div class="chart-placeholder" id="requestTypesChart">
-                        Request types pie chart will appear here
                     </div>
                 </div>
                 <div class="export-section">
@@ -439,42 +465,15 @@
                 </div>
             </div>
 
-            <!-- Rider Performance -->
-            <div class="report-card">
-                <h3 class="report-title">🏍️ Rider Performance</h3>
-                <div id="riderPerformanceTable">
-                    <div class="loading">Loading rider performance data...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('riderPerformance')">
-                        📥 Export Data
-                    </button>
-                </div>
-            </div>
 
-            <!-- Monthly Trends -->
+            <!-- Monthly Escort Hours -->
             <div class="report-card">
-                <h3 class="report-title">📅 Monthly Trends</h3>
-                <div class="chart-container">
-                    <div class="chart-placeholder" id="monthlyTrendsChart">
-                        Monthly trends chart will appear here
-                    </div>
+                <h3 class="report-title">⏰ Monthly Escort Hours</h3>
+                <div id="riderHoursTable">
+                    <div class="loading">Loading hours...</div>
                 </div>
                 <div class="export-section">
-                    <button class="btn btn-success" onclick="exportChart('monthlyTrends')">
-                        📥 Export Chart
-                    </button>
-                </div>
-            </div>
-
-            <!-- Response Time Analysis -->
-            <div class="report-card">
-                <h3 class="report-title">⏱️ Response Time Analysis</h3>
-                <div id="responseTimeAnalysis">
-                    <div class="loading">Loading response time data...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('responseTime')">
+                    <button class="btn btn-success" onclick="exportTable('riderHours')">
                         📥 Export Data
                     </button>
                 </div>
@@ -497,10 +496,6 @@
         <!-- Comprehensive Export Section -->
         <div class="report-card" style="grid-column: 1 / -1;">
             <h3 class="report-title">📋 Comprehensive Reports</h3>
-            <p style="margin-bottom: 1.5rem; color: #7f8c8d;">
-                Generate detailed reports for management review and record keeping.
-            </p>
-            
             <div class="export-section">
                 <button class="btn btn-primary" onclick="generateComprehensiveReport('summary')">
                     📊 Executive Summary
@@ -511,59 +506,51 @@
                 <button class="btn btn-primary" onclick="generateComprehensiveReport('rider')">
                     🏍️ Rider Activity Report
                 </button>
-                <button class="btn btn-primary" onclick="generateComprehensiveReport('financial')">
-                    💰 Cost Analysis
+                <button class="btn btn-success" onclick="exportRiderActivityCSV()">
+                    📥 Rider CSV
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        // Global state
         let reportData = {};
         let currentPeriod = { start: null, end: null };
+        const DEFAULT_REPORT_RANGE_DAYS = 30;
 
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             setDefaultDates();
             setupEventListeners();
-            // Initial data load will include user and then reports
             loadInitialReportData();
         });
         
         function loadInitialReportData() {
-            // This function will first get user data, then trigger report generation.
-            // For reports.html, the main data is from generateReportData,
-            // but user info is also needed.
-            // The getPageDataForReports wrapper will handle getting both.
-            generateReports(); // This will now call the wrapper.
+            generateReports();
         }
 
         function setDefaultDates() {
-            const today = new Date();
-            const thirtyDaysAgo = new Date(today);
-            thirtyDaysAgo.setDate(today.getDate() - 30);
+            var today = new Date();
+            var startDate = new Date(today);
+            startDate.setDate(today.getDate() - DEFAULT_REPORT_RANGE_DAYS);
 
-            document.getElementById('startDate').value = formatDateForInput(thirtyDaysAgo);
+            document.getElementById('startDate').value = formatDateForInput(startDate);
             document.getElementById('endDate').value = formatDateForInput(today);
         }
 
         function setupEventListeners() {
-            // Quick period selector
-            document.getElementById('quickPeriod').addEventListener('change', (e) => {
+            document.getElementById('quickPeriod').addEventListener('change', function(e) {
                 if (e.target.value) {
                     setQuickPeriod(e.target.value);
                 }
             });
 
-            // Date inputs
             document.getElementById('startDate').addEventListener('change', updatePeriod);
             document.getElementById('endDate').addEventListener('change', updatePeriod);
         }
 
         function setQuickPeriod(period) {
-            const today = new Date();
-            let startDate, endDate = new Date(today);
+            var today = new Date();
+            var startDate, endDate = new Date(today);
 
             switch (period) {
                 case 'today':
@@ -593,8 +580,8 @@
         }
 
         function updatePeriod() {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
             
             if (startDate && endDate) {
                 currentPeriod = { start: startDate, end: endDate };
@@ -602,10 +589,10 @@
         }
 
         function generateReports() {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const requestType = document.getElementById('requestTypeFilter').value;
-            const status = document.getElementById('statusFilter').value;
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+            var requestType = document.getElementById('requestTypeFilter').value;
+            var status = document.getElementById('statusFilter').value;
 
             if (!startDate || !endDate) {
                 showError('Please select both start and end dates');
@@ -614,7 +601,7 @@
 
             showLoading('Generating reports...');
 
-            const filters = {
+            var filters = {
                 startDate: startDate,
                 endDate: endDate,
                 requestType: requestType,
@@ -623,12 +610,61 @@
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(handleReportData)
-                    .withFailureHandler(handleError)
-                    .generateReportData(filters);
+                    .withSuccessHandler(handlePageDataSuccess)
+                    .withFailureHandler(handlePageDataFailure)
+                    .getPageDataForReports(filters);
             } else {
-                console.log('⚠️ Google Apps Script not available for reports page.');
-                setFallbackReportData();
+                console.log('Google Apps Script not available for reports page.');
+                handlePageDataFailure({ message: 'Google Apps Script not available.' });
+            }
+        }
+
+        function handlePageDataSuccess(data) {
+            hideLoading();
+
+            if (data && data.success) {
+                updateUserInfoSafely(data.user);
+                handleReportData(data.reportData);
+            } else {
+                console.error('Failed to load reports data:', data ? data.error : 'No data');
+                handlePageDataFailure(data || { message: 'Received success:false or no data.' });
+            }
+        }
+
+        function handlePageDataFailure(error) {
+            hideLoading();
+            console.error('Error loading reports data:', error && error.message ? error.message : error);
+
+            var fallbackUser = (error && error.user) ? error.user : {
+                name: 'System User',
+                email: 'user@system.com',
+                roles: ['admin'],
+                permissions: ['view_reports']
+            };
+
+            updateUserInfoSafely(fallbackUser);
+            setFallbackReportData();
+        }
+
+        function updateUserInfoSafely(user) {
+            try {
+                var safeUpdate = function(id, value, property) {
+                    property = property || 'textContent';
+                    try {
+                        var element = document.getElementById(id);
+                        if (element && element[property] !== undefined) {
+                            element[property] = value;
+                        }
+                    } catch (e) {
+                        console.log('Error updating ' + id + ':', e.message);
+                    }
+                };
+
+                safeUpdate('userName', user.name || 'User');
+                safeUpdate('userRole', (user.roles || ['user']).join(', '));
+                safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
+            } catch (error) {
+                console.log('Error in updateUserInfoSafely:', error);
             }
         }
 
@@ -645,220 +681,75 @@
             document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
             document.getElementById('completedRequests').textContent = summary.completedRequests || 0;
             document.getElementById('activeRiders').textContent = summary.activeRiders || 0;
-            document.getElementById('avgResponseTime').textContent = summary.avgResponseTime || '-';
         }
 
         function updateCharts(charts) {
-            const unavailableMsg = '<div class="chart-placeholder">Data unavailable.</div>';
 
-            // Request Volume Chart
-            const rvChartEl = document.getElementById('requestVolumeChart');
-            if (charts && charts.requestVolume) {
-                const rv = charts.requestVolume;
-                const total = (rv && typeof rv.total === 'number') ? rv.total : 'N/A';
-                const peakDay = (rv && rv.peakDay) ? String(rv.peakDay).substring(0, 100) : 'N/A';
-                const trend = (rv && rv.trend) ? String(rv.trend).substring(0, 100) : 'N/A';
-                rvChartEl.innerHTML = `
-                    <div style="padding: 2rem; text-align: center;">
-                        <h4>Request Volume Data</h4>
-                        <p>Total: ${total}</p>
-                        <p>Peak Day: ${peakDay}</p>
-                        <p>Trend: ${trend}</p>
-                    </div>
-                `;
-            } else {
-                rvChartEl.innerHTML = unavailableMsg;
+            if (charts.requestVolume) {
+                document.getElementById('requestVolumeChart').innerHTML = 
+                    '<div style="padding: 2rem; text-align: center;">' +
+                    '<h4>Request Volume Data</h4>' +
+                    '<p>Total: ' + charts.requestVolume.total + '</p>' +
+                    '<p>Peak Day: ' + charts.requestVolume.peakDay + '</p>' +
+                    '<p>Trend: ' + charts.requestVolume.trend + '</p>' +
+                    '</div>';
             }
 
-            // Request Types Chart
-            const rtChartEl = document.getElementById('requestTypesChart');
-            if (charts && charts.requestTypes && typeof charts.requestTypes === 'object' && Object.keys(charts.requestTypes).length > 0 && typeof charts.total === 'number' && charts.total > 0) {
-                rtChartEl.innerHTML = `
-                    <div style="padding: 2rem;">
-                        <h4>Request Types</h4>
-                        ${Object.entries(charts.requestTypes).map(([type, count]) => {
-                            const typeName = String(type).substring(0, 50);
-                            const typeCount = (typeof count === 'number') ? count : 0;
-                            const percentage = Math.round(typeCount / charts.total * 100);
-                            return `<p>${typeName}: ${typeCount} (${percentage}%)</p>`;
-                        }).join('')}
-                    </div>
-                `;
-            } else if (charts && charts.requestTypes && typeof charts.requestTypes === 'object' && Object.keys(charts.requestTypes).length > 0) {
-                // Handle case where charts.total might be missing for percentages
-                rtChartEl.innerHTML = `
-                    <div style="padding: 2rem;">
-                        <h4>Request Types</h4>
-                        ${Object.entries(charts.requestTypes).map(([type, count]) => {
-                            const typeName = String(type).substring(0, 50);
-                            const typeCount = (typeof count === 'number') ? count : 0;
-                            return `<p>${typeName}: ${typeCount}</p>`;
-                        }).join('')}
-                         <p><small><i>Percentage data unavailable if total is not provided.</i></small></p>
-                    </div>
-                `;
-            } else {
-                rtChartEl.innerHTML = unavailableMsg;
+            if (charts.requestTypes) {
+                var totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
+                var typesHtml = '<div style="padding: 2rem;"><h4>Request Types</h4>';
+                for (var type in charts.requestTypes) {
+                    var count = charts.requestTypes[type];
+                    var percentage = totalRequests > 0 ? Math.round(count/totalRequests*100) : 0;
+                    typesHtml += '<p>' + type + ': ' + count + ' (' + percentage + '%)</p>';
+                }
+                typesHtml += '</div>';
+                document.getElementById('requestTypesChart').innerHTML = typesHtml;
             }
 
-            // Monthly Trends Chart
-            const mtChartEl = document.getElementById('monthlyTrendsChart');
-            if (charts && charts.monthlyTrends) {
-                const mt = charts.monthlyTrends;
-                const average = (mt && typeof mt.average === 'number') ? mt.average.toFixed(1) : 'N/A';
-                const growth = (mt && typeof mt.growth === 'number') ? mt.growth.toFixed(1) : 'N/A';
-                mtChartEl.innerHTML = `
-                    <div style="padding: 2rem; text-align: center;">
-                        <h4>Monthly Trends</h4>
-                        <p>Average per month: ${average}</p>
-                        <p>Growth rate: ${growth}%</p>
-                    </div>
-                `;
-            } else {
-                mtChartEl.innerHTML = unavailableMsg;
-            }
         }
 
         function updateTables(tables) {
-            const unavailableMsg = '<div class="chart-placeholder">Data unavailable.</div>'; // Re-use placeholder style for tables
 
-            // Rider Performance Table
-            const rpTableEl = document.getElementById('riderPerformanceTable');
-            if (tables && tables.riderPerformance && Array.isArray(tables.riderPerformance)) {
-                if (tables.riderPerformance.length > 0) {
-                    const riderTable = `
-                        <table class="stats-table">
-                            <thead>
-                                <tr>
-                                    <th>Rider</th>
-                                    <th>Assignments</th>
-                                    <th>Completion Rate</th>
-                                    <th>Avg Rating</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tables.riderPerformance.map(rider => {
-                                    const name = (rider && rider.name) ? String(rider.name).substring(0, 75) : 'N/A';
-                                    const assignments = (rider && typeof rider.assignments === 'number') ? rider.assignments : 0;
-                                    const completionRate = (rider && typeof rider.completionRate === 'number') ? rider.completionRate.toFixed(0) + '%' : 'N/A';
-                                    const rating = (rider && typeof rider.rating === 'number') ? rider.rating.toFixed(1) + '/5' : 'N/A';
-                                    return `
-                                        <tr>
-                                            <td>${name}</td>
-                                            <td>${assignments}</td>
-                                            <td>${completionRate}</td>
-                                            <td>${rating}</td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                    rpTableEl.innerHTML = riderTable;
-                } else {
-                    rpTableEl.innerHTML = '<div class="chart-placeholder">No rider performance data for this period.</div>';
+            if (tables.riderHours) {
+                var hoursRows = '';
+                for (var i = 0; i < tables.riderHours.length; i++) {
+                    var r = tables.riderHours[i];
+                    hoursRows += '<tr><td>' + r.name + '</td><td>' + r.hours + '</td></tr>';
                 }
-            } else {
-                rpTableEl.innerHTML = unavailableMsg;
+                var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
+                document.getElementById('riderHoursTable').innerHTML = hoursTable;
             }
 
-            // Response Time Analysis
-            const rtTableEl = document.getElementById('responseTimeAnalysis');
-            if (tables && tables.responseTime) {
-                const rt = tables.responseTime;
-                const average = (rt && rt.average) ? String(rt.average).substring(0, 50) : 'N/A';
-                const fastest = (rt && rt.fastest) ? String(rt.fastest).substring(0, 50) : 'N/A';
-                const slowest = (rt && rt.slowest) ? String(rt.slowest).substring(0, 50) : 'N/A';
-                const withinSLA = (rt && rt.withinSLA) ? String(rt.withinSLA).substring(0, 50) : 'N/A';
-                const responseTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th>Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Average Response Time</td><td>${average}</td></tr>
-                            <tr><td>Fastest Response</td><td>${fastest}</td></tr>
-                            <tr><td>Slowest Response</td><td>${slowest}</td></tr>
-                            <tr><td>Within SLA</td><td>${withinSLA}</td></tr>
-                        </tbody>
-                    </table>
-                `;
-                rtTableEl.innerHTML = responseTable;
-            } else {
-                rtTableEl.innerHTML = unavailableMsg;
-            }
 
-            // Popular Locations Table
-            const locTableEl = document.getElementById('locationHotspots');
-            if (tables && tables.locations && Array.isArray(tables.locations)) {
-                if (tables.locations.length > 0) {
-                    const locationsTable = `
-                        <table class="stats-table">
-                            <thead>
-                                <tr><th>Location</th><th>Count</th></tr>
-                            </thead>
-                            <tbody>
-                                ${tables.locations.map(loc => {
-                                    const name = (loc && loc.name) ? String(loc.name).substring(0, 100) : 'N/A';
-                                    const count = (loc && typeof loc.count === 'number') ? loc.count : 0;
-                                    return `<tr><td>${name}</td><td>${count}</td></tr>`;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                    locTableEl.innerHTML = locationsTable;
-                } else {
-                     locTableEl.innerHTML = '<div class="chart-placeholder">No location data for this period.</div>';
+            if (tables.locations) {
+                var locRows = '';
+                for (var i = 0; i < tables.locations.length; i++) {
+                    var loc = tables.locations[i];
+                    locRows += '<tr><td>' + loc.name + '</td><td>' + loc.count + '</td></tr>';
                 }
-            } else {
-                locTableEl.innerHTML = unavailableMsg;
+                var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
+                document.getElementById('locationHotspots').innerHTML = locationsTable;
+
             }
         }
 
-        function formatDateForInput(dateStr) {
-            if (!dateStr) return '';
+        function formatDateForInput(date) {
+            if (!date) return '';
             try {
-                const date = new Date(dateStr);
                 if (isNaN(date.getTime())) return '';
                 return date.toISOString().split('T')[0];
             } catch (e) {
-                console.error('Error formatting date for input:', dateStr, e);
-                return '';
-            }
-        }
-
-        function formatTimeForInput(timeStr) {
-            if (!timeStr) return '';
-            try {
-                if (/^\d{1,2}:\d{2}$/.test(timeStr.trim())) {
-                    const parts = timeStr.trim().split(':');
-                    let hours = parseInt(parts[0], 10);
-                    const minutes = parseInt(parts[1], 10);
-                    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-                        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                    }
-                }
-
-                const tempDate = new Date(`1/1/1970 ${timeStr}`);
-                if (isNaN(tempDate.getTime())) return '';
-
-                const hours = tempDate.getHours();
-                const minutes = tempDate.getMinutes();
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            } catch (e) {
-                console.error('Error formatting time for input:', timeStr, e);
+                console.error('Error formatting date for input:', date, e);
                 return '';
             }
         }
 
         function setFallbackReportData() {
             hideLoading();
-            console.log('⚠️ Using fallback data for reports');
-            const data = {
-                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0, avgResponseTime: '-' },
+            console.log('Using fallback data for reports');
+            var data = {
+                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
                 charts: {},
                 tables: {}
             };
@@ -868,57 +759,91 @@
             showNotification('Some report features are unavailable.', '#f39c12');
         }
 
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function generateComprehensiveReport(type) {
-            alert('Generate ' + type + ' report not implemented');
+            if (type === 'rider') {
+                var start = document.getElementById('startDate').value;
+                var end = document.getElementById('endDate').value;
+                if (!start || !end) {
+                    showError('Please select a date range');
+                    return;
+                }
+
+                showLoading('Generating rider activity...');
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(displayRiderActivityReport)
+                        .withFailureHandler(handleError)
+                        .generateRiderActivityReport(start, end);
+                } else {
+                    hideLoading();
+                    showError('Google Apps Script not available.');
+                }
+            } else {
+                alert('Generate ' + type + ' report not implemented');
+            }
         }
 
-        function exportChart(id) {
-            alert('Export chart ' + id + ' not implemented');
+function displayRiderActivityReport(result) {
+            hideLoading();
+            if (!result || !result.success) {
+                showError(result && result.error ? result.error : 'Failed to generate report');
+                return;
+            }
+
+            var rows = '';
+            for (var i = 0; i < result.data.length; i++) {
+                var r = result.data[i];
+                rows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' + escapeHtml(r.hours) + '</td></tr>';
+            }
+
+            var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
+                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
+                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
+                '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
+                '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+
+            var reportWindow = window.open('', '_blank');
+            if (reportWindow) {
+                reportWindow.document.write(html);
+                reportWindow.document.close();
+            } else {
+                showError('Unable to open report window.');
+            }
         }
 
-        function exportTable(id) {
-            alert('Export table ' + id + ' not implemented');
-        }
-
-        function showLoading(message = 'Loading...') {
-            const overlay = document.createElement('div');
-            overlay.id = 'loading-overlay';
-            overlay.style.position = 'fixed';
-            overlay.style.top = '50%';
-            overlay.style.left = '50%';
-            overlay.style.transform = 'translate(-50%, -50%)';
-            overlay.style.background = 'rgba(255, 255, 255, 0.95)';
-            overlay.style.padding = '2rem';
-            overlay.style.borderRadius = '10px';
-            overlay.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-            overlay.style.zIndex = '9999';
-            overlay.textContent = message;
-            document.body.appendChild(overlay);
+        function showLoading(message) {
+            console.log('Loading:', message);
         }
 
         function hideLoading() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.remove();
+            console.log('Loading complete');
         }
 
         function showNotification(message, color) {
-            const note = document.createElement('div');
-            note.style.position = 'fixed';
-            note.style.top = '20px';
-            note.style.right = '20px';
-            note.style.background = color;
-            note.style.color = 'white';
-            note.style.padding = '1rem';
-            note.style.borderRadius = '5px';
-            note.style.zIndex = '9999';
-            note.style.maxWidth = '300px';
-            note.textContent = message;
-            document.body.appendChild(note);
-            setTimeout(() => note.remove(), 3000);
-        }
-
-        function showSuccess(message) {
-            showNotification(message, '#27ae60');
+            var notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.background = color;
+            notification.style.color = 'white';
+            notification.style.padding = '1rem';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '9999';
+            notification.style.maxWidth = '300px';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(function () {
+                notification.remove();
+            }, 3000);
         }
 
         function showError(message) {
@@ -927,7 +852,17 @@
 
         function handleError(error) {
             hideLoading();
-            showError(error.message || (typeof error === 'string' ? error : 'An unexpected error occurred'));
+            showError(error && error.message ? error.message : error);
+        }
+
+        function logout() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => { window.location.href = url; })
+                    .logout();
+            } else {
+                window.location.href = 'https://accounts.google.com/Logout';
+            }
         }
     </script>
 </body>

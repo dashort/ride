@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Schedule - Motorcycle Escort Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        form {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        form input, form button {
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+        #availabilityList ul {
+            list-style: none;
+            padding: 0;
+        }
+        #availabilityList li {
+            padding: 0.25rem 0;
+        }
+        #calendar {
+            max-width: 800px;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+    </header>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <div class="container">
+        <h2>📆 My Availability</h2>
+        <form id="availabilityForm">
+            <input type="date" id="availDate" required>
+            <input type="time" id="availStart" required>
+            <input type="time" id="availEnd" required>
+            <select id="availRepeat">
+                <option value="none">No Repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+            </select>
+            <input type="date" id="repeatUntil" placeholder="Repeat Until">
+            <input type="text" id="availNotes" placeholder="Notes">
+            <button type="submit">Save</button>
+        </form>
+        <div id="calendar"></div>
+        <div id="availabilityList">Loading...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        let calendar;
+        function initCalendar() {
+            const el = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(el, {
+                initialView: 'dayGridMonth',
+                selectable: true,
+                select: function(info) {
+                    document.getElementById('availDate').value = info.startStr.slice(0,10);
+                    document.getElementById('availStart').value = info.startStr.slice(11,16);
+                    document.getElementById('availEnd').value = info.endStr.slice(11,16);
+                }
+            });
+            calendar.render();
+        }
+
+        function loadAvailability() {
+            if (google && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(renderAvailability).getUserAvailability();
+            }
+        }
+
+        function renderAvailability(data) {
+            const list = document.getElementById('availabilityList');
+            if (!data || data.length === 0) {
+                list.textContent = 'No availability set.';
+            } else {
+                list.innerHTML = '<ul>' + data.map(e => `<li>${e.date} ${e.startTime} - ${e.endTime} ${e.notes}</li>`).join('') + '</ul>';
+            }
+            if (calendar) {
+                calendar.removeAllEvents();
+                (data || []).forEach(e => {
+                    calendar.addEvent({
+                        title: e.notes || 'Available',
+                        start: e.date + 'T' + e.startTime,
+                        end: e.date + 'T' + e.endTime
+                    });
+                });
+            }
+        }
+
+        document.getElementById('availabilityForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const entry = {
+                date: document.getElementById('availDate').value,
+                startTime: document.getElementById('availStart').value,
+                endTime: document.getElementById('availEnd').value,
+                repeat: document.getElementById('availRepeat').value,
+                repeatUntil: document.getElementById('repeatUntil').value,
+                notes: document.getElementById('availNotes').value
+            };
+            if (google && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(loadAvailability).saveUserAvailability(entry);
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initCalendar();
+            loadAvailability();
+        });
+    </script>
+</body>
+</html>

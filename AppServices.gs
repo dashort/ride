@@ -89,7 +89,479 @@ function getEscortDetailsForAssignment(requestIdInput) {
     throw new Error(`Could not retrieve escort details: ${error.message}`);
   }
 }
+// 🔒 SECURED WEBAPP FUNCTIONS - Update your WebAppService.js with these
 
+/**
+ * Enhanced getPageData with access control
+ */
+function getPageDataForDashboard(user) {
+  try {
+    // Validate user authentication
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    // Check page access
+    if (!canAccessPage(user, 'dashboard')) {
+      return { success: false, error: 'Access denied to dashboard' };
+    }
+    
+    // Get role-based dashboard data
+    const dashboardData = getDashboardDataForUser(user);
+    
+    return {
+      success: true,
+      user: user,
+      data: dashboardData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForDashboard:', error);
+    return { success: false, error: 'Failed to load dashboard data' };
+  }
+}
+
+/**
+ * Secured requests data with role-based filtering
+ */
+function getPageDataForRequests(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'requests')) {
+      return { success: false, error: 'Access denied to requests' };
+    }
+    
+    // Get filtered requests based on user role
+    const requests = getFilteredRequests(user, filters);
+    
+    // Additional data based on permissions
+    const pageData = {
+      requests: requests,
+      canCreate: hasPermission(user, 'requests', 'create'),
+      canEdit: hasPermission(user, 'requests', 'update'),
+      canDelete: hasPermission(user, 'requests', 'delete'),
+      canExport: hasPermission(user, 'requests', 'export'),
+      totalCount: requests.length
+    };
+    
+    // Add riders list if user can assign
+    if (hasPermission(user, 'assignments', 'assign_any')) {
+      pageData.availableRiders = getFilteredRiders(user);
+    }
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForRequests:', error);
+    return { success: false, error: 'Failed to load requests data' };
+  }
+}
+
+/**
+ * Secured assignments data
+ */
+function getPageDataForAssignments(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'assignments')) {
+      return { success: false, error: 'Access denied to assignments' };
+    }
+    
+    const assignments = getFilteredAssignments(user, filters);
+    
+    const pageData = {
+      assignments: assignments,
+      canCreate: hasPermission(user, 'assignments', 'create'),
+      canEdit: hasPermission(user, 'assignments', 'update'),
+      canDelete: hasPermission(user, 'assignments', 'delete'),
+      canBulkAssign: hasPermission(user, 'assignments', 'bulk_assign'),
+      totalCount: assignments.length
+    };
+    
+    // Add additional data for assignment creation
+    if (hasPermission(user, 'assignments', 'create')) {
+      pageData.availableRequests = getFilteredRequests(user, { status: 'Open' });
+      pageData.availableRiders = getFilteredRiders(user);
+    }
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForAssignments:', error);
+    return { success: false, error: 'Failed to load assignments data' };
+  }
+}
+
+/**
+ * Secured riders management
+ */
+function getPageDataForRiders(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'riders')) {
+      return { success: false, error: 'Access denied to riders' };
+    }
+    
+    const riders = getFilteredRiders(user);
+    
+    const pageData = {
+      riders: riders,
+      canCreate: hasPermission(user, 'riders', 'create'),
+      canEdit: hasPermission(user, 'riders', 'update'),
+      canDelete: hasPermission(user, 'riders', 'delete'),
+      canApprove: hasPermission(user, 'riders', 'approve'),
+      canDeactivate: hasPermission(user, 'riders', 'deactivate'),
+      totalCount: riders.length
+    };
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForRiders:', error);
+    return { success: false, error: 'Failed to load riders data' };
+  }
+}
+
+/**
+ * Secured reports data
+ */
+function getPageDataForReports(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'reports')) {
+      return { success: false, error: 'Access denied to reports' };
+    }
+    
+    const reportData = {
+      summary: {},
+      charts: {},
+      tables: {}
+    };
+    
+    // Generate reports based on user permissions
+    if (hasPermission(user, 'reports', 'view_all')) {
+      // Full system reports for admin/dispatcher
+      reportData.summary = getSystemSummaryStats();
+      reportData.charts = getSystemCharts(filters);
+      reportData.tables = getSystemTables(filters);
+      
+    } else if (user.role === 'rider') {
+      // Personal reports for rider
+      reportData.summary = getRiderSummaryStats(user.riderId);
+      reportData.charts = getRiderCharts(user.riderId, filters);
+      reportData.tables = getRiderTables(user.riderId, filters);
+    }
+    
+    const pageData = {
+      reportData: reportData,
+      canExportAll: hasPermission(user, 'reports', 'export_all'),
+      canViewFinancial: hasPermission(user, 'reports', 'financial'),
+      canViewSystemLogs: hasPermission(user, 'reports', 'system_logs'),
+      canViewRiderPerformance: hasPermission(user, 'reports', 'rider_performance')
+    };
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForReports:', error);
+    return { success: false, error: 'Failed to load reports data' };
+  }
+}
+
+/**
+ * Secured request creation
+ */
+function createNewRequestSecured(user, requestData) {
+  try {
+    // Validate permissions
+    const validation = validateRequestOperation(user, 'create', requestData);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Add audit fields
+    requestData.createdBy = user.email;
+    requestData.createdByRole = user.role;
+    requestData.createdDate = new Date();
+    
+    // Call your existing create function
+    const result = createNewRequest(requestData);
+    
+    // Log the action
+    logUserAction(user, 'CREATE_REQUEST', requestData.id || 'NEW', true);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in createNewRequestSecured:', error);
+    logUserAction(user, 'CREATE_REQUEST', 'FAILED', false, error.message);
+    return { success: false, error: 'Failed to create request' };
+  }
+}
+
+/**
+ * Secured request update
+ */
+function updateExistingRequestSecured(user, requestData) {
+  try {
+    const validation = validateRequestOperation(user, 'update', requestData, requestData.id);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Add audit fields
+    requestData.lastModifiedBy = user.email;
+    requestData.lastModifiedByRole = user.role;
+    requestData.lastModifiedDate = new Date();
+    
+    const result = updateExistingRequest(requestData);
+    
+    logUserAction(user, 'UPDATE_REQUEST', requestData.id, true);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in updateExistingRequestSecured:', error);
+    logUserAction(user, 'UPDATE_REQUEST', requestData.id, false, error.message);
+    return { success: false, error: 'Failed to update request' };
+  }
+}
+
+/**
+ * Secured request deletion
+ */
+function deleteRequestSecured(user, requestId) {
+  try {
+    const validation = validateRequestOperation(user, 'delete', {}, requestId);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    const result = deleteRequest(requestId);
+    
+    logUserAction(user, 'DELETE_REQUEST', requestId, result.success);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in deleteRequestSecured:', error);
+    logUserAction(user, 'DELETE_REQUEST', requestId, false, error.message);
+    return { success: false, error: 'Failed to delete request' };
+  }
+}
+
+/**
+ * Secured rider assignment
+ */
+function assignRidersToRequestSecured(user, requestId, riderNames) {
+  try {
+    if (!hasPermission(user, 'assignments', 'assign_any')) {
+      return { success: false, error: 'You do not have permission to assign riders' };
+    }
+    
+    const result = assignRidersToRequest(requestId, riderNames);
+    
+    if (result.success) {
+      logUserAction(user, 'ASSIGN_RIDERS', `${requestId}:${riderNames.join(',')}`, true);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in assignRidersToRequestSecured:', error);
+    logUserAction(user, 'ASSIGN_RIDERS', requestId, false, error.message);
+    return { success: false, error: 'Failed to assign riders' };
+  }
+}
+
+/**
+ * Secured assignment status update (for riders)
+ */
+function updateAssignmentStatusSecured(user, assignmentId, newStatus, notes = '') {
+  try {
+    const validation = validateAssignmentOperation(user, 'update', { status: newStatus, notes: notes }, assignmentId);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+    
+    // Get the assignment to verify ownership (for riders)
+    if (user.role === 'rider') {
+      if (!canAccessResource(user, 'assignments', assignmentId)) {
+        return { success: false, error: 'You can only update your own assignments' };
+      }
+    }
+    
+    const result = updateAssignmentStatus(assignmentId, newStatus, notes, user.email);
+    
+    logUserAction(user, 'UPDATE_ASSIGNMENT_STATUS', assignmentId, result.success);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in updateAssignmentStatusSecured:', error);
+    logUserAction(user, 'UPDATE_ASSIGNMENT_STATUS', assignmentId, false, error.message);
+    return { success: false, error: 'Failed to update assignment status' };
+  }
+}
+
+/**
+ * User action logging
+ */
+function logUserAction(user, action, resourceId, success, errorMessage = '') {
+  try {
+    const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('User Actions Log');
+    
+    if (!logSheet) {
+      // Create log sheet if it doesn't exist
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const newLogSheet = spreadsheet.insertSheet('User Actions Log');
+      const headers = [
+        'Timestamp', 'User Email', 'User Name', 'Role', 'Action', 
+        'Resource ID', 'Success', 'Error Message', 'IP Address'
+      ];
+      newLogSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      newLogSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#4285f4').setFontColor('white');
+    }
+    
+    const logData = [
+      new Date(),
+      user.email,
+      user.name,
+      user.role,
+      action,
+      resourceId,
+      success,
+      errorMessage,
+      '' // IP Address not available in Apps Script
+    ];
+    
+    const lastRow = logSheet.getLastRow();
+    logSheet.getRange(lastRow + 1, 1, 1, logData.length).setValues([logData]);
+    
+  } catch (error) {
+    console.error('❌ Error logging user action:', error);
+  }
+}
+
+/**
+ * Get rider-specific data (for rider dashboard)
+ */
+function getRiderDashboardData(user) {
+  try {
+    if (user.role !== 'rider' || !user.riderId) {
+      return { success: false, error: 'Invalid rider access' };
+    }
+    
+    const myAssignments = getAssignmentsForRider(user.riderId);
+    const upcomingAssignments = myAssignments.filter(a => 
+      a.status === 'Pending' && new Date(a.eventDate) > new Date()
+    );
+    const completedThisMonth = myAssignments.filter(a => 
+      a.status === 'Completed' && isThisMonth(a.completionDate)
+    );
+    
+    return {
+      success: true,
+      data: {
+        myStats: {
+          totalAssignments: myAssignments.length,
+          upcomingAssignments: upcomingAssignments.length,
+          completedThisMonth: completedThisMonth.length,
+          totalHoursThisMonth: calculateRiderHours(user.riderId, 'this_month')
+        },
+        upcomingEscorts: upcomingAssignments.slice(0, 5),
+        recentActivity: getRiderRecentActivity(user.riderId),
+        notifications: getRiderNotifications(user.riderId)
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting rider dashboard data:', error);
+    return { success: false, error: 'Failed to load rider data' };
+  }
+}
+
+/**
+ * Master page data function with authentication
+ */
+function getSecuredPageData(pageName, user, filters = {}) {
+  try {
+    // Map page names to secured functions
+    const pageHandlers = {
+      'dashboard': () => getPageDataForDashboard(user),
+      'requests': () => getPageDataForRequests(user, filters),
+      'assignments': () => getPageDataForAssignments(user, filters),
+      'riders': () => getPageDataForRiders(user, filters),
+      'reports': () => getPageDataForReports(user, filters),
+      'rider-schedule': () => getRiderDashboardData(user),
+      'my-assignments': () => getPageDataForAssignments(user, { riderId: user.riderId })
+    };
+    
+    const handler = pageHandlers[pageName];
+    if (!handler) {
+      return { success: false, error: `Unknown page: ${pageName}` };
+    }
+    
+    return handler();
+    
+  } catch (error) {
+    console.error(`❌ Error getting secured page data for ${pageName}:`, error);
+    return { success: false, error: 'Failed to load page data' };
+  }
+}
+
+// Helper functions for date/time calculations
+function isThisMonth(date) {
+  if (!date) return false;
+  const checkDate = new Date(date);
+  const now = new Date();
+  return checkDate.getMonth() === now.getMonth() && 
+         checkDate.getFullYear() === now.getFullYear();
+}
+
+function calculateRiderHours(riderId, period) {
+  // Implement your hour calculation logic here
+  // This would typically look at assignment start/end times
+  return 0; // Placeholder
+}
+
+function getRiderRecentActivity(riderId) {
+  // Get recent assignments and status changes for this rider
+  return []; // Placeholder
+}
+
+function getRiderNotifications(riderId) {
+  // Get notifications for this specific rider
+  return []; // Placeholder
+}
 /**
  * Get page data for riders page
  * Add this function to AppServices.gs (or any .gs file)
@@ -102,21 +574,30 @@ function getPageDataForRiders() {
     const riders = getRiders(); // This should work now with our previous fixes
     
     // Calculate stats using the same filtered data
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
+
     const stats = {
-      totalRiders: riders.length,
-      activeRiders: riders.filter(r => 
-        String(r.status || '').toLowerCase() === 'active' || 
+      totalRiders: certifiedRiders.length,
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
         String(r.status || '').toLowerCase() === 'available' ||
         String(r.status || '').trim() === ''
       ).length,
-      inactiveRiders: riders.filter(r => 
+      inactiveRiders: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'inactive'
       ).length,
-      onVacation: riders.filter(r => 
+      onVacation: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
-      inTraining: riders.filter(r => 
+
+      inTraining: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
+      ).length,
+      partTimeRiders: certifiedRiders.filter(r =>
+        String(r.partTime || '').toLowerCase() === 'yes'
       ).length
     };
     
@@ -147,7 +628,10 @@ function getPageDataForRiders() {
         activeRiders: 0,
         inactiveRiders: 0,
         onVacation: 0,
-        inTraining: 0
+
+        inTraining: 0,
+        partTimeRiders: 0
+
       }
     };
   }
@@ -362,6 +846,36 @@ function getActiveRidersForWebApp() {
       email: 'webapp@example.com',
       carrier: 'Unknown'
     }];
+  }
+}
+
+/**
+ * Returns riders for the assignments page optionally filtered by active status.
+ * When `filterActive` is true, only active riders are returned. Otherwise all
+ * riders are provided in the same simplified format used by the web app.
+ *
+ * @param {boolean} filterActive Whether to filter by active status.
+ * @return {Array<object>} Array of rider objects.
+ */
+function getRidersWithAvailability(filterActive) {
+  try {
+    if (filterActive) {
+      return getActiveRidersForWebApp();
+    }
+
+    const allRiders = getRiders();
+    return allRiders.map(rider => ({
+      jpNumber: rider.jpNumber || '',
+      name: rider.name || '',
+      phone: rider.phone || '',
+      email: rider.email || '',
+      carrier: rider.carrier || 'Unknown'
+    }));
+
+  } catch (error) {
+    console.error('❌ Error in getRidersWithAvailability:', error);
+    logError('Error in getRidersWithAvailability', error);
+    return [];
   }
 }
 
@@ -592,6 +1106,134 @@ function getRiderAssignmentSummary(riderId, riderName) {
       summary: { total: 0, upcoming: 0, completed: 0, inProgress: 0 }
     };
   }
+}
+
+/**
+ * Checks if the rider has an assignment within one hour of the given start time on the given date.
+ * @param {string} riderName The rider name.
+ * @param {string} eventDateStr The event date string.
+ * @param {string} startTimeStr The start time string.
+ * @return {boolean} True if a conflict exists.
+ */
+function checkRiderTimeConflict(riderName, eventDateStr, startTimeStr) {
+  try {
+    if (!riderName || !eventDateStr || !startTimeStr) return false;
+
+    var eventDate = new Date(eventDateStr);
+    if (isNaN(eventDate.getTime())) return false;
+
+    var assignments = getRiderAssignmentsForDate(riderName, eventDate);
+    if (!assignments || assignments.length === 0) return false;
+
+    var assignmentsData = getAssignmentsData();
+    var colMap = assignmentsData.columnMap;
+    var startCol = CONFIG.columns.assignments.startTime;
+    var statusCol = CONFIG.columns.assignments.status;
+
+    var requestStart = parseTimeString(startTimeStr);
+    if (!requestStart) return false;
+    requestStart.setFullYear(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+
+    for (var i = 0; i < assignments.length; i++) {
+      var row = assignments[i];
+      var status = getColumnValue(row, colMap, statusCol);
+      if (['Completed', 'Cancelled', 'No Show'].indexOf(status) !== -1) continue;
+
+      var startVal = getColumnValue(row, colMap, startCol);
+      var rowStart = parseTimeString(startVal);
+      if (!rowStart) continue;
+      rowStart.setFullYear(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+
+      var diff = Math.abs(rowStart.getTime() - requestStart.getTime());
+      if (diff <= 60 * 60 * 1000) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch (error) {
+    logError('Error in checkRiderTimeConflict', error);
+    return false;
+  }
+}
+
+/**
+ * Checks the rider's availability schedule for a specific datetime.
+ * @param {string|number} riderId Rider identifier or name.
+ * @param {Date|string} datetime Date and time to check.
+ * @return {boolean} True if the rider is available at that time.
+ */
+function getRiderAvailabilityForDate(riderId, datetime) {
+  try {
+    if (!riderId || !datetime) return true;
+    const checkDate = datetime instanceof Date ? new Date(datetime) : new Date(datetime);
+    if (isNaN(checkDate.getTime())) return true;
+
+    const availData = getRiderAvailabilityData();
+    if (!availData || !availData.data) return true;
+
+    const cm = availData.columnMap;
+    const idCol = CONFIG.columns.riderAvailability.riderId;
+    const dateCol = CONFIG.columns.riderAvailability.date;
+    const startCol = CONFIG.columns.riderAvailability.startTime;
+    const endCol = CONFIG.columns.riderAvailability.endTime;
+    const statusCol = CONFIG.columns.riderAvailability.status;
+
+    for (let i = 0; i < availData.data.length; i++) {
+      const row = availData.data[i];
+      const rowId = getColumnValue(row, cm, idCol);
+      if (String(rowId).trim() !== String(riderId).trim()) continue;
+
+      let rowDate = getColumnValue(row, cm, dateCol);
+      rowDate = rowDate instanceof Date ? new Date(rowDate) : parseDateString(rowDate);
+      if (!rowDate) continue;
+      rowDate.setHours(0, 0, 0, 0);
+      const cmp = new Date(checkDate); cmp.setHours(0,0,0,0);
+      if (rowDate.getTime() !== cmp.getTime()) continue;
+
+      let start = getColumnValue(row, cm, startCol);
+      let end = getColumnValue(row, cm, endCol);
+      const startDt = start ? parseTimeString(start) : null;
+      const endDt = end ? parseTimeString(end) : null;
+      const checkDt = new Date(checkDate);
+      if (startDt) startDt.setFullYear(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+      if (endDt) endDt.setFullYear(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
+
+      const matchesTime = (!startDt && !endDt) ||
+                          (startDt && !endDt && checkDt >= startDt) ||
+                          (!startDt && endDt && checkDt <= endDt) ||
+                          (startDt && endDt && checkDt >= startDt && checkDt <= endDt);
+
+      if (matchesTime) {
+        const status = String(getColumnValue(row, cm, statusCol) || '').toLowerCase();
+        return status === '' || status === 'available';
+      }
+    }
+    return true;
+  } catch (err) {
+    logError('Error in getRiderAvailabilityForDate', err);
+    return true;
+  }
+}
+
+/**
+ * Determines overall availability of a rider combining assignments and schedule.
+ * @param {string} riderName Rider name used in assignments sheet.
+ * @param {string} dateStr Event date string.
+ * @param {string} startTimeStr Start time string of the event.
+ * @return {boolean} True if the rider is available.
+ */
+function isRiderAvailable(riderName, dateStr, startTimeStr) {
+  const conflict = checkRiderTimeConflict(riderName, dateStr, startTimeStr);
+  if (conflict) return false;
+
+  const rider = getRiderDetails(riderName);
+  const riderId = rider ? rider.jpNumber || rider.riderId || rider.id : riderName;
+  const start = parseTimeString(startTimeStr);
+  const date = new Date(dateStr);
+  if (start) start.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+  const available = getRiderAvailabilityForDate(riderId, start || date);
+  return available;
 }
 /**
  * Get rider schedule with formatted dates/times for dashboard display.
@@ -2556,6 +3198,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders) {
     clearRequestsCache();
     clearDataCache();
 
+
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
@@ -2613,7 +3256,8 @@ function getRequestDetails(requestId) {
           type: getColumnValue(row, columnMap, CONFIG.columns.requests.type),
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded),
           status: getColumnValue(row, columnMap, CONFIG.columns.requests.status),
-          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes)
+          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes),
+          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || ''
         };
       }
     }
@@ -2833,6 +3477,14 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     }
 
     console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
+
+    if (typeof syncRequestToCalendar === 'function') {
+      try {
+        syncRequestToCalendar(requestId);
+      } catch (syncError) {
+        logError(`Failed to sync request ${requestId} to calendar`, syncError);
+      }
+    }
 
   } catch (error) {
     logError('Error updating request with assigned riders', error);
@@ -3300,3 +3952,120 @@ function testActiveRidersFix() {
     };
   }
 }
+
+/**
+ * Save an availability entry for the current user or specified email.
+ * If an entry with the same email, date and start time exists, it will be updated.
+ * @param {object} entry Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
+ * @return {object} Result object with success boolean and row number.
+ */
+function saveUserAvailability(entry) {
+  try {
+    if (!entry) throw new Error('No availability data provided');
+
+    const user = getCurrentUser();
+    const email = entry.email || user.email;
+    const repeat = entry.repeat || 'none';
+    const untilDate = entry.repeatUntil ? new Date(entry.repeatUntil) : new Date(entry.date);
+
+    // Ensure the Availability sheet exists with the expected headers
+    const sheet = getOrCreateSheet(
+      CONFIG.sheets.availability,
+      Object.values(CONFIG.columns.availability)
+    );
+
+    const sheetData = getSheetData(CONFIG.sheets.availability, false);
+    const map = sheetData.columnMap;
+
+    const emailCol = map[CONFIG.columns.availability.email] + 1;
+    const dateCol = map[CONFIG.columns.availability.date] + 1;
+    const startCol = map[CONFIG.columns.availability.startTime] + 1;
+    const endCol = map[CONFIG.columns.availability.endTime] + 1;
+    const notesCol = map[CONFIG.columns.availability.notes] + 1;
+
+    function saveSingle(dateStr) {
+      let targetRow = -1;
+      for (let i = 0; i < sheetData.data.length; i++) {
+        const row = sheetData.data[i];
+        const rowEmail = row[map[CONFIG.columns.availability.email]];
+        const rowDate = row[map[CONFIG.columns.availability.date]];
+        const rowStart = row[map[CONFIG.columns.availability.startTime]];
+        if (String(rowEmail).toLowerCase() === String(email).toLowerCase() &&
+            Utilities.formatDate(new Date(rowDate), CONFIG.system.timezone, 'yyyy-MM-dd') === dateStr &&
+            String(rowStart) === entry.startTime) {
+          targetRow = i + 2; // account for header
+          break;
+        }
+      }
+
+      const rowValues = [email, new Date(dateStr), entry.startTime, entry.endTime, entry.notes || ''];
+
+      if (targetRow > 0) {
+        sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
+      } else {
+        sheet.appendRow(rowValues);
+      }
+    }
+
+    let curDate = new Date(entry.date);
+    const endDate = untilDate;
+    while (curDate <= endDate) {
+      const dateStr = Utilities.formatDate(curDate, CONFIG.system.timezone, 'yyyy-MM-dd');
+      saveSingle(dateStr);
+
+      if (repeat === 'daily') {
+        curDate.setDate(curDate.getDate() + 1);
+      } else if (repeat === 'weekly') {
+        curDate.setDate(curDate.getDate() + 7);
+      } else {
+        break;
+      }
+    }
+
+    clearDataCache();
+    return { success: true };
+  } catch (error) {
+    logError('Error in saveUserAvailability', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Retrieve availability entries for the specified email or current user.
+ * @param {string} [email] Optional email address. Defaults to current user.
+ * @return {Array<object>} Array of availability objects.
+ */
+function getUserAvailability(email) {
+  try {
+    const user = getCurrentUser();
+    const targetEmail = email || user.email;
+
+    const sheetData = getSheetData(CONFIG.sheets.availability, true);
+    const map = sheetData.columnMap;
+
+    const results = [];
+    sheetData.data.forEach(row => {
+      const rowEmail = row[map[CONFIG.columns.availability.email]];
+      if (String(rowEmail).toLowerCase() !== String(targetEmail).toLowerCase()) return;
+
+      const dateVal = row[map[CONFIG.columns.availability.date]];
+      results.push({
+        email: rowEmail,
+        date: formatDateForDisplay(new Date(dateVal)),
+        startTime: formatTimeForDisplay(row[map[CONFIG.columns.availability.startTime]]),
+        endTime: formatTimeForDisplay(row[map[CONFIG.columns.availability.endTime]]),
+        notes: row[map[CONFIG.columns.availability.notes]] || ''
+      });
+    });
+
+    results.sort((a, b) => {
+      try { return new Date(a.date) - new Date(b.date); } catch(e) { return 0; }
+    });
+
+    return results;
+  } catch (error) {
+    logError('Error in getUserAvailability', error);
+    return [];
+  }
+}
+

@@ -145,9 +145,31 @@ function findColumn(headers, searchTerm) {
  * @param {string} columnName The name of the column to retrieve.
  * @return {any} The value of the column, or null if not found or if row/columnMap is invalid.
  */
+function normalizeColumnName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function getColumnIndex(columnMap, columnName) {
+  if (!columnMap || !columnName) return undefined;
+  if (columnMap.hasOwnProperty(columnName)) {
+    return columnMap[columnName];
+  }
+  const normalized = normalizeColumnName(columnName);
+  for (const [name, idx] of Object.entries(columnMap)) {
+    if (normalizeColumnName(name) === normalized) {
+      return idx;
+    }
+  }
+  return undefined;
+}
+
 function getColumnValue(row, columnMap, columnName) {
   if (!row || !columnMap || !columnName) return null; // Basic validation
-  const index = columnMap[columnName];
+  const index = getColumnIndex(columnMap, columnName);
   return index !== undefined && index < row.length ? row[index] : null;
 }
 
@@ -161,12 +183,9 @@ function getColumnValue(row, columnMap, columnName) {
  */
 function setColumnValue(row, columnMap, columnName, value) {
   if (!row || !columnMap || !columnName) return; // Basic validation
-  const index = columnMap[columnName];
-  if (index !== undefined && index < row.length) { // Ensure index is within bounds for existing rows
-    row[index] = value;
-  } else if (index !== undefined) { // For new rows being constructed, allow setting if index is known
-     row[index] = value;
-  }
+  const index = getColumnIndex(columnMap, columnName);
+  if (index === undefined) return;
+  row[index] = value;
 }
 
 /**
@@ -389,6 +408,54 @@ function getTotalRiderCount() {
 function getAssignmentsData(useCache = true) {
   const data = getSheetData(CONFIG.sheets.assignments, useCache);
   return data;
+}
+
+/**
+ * Retrieves all data from the "Rider Availability" sheet.
+ * Ensures the sheet exists with headers before loading data.
+ * @param {boolean} [useCache=true] Whether to use cached data.
+ * @return {object} Structured sheet data including headers and column map.
+ */
+function getRiderAvailabilityData(useCache = true) {
+  const sheetName = CONFIG.sheets.riderAvailability;
+  const headers = Object.values(CONFIG.columns.riderAvailability);
+  getOrCreateSheet(sheetName, headers);
+  return getSheetData(sheetName, useCache);
+}
+
+/**
+ * Saves a rider availability entry.
+ * Creates the sheet if it does not exist.
+ * @param {string|number} riderId Rider identifier.
+ * @param {string|Date} date The date of availability.
+ * @param {string|Date} startTime Start time of the availability window.
+ * @param {string|Date} endTime End time of the availability window.
+ * @param {string} status Availability status (e.g. "Available", "Unavailable").
+ * @return {object} Result object with success flag and optional error.
+ */
+function saveRiderAvailability(riderId, date, startTime, endTime, status) {
+  try {
+    const sheet = getOrCreateSheet(
+      CONFIG.sheets.riderAvailability,
+      Object.values(CONFIG.columns.riderAvailability)
+    );
+
+    const row = [
+      riderId,
+      parseDateString(date) || date,
+      startTime ? parseTimeString(startTime) : '',
+      endTime ? parseTimeString(endTime) : '',
+      status || 'Available'
+    ];
+
+    sheet.appendRow(row);
+    SpreadsheetApp.flush();
+    dataCache.clear('sheet_' + CONFIG.sheets.riderAvailability);
+    return { success: true };
+  } catch (error) {
+    logError('Error in saveRiderAvailability', error);
+    return { success: false, error: error.message };
+  }
 }
 
 
@@ -635,6 +702,14 @@ function onEditRequestsSheet(e) {
       updateRequestStatusBasedOnRiders(requestId);
     } else {
       console.log(`onEditRequestsSheet: Edit in column ${col} (not a trigger column for status update) for ID ${requestId}, skipping status update.`);
+    }
+
+    if (typeof syncRequestToCalendar === 'function') {
+      try {
+        syncRequestToCalendar(requestId);
+      } catch (syncError) {
+        logError(`Failed to sync request ${requestId} to calendar`, syncError);
+      }
     }
 
   } catch (error) {

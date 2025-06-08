@@ -6,3 +6,20 @@
     <a href="?page=notifications" class="nav-button" id="nav-notifications" data-page="notifications">📱 Notifications</a>
     <a href="?page=reports" class="nav-button" id="nav-reports" data-page="reports">📊 Reports</a>
 </nav>
+<script>
+  (function() {
+    function setLinks(base) {
+      document.querySelectorAll('nav.navigation a').forEach(function(a) {
+        var page = a.getAttribute('data-page');
+        a.href = page === 'dashboard' ? base : base + '?page=' + page;
+      });
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
+    } else {
+      var base = window.location.origin + window.location.pathname;
+      setLinks(base);
+    }
+  })();
+</script>

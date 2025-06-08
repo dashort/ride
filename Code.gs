@@ -1,4 +1,5 @@
 /**
+
  * @fileoverview
  * This is the main server-side script file for the Motorcycle Escort Management System.
  * It contains global configurations, core functions like onOpen and doGet/doPost for web app handling,
@@ -222,49 +223,9 @@ function onOpen() {
  * Provides access to various system functionalities like opening sidebars, refreshing data,
  * and triggering bulk notifications.
  * @return {void}
+
  */
-function createMenu() {
-  const ui = SpreadsheetApp.getUi();
 
-  ui.createMenu('🏍️ Escort Management')
-    .addItem('🏍️ Open Assignment Sidebar', 'showEscortSidebar') // This function will be moved from QuickAssign.js
-    .addItem('📊 Refresh Dashboard', 'refreshDashboard')
-    .addSeparator()
-    .addSubMenu(ui.createMenu('📱 Bulk SMS Notifications')
-      .addItem('📅 Today\'s Assignments', 'sendTodaySMS')
-      .addItem('📆 This Week\'s Assignments', 'sendWeekSMS')
-      .addItem('🔄 All Pending Assignments', 'sendPendingSMS')
-      .addItem('✅ All Assigned Requests', 'sendAllAssignedSMS')
-    )
-    .addSubMenu(ui.createMenu('📧 Bulk Email Notifications')
-      .addItem('📅 Today\'s Assignments', 'sendTodayEmail')
-      .addItem('📆 This Week\'s Assignments', 'sendWeekEmail')
-      .addItem('🔄 All Pending Assignments', 'sendPendingEmail')
-      .addItem('✅ All Assigned Requests', 'sendAllAssignedEmail')
-    )
-    .addSubMenu(ui.createMenu('📨 Bulk Both Notifications')
-      .addItem('📅 Today\'s Assignments', 'sendTodayBoth')
-      .addItem('📆 This Week\'s Assignments', 'sendWeekBoth')
-      .addItem('🔄 All Pending Assignments', 'sendPendingBoth')
-      .addItem('✅ All Assigned Requests', 'sendAllAssignedBoth')
-    )
-    .addSeparator()
-    .addItem('📊 Notification Report', 'generateNotificationReport')
-    .addSeparator()
-    .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
-    .addToUi();
-}
-// ===== NAVIGATION INJECTION ISSUE ANALYSIS =====
-
-// Since the placeholders exist but the test shows they're not found,
-// the issue is likely one of these:
-
-// ISSUE 1: Character encoding or invisible characters
-// Sometimes copying/pasting can introduce non-standard characters
-
-/**
- * Enhanced placeholder detection that checks for various issues
- */
 function debugPlaceholderIssues() {
   const filesToCheck = ['index', 'requests', 'assignments', 'notifications', 'reports'];
   
@@ -330,11 +291,15 @@ function debugPlaceholderIssues() {
     }
   });
 }
-
+function testMySetup() {
+  const result = debugSystemSetup();
+  console.log('Debug result:', result);
+  return result;
+}
 // ISSUE 2: doGet function problems
 // Your current doGet might have issues. Here's a corrected version:
 function testNavigationUrls() {
-  const baseUrl = ScriptApp.getService().getUrl();
+  const baseUrl = getWebAppUrl();
   console.log('Web app URL:', baseUrl);
   
   const nav = getNavigationHtmlWithDynamicUrls('requests');
@@ -391,7 +356,7 @@ function getNavigationHtml(currentPage = '') {
     console.error('❌ Error in getNavigationHtml:', error);
     
     // Return basic fallback navigation
-    const baseUrl = ScriptApp.getService().getUrl();
+    const baseUrl = getWebAppUrl();
     return `<nav class="navigation">
       <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
       <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
@@ -516,16 +481,26 @@ function showExactPlaceholderLocations() {
  * Create fallback navigation HTML
  */
 function createFallbackNavigation(currentPage = '') {
-  const baseUrl = ScriptApp.getService().getUrl();
+  const baseUrl = getWebAppUrl();
   
     const pages = [
       { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
       { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
       { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
-      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
+      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' }
+    ];
+
+    if (['riders', 'rider-schedule', 'admin-schedule'].includes(currentPage)) {
+      pages.push(
+        { id: 'rider-schedule', url: `${baseUrl}?page=rider-schedule`, label: '📆 My Schedule' },
+        { id: 'admin-schedule', url: `${baseUrl}?page=admin-schedule`, label: '🗓️ Manage Schedules' }
+      );
+    }
+
+    pages.push(
       { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
       { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
-    ];
+    );
   
   const navButtons = pages.map(page => {
     const activeClass = page.id === currentPage ? ' active' : '';
@@ -646,7 +621,7 @@ function checkDeploymentStatus() {
     console.log('=== DEPLOYMENT TROUBLESHOOTING ===');
     
     // Get the web app URL
-    const webAppUrl = ScriptApp.getService().getUrl();
+    const webAppUrl = getWebAppUrl();
     console.log(`Web App URL: ${webAppUrl}`);
     
     // Check if we can create HTML outputs
@@ -932,7 +907,7 @@ function _onEdit(e) {
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    Logger.log("Base Script URL: " + ScriptApp.getService().getUrl()); // Added for URL context
+    Logger.log("Base Script URL: " + getWebAppUrl()); // Added for URL context
     let navHtmlFromFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
     Logger.log('Fetched _navigation.html content: ' + navHtmlFromFile);
 
@@ -1442,6 +1417,119 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
 }
 
 /**
+ * Find rider by email address
+ */
+function findRiderByEmail(emailAddress) {
+  try {
+    const ridersData = getRidersData();
+    const cleanEmail = String(emailAddress).trim().toLowerCase();
+
+    for (let i = 0; i < ridersData.data.length; i++) {
+      const row = ridersData.data[i];
+      const riderEmail = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.email);
+      const riderName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+
+      if (riderEmail && riderName && String(riderEmail).trim().toLowerCase() === cleanEmail) {
+        return {
+          name: riderName,
+          email: riderEmail,
+          phone: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.phone) || '',
+          jpNumber: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber) || ''
+        };
+      }
+    }
+
+    console.log(`❌ No rider found for email: ${emailAddress}`);
+    return null;
+
+  } catch (error) {
+    console.error('❌ Error finding rider by email:', error);
+    logError('Error finding rider by email', error);
+    return null;
+  }
+}
+
+/**
+ * Process unread email replies from riders
+ * Intended to run via time-based trigger
+ */
+function processEmailResponses() {
+  try {
+    const threads = GmailApp.search('is:unread in:inbox');
+    threads.forEach(thread => {
+      const messages = thread.getMessages();
+      messages.forEach(msg => {
+        if (!msg.isUnread()) return;
+        const fromEmail = msg.getFrom().replace(/.*<|>.*/g, '').trim().toLowerCase();
+        const body = msg.getPlainBody();
+        const result = handleEmailMessage(fromEmail, body);
+        logEmailResponse(fromEmail, body, result);
+        msg.markRead();
+      });
+    });
+
+    logActivity(`Processed ${threads.length} email thread(s)`);
+
+  } catch (error) {
+    logError('Error processing email responses', error);
+  }
+}
+
+/**
+ * Handle a single email message from a rider
+ */
+function handleEmailMessage(fromEmail, messageBody) {
+  try {
+    const cleanBody = String(messageBody).trim().toLowerCase();
+    const rider = findRiderByEmail(fromEmail);
+    if (!rider) {
+      return { action: 'unknown_email', rider: null };
+    }
+
+    let action = 'general_response';
+
+    if (cleanBody.includes('confirm') || cleanBody === 'yes' || cleanBody === 'y') {
+      action = 'confirm';
+      updateAssignmentStatus(rider.name, 'Confirmed');
+    } else if (cleanBody.includes('decline') || cleanBody.includes('cancel') || cleanBody === 'no' || cleanBody === 'n') {
+      action = 'decline';
+      updateAssignmentStatus(rider.name, 'Declined');
+    }
+
+    return { action: action, rider: rider.name };
+
+  } catch (error) {
+    logError('Error handling email message', error);
+    return { action: 'error', error: error.message };
+  }
+}
+
+/**
+ * Log email responses to tracking sheet
+ */
+function logEmailResponse(fromEmail, messageBody, result) {
+  try {
+    const sheet = getOrCreateSheet('Email_Responses', [
+      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Action'
+    ]);
+
+    sheet.appendRow([
+      new Date(),
+      fromEmail,
+      result.rider || 'Unknown',
+      messageBody,
+      result.action
+    ]);
+
+    console.log(`📝 Email response logged: ${result.action}`);
+
+  } catch (error) {
+    console.error('❌ Error logging email response:', error);
+    logError('Error logging email response', error);
+  }
+}
+
+/**
  * Create empty TwiML response required by Twilio
  */
 function createTwiMLResponse() {
@@ -1913,12 +2001,43 @@ function generateReportData(filters) {
         riderPerformance.push({
           name: riderName,
           assignments: assignments.length,
-          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0,
-          rating: 4.5 
+          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
         });
       }
     });
-    
+
+    // Calculate total escort hours per rider within the period
+    const riderHours = [];
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName) return;
+
+      let totalHours = 0;
+
+      assignmentsData.data.forEach(assignment => {
+        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+
+        let dateMatches = true;
+        if (eventDate instanceof Date) {
+          dateMatches = eventDate >= startDate && eventDate <= endDate;
+        }
+
+        if (assignmentRider === riderName && status === 'Completed' && dateMatches) {
+          const start = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
+          const end = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
+          if (start && end && end > start) {
+            totalHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
+        }
+      });
+
+      if (totalHours > 0) {
+        riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
+      }
+    });
+
     const reportData = {
       summary: {
         totalRequests: totalRequests,
@@ -1937,6 +2056,7 @@ function generateReportData(filters) {
       },
       tables: {
         riderPerformance: riderPerformance.sort((a, b) => b.assignments - a.assignments),
+        riderHours: riderHours.sort((a, b) => b.hours - a.hours),
         // Placeholder for response time
         responseTime: {}
       }
@@ -1947,6 +2067,98 @@ function generateReportData(filters) {
   } catch (error) {
     logError('Error generating report data', error);
     throw error;
+  }
+}
+/**
+ * Generates a rider activity report for the given date range.
+ * @param {string} startDate Start date in YYYY-MM-DD format.
+ * @param {string} endDate End date in YYYY-MM-DD format.
+ * @return {object} Result object with success flag and data array.
+ */
+function generateRiderActivityReport(startDate, endDate) {
+  try {
+    const assignmentsData = getAssignmentsData();
+    const start = parseDateString(startDate);
+    const end = parseDateString(endDate);
+    if (!start || !end) {
+      throw new Error('Invalid date range');
+    }
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const riderMap = {};
+
+    assignmentsData.data.forEach(row => {
+      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (eventDate instanceof Date) {
+        if (eventDate < start || eventDate > end) return;
+      }
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      if (status !== 'Completed') return;
+      const rider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      if (!rider) return;
+
+      const startTime = parseTimeString(getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
+      const endTime = parseTimeString(getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
+
+      if (!riderMap[rider]) {
+        riderMap[rider] = { escorts: 0, hours: 0 };
+      }
+      riderMap[rider].escorts++;
+      if (startTime && endTime && endTime > startTime) {
+        riderMap[rider].hours += (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+      }
+    });
+
+    const data = Object.keys(riderMap).map(name => ({
+      name: name,
+      escorts: riderMap[name].escorts,
+      hours: Math.round(riderMap[name].hours * 100) / 100
+    })).sort((a, b) => b.hours - a.hours);
+
+  return { success: true, data };
+  } catch (error) {
+    logError('Error in generateRiderActivityReport', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Exports rider activity report as CSV.
+ * @param {string} startDate Start date in YYYY-MM-DD format.
+ * @param {string} endDate End date in YYYY-MM-DD format.
+ * @return {object} Result object with CSV content or error message.
+ */
+function exportRiderActivityCSV(startDate, endDate) {
+  try {
+    const report = generateRiderActivityReport(startDate, endDate);
+    if (!report.success) {
+      throw new Error(report.error || 'Failed to generate rider activity');
+    }
+
+    const headers = ['Rider', 'Escorts', 'Hours'];
+    const csvRows = [headers.join(',')];
+    report.data.forEach(r => {
+      const row = [
+        `"${String(r.name).replace(/"/g, '""')}"`,
+        r.escorts,
+        r.hours
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+    const filename = `rider_activity_${startDate}_to_${endDate}.csv`;
+
+    return {
+      success: true,
+      csvContent: csvContent,
+      filename: filename,
+      count: report.data.length
+    };
+  } catch (error) {
+    logError('Error in exportRiderActivityCSV', error);
+    return { success: false, message: error.message };
   }
 }
 
@@ -2077,21 +2289,30 @@ function getPageDataForRiders() {
     const riders = getRiders(); // Uses consistent filtering
     
     // Calculate stats using consistent logic
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
+
     const stats = {
-      totalRiders: riders.length, // Matches displayed count
-      activeRiders: riders.filter(r => 
-        String(r.status || '').toLowerCase() === 'active' || 
+      totalRiders: certifiedRiders.length, // Matches displayed count
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
         String(r.status || '').toLowerCase() === 'available' ||
         String(r.status || '').trim() === ''
       ).length,
-      inactiveRiders: riders.filter(r => 
+      inactiveRiders: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'inactive'
       ).length,
-      onVacation: riders.filter(r => 
+      onVacation: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'vacation'
       ).length,
-      inTraining: riders.filter(r => 
+
+      inTraining: certifiedRiders.filter(r =>
         String(r.status || '').toLowerCase() === 'training'
+      ).length,
+      partTimeRiders: certifiedRiders.filter(r =>
+        String(r.partTime || '').toLowerCase() === 'yes'
       ).length
     };
     
@@ -2127,12 +2348,12 @@ function getPageDataForRiders() {
         activeRiders: 0,
         inactiveRiders: 0,
         onVacation: 0,
-        inTraining: 0
-      },
-      options: { // Ensure options are available even on error
-        riderStatuses: CONFIG.options.riderStatuses || [],
-        riderEmploymentTypes: CONFIG.options.riderEmploymentTypes || [],
-        certificationTypes: CONFIG.options.certificationTypes || []
+
+
+        inTraining: 0,
+        partTimeRiders: 0
+
+
       }
     };
   }
@@ -2297,6 +2518,15 @@ function ensureSheetsExist() {
       } else if (sheetName === CONFIG.sheets.assignments) {
         const headers = Object.values(CONFIG.columns.assignments);
         newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+      } else if (sheetName === CONFIG.sheets.riderAvailability) {
+        const headers = Object.values(CONFIG.columns.riderAvailability);
+
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      } else if (sheetName === CONFIG.sheets.availability) {
+        const headers = Object.values(CONFIG.columns.availability);
+
+        newSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       }
     }
   });
@@ -2337,9 +2567,31 @@ function formatTimeForDisplay(time) {
 /**
  * Get column value safely
  */
+function normalizeColumnName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+function getColumnIndex(columnMap, columnName) {
+  if (!columnMap || !columnName) return undefined;
+  if (columnMap.hasOwnProperty(columnName)) {
+    return columnMap[columnName];
+  }
+  const normalized = normalizeColumnName(columnName);
+  for (const [name, idx] of Object.entries(columnMap)) {
+    if (normalizeColumnName(name) === normalized) {
+      return idx;
+    }
+  }
+  return undefined;
+}
+
 function getColumnValue(row, columnMap, columnName) {
   try {
-    const columnIndex = columnMap[columnName];
+    const columnIndex = getColumnIndex(columnMap, columnName);
     if (columnIndex === undefined || columnIndex < 0 || columnIndex >= row.length) {
       return null;
     }
@@ -2559,60 +2811,1974 @@ function debugNotificationsFile() {
   }
 }
 
-
 /**
- * Updated doGet with centered navigation and no iframe notice
+ * 🔧 USER MANAGEMENT ROUTING FIX
+ * Replace your doGet function with this simplified version that handles user management properly
  */
+
 function doGet(e) {
   try {
-    console.log('🚀 doGet with centered navigation...');
-    console.log('Parameters:', JSON.stringify(e.parameter));
+    console.log('🚀 doGet started...');
+    console.log('Parameters received:', JSON.stringify(e.parameter));
     
-    const pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
+    // Get the requested page
+    const requestedPage = e.parameter && e.parameter.page;
+    console.log('📄 Requested page:', requestedPage);
+    
+    // SPECIAL HANDLING FOR USER MANAGEMENT PAGE
+    if (requestedPage === 'user-management') {
+      console.log('🔗 Handling user-management page directly...');
+      
+      try {
+        // Check authentication
+        const authResult = authenticateAndAuthorizeUser();
+        console.log('🔐 Auth result for user management:', authResult);
+        
+        if (!authResult.success) {
+          console.log('❌ Auth failed, showing sign-in');
+          return createSignInPageSimple();
+        }
+        
+        if (authResult.user.role !== 'admin') {
+          console.log('❌ Not admin, access denied');
+          return createAccessDeniedPageSimple(authResult.user);
+        }
+        
+        console.log('✅ Admin access granted, loading user management page');
+        
+        // Try to load user-management.html file
+        if (checkFileExists('user-management')) {
+          console.log('✅ user-management.html exists, loading it');
+          let htmlOutput = HtmlService.createHtmlOutputFromFile('user-management');
+          return htmlOutput.setTitle('User Management').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        } else {
+          console.log('❌ user-management.html not found, creating dynamic page');
+          return createSimpleUserManagementPage();
+        }
+        
+      } catch (error) {
+        console.error('❌ Error in user management handling:', error);
+        return createErrorPageSimple(error);
+      }
+    }
+    
+    // Handle auth setup page
+    if (requestedPage === 'auth-setup') {
+      console.log('🔗 Handling auth-setup page...');
+      
+      try {
+        const authResult = authenticateAndAuthorizeUser();
+        if (!authResult.success || authResult.user.role !== 'admin') {
+          return createAccessDeniedPageSimple({ name: 'User', role: 'unknown' });
+        }
+        return createAuthMappingPage();
+      } catch (error) {
+        return createErrorPageSimple(error);
+      }
+    }
+    
+
+    // Handle special authentication pages
+    if (e.parameter && e.parameter.action === 'signin') {
+      return createSignInPageSimple();
+
+    }
+    
+    if (e.parameter && e.parameter.action === 'register') {
+      return createRiderRegistrationForm();
+    }
+    
+    // NORMAL PAGE HANDLING
+    console.log('📄 Handling normal page...');
+    
+    // Authentication for normal pages
+    const authResult = authenticateAndAuthorizeUser();
+    
+    if (!authResult.success) {
+      console.log('❌ Authentication failed:', authResult.error);
+      return createSignInPageSimple();
+    }
+    
+    const user = authResult.user;
+    const rider = authResult.rider;
+    
+    console.log(`✅ Authenticated: ${user.name} (${user.role})`);
+    
+    // Check page access
+    let pageName = requestedPage || 'dashboard';
     console.log(`📄 Loading page: ${pageName}`);
     
-    // Determine file name
-    let fileName;
-    switch(pageName) {
-      case 'dashboard': fileName = 'index'; break;
-      case 'requests': fileName = 'requests'; break;
-      case 'assignments': fileName = 'assignments'; break;
-      case 'notifications': fileName = 'notifications'; break;
-      case 'reports': fileName = 'reports'; break;
-      case 'riders': fileName = 'riders';
-  break;
-      default: fileName = 'index';
-    }
+    // Get file name
+    let fileName = getPageFileNameSafe(pageName, user.role);
+    console.log(`📁 Using file: ${fileName}.html`);
     
     // Load the HTML file
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
     let content = htmlOutput.getContent();
-    console.log(`📝 Original content: ${content.length} chars`);
+    
+    // Add navigation (simplified)
+    const navigationHtml = getSimpleNavigation(pageName, user);
+    content = addNavigationToContentSafe(content, navigationHtml);
+    
+    // Add user info
+    content = injectUserInfoSafe(content, user, rider);
+    
+    htmlOutput.setContent(content);
+    
+    return htmlOutput
+      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      
+  } catch (error) {
+    console.error('❌ doGet fatal error:', error);
+    return createErrorPageSimple(error);
+  }
+}
 
-    if (fileName === 'index') {
-      const webAppBaseUrl = ScriptApp.getService().getUrl();
-      const scriptTag = `<script>const SCRIPT_BASE_URL = "${webAppBaseUrl}";</script>`;
-      if (content.includes('<!--SCRIPT_BASE_URL_PLACEHOLDER-->')) {
-        content = content.replace('<!--SCRIPT_BASE_URL_PLACEHOLDER-->', scriptTag);
-        console.log('✅ Injected SCRIPT_BASE_URL into index.html placeholder.');
-      } else if (content.includes('</head>')) {
-        content = content.replace('</head>', `${scriptTag}\n</head>`);
-        console.log('✅ Injected SCRIPT_BASE_URL into index.html before </head>.');
+/**
+ * Simple user management page (if HTML file doesn't exist)
+ */
+function createSimpleUserManagementPage() {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Motorcycle Escort Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #eee;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .nav-link {
+            background: #95a5a6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px 5px;
+        }
+        .nav-link:hover {
+            background: #7f8c8d;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border-left: 4px solid #3498db;
+        }
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👥 User Management Dashboard</h1>
+            <p>Manage user access, permissions, and authentication settings</p>
+            
+            <!-- Navigation -->
+            <div style="margin-top: 20px;">
+                <a href="?" class="nav-link">🏠 Dashboard</a>
+                <a href="?page=requests" class="nav-link">📋 Requests</a>
+                <a href="?page=assignments" class="nav-link">🏍️ Assignments</a>
+                <a href="?page=reports" class="nav-link">📊 Reports</a>
+            </div>
+        </div>
+        
+        <!-- Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">-</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeUsers">-</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="pendingUsers">-</div>
+                <div class="stat-label">Pending Users</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="adminUsers">-</div>
+                <div class="stat-label">Admin Users</div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div style="text-align: center; margin: 30px 0;">
+            <h3>🎯 User Management Actions</h3>
+            
+            <button class="btn" onclick="openAuthSetup()">
+                🔐 Google Authentication Setup
+            </button>
+            
+            <button class="btn" onclick="loadUserData()">
+                📊 Load User Statistics
+            </button>
+            
+            <button class="btn" onclick="testSystem()">
+                🧪 Test System
+            </button>
+            
+            <button class="btn" onclick="exportUsers()">
+                📥 Export User Data
+            </button>
+        </div>
+        
+        <!-- Status -->
+        <div id="status" style="margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+            <h4>📋 System Status</h4>
+            <p>User Management page loaded successfully.</p>
+            <p>Click "Load User Statistics" to see current user data.</p>
+        </div>
+        
+        <!-- User List -->
+        <div id="userList" style="margin: 20px 0;">
+            <h4>👥 Users</h4>
+            <div id="users">Click "Load User Statistics" to view users...</div>
+        </div>
+    </div>
+    
+    <script>
+        // Load initial data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserData();
+        });
+        
+        function loadUserData() {
+            updateStatus('Loading user data...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleUserDataSuccess)
+                    .withFailureHandler(handleUserDataError)
+                    .getUserManagementData();
+            } else {
+                handleUserDataError('Google Apps Script not available');
+            }
+        }
+        
+        function handleUserDataSuccess(data) {
+            console.log('User data received:', data);
+            
+            if (data && data.success) {
+                // Update statistics
+                document.getElementById('totalUsers').textContent = data.stats.totalUsers || 0;
+                document.getElementById('activeUsers').textContent = data.stats.activeUsers || 0;
+                document.getElementById('pendingUsers').textContent = data.stats.pendingUsers || 0;
+                document.getElementById('adminUsers').textContent = data.stats.totalUsers - data.stats.pendingUsers || 0;
+                
+                // Display users
+                displayUsers(data.users || []);
+                
+                updateStatus('User data loaded successfully!', 'success');
+            } else {
+                handleUserDataError(data.error || 'Unknown error');
+            }
+        }
+        
+        function handleUserDataError(error) {
+            console.error('User data error:', error);
+            updateStatus('Error loading user data: ' + error, 'error');
+            
+            // Show demo data
+            document.getElementById('totalUsers').textContent = '?';
+            document.getElementById('activeUsers').textContent = '?';
+            document.getElementById('pendingUsers').textContent = '?';
+            document.getElementById('adminUsers').textContent = '?';
+        }
+        
+        function displayUsers(users) {
+            const usersDiv = document.getElementById('users');
+            
+            if (users.length === 0) {
+                usersDiv.innerHTML = '<p>No users found.</p>';
+                return;
+            }
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+            
+            users.forEach(user => {
+                html += '<div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">';
+                html += '<strong>' + user.name + '</strong><br>';
+                html += '<small>' + user.email + '</small><br>';
+                html += '<span style="background: #e8f4f8; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">' + user.role + '</span> ';
+                html += '<span style="background: #d4edda; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;">' + user.status + '</span>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+            usersDiv.innerHTML = html;
+        }
+        
+        function openAuthSetup() {
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.open(baseUrl + '?page=auth-setup', '_blank');
+        }
+        
+        function testSystem() {
+            updateStatus('Testing system...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        updateStatus('System test completed. Check console for details.', 'success');
+                        console.log('System test result:', result);
+                    })
+                    .withFailureHandler(function(error) {
+                        updateStatus('System test failed: ' + error, 'error');
+                    })
+                    .testAuthenticationSimple();
+            } else {
+                updateStatus('Cannot test - Google Apps Script not available', 'warning');
+            }
+        }
+        
+        function exportUsers() {
+            updateStatus('Exporting user data...', 'info');
+            // Implementation would go here
+            setTimeout(() => {
+                updateStatus('Export feature not yet implemented', 'warning');
+            }, 1000);
+        }
+        
+        function updateStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            let bgColor = '#f8f9fa';
+            let textColor = '#333';
+            
+            switch(type) {
+                case 'success':
+                    bgColor = '#d4edda';
+                    textColor = '#155724';
+                    break;
+                case 'error':
+                    bgColor = '#f8d7da';
+                    textColor = '#721c24';
+                    break;
+                case 'warning':
+                    bgColor = '#fff3cd';
+                    textColor = '#856404';
+                    break;
+                case 'info':
+                    bgColor = '#cce5ff';
+                    textColor = '#0056b3';
+                    break;
+            }
+            
+            statusDiv.style.background = bgColor;
+            statusDiv.style.color = textColor;
+            statusDiv.innerHTML = '<h4>📋 Status</h4><p>' + message + '</p>';
+        }
+    </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('User Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Simple navigation for testing
+ */
+function getSimpleNavigation(currentPage, user) {
+  const baseUrl = getWebAppUrlSafe();
+  
+  const adminNav = [
+    { page: 'dashboard', label: '📊 Dashboard', url: baseUrl },
+    { page: 'requests', label: '📋 Requests', url: baseUrl + '?page=requests' },
+    { page: 'user-management', label: '👥 User Management', url: baseUrl + '?page=user-management' },
+    { page: 'reports', label: '📊 Reports', url: baseUrl + '?page=reports' }
+  ];
+  
+  const dispatcherNav = [
+    { page: 'dashboard', label: '📊 Dashboard', url: baseUrl },
+    { page: 'requests', label: '📋 Requests', url: baseUrl + '?page=requests' },
+    { page: 'assignments', label: '🏍️ Assignments', url: baseUrl + '?page=assignments' }
+  ];
+  
+  const menuItems = user.role === 'admin' ? adminNav : dispatcherNav;
+  
+  let navHtml = '<nav style="text-align: center; padding: 20px; background: rgba(255,255,255,0.9); margin-bottom: 20px;">';
+  
+  menuItems.forEach(item => {
+    const isActive = item.page === currentPage ? 'style="background: #3498db; color: white;"' : '';
+    navHtml += '<a href="' + item.url + '" ' + isActive + ' style="display: inline-block; padding: 10px 20px; margin: 5px; text-decoration: none; border-radius: 20px; background: #f8f9fa; color: #333;">' + item.label + '</a>';
+  });
+  
+  navHtml += '</nav>';
+  
+  return navHtml;
+}
+
+/**
+ * Simple sign-in page
+ */
+function createSignInPageSimple() {
+  const webAppUrl = getWebAppUrlSafe();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign In - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; text-align: center; padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; min-height: 100vh; margin: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 500px;
+        }
+        .btn {
+            background: #3498db; color: white; padding: 15px 30px;
+            border: none; border-radius: 25px; font-size: 18px;
+            cursor: pointer; text-decoration: none; display: inline-block; margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🔐 Sign In Required</h2>
+        <p>Please sign in with your Google account to access the system.</p>
+        <a href="${webAppUrl}" class="btn">🔑 Sign In with Google</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Sign In Required');
+}
+
+/**
+ * Simple access denied page
+ */
+function createAccessDeniedPageSimple(user) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Access Denied</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; text-align: center; padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; min-height: 100vh; margin: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🚫 Access Denied</h2>
+        <p>Hello ${user.name},</p>
+        <p>You need admin privileges to access this page.</p>
+        <p>Your role: <strong>${user.role}</strong></p>
+        <a href="${getWebAppUrlSafe()}" style="color: #3498db;">← Back to Dashboard</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Access Denied');
+}
+
+/**
+ * Simple error page
+ */
+function createErrorPageSimple(error) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; text-align: center; padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 500px; margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚠️ System Error</h1>
+        <p>Error: ${error.message || error}</p>
+        <a href="${getWebAppUrlSafe()}" style="color: #3498db;">← Try Again</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Error');
+}
+
+/**
+ * Test what happens with user management
+ */
+function testUserManagementRouting() {
+  try {
+    console.log('🧪 Testing user management routing...');
+    
+    // Simulate the user management request
+    const e = { parameter: { page: 'user-management' } };
+    
+    console.log('Testing doGet with user-management parameter...');
+    const result = doGet(e);
+    
+    console.log('✅ doGet completed without errors');
+    console.log('Result type:', typeof result);
+    
+    return {
+      success: true,
+      message: 'User management routing test completed'
+    };
+    
+  } catch (error) {
+    console.error('❌ User management routing test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+/**
+ * Enhanced page file mapping
+ */
+function getPageFileNameSafe(pageName, userRole) {
+  try {
+    console.log(`🗂️ Getting file for page: ${pageName}, role: ${userRole}`);
+    
+    // Role-specific page mapping
+    const rolePageMap = {
+      admin: {
+        'dashboard': 'admin-dashboard'  // Use admin dashboard for admins
+      },
+      dispatcher: {
+        'dashboard': 'index'  // Use regular dashboard for dispatchers
+      },
+      rider: {
+        'dashboard': 'index',  // Use regular dashboard for riders
+        'rider-schedule': 'rider-schedule',
+        'my-assignments': 'assignments'
+      }
+    };
+    
+    // Check if there's a role-specific page that exists
+    if (rolePageMap[userRole] && rolePageMap[userRole][pageName]) {
+      const fileName = rolePageMap[userRole][pageName];
+      
+      // Verify the file exists
+      if (checkFileExists(fileName)) {
+        console.log(`✅ Using role-specific file: ${fileName}`);
+        return fileName;
       } else {
-        console.warn('⚠️ Could not find a suitable place to inject SCRIPT_BASE_URL in index.html.');
+        console.log(`⚠️ Role-specific file ${fileName} not found, using default`);
       }
     }
     
-    // Get centered navigation
-    const navigationHtml = getNavigationHtmlWithIframeSupport(pageName);
-    console.log(`🧭 Navigation HTML: ${navigationHtml.length} chars`);
+    // Default page mapping
+    const defaultPages = {
+      'dashboard': 'index',
+      'requests': 'requests',
+      'assignments': 'assignments',
+      'riders': 'riders',
+      'notifications': 'notifications',
+      'reports': 'reports',
+      'rider-schedule': 'rider-schedule',
+      'admin-schedule': 'admin-schedule'
+    };
     
-    // Remove any existing navigation
-    content = content.replace(/<nav class="navigation">[\s\S]*?<\/nav>/g, '');
+    let fileName = defaultPages[pageName] || 'index';
     
-    // Add centered navigation CSS
-    if (!content.includes('.navigation') || !content.includes('.nav-button')) {
-      const navCSS = `
+    // Double-check the file exists
+    if (!checkFileExists(fileName)) {
+      console.log(`⚠️ File ${fileName} not found, falling back to index`);
+      fileName = 'index';
+    }
+    
+    console.log(`✅ Using file: ${fileName} for page: ${pageName}`);
+    return fileName;
+    
+  } catch (error) {
+    console.error('❌ Error getting page file name:', error);
+    return 'index'; // Always fallback to index
+  }
+}
+
+/**
+ * Enhanced sign-in page
+ */
+function createSignInPage() {
+  const webAppUrl = getWebAppUrlSafe();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Motorcycle Escort Management</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .signin-container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        .logo { font-size: 4rem; margin-bottom: 20px; }
+        h1 { color: #2c3e50; margin-bottom: 10px; }
+        h2 { color: #3498db; margin-bottom: 30px; font-weight: 300; }
+        .signin-btn {
+            background: #4285f4;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        .signin-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.3);
+        }
+        .google-icon {
+            width: 20px; height: 20px; background: white; border-radius: 3px;
+            display: flex; align-items: center; justify-content: center;
+            color: #4285f4; font-weight: bold;
+        }
+        .info {
+            background: #e8f4f8; padding: 20px; border-radius: 10px;
+            margin: 30px 0; border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="signin-container">
+        <div class="logo">🏍️</div>
+        <h1>Motorcycle Escort Management</h1>
+        <h2>Google Sign In Required</h2>
+        
+        <div class="info">
+            <p><strong>📋 To access the system:</strong></p>
+            <ol style="text-align: left;">
+                <li>Click "Sign In with Google" below</li>
+                <li>Choose your authorized Google account</li>
+                <li>Grant necessary permissions</li>
+                <li>Access your dashboard</li>
+            </ol>
+        </div>
+        
+        <button class="signin-btn" onclick="handleSignIn()">
+            <div class="google-icon">G</div>
+            Sign In with Google
+        </button>
+        
+        <p style="margin-top: 30px; font-size: 14px; color: #666;">
+            Only authorized personnel can access this system.
+        </p>
+    </div>
+    
+    <script>
+        function handleSignIn() {
+            const btn = document.querySelector('.signin-btn');
+            btn.innerHTML = '<div class="google-icon">⏳</div>Signing In...';
+            btn.style.background = '#666';
+            
+            setTimeout(() => {
+                window.location.href = '${webAppUrl}?auth=true&t=' + Date.now();
+            }, 500);
+        }
+    </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Sign In - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Unauthorized access page
+ */
+function createUnauthorizedPage(email, name) {
+  const webAppUrl = getWebAppUrlSafe();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Access Request - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; text-align: center; padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; min-height: 100vh; margin: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 600px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        .btn {
+            background: #3498db; color: white; padding: 15px 30px;
+            border: none; border-radius: 25px; font-size: 16px;
+            cursor: pointer; text-decoration: none; display: inline-block;
+            margin: 10px; transition: all 0.3s ease;
+        }
+        .btn:hover { background: #2980b9; transform: translateY(-2px); }
+        .user-info {
+            background: #f8f9fa; padding: 20px; border-radius: 10px;
+            margin: 20px 0; border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🚫 Access Not Authorized</h2>
+        
+        <div class="user-info">
+            <strong>Signed in as:</strong><br>
+            📧 ${email}<br>
+            👤 ${name || 'Unknown User'}
+        </div>
+        
+        <p>Your Google account is not currently authorized to access this system.</p>
+        
+        <a href="mailto:admin@yourdomain.com?subject=Access Request&body=I need access to the Escort Management System.%0D%0AEmail: ${email}" class="btn">
+            📧 Request Access
+        </a>
+        
+        <a href="${webAppUrl}?action=signin" class="btn" style="background: #95a5a6;">
+            ← Back to Sign In
+        </a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Request')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Error page with sign-in option
+ */
+function createErrorPageWithSignIn(error) {
+  const webAppUrl = getWebAppUrlSafe();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; text-align: center; padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 500px; margin: 0 auto;
+        }
+        .btn {
+            background: #3498db; color: white; padding: 15px 30px;
+            border: none; border-radius: 25px; font-size: 16px;
+            cursor: pointer; text-decoration: none; display: inline-block; margin: 10px;
+        }
+        .error-details {
+            background: #f8d7da; color: #721c24; padding: 15px;
+            border-radius: 8px; margin: 20px 0; font-family: monospace;
+            font-size: 12px; text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>⚠️ System Error</h2>
+        <p>An error occurred while loading the application.</p>
+        
+        <div class="error-details">
+            Error: ${error.message || 'Unknown error'}
+        </div>
+        
+        <a href="${webAppUrl}?action=signin" class="btn">🔄 Try Again</a>
+        <a href="${webAppUrl}" class="btn">🏠 Home</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('System Error')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// 🛡️ SAFE WRAPPER FUNCTIONS
+
+function getWebAppUrlSafe() {
+  try {
+    if (typeof getWebAppUrl === 'function') {
+      return getWebAppUrl();
+    }
+    return ScriptApp.getService().getUrl();
+  } catch (error) {
+    console.error('Error getting web app URL:', error);
+    return '#';
+  }
+}
+
+function checkPageAccessSafe(pageName, user, rider) {
+  try {
+    if (typeof checkPageAccess === 'function') {
+      return checkPageAccess(pageName, user, rider);
+    }
+    return { allowed: true }; // Default allow
+  } catch (error) {
+    console.error('Error in checkPageAccessSafe:', error);
+    return { allowed: true };
+  }
+}
+
+function getPageFileNameSafe(pageName, userRole) {
+  try {
+    if (typeof getPageFileName === 'function') {
+      return getPageFileName(pageName, userRole);
+    }
+    
+    const pageMap = {
+      'dashboard': 'index',
+      'requests': 'requests',
+      'assignments': 'assignments',
+      'riders': 'riders',
+      'notifications': 'notifications',
+      'reports': 'reports'
+    };
+    
+    return pageMap[pageName] || 'index';
+  } catch (error) {
+    console.error('Error getting page file name:', error);
+    return 'index';
+  }
+}
+
+function getRoleBasedNavigationSafe(pageName, user, rider) {
+  try {
+    if (typeof getRoleBasedNavigation === 'function') {
+      return getRoleBasedNavigation(pageName, user, rider);
+    }
+    return '<nav>Navigation unavailable</nav>';
+  } catch (error) {
+    console.error('Error in getRoleBasedNavigationSafe:', error);
+    return '<nav>Navigation error</nav>';
+  }
+}
+
+function injectUserInfoSafe(content, user, rider) {
+  try {
+    if (typeof injectUserInfo === 'function') {
+      return injectUserInfo(content, user, rider);
+    }
+    return content;
+  } catch (error) {
+    console.error('Error in injectUserInfoSafe:', error);
+    return content;
+  }
+}
+
+function addNavigationToContentSafe(content, navigationHtml) {
+  try {
+    if (typeof addNavigationToContent === 'function') {
+      return addNavigationToContent(content, navigationHtml);
+    }
+    
+    if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
+      return content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+    } else if (content.includes('</header>')) {
+      return content.replace('</header>', `</header>\n${navigationHtml}\n`);
+    }
+    
+    return content;
+  } catch (error) {
+    console.error('Error adding navigation to content:', error);
+    return content;
+  }
+}
+
+function addUserDataInjectionSafe(content, user, rider) {
+  try {
+    if (typeof addUserDataInjection === 'function') {
+      return addUserDataInjection(content, user, rider);
+    }
+    
+    const userScript = `
+<script>
+window.currentUser = {
+  name: '${user.name}',
+  email: '${user.email}',
+  role: '${user.role}',
+  permissions: ${JSON.stringify(user.permissions)},
+  riderId: '${rider ? rider.id : ''}',
+  isRider: ${rider ? 'true' : 'false'}
+};
+console.log('👤 User context loaded:', window.currentUser);
+</script>`;
+    
+    if (content.includes('</body>')) {
+      return content.replace('</body>', userScript + '\n</body>');
+    }
+    
+    return content;
+  } catch (error) {
+    console.error('Error adding user data injection:', error);
+    return content;
+  }
+}
+
+/**
+ * Create a proper sign-in page that actually works
+ */
+function createSignInPage() {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In - Motorcycle Escort Management</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .signin-container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        h2 {
+            color: #3498db;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+        .signin-btn {
+            background: #4285f4;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        .signin-btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.3);
+        }
+        .google-icon {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .info {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border-left: 4px solid #3498db;
+        }
+        .steps {
+            text-align: left;
+            margin: 20px 0;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+        }
+        .troubleshooting {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .alternative-btn {
+            background: #27ae60;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 15px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="signin-container">
+        <div class="logo">🏍️</div>
+        <h1>Motorcycle Escort Management</h1>
+        <h2>Secure Sign In Required</h2>
+        
+        <div class="info">
+            <strong>📋 To access the system:</strong>
+            <div class="steps">
+                <div class="step">1️⃣ Click "Sign In with Google" below</div>
+                <div class="step">2️⃣ Choose your authorized Google account</div>
+                <div class="step">3️⃣ Allow access to the application</div>
+                <div class="step">4️⃣ You'll be redirected to your dashboard</div>
+            </div>
+        </div>
+        
+        <!-- Primary Sign-In Method -->
+        <a href="${webAppUrl}" class="signin-btn" onclick="handleSignIn(this); return false;">
+            <div class="google-icon">G</div>
+            Sign In with Google
+        </a>
+        
+        <!-- Alternative Methods -->
+        <div style="margin: 20px 0;">
+            <p><strong>Alternative access methods:</strong></p>
+            <a href="${webAppUrl}?force=true" class="alternative-btn">🔄 Force Reload</a>
+            <a href="${webAppUrl}" class="alternative-btn" target="_blank">🆕 New Window</a>
+        </div>
+        
+        <div class="troubleshooting">
+            <strong>🛠️ Troubleshooting:</strong><br>
+            • Make sure you're signed in to Google in this browser<br>
+            • Try opening in an incognito/private window<br>
+            • Clear your browser cache and cookies<br>
+            • Contact your administrator if you need access
+        </div>
+        
+        <p style="margin-top: 30px; font-size: 14px; color: #666;">
+            Only authorized personnel can access this system.<br>
+            Contact your administrator for account setup.
+        </p>
+    </div>
+    
+    <script>
+        function handleSignIn(element) {
+            // Show loading state
+            element.innerHTML = '<div class="google-icon">⏳</div>Loading...';
+            element.style.background = '#666';
+            
+            // Multiple sign-in strategies
+            const baseUrl = '${webAppUrl}';
+            
+            // Strategy 1: Direct navigation
+            try {
+                window.location.href = baseUrl;
+                
+                // Strategy 2: Fallback after delay
+                setTimeout(function() {
+                    window.location.replace(baseUrl);
+                }, 1000);
+                
+                // Strategy 3: Force reload in new window if nothing happens
+                setTimeout(function() {
+                    const newWindow = window.open(baseUrl, '_blank');
+                    if (newWindow) {
+                        newWindow.focus();
+                    } else {
+                        // If popup blocked, use current window
+                        window.open(baseUrl, '_self');
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Sign-in error:', error);
+                element.innerHTML = '<div class="google-icon">❌</div>Error - Try Again';
+                element.style.background = '#e74c3c';
+                
+                setTimeout(function() {
+                    element.innerHTML = '<div class="google-icon">G</div>Sign In with Google';
+                    element.style.background = '#4285f4';
+                }, 2000);
+            }
+        }
+        
+        // Auto-detect if user is already signed in
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we can detect a Google session
+            if (typeof gapi !== 'undefined') {
+                console.log('Google APIs detected, attempting auto-signin');
+                setTimeout(() => handleSignIn(document.querySelector('.signin-btn')), 1000);
+            }
+        });
+        
+        // Handle back button to retry
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                location.reload();
+            }
+        });
+    </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Sign In - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Create unauthorized access page with registration option
+ */
+function createUnauthorizedPage(email, name) {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Access Request - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-warning {
+            background: #f39c12;
+        }
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+        .user-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🚫 Access Not Authorized</h2>
+        
+        <div class="user-info">
+            <strong>Signed in as:</strong><br>
+            📧 ${email}<br>
+            👤 ${name || 'Unknown User'}
+        </div>
+        
+        <p>Your Google account is not currently authorized to access this system.</p>
+        
+        <div style="margin: 30px 0;">
+            <h3>🎯 Request Access:</h3>
+            <p>If you're a motorcycle escort rider or staff member, you can request access:</p>
+            
+            <a href="${webAppUrl}?action=register" class="btn">
+                📝 Request Access
+            </a>
+            
+            <a href="mailto:admin@yourdomain.com?subject=Access Request - Escort System&body=Hello,%0D%0A%0D%0AI would like to request access to the Motorcycle Escort Management System.%0D%0A%0D%0AMy Google account: ${email}%0D%0AName: ${name}%0D%0ARole requested: [Rider/Dispatcher/Admin]%0D%0A%0D%0AThank you" class="btn btn-warning">
+                📧 Email Administrator
+            </a>
+        </div>
+        
+        <div style="margin-top: 30px; font-size: 14px; color: #666;">
+            <p><strong>Contact Information:</strong></p>
+            <p>For immediate assistance, contact your system administrator.</p>
+        </div>
+        
+        <a href="${webAppUrl}?action=signin" class="btn" style="background: #95a5a6;">
+            ← Back to Sign In
+        </a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Request')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Create error page with sign-in option
+ */
+function createErrorPageWithSignIn(error) {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+        .error-details {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 12px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>⚠️ System Error</h2>
+        <p>An error occurred while loading the application.</p>
+        
+        <div class="error-details">
+            Error: ${error.message || 'Unknown error'}
+        </div>
+        
+        <a href="${webAppUrl}?action=signin" class="btn">🔄 Try Again</a>
+        <a href="${webAppUrl}" class="btn">🏠 Home</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('System Error')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// 🛡️ SAFE WRAPPER FUNCTIONS (add these to prevent errors)
+// Preserve any previously defined implementations so we don't overwrite the
+// more complete versions that may be declared in other script files.
+var __original_getAdminUsersSafe =
+  typeof getAdminUsersSafe === 'function' ? getAdminUsersSafe : null;
+var __original_getDispatcherUsersSafe =
+  typeof getDispatcherUsersSafe === 'function' ? getDispatcherUsersSafe : null;
+var __original_getUserManagementData =
+  typeof getUserManagementData === 'function' ? getUserManagementData : null;
+
+function getRiderByGoogleEmailSafe(email) {
+  try {
+    if (typeof getRiderByGoogleEmail === 'function') {
+      return getRiderByGoogleEmail(email);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error in getRiderByGoogleEmailSafe:', error);
+    return null;
+  }
+}
+
+function getAdminUsersSafe() {
+  // If a previous implementation was captured, prefer it
+  if (typeof __original_getAdminUsersSafe === 'function') {
+    return __original_getAdminUsersSafe();
+  }
+  try {
+    if (typeof getAdminUsers === 'function') {
+      return getAdminUsers();
+    }
+    return ['admin@example.com']; // Default fallback
+  } catch (error) {
+    console.error('Error in getAdminUsersSafe:', error);
+    return [];
+  }
+}
+
+function getDispatcherUsersSafe() {
+  if (typeof __original_getDispatcherUsersSafe === 'function') {
+    return __original_getDispatcherUsersSafe();
+  }
+  try {
+    if (typeof getDispatcherUsers === 'function') {
+      return getDispatcherUsers();
+    }
+    return [];
+  } catch (error) {
+    console.error('Error in getDispatcherUsersSafe:', error);
+    return [];
+  }
+}
+
+function checkPageAccessSafe(pageName, user, rider) {
+  try {
+    if (typeof checkPageAccess === 'function') {
+      return checkPageAccess(pageName, user, rider);
+    }
+    return { allowed: true }; // Default to allow
+  } catch (error) {
+    console.error('Error in checkPageAccessSafe:', error);
+    return { allowed: true };
+  }
+}
+
+function getRoleBasedNavigationSafe(pageName, user, rider) {
+  try {
+    if (typeof getRoleBasedNavigation === 'function') {
+      return getRoleBasedNavigation(pageName, user, rider);
+    }
+    return '<nav>Navigation unavailable</nav>';
+  } catch (error) {
+    console.error('Error in getRoleBasedNavigationSafe:', error);
+    return '<nav>Navigation error</nav>';
+  }
+}
+
+function injectUserInfoSafe(content, user, rider) {
+  try {
+    if (typeof injectUserInfo === 'function') {
+      return injectUserInfo(content, user, rider);
+    }
+    return content;
+  } catch (error) {
+    console.error('Error in injectUserInfoSafe:', error);
+    return content;
+  }
+}
+
+function updateRiderLastLoginSafe(riderId) {
+  try {
+    if (typeof updateRiderLastLogin === 'function') {
+      updateRiderLastLogin(riderId);
+    }
+  } catch (error) {
+    console.error('Error in updateRiderLastLoginSafe:', error);
+  }
+}
+
+
+// 🔐 Authentication Functions
+function authenticateUser() {
+  try {
+    const user = Session.getActiveUser();
+    const userEmail = user.getEmail();
+    
+    if (!userEmail) {
+      return {
+        success: false,
+        error: 'NO_EMAIL',
+        message: 'Please sign in with your Google account'
+      };
+    }
+    
+    // Check if user is in authorized riders list
+    const rider = getRiderByGoogleEmail(userEmail);
+    const adminUsers = getAdminUsers();
+    const dispatcherUsers = getDispatcherUsers();
+    
+    let userRole = 'unauthorized';
+    let permissions = [];
+    
+    if (adminUsers.includes(userEmail)) {
+      userRole = 'admin';
+      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+    } else if (dispatcherUsers.includes(userEmail)) {
+      userRole = 'dispatcher';
+      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+    } else if (rider && rider.status === 'Active') {
+      userRole = 'rider';
+      permissions = ['view_own_assignments', 'update_own_status'];
+    } else {
+      return {
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Your account is not authorized to access this system'
+      };
+    }
+    
+    return {
+      success: true,
+      user: {
+        name: user.getName() || rider?.name,
+        email: userEmail,
+        role: userRole,
+        permissions: permissions,
+        avatar: (user.getName() || rider?.name || 'U').charAt(0).toUpperCase()
+      },
+      rider: rider
+    };
+    
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return {
+      success: false,
+      error: 'AUTH_ERROR',
+      message: 'Authentication system error'
+    };
+  }
+}
+
+function getRiderByGoogleEmail(email) {
+  try {
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    const data = ridersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Find column indices
+    const emailCol = headers.indexOf('Email');
+    const googleEmailCol = headers.indexOf('Google Email');
+    const nameCol = headers.indexOf('Full Name');
+    const statusCol = headers.indexOf('Status');
+    const idCol = headers.indexOf('Rider ID');
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const riderEmail = row[emailCol];
+      const googleEmail = row[googleEmailCol];
+      
+      // Check both regular email and Google email columns
+      if (riderEmail === email || googleEmail === email) {
+        return {
+          id: row[idCol],
+          name: row[nameCol],
+          email: riderEmail,
+          googleEmail: googleEmail,
+          status: row[statusCol],
+          row: i + 1
+        };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting rider by Google email:', error);
+    return null;
+  }
+}
+
+function getAdminUsers() {
+  // You can store these in a Settings sheet or hardcode initially
+  try {
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    if (settingsSheet) {
+      const adminRange = settingsSheet.getRange('B2:B10').getValues(); // Adjust range as needed
+      return adminRange.flat().filter(email => email && email.trim());
+    }
+  } catch (error) {
+    console.log('Settings sheet not found, using default admins');
+  }
+  
+  // Fallback to hardcoded admin emails
+  return [
+    'admin@yourdomain.com',
+    'jpsotraffic@gmail.com',
+    'manager@yourdomain.com'
+    // Add your admin emails here
+  ];
+}
+
+function getDispatcherUsers() {
+  try {
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    if (settingsSheet) {
+      const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
+      return dispatcherRange.flat().filter(email => email && email.trim());
+    }
+  } catch (error) {
+    console.log('Settings sheet not found, using default dispatchers');
+  }
+  
+  return [
+    'dispatcher@yourdomain.com'
+    // Add dispatcher emails here
+  ];
+}
+
+// 🔒 Authorization Functions
+function checkPageAccess(pageName, user, rider) {
+  const rolePermissions = {
+    admin: ['dashboard', 'requests', 'assignments', 'riders', 'notifications', 'reports', 'admin-schedule'],
+    dispatcher: ['dashboard', 'requests', 'assignments', 'notifications', 'reports'],
+    rider: ['dashboard', 'rider-schedule', 'my-assignments']
+  };
+  
+  const allowedPages = rolePermissions[user.role] || [];
+  
+  // Special case: riders can only see their own data
+  if (user.role === 'rider') {
+    if (['requests', 'assignments'].includes(pageName)) {
+      return { allowed: false, reason: 'Riders can only view their own assignments' };
+    }
+  }
+  
+  if (allowedPages.includes(pageName)) {
+    return { allowed: true };
+  }
+  
+  return { 
+    allowed: false, 
+    reason: `Access to ${pageName} is not allowed for ${user.role} role` 
+  };
+}
+
+function getPageFileName(pageName, userRole) {
+  // Role-based page mapping
+  const rolePageMap = {
+    rider: {
+      'dashboard': 'rider-dashboard',
+      'rider-schedule': 'rider-schedule',
+      'my-assignments': 'rider-assignments'
+    },
+    dispatcher: {
+      'dashboard': 'dispatcher-dashboard'
+    },
+    admin: {
+      'dashboard': 'admin-dashboard'
+    }
+  };
+  
+  // Check if there's a role-specific page
+  if (rolePageMap[userRole] && rolePageMap[userRole][pageName]) {
+    return rolePageMap[userRole][pageName];
+  }
+  
+  // Default page mapping
+  const defaultPages = {
+    'dashboard': 'index',
+    'requests': 'requests',
+    'assignments': 'assignments',
+    'riders': 'riders',
+    'rider-schedule': 'rider-schedule',
+    'admin-schedule': 'admin-schedule',
+    'notifications': 'notifications',
+    'reports': 'reports'
+  };
+  
+  return defaultPages[pageName] || 'index';
+}
+
+// 🧭 Role-based Navigation
+function getRoleBasedNavigation(currentPage, user, rider) {
+  const baseUrl = getWebAppUrl();
+  
+  const navigationMenus = {
+    admin: [
+      { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
+      { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
+      { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+      { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
+      { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
+      { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+    ],
+    dispatcher: [
+      { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
+      { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
+      { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+      { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
+      { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+    ],
+    rider: [
+      { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
+      { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
+      { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
+    ]
+  };
+  
+  const menuItems = navigationMenus[user.role] || navigationMenus.rider;
+  
+  let navHtml = '<nav class="navigation" style="display: flex; justify-content: center; align-items: center;">';
+  
+  menuItems.forEach(item => {
+    const isActive = item.page === currentPage ? 'active' : '';
+    navHtml += `
+      <a href="#" 
+         class="nav-button ${isActive}" 
+         data-url="${item.url}" 
+         data-page="${item.page}"
+         onclick="handleNavigation(this); return false;">
+        ${item.label}
+      </a>
+    `;
+  });
+  
+  navHtml += '</nav>';
+  
+  return navHtml;
+}
+
+// 👤 User Information Injection
+function injectUserInfo(content, user, rider) {
+  // Replace user placeholders
+  content = content.replace(/\{\{USER_NAME\}\}/g, user.name);
+  content = content.replace(/\{\{USER_EMAIL\}\}/g, user.email);
+  content = content.replace(/\{\{USER_ROLE\}\}/g, user.role);
+  content = content.replace(/\{\{USER_AVATAR\}\}/g, user.avatar);
+  
+  if (rider) {
+    content = content.replace(/\{\{RIDER_ID\}\}/g, rider.id);
+    content = content.replace(/\{\{RIDER_STATUS\}\}/g, rider.status);
+  }
+  
+  // Add user info to existing elements
+  if (content.includes('id="userName"')) {
+    content = content.replace('id="userName">Loading...', `id="userName">${user.name}`);
+  }
+  if (content.includes('id="userRole"')) {
+    content = content.replace('id="userRole">User', `id="userRole">${user.role}`);
+  }
+  if (content.includes('id="userAvatar"')) {
+    content = content.replace('id="userAvatar">?', `id="userAvatar">${user.avatar}`);
+  }
+  
+  return content;
+}
+
+// 📊 User-specific Data Injection
+function addUserDataInjection(content, user, rider) {
+  if (content.includes('</body>')) {
+    const dataScript = `
+<script>
+// Inject user context into the page
+window.currentUser = {
+  name: '${user.name}',
+  email: '${user.email}',
+  role: '${user.role}',
+  permissions: ${JSON.stringify(user.permissions)},
+  riderId: '${rider ? rider.id : ''}',
+  isRider: ${rider ? 'true' : 'false'}
+};
+
+// Role-based page initialization
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('👤 User context loaded:', window.currentUser);
+  
+  // Hide/show elements based on role
+  const roleElements = document.querySelectorAll('[data-role]');
+  roleElements.forEach(function(element) {
+    const allowedRoles = element.getAttribute('data-role').split(',');
+    if (!allowedRoles.includes(window.currentUser.role)) {
+      element.style.display = 'none';
+    }
+  });
+  
+  // Hide/show elements based on permissions
+  const permissionElements = document.querySelectorAll('[data-permission]');
+  permissionElements.forEach(function(element) {
+    const requiredPermission = element.getAttribute('data-permission');
+    if (!window.currentUser.permissions.includes(requiredPermission)) {
+      element.style.display = 'none';
+    }
+  });
+  
+  // Add role class to body
+  document.body.classList.add('role-' + window.currentUser.role);
+});
+</script>`;
+    
+    content = content.replace('</body>', dataScript + '\n</body>');
+  }
+  
+  return content;
+}
+
+// 📱 Utility Functions
+function updateRiderLastLogin(riderId) {
+  try {
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    const data = ridersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const idCol = headers.indexOf('Rider ID');
+    const lastLoginCol = headers.indexOf('Last Login');
+    
+    if (lastLoginCol === -1) {
+      // Add Last Login column if it doesn't exist
+      ridersSheet.getRange(1, headers.length + 1).setValue('Last Login');
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idCol] === riderId) {
+        const now = new Date();
+        ridersSheet.getRange(i + 1, lastLoginCol + 1).setValue(now);
+        break;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating last login:', error);
+  }
+}
+
+// 🚫 Error Pages
+function createAuthErrorPage(errorType) {
+  const signInUrl = getWebAppUrl();
+  
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Sign In Required - Escort Management</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          text-align: center; 
+          padding: 50px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+        .container {
+          background: rgba(255, 255, 255, 0.95);
+          color: #333;
+          padding: 40px;
+          border-radius: 15px;
+          max-width: 500px;
+          margin: 0 auto;
+        }
+        .btn {
+          background: #3498db;
+          color: white;
+          padding: 15px 30px;
+          border: none;
+          border-radius: 25px;
+          font-size: 16px;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-block;
+          margin-top: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🔐 Authentication Required</h2>
+        <p>Please sign in with your authorized Google account to access the system.</p>
+        <a href="${signInUrl}" class="btn">🔑 Sign In with Google</a>
+        <p style="margin-top: 30px; font-size: 14px; color: #666;">
+          Contact your administrator if you need access.
+        </p>
+      </div>
+    </body>
+    </html>
+  `).setTitle('Sign In Required');
+}
+
+function createAccessDeniedPage(reason, user) {
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Access Denied - Escort Management</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          text-align: center; 
+          padding: 50px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+        .container {
+          background: rgba(255, 255, 255, 0.95);
+          color: #333;
+          padding: 40px;
+          border-radius: 15px;
+          max-width: 500px;
+          margin: 0 auto;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🚫 Access Denied</h2>
+        <p>Hello ${user.name},</p>
+        <p>${reason}</p>
+        <p>Your role: <strong>${user.role}</strong></p>
+        <a href="${getWebAppUrl()}" style="color: #3498db;">← Back to Dashboard</a>
+      </div>
+    </body>
+    </html>
+  `).setTitle('Access Denied');
+}
+
+// Keep your existing addNavigationToContent function but enhance it
+function addNavigationToContent(content, navigationHtml) {
+  // Remove any existing navigation
+  content = content.replace(/<nav class="navigation">[\s\S]*?<\/nav>/g, '');
+  
+  // Add enhanced navigation CSS for roles
+  if (!content.includes('.navigation') || !content.includes('.nav-button')) {
+    const navCSS = `
 .navigation {
     display: flex !important;
     justify-content: center !important;
@@ -2630,266 +4796,99 @@ function doGet(e) {
     width: 100%;
     text-align: center;
 }
-    .nav-button {
-        padding: 0.75rem 1.5rem !important;
-        background: rgba(255, 255, 255, 0.9) !important;
-        border: none !important;
-        border-radius: 25px !important;
-        color: #2c3e50 !important;
-        text-decoration: none !important;
-        font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        cursor: pointer !important;
-        display: inline-block !important;
-        pointer-events: auto !important;
-        user-select: none !important;
-        white-space: nowrap !important;
-    }
-    .nav-button:hover, .nav-button.active {
-        background: #3498db !important;
-        color: white !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-    }
-    
-    /* Center the navigation container */
-    .container {
-        position: relative;
-    }
-    
-    /* Mobile responsive centering */
-    @media (max-width: 768px) {
-        .navigation {
-            padding: 1rem !important;
-            gap: 0.5rem !important;
-            justify-content: center !important;
-        }
-        
-        .nav-button {
-            padding: 0.5rem 1rem !important;
-            font-size: 0.9rem !important;
-        }
-    }`;
-      
-      if (content.includes('</style>')) {
-        content = content.replace('</style>', navCSS + '\n    </style>');
-      } else {
-        content = content.replace('</head>', `    <style>${navCSS}\n    </style>\n</head>`);
-      }
-      console.log('✅ Added centered navigation CSS');
-    }
-    
-    // Inject navigation
-    let injected = false;
-    
-    if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
-      content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
-      injected = true;
-      console.log('✅ Injected via placeholder');
-    } else if (content.includes('</header>')) {
-      content = content.replace('</header>', `</header>\n${navigationHtml}\n`);
-      injected = true;
-      console.log('✅ Injected after header');
-    } else {
-      const bodyMatch = content.match(/<body[^>]*>/);
-      if (bodyMatch) {
-        content = content.replace(bodyMatch[0], `${bodyMatch[0]}\n${navigationHtml}\n`);
-        injected = true;
-        console.log('✅ Injected after body');
-      }
-    }
-    
-    console.log(`Injection successful: ${injected ? '✅' : '❌'}`);
-    
-    // Add navigation script WITHOUT iframe notice
-    if (content.includes('</body>')) {
-      const cleanNavigationScript = `
-<script>
-// Clean navigation handler without iframe notices
-function handleNavigation(element) {
-    const url = element.getAttribute('data-url') || element.getAttribute('href');
-    const page = element.getAttribute('data-page');
-    
-    console.log('🚀 Navigating to:', page);
-    
-    // Check if we're in an iframe (silently)
-    const isInIframe = window !== window.top;
-    
-    if (isInIframe) {
-        // Handle iframe navigation silently
-        try {
-            window.top.location.href = url;
-        } catch (error) {
-            try {
-                window.parent.location.href = url;
-            } catch (parentError) {
-                window.open(url, '_blank');
-            }
-        }
-    } else {
-        // Handle full window navigation
-        try {
-            window.location.href = url;
-            
-            // Fallback strategies
-            setTimeout(function() {
-                if (window.location.href !== url) {
-                    window.location.replace(url);
-                }
-            }, 500);
-            
-            setTimeout(function() {
-                if (window.location.href !== url) {
-                    window.open(url, '_self');
-                }
-            }, 1000);
-            
-        } catch (error) {
-            window.open(url, '_self');
-        }
-    }
+
+.nav-button {
+    padding: 0.75rem 1.5rem !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    color: #2c3e50 !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    pointer-events: auto !important;
+    user-select: none !important;
+    white-space: nowrap !important;
 }
 
-// Enhanced navigation without iframe warnings
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🧭 Navigation system loaded');
-    
-    // Add hover effects to navigation links
-    const links = document.querySelectorAll('.nav-button');
-    
-    links.forEach(function(link) {
-        // Enhanced hover effects
-        link.addEventListener('mouseenter', function() {
-            if (!this.classList.contains('active')) {
-                this.style.background = '#3498db';
-                this.style.color = 'white';
-                this.style.transform = 'translateY(-2px)';
-                this.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
-            }
-        });
-        
-        link.addEventListener('mouseleave', function() {
-            if (!this.classList.contains('active')) {
-                this.style.background = 'rgba(255, 255, 255, 0.9)';
-                this.style.color = '#2c3e50';
-                this.style.transform = 'translateY(0)';
-                this.style.boxShadow = 'none';
-            }
-        });
-        
-        // Add click feedback
-        link.addEventListener('mousedown', function() {
-            this.style.transform = 'translateY(0)';
-        });
-        
-        link.addEventListener('mouseup', function() {
-            if (this.classList.contains('active')) {
-                this.style.transform = 'translateY(-2px)';
-            }
-        });
-    });
-    
-    // Add keyboard navigation (Alt+1-5)
-    document.addEventListener('keydown', function(e) {
-        if (e.altKey && e.key >= '1' && e.key <= '5') {
-            const linkIndex = parseInt(e.key) - 1;
-            const links = document.querySelectorAll('.nav-button');
-            if (links[linkIndex]) {
-                handleNavigation(links[linkIndex]);
-            }
-        }
-    });
-    
-    // Smooth navigation feedback
-    const activeButton = document.querySelector('.nav-button.active');
-    if (activeButton) {
-        activeButton.style.background = '#3498db';
-        activeButton.style.color = 'white';
-        activeButton.style.transform = 'translateY(-2px)';
-        activeButton.style.boxShadow = '0 4px 15px rgba(52, 152, 219, 0.3)';
-    }
-});
-</script>`;
-      
-      content = content.replace('</body>', cleanNavigationScript + '\n</body>');
-      console.log('✅ Added clean navigation script');
+.nav-button:hover, .nav-button.active {
+    background: #3498db !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+}
+
+/* Role-specific styling */
+.role-admin .nav-button { border-left: 3px solid #e74c3c; }
+.role-dispatcher .nav-button { border-left: 3px solid #f39c12; }
+.role-rider .nav-button { border-left: 3px solid #27ae60; }
+
+@media (max-width: 768px) {
+    .navigation {
+        padding: 1rem !important;
+        gap: 0.5rem !important;
+        justify-content: center !important;
     }
     
-    htmlOutput.setContent(content);
+    .nav-button {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.9rem !important;
+    }
+}`;
     
-    return htmlOutput
-      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      
-  } catch (error) {
-    console.error('❌ doGet error:', error);
-    
-    return HtmlService.createHtmlOutput(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Navigation - Escort Management</title>
-        <style>
-          body { font-family: Arial; padding: 20px; }
-          .navigation { 
-            display: flex; 
-            justify-content: center; 
-            gap: 10px; 
-            margin: 20px auto; 
-            background: #f8f9fa; 
-            padding: 15px; 
-            border-radius: 8px; 
-            max-width: 800px;
-          }
-          .nav-button { 
-            padding: 10px 15px; 
-            background: #007bff; 
-            color: white; 
-            text-decoration: none; 
-            border-radius: 5px; 
-            transition: all 0.3s ease;
-          }
-          .nav-button:hover { 
-            background: #0056b3; 
-            transform: translateY(-2px);
-          }
-        </style>
-      </head>
-      <body>
-        <h1 style="text-align: center;">🏍️ Escort Management</h1>
-        
-        <nav class="navigation">
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Dashboard</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=requests" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📋 Requests</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=assignments" class="nav-button" onclick="window.open(this.href, '_self'); return false;">🏍️ Assignments</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=riders" class="nav-button" onclick="window.open(this.href, '_self'); return false;">👥 Riders</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=notifications" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📱 Notifications</a>
-          <a href="https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec?page=reports" class="nav-button" onclick="window.open(this.href, '_self'); return false;">📊 Reports</a>
-        </nav>
-        
-        <div style="text-align: center; margin-top: 40px;">
-          <p>Error: ${error.message}</p>
-        </div>
-      </body>
-      </html>
-    `).setTitle('Navigation');
+    if (content.includes('</style>')) {
+      content = content.replace('</style>', navCSS + '\n    </style>');
+    } else {
+      content = content.replace('</head>', `    <style>${navCSS}\n    </style>\n</head>`);
+    }
   }
+  
+  // Inject navigation
+  let injected = false;
+  
+  if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
+    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+    injected = true;
+  } else if (content.includes('</header>')) {
+    content = content.replace('</header>', `</header>\n${navigationHtml}\n`);
+    injected = true;
+  } else {
+    const bodyMatch = content.match(/<body[^>]*>/);
+    if (bodyMatch) {
+      content = content.replace(bodyMatch[0], `${bodyMatch[0]}\n${navigationHtml}\n`);
+      injected = true;
+    }
+  }
+  
+  return content;
 }
 
 function getNavigationHtmlWithIframeSupport(currentPage = '') {
   console.log(`🔗 Creating centered navigation for: ${currentPage}`);
-  
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-  
-  // Create links with multiple navigation strategies
+
+  // Always use the deployed web app URL as the base for all links
+  const baseUrl = getWebAppUrl();
+
   const links = [
-    `<a href="${BASE_URL}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" data-url="${BASE_URL}" onclick="handleNavigation(this); return false;">📊 Dashboard</a>`,
-    `<a href="${BASE_URL}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="${BASE_URL}?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
-    `<a href="${BASE_URL}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="${BASE_URL}?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
-    `<a href="${BASE_URL}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" data-url="${BASE_URL}?page=riders" onclick="handleNavigation(this); return false;">👥 Riders</a>`,
-    `<a href="${BASE_URL}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${BASE_URL}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
-    `<a href="${BASE_URL}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${BASE_URL}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
+    `<a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" data-url="${baseUrl}" onclick="handleNavigation(this); return false;">📊 Dashboard</a>`,
+    `<a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" data-url="${baseUrl}?page=requests" onclick="handleNavigation(this); return false;">📋 Requests</a>`,
+    `<a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" data-url="${baseUrl}?page=assignments" onclick="handleNavigation(this); return false;">🏍️ Assignments</a>`,
+    `<a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" data-url="${baseUrl}?page=riders" onclick="handleNavigation(this); return false;">👥 Riders</a>`
   ];
+
+  if (['riders', 'rider-schedule', 'admin-schedule'].includes(currentPage)) {
+    links.push(
+      `<a href="${baseUrl}?page=rider-schedule" class="nav-button ${currentPage === 'rider-schedule' ? 'active' : ''}" data-page="rider-schedule" data-url="${baseUrl}?page=rider-schedule" onclick="handleNavigation(this); return false;">📆 My Schedule</a>`,
+      `<a href="${baseUrl}?page=admin-schedule" class="nav-button ${currentPage === 'admin-schedule' ? 'active' : ''}" data-page="admin-schedule" data-url="${baseUrl}?page=admin-schedule" onclick="handleNavigation(this); return false;">🗓️ Manage Schedules</a>`
+    );
+  }
+
+  links.push(
+    `<a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" data-url="${baseUrl}?page=notifications" onclick="handleNavigation(this); return false;">📱 Notifications</a>`,
+    `<a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" data-url="${baseUrl}?page=reports" onclick="handleNavigation(this); return false;">📊 Reports</a>`
+  );
   
   const navigation = `<nav class="navigation" id="main-navigation">
         ${links.join('\n        ')}
@@ -2901,8 +4900,8 @@ function getNavigationHtmlWithIframeSupport(currentPage = '') {
 
 function getNavigationHtmlWithForcedClicks(currentPage = '') {
   console.log(`🔗 Creating navigation with forced click handling for: ${currentPage}`);
-  
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+
+  const BASE_URL = getWebAppUrl();
   
   // Create links with both href AND onclick for maximum compatibility
   const links = [
@@ -2925,9 +4924,8 @@ function getNavigationHtmlWithForcedClicks(currentPage = '') {
  */
 function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
   console.log(`🔗 Creating navigation with absolute URLs for: ${currentPage}`);
-  
-  // Your exact web app URL
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+
+  const BASE_URL = getWebAppUrl();
   
   // Create each link with full absolute URL
   const links = [
@@ -3021,8 +5019,8 @@ After deploying, check the browser console for the navigation debug messages.
 function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
   console.log(`🔗 Creating navigation with absolute URLs for: ${currentPage}`);
   
-  // Your exact web app URL - make sure this is correct
-  const BASE_URL = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+  // Base URL retrieved once for consistency
+  const BASE_URL = getWebAppUrl();
   
   // Create each link with full absolute URL
   const links = [
@@ -3092,32 +5090,54 @@ function testForNavigationDuplicates() {
  * Create fallback navigation (same as before)
  */
 function createFallbackNavigation(currentPage = '') {
-  const baseUrl = ScriptApp.getService().getUrl();
-  
-  return `<nav class="navigation">
-    <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>
-    <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>
-    <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>
-    <a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>
-    <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>
-    <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>
-  </nav>`;
+  const baseUrl = getWebAppUrl();
+
+  const links = [
+    `<a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard">📊 Dashboard</a>`,
+    `<a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests">📋 Requests</a>`,
+    `<a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments">🏍️ Assignments</a>`,
+    `<a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>`
+  ];
+
+  if (['riders', 'rider-schedule', 'admin-schedule'].includes(currentPage)) {
+    links.push(
+      `<a href="${baseUrl}?page=rider-schedule" class="nav-button ${currentPage === 'rider-schedule' ? 'active' : ''}" data-page="rider-schedule">📆 My Schedule</a>`,
+      `<a href="${baseUrl}?page=admin-schedule" class="nav-button ${currentPage === 'admin-schedule' ? 'active' : ''}" data-page="admin-schedule">🗓️ Manage Schedules</a>`
+    );
+  }
+
+  links.push(
+    `<a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications">📱 Notifications</a>`,
+    `<a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports">📊 Reports</a>`
+  );
+
+  return `<nav class="navigation">\n    ${links.join('\n    ')}\n  </nav>`;
 }
 function getNavigationHtmlWithDynamicUrls(currentPage = '') {
   try {
     console.log(`🧭 Getting navigation for page: ${currentPage}`);
     
-    // Use hardcoded URL for consistency across all pages
-    const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
+    // Use cached URL for consistency across all pages
+    const baseUrl = getWebAppUrl();
     
     const pages = [
       { id: 'dashboard', url: baseUrl, label: '📊 Dashboard' },
       { id: 'requests', url: `${baseUrl}?page=requests`, label: '📋 Requests' },
       { id: 'assignments', url: `${baseUrl}?page=assignments`, label: '🏍️ Assignments' },
-      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' },
+      { id: 'riders', url: `${baseUrl}?page=riders`, label: '👥 Riders' }
+    ];
+
+    if (['riders', 'rider-schedule', 'admin-schedule'].includes(currentPage)) {
+      pages.push(
+        { id: 'rider-schedule', url: `${baseUrl}?page=rider-schedule`, label: '📆 My Schedule' },
+        { id: 'admin-schedule', url: `${baseUrl}?page=admin-schedule`, label: '🗓️ Manage Schedules' }
+      );
+    }
+
+    pages.push(
       { id: 'notifications', url: `${baseUrl}?page=notifications`, label: '📱 Notifications' },
       { id: 'reports', url: `${baseUrl}?page=reports`, label: '📊 Reports' }
-    ];
+    );
     
     const navButtons = pages.map(page => {
       const activeClass = page.id === currentPage ? ' active' : '';
@@ -3240,13 +5260,13 @@ function showQuickAssignDialog() {
     // ===== IMPORTANT: REPLACE THIS WITH YOUR ACTUAL WEB APP DEPLOYMENT URL =====
     // If you don't have one yet, deploy your script as a Web App (Deploy -> New Deployment -> Web App)
     // Make sure "Execute as" is "Me" and "Who has access" is "Anyone".
-    const WEB_APP_BASE_URL = "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec"; // Example: "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec";
+    const WEB_APP_BASE_URL = getWebAppUrl(); // Example: "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec";
 
     // IMPORTANT: If you see a generic URL like "https://script.google.com/macros/s/AKfycbxyzabc123defg456hi/exec" you MUST
     // get your unique web app URL from Deploy -> Manage Deployments -> Your Web App Deployment -> Web app URL
     // Each deployment generates a unique URL.
 
-    if (WEB_APP_BASE_URL === "https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec") {
+    if (!WEB_APP_BASE_URL) {
         ui.alert('Configuration Error', 'Please deploy your script as a Web App and update WEB_APP_BASE_URL in the script with the actual URL from your deployment settings.', ui.ButtonSet.OK);
         return;
     }
@@ -3366,6 +5386,7 @@ function diagnoseRealRidersIssue() {
         phone: CONFIG.columns.riders.phone,
         email: CONFIG.columns.riders.email,
         status: CONFIG.columns.riders.status,
+        partTime: CONFIG.columns.riders.partTime,
         certification: CONFIG.columns.riders.certification
       };
       
@@ -3920,7 +5941,345 @@ function quickFixRidersError() {
     };
   }
 }
+/**
+ * Enhanced getRidersDataSafe that actually works
+ */
+function getRidersDataSafe() {
+  try {
+    // First try the original function if it exists
+    if (typeof getRidersData === 'function') {
+      const result = getRidersData();
+      if (Array.isArray(result)) {
+        console.log('✅ Got riders data from getRidersData():', result.length);
+        return result;
+      }
+    }
+    
+    // Fallback: read directly from sheet
+    console.log('🔄 Using fallback riders data method...');
+    return getRidersDataFallback();
+    
+  } catch (error) {
+    console.error('❌ Error in getRidersDataSafe:', error);
+    return getRidersDataFallback();
+  }
+}
 
+/**
+ * Reliable fallback to get riders data
+ */
+function getRidersDataFallback() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const ridersSheet = spreadsheet.getSheetByName('Riders');
+    
+    if (!ridersSheet) {
+      console.log('❌ Riders sheet not found');
+      return [];
+    }
+    
+    const data = ridersSheet.getDataRange().getValues();
+    if (data.length < 2) {
+      console.log('⚠️ No rider data found');
+      return [];
+    }
+    
+    const headers = data[0];
+    const riders = [];
+    
+    // Convert to object array
+    for (let i = 1; i < data.length; i++) {
+      const rider = {};
+      headers.forEach((header, index) => {
+        rider[header] = data[i][index];
+      });
+      
+      // Add common aliases for easier access
+      rider.id = rider['Rider ID'] || rider.id;
+      rider.name = rider['Full Name'] || rider.name;
+      rider.email = rider['Email'] || rider.email;
+      rider.status = rider['Status'] || rider.status;
+      rider.googleEmail = rider['Google Email'] || rider.googleEmail || '';
+      rider.authStatus = rider['Auth Status'] || rider.authStatus || 'Not Set';
+      
+      riders.push(rider);
+    }
+    
+    console.log(`✅ Fallback method loaded ${riders.length} riders`);
+    return riders;
+    
+  } catch (error) {
+    console.error('❌ Fallback riders method failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Get user management data - enhanced version
+ */
+function getUserManagementData() {
+  if (typeof __original_getUserManagementData === 'function') {
+    return __original_getUserManagementData();
+  }
+  try {
+    console.log('📊 Getting user management data...');
+    
+    const riders = getRidersDataSafe() || [];
+    const admins = getAdminUsersSafe() || [];
+    const dispatchers = getDispatcherUsersSafe() || [];
+    
+    console.log(`📊 Found: ${riders.length} riders, ${admins.length} admins, ${dispatchers.length} dispatchers`);
+    
+    // Combine all users
+    const allUsers = [];
+    
+    // Add riders
+    riders.forEach((rider, index) => {
+      allUsers.push({
+        id: rider.id || rider['Rider ID'] || `rider_${index}`,
+        name: rider.name || rider['Full Name'] || 'Unknown Rider',
+        email: rider.email || rider['Email'] || '',
+        googleEmail: rider.googleEmail || rider['Google Email'] || '',
+        role: 'Rider',
+        status: rider.status || 'Unknown',
+        avatar: (rider.name || 'R').charAt(0).toUpperCase(),
+        lastLogin: rider.lastLogin || rider['Last Login'] || 'Never',
+        type: 'rider'
+      });
+    });
+    
+    // Add admins
+    admins.forEach((email, index) => {
+      if (email && email.trim()) {
+        allUsers.push({
+          id: 'admin_' + index,
+          name: extractNameFromEmail(email),
+          email: email,
+          googleEmail: email,
+          role: 'Admin',
+          status: 'Active',
+          avatar: email.charAt(0).toUpperCase(),
+          lastLogin: 'Unknown',
+          type: 'admin'
+        });
+      }
+    });
+    
+    // Add dispatchers
+    dispatchers.forEach((email, index) => {
+      if (email && email.trim()) {
+        allUsers.push({
+          id: 'dispatcher_' + index,
+          name: extractNameFromEmail(email),
+          email: email,
+          googleEmail: email,
+          role: 'Dispatcher',
+          status: 'Active',
+          avatar: email.charAt(0).toUpperCase(),
+          lastLogin: 'Unknown',
+          type: 'dispatcher'
+        });
+      }
+    });
+    
+    // Calculate statistics
+    const stats = {
+      totalUsers: allUsers.length,
+      activeUsers: allUsers.filter(u => u.status === 'Active').length,
+      pendingUsers: allUsers.filter(u => u.status === 'Pending').length,
+      unmappedUsers: riders.filter(r => !r.googleEmail || r.googleEmail.trim() === '').length
+    };
+    
+    console.log('✅ User management stats:', stats);
+    
+    return {
+      success: true,
+      stats: stats,
+      users: allUsers
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting user management data:', error);
+    return {
+      success: false,
+      error: error.message,
+      stats: { totalUsers: 0, activeUsers: 0, pendingUsers: 0, unmappedUsers: 0 },
+      users: []
+    };
+  }
+}
+
+/**
+ * Extract name from email for display
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  
+  try {
+    const localPart = email.split('@')[0];
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
+
+/**
+ * Get recent system activity
+ */
+function getRecentSystemActivity() {
+  try {
+    // Try to read from Auth Log sheet
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = spreadsheet.getSheetByName('Auth Log');
+    
+    if (logSheet && logSheet.getLastRow() > 1) {
+      const data = logSheet.getDataRange().getValues();
+      const activities = [];
+      
+      // Get last 5 activities
+      const startRow = Math.max(1, data.length - 5);
+      for (let i = startRow; i < data.length; i++) {
+        const row = data[i];
+        if (row[0]) { // Has timestamp
+          activities.push({
+            description: `${row[2] || 'User'} - ${row[4] || 'Action'}`,
+            time: formatTimeAgo(row[0])
+          });
+        }
+      }
+      
+      return activities.reverse(); // Most recent first
+    }
+    
+    // Return demo data if no log sheet
+    return [
+      { description: 'System started successfully', time: '1 hour ago' },
+      { description: 'Admin dashboard accessed', time: '2 hours ago' },
+      { description: 'User authentication verified', time: '3 hours ago' }
+    ];
+    
+  } catch (error) {
+    console.error('❌ Error getting recent activity:', error);
+    return [
+      { description: 'System running normally', time: 'now' }
+    ];
+  }
+}
+
+/**
+ * Format time ago helper
+ */
+function formatTimeAgo(timestamp) {
+  try {
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  } catch (error) {
+    return 'recently';
+  }
+}
+
+/**
+ * Get recent system logs from the Log sheet.
+ * @param {number} limit Number of log entries to return.
+ * @return {Array<Object>} Array of log objects.
+ */
+function getSystemLogs(limit) {
+  try {
+    const maxRows = limit && Number(limit) > 0 ? Number(limit) : 50;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const logSheet = ss.getSheetByName(CONFIG.sheets.log);
+    if (!logSheet) {
+      return [];
+    }
+    const lastRow = logSheet.getLastRow();
+    if (lastRow < 2) {
+      return [];
+    }
+    const startRow = Math.max(2, lastRow - maxRows + 1);
+    const data = logSheet.getRange(startRow, 1, lastRow - startRow + 1, 4).getValues();
+    return data.map(row => ({
+      timestamp: row[0],
+      type: row[1],
+      message: row[2],
+      details: row[3]
+    }));
+  } catch (error) {
+    console.error('Error fetching system logs:', error);
+    return [];
+  }
+}
+
+/**
+ * Wrapper for getSystemLogs to support the user management page
+ * and provide a clearer function name.
+ * @param {number} limit Number of log entries to return.
+ * @return {Array<Object>} Array of log objects.
+ */
+function getAuditLogs(limit) {
+  return getSystemLogs(limit);
+}
+
+/**
+ * Get a summary count of users by role.
+ * @return {Object<string, number>} Mapping of role to count.
+ */
+function getUserRolesSummary() {
+  try {
+    const data = getUserManagementData();
+    const summary = {};
+    if (data && Array.isArray(data.users)) {
+      data.users.forEach(u => {
+        const role = u.role || 'unknown';
+        summary[role] = (summary[role] || 0) + 1;
+      });
+    }
+    return summary;
+  } catch (error) {
+    logError('Error getting user roles summary', error);
+    return {};
+  }
+}
+/**
+ * Test function to debug what's working
+ */
+function testDashboardData() {
+  console.log('🧪 Testing dashboard data functions...');
+  
+  console.log('=== Testing getRidersDataSafe ===');
+  const riders = getRidersDataSafe();
+  console.log('Riders result:', riders);
+  
+  console.log('=== Testing getAdminUsersSafe ===');
+  const admins = getAdminUsersSafe();
+  console.log('Admins result:', admins);
+  
+  console.log('=== Testing getAdminDashboardData ===');
+  const dashboardData = getAdminDashboardData();
+  console.log('Dashboard data result:', dashboardData);
+  
+  console.log('=== Testing getUserManagementData ===');
+  const userMgmtData = getUserManagementData();
+  console.log('User management data result:', userMgmtData);
+  
+  return {
+    riders: riders,
+    admins: admins,
+    dashboardData: dashboardData,
+    userMgmtData: userMgmtData
+  };
+}
 /**
  * TEMPORARY WORKAROUND: Override the problematic getRidersData function
  * Add this to your Code.gs file to immediately fix the issue
@@ -4040,5 +6399,199 @@ function testFixedRidersFunction() {
   } catch (error) {
     console.error('❌ Test failed:', error);
     return { success: false, error: error.message };
+  }
+}
+function testFiles() {
+  const existing = testExistingFiles();
+  console.log('Existing files:', existing);
+  return existing;
+}
+/**
+ * Handle user management page - FIXED VERSION
+ */
+function handleUserManagementPage(e) {
+  try {
+    console.log('🔐 Handling user management page...');
+    
+    // Check authentication first
+    const authResult = authenticateAndAuthorizeUser();
+    
+    if (!authResult.success) {
+      console.log('❌ User management auth failed:', authResult.error);
+      return createSignInPage();
+    }
+    
+    // Check if user is admin
+    if (authResult.user.role !== 'admin') {
+      console.log('❌ User management access denied for role:', authResult.user.role);
+      return createAccessDeniedPage('Only administrators can access user management', authResult.user);
+    }
+    
+    console.log('✅ User management access granted for admin:', authResult.user.name);
+    
+    // Check if user-management.html file exists
+    if (checkFileExists('user-management')) {
+      console.log('✅ Loading user-management.html file');
+      
+      // Load the HTML file normally
+      let htmlOutput = HtmlService.createHtmlOutputFromFile('user-management');
+      let content = htmlOutput.getContent();
+      
+      // Add navigation and user info
+      const navigationHtml = getRoleBasedNavigationSafe('user-management', authResult.user, authResult.rider);
+      content = injectUserInfoSafe(content, authResult.user, authResult.rider);
+      content = addNavigationToContentSafe(content, navigationHtml);
+      content = addUserDataInjectionSafe(content, authResult.user, authResult.rider);
+      
+      htmlOutput.setContent(content);
+      
+      return htmlOutput
+        .setTitle('User Management - Escort Management')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        
+    } else {
+      console.log('❌ user-management.html file not found, creating dynamic page');
+      // Fall back to the dynamic version we created earlier
+      return createUserManagementDashboard();
+    }
+    
+  } catch (error) {
+    console.error('❌ User management page error:', error);
+    return createErrorPageWithSignIn(error);
+  }
+}
+
+/**
+ * Handle auth setup page
+ */
+function handleAuthSetupPage(e) {
+  try {
+    console.log('🔐 Handling auth setup page...');
+    
+    const authResult = authenticateAndAuthorizeUser();
+    
+    if (!authResult.success || authResult.user.role !== 'admin') {
+      return createAccessDeniedPage('Only administrators can access authentication setup', 
+        authResult.user || { name: 'Unknown', role: 'unknown' });
+    }
+    
+    // Return the auth mapping page we created
+    return createAuthMappingPage();
+    
+  } catch (error) {
+    console.error('❌ Auth setup page error:', error);
+    return createErrorPageWithSignIn(error);
+  }
+}
+
+/**
+ * Enhanced navigation that includes user management
+ */
+function getRoleBasedNavigationSafe(currentPage, user, rider) {
+  try {
+    const baseUrl = getWebAppUrlSafe();
+    
+    const navigationMenus = {
+      admin: [
+        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
+        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
+        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+        { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
+        { page: 'user-management', label: '🔐 User Management', url: `${baseUrl}?page=user-management` },
+        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
+        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+      ],
+      dispatcher: [
+        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
+        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
+        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
+        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+      ],
+      rider: [
+        { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
+        { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
+        { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
+      ]
+    };
+    
+    const menuItems = navigationMenus[user.role] || navigationMenus.rider;
+    
+    let navHtml = '<nav class="navigation" style="display: flex; justify-content: center; align-items: center;">';
+    
+    menuItems.forEach(item => {
+      const isActive = item.page === currentPage ? 'active' : '';
+      navHtml += `
+        <a href="#" 
+           class="nav-button ${isActive}" 
+           data-url="${item.url}" 
+           data-page="${item.page}"
+           onclick="handleNavigation(this); return false;">
+          ${item.label}
+        </a>
+      `;
+    });
+    
+    navHtml += '</nav>';
+    
+    return navHtml;
+    
+  } catch (error) {
+    console.error('❌ Error in getRoleBasedNavigationSafe:', error);
+    return '<nav>Navigation error</nav>';
+  }
+}
+
+/**
+ * Log out the current user and return a Google sign-out URL
+ */
+function logout() {
+  try {
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
+  } catch (error) {
+    console.error('Error clearing cached user info during logout:', error);
+  }
+
+  const baseUrl = getWebAppUrlSafe();
+  return `https://accounts.google.com/Logout?continue=${encodeURIComponent(baseUrl)}`;
+}
+
+/**
+ * Test function - run this to debug your setup
+ */
+function debugSystemSetup() {
+  console.log('🧪 Debugging system setup...');
+  
+  try {
+    console.log('=== Testing Authentication ===');
+    const authResult = authenticateAndAuthorizeUser();
+    console.log('Auth result:', authResult);
+    
+    console.log('=== Testing Admin Dashboard Data ===');
+    const dashboardData = getAdminDashboardData();
+    console.log('Dashboard data:', dashboardData);
+    
+    console.log('=== Testing User Management Data ===');
+    const userMgmtData = getUserManagementData();
+    console.log('User management data:', userMgmtData);
+    
+    console.log('=== Testing File Existence ===');
+    const files = ['index', 'admin-dashboard', 'user-management', 'requests', 'assignments'];
+    files.forEach(file => {
+      const exists = checkFileExists(file);
+      console.log(`${exists ? '✅' : '❌'} ${file}.html`);
+    });
+    
+    return {
+      auth: authResult,
+      dashboard: dashboardData,
+      userMgmt: userMgmtData,
+      filesExist: files.map(f => ({ file: f, exists: checkFileExists(f) }))
+    };
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
+    return { error: error.message };
   }
 }

@@ -39,6 +39,18 @@
             align-items: center;
             gap: 0.75rem;
         }
+
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
         .navigation {
     justify-content: center !important;
     text-align: center !important;
@@ -227,6 +239,15 @@
             font-size: 1rem;
         }
 
+        .currently-assigned {
+            margin-bottom: 1rem;
+        }
+
+        .currently-assigned ul {
+            padding-left: 1.25rem;
+            list-style: disc;
+        }
+
         .riders-section {
             flex: 1;
             display: flex;
@@ -350,6 +371,23 @@
             border-left: 4px solid #27ae60;
         }
 
+        .current-assigned {
+            background: #fff8e1;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #f39c12;
+        }
+
+        .current-assigned ul {
+            margin: 0;
+            padding-left: 1.2rem;
+        }
+
+        .current-assigned li {
+            margin-bottom: 0.25rem;
+        }
+
         .selected-count {
             font-weight: bold;
             color: #27ae60;
@@ -451,6 +489,7 @@
                 <div class="user-name" id="userName">Loading...</div>
                 <div class="user-role" id="userRole">User</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -466,7 +505,6 @@
                 
                 <div class="filter-tabs">
                     <div class="filter-tab active" data-status="all">All</div>
-                    <div class="filter-tab" data-status="New">New</div>
                     <div class="filter-tab" data-status="Unassigned">Unassigned</div>
                     <div class="filter-tab" data-status="Assigned">Assigned</div>
                 </div>
@@ -520,7 +558,6 @@
      * @property {string} jpNumber - Rider's JP Number or ID.
      * @property {string} phone - Rider's phone number.
      * @property {string} email - Rider's email address.
-     * @property {string} carrier - Rider's phone carrier.
      * @property {string} [status] - Rider's current status (e.g., "Available").
      */
 
@@ -539,6 +576,10 @@
     var selectedRequest = null;
     /** @type {Set<string>} */
     var selectedRiders = new Set(); // Stores names of selected riders
+    var preselectedRequestId = null;
+    var preselectAttempted = false;
+    /** Map of rider name to availability status */
+    var riderAvailability = {}; // e.g., {"John Doe": "Unavailable"}
     /** @type {AppStateAssignments} */
     var app = {
         user: null,
@@ -561,6 +602,7 @@
         if (dateParam) {
             app.dateFilter = dateParam.toLowerCase();
         }
+        preselectedRequestId = params.get('requestId');
 
         setTimeout(function() {
             if (currentRequests.length === 0 && activeRiders.length === 0) {
@@ -703,6 +745,33 @@ function loadActiveRidersEnhanced() {
   }
 }
 
+// Load riders based on availability filter
+function loadRidersWithAvailability(filterActive) {
+  showLoading('Loading riders...');
+
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(riders) {
+        hideLoading();
+        activeRiders = Array.isArray(riders) ? riders : [];
+        var grid = document.getElementById('ridersGrid');
+        if (grid) {
+          grid.innerHTML = renderRidersGrid();
+        }
+        fetchRiderAvailabilityForRequest();
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        console.error('❌ Failed loading riders with availability:', error);
+        showError('Error loading riders: ' + (error.message || error));
+      })
+      .getRidersWithAvailability(filterActive);
+  } else {
+    hideLoading();
+    console.error('❌ Google Apps Script not available');
+  }
+}
+
 // Display no riders message with more info
 function displayNoRiders(message) {
   const ridersContainer = document.getElementById('ridersContainer') || 
@@ -721,7 +790,7 @@ function displayNoRiders(message) {
           <button onclick="loadActiveRidersEnhanced()" class="btn btn-primary">
             🔄 Retry Loading
           </button>
-          <button onclick="window.open('?page=riders', '_blank')" class="btn btn-secondary">
+          <button onclick="google.script.run.withSuccessHandler(url => window.open(url + '?page=riders', '_blank')).getWebAppUrl();" class="btn btn-secondary">
             👥 Go to Riders Page
           </button>
         </div>
@@ -760,14 +829,6 @@ function hideLoading() {
   // Add your hide loading code here
 }
 
-// Auto-run debug when page loads (temporary)
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait a bit for the page to fully load
-  setTimeout(function() {
-    console.log('🔍 Auto-running riders debug...');
-    debugRidersLoading();
-  }, 2000);
-});
 
 // Add CSS for the no-riders message
 const debugStyles = `
@@ -940,6 +1001,14 @@ if (!document.getElementById('debug-styles')) {
         }
 
         currentRequests = Array.isArray(data) ? data : [];
+        currentRequests.sort(function(a, b) {
+            var dateA = new Date(a.eventDate);
+            var dateB = new Date(b.eventDate);
+            if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
+            if (isNaN(dateA.getTime())) return 1;
+            if (isNaN(dateB.getTime())) return -1;
+            return dateA.getTime() - dateB.getTime();
+        });
         console.log('📊 Stored requests count:', currentRequests.length);
 
         filterRequests();
@@ -1029,10 +1098,18 @@ if (!document.getElementById('debug-styles')) {
                 filterRequests();
             });
         }
+
+        var availCheckbox = document.getElementById('filterAvailability');
+        if (availCheckbox) {
+            availCheckbox.addEventListener('change', function() {
+                loadRidersWithAvailability(availCheckbox.checked);
+            });
+        }
     }
 
     /**
      * Filters the displayed list of requests based on search term and active status tab.
+     * The search now matches request ID, requester name, or any assigned rider names.
      * @return {void}
      */
     function filterRequests() {
@@ -1044,9 +1121,15 @@ if (!document.getElementById('debug-styles')) {
         var filtered = currentRequests.filter(function(request) {
             var matchesSearch = !searchTerm ||
                 request.id.toLowerCase().indexOf(searchTerm) !== -1 ||
-                request.requesterName.toLowerCase().indexOf(searchTerm) !== -1;
+                request.requesterName.toLowerCase().indexOf(searchTerm) !== -1 ||
+                (request.ridersAssigned && request.ridersAssigned.toLowerCase().indexOf(searchTerm) !== -1);
 
-            var matchesStatus = activeStatus === 'all' || request.status === activeStatus;
+            var matchesStatus;
+            if (activeStatus === 'Unassigned') {
+                matchesStatus = request.status !== 'Assigned';
+            } else {
+                matchesStatus = activeStatus === 'all' || request.status === activeStatus;
+            }
 
             var matchesDate = true;
             if (app.dateFilter === 'today') {
@@ -1103,6 +1186,7 @@ if (!document.getElementById('debug-styles')) {
         }).join('');
 
         container.innerHTML = html;
+        attemptPreselectRequest();
     }
 
     /**
@@ -1123,6 +1207,8 @@ if (!document.getElementById('debug-styles')) {
         var requestElement = document.querySelector('[data-request-id="' + requestId + '"]');
         if (requestElement) {
             requestElement.classList.add('selected');
+            // Ensure the selected request is visible when navigated via URL
+            requestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         selectedRequest = null;
@@ -1154,7 +1240,7 @@ if (!document.getElementById('debug-styles')) {
      * @deprecated This function seems redundant if selectRequest handles finding the request.
      *             The pre-selection logic is now mostly within handleAssignmentsDataSuccess.
      */
-    function selectRequestById(requestId) {
+function selectRequestById(requestId) {
         var request = null;
         for (var i = 0; i < currentRequests.length; i++) {
             if (currentRequests[i].id === requestId) {
@@ -1166,6 +1252,19 @@ if (!document.getElementById('debug-styles')) {
             selectRequest(requestId);
         } else {
             console.log('⚠️ Request ID not found in current requests:', requestId);
+        }
+    }
+
+    /**
+     * Attempts to auto-select the request provided via query parameter.
+     * This runs only once after the requests list is rendered.
+     */
+    function attemptPreselectRequest() {
+        if (preselectAttempted || !preselectedRequestId) return;
+        var elem = document.querySelector('[data-request-id="' + preselectedRequestId + '"]');
+        if (elem) {
+            selectRequest(preselectedRequestId, true);
+            preselectAttempted = true;
         }
     }
 
@@ -1189,6 +1288,10 @@ if (!document.getElementById('debug-styles')) {
         for (var i = 0; i < assignedRidersArray.length; i++) {
             selectedRiders.add(assignedRidersArray[i]);
         }
+
+        var assignedListHtml = selectedRiders.size > 0 ?
+            '<ul>' + Array.from(selectedRiders).map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
+            '<ul><li>None</li></ul>';
 
         container.innerHTML = '<div class="request-info">' +
             '<h4>' + selectedRequest.id + ' - ' + selectedRequest.requesterName + '</h4>' +
@@ -1223,11 +1326,19 @@ if (!document.getElementById('debug-styles')) {
             '</div>' +
             '</div>' +
             '</div>' +
+
+            '<div class="current-assigned">' +
+            '<h4>Assigned Riders</h4>' +
+            '<div id="assignedRidersList">' + assignedListHtml + '</div>' +
+
+            '</div>' +
             '<div class="assignment-summary">' +
             '<div>Selected Riders: <span class="selected-count" id="selectedCount">' + selectedRiders.size + '</span> / ' + selectedRequest.ridersNeeded + '</div>' +
             '</div>' +
             '<div class="riders-section">' +
             '<h4>Available Riders</h4>' +
+            '<label style="margin-left:10px; font-weight:normal;">' +
+            '<input type="checkbox" id="filterAvailability"> Show only available</label>' +
             '<div class="riders-grid" id="ridersGrid">' +
             renderRidersGrid() +
             '</div>' +
@@ -1243,6 +1354,9 @@ if (!document.getElementById('debug-styles')) {
             '👁️ Preview' +
             '</button>' +
             '</div>';
+
+        updateSelectedCount();
+        fetchRiderAvailabilityForRequest();
     }
 
     /**
@@ -1251,23 +1365,30 @@ if (!document.getElementById('debug-styles')) {
      * @return {string} HTML string for the riders grid.
      */
     function renderRidersGrid() {
-        if (activeRiders.length === 0) {
+        var ridersList = activeRiders;
+        var availCheckbox = document.getElementById('filterAvailability');
+        if (availCheckbox && availCheckbox.checked) {
+            ridersList = activeRiders.filter(function(r) {
+                return (riderAvailability[r.name] || 'Available') === 'Available';
+            });
+        }
+
+        if (ridersList.length === 0) {
             return '<div class="empty-state"><h3>No active riders</h3><p>No riders available for assignment</p></div>';
         }
 
-        return activeRiders.map(function(rider) {
+        return ridersList.map(function(rider) {
             var isSelected = selectedRiders.has(rider.name);
-            var availability = getRiderAvailability(rider, selectedRequest); // Currently always returns 'Available'
+            var availability = riderAvailability[rider.name] || 'Available';
             var isUnavailable = availability !== 'Available';
-            
-            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
+
+            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" data-rider-name="' + rider.name.replace(/"/g,'&quot;') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
                 '<div class="rider-status status-' + availability.toLowerCase() + '"></div>' +
                 '<div class="rider-name">' + rider.name + '</div>' +
                 '<div class="rider-info">ID: ' + rider.jpNumber + '</div>' +
                 '<div class="rider-info">📞 ' + rider.phone + '</div>' +
                 '<div class="rider-info">📧 ' + rider.email + '</div>' +
-                '<div class="rider-info">📡 ' + rider.carrier + '</div>' +
-                (isUnavailable ? '<div class="rider-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
+                (isUnavailable ? '<div class="rider-info conflict-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
                 '</div>';
         }).join('');
     }
@@ -1276,11 +1397,11 @@ if (!document.getElementById('debug-styles')) {
      * Determines rider availability for a given request. (Placeholder implementation)
      * @param {RiderItemAssignmentsPage} rider - The rider object.
      * @param {RequestItemAssignmentsPage} request - The request object.
-     * @return {string} Availability status (e.g., "Available", "Busy", "Unavailable"). Currently always "Available".
+     * @return {string} Availability status (e.g., "Available", "Unavailable"). Currently always "Available".
      */
     function getRiderAvailability(rider, request) {
-        // Placeholder: Future logic could check rider's schedule against request time.
-        return 'Available';
+        if (!rider || !rider.name) return 'Available';
+        return riderAvailability[rider.name] || 'Available';
     }
 
     /**
@@ -1322,16 +1443,84 @@ if (!document.getElementById('debug-styles')) {
      * Updates the displayed count of selected riders and enables/disables the save button.
      * @return {void}
      */
-    function updateSelectedCount() {
-        var countElement = document.getElementById('selectedCount');
-        if (countElement) {
-            countElement.textContent = selectedRiders.size;
+function updateSelectedCount() {
+    var countElement = document.getElementById('selectedCount');
+    if (countElement) {
+        countElement.textContent = selectedRiders.size;
+    }
+
+    var saveBtn = document.querySelector('.btn-success');
+    if (saveBtn) {
+        saveBtn.disabled = selectedRiders.size === 0;
+        saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
+    }
+
+    updateAssignedRidersList();
+}
+
+function updateAssignedRidersList() {
+    var listContainer = document.getElementById('assignedRidersList');
+    if (!listContainer) return;
+    var html = selectedRiders.size > 0 ?
+        '<ul>' + Array.from(selectedRiders).map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
+        '<ul><li>None</li></ul>';
+    listContainer.innerHTML = html;
+}
+
+    /**
+     * Fetch availability/conflict status for each rider for the selected request.
+     * Updates riderAvailability map and the UI accordingly.
+     * @return {void}
+     */
+    function fetchRiderAvailabilityForRequest() {
+        if (!selectedRequest) return;
+
+        riderAvailability = {};
+
+        activeRiders.forEach(function(rider) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(available) {
+                        riderAvailability[rider.name] = available ? 'Available' : 'Unavailable';
+                        updateSingleRiderAvailability(rider.name);
+                    })
+                    .withFailureHandler(function(err) {
+                        console.error('Availability check failed for', rider.name, err);
+                    })
+                    .isRiderAvailable(rider.name, selectedRequest.eventDate, selectedRequest.startTime);
+            }
+        });
+    }
+
+    /**
+     * Update the UI status for a single rider card based on riderAvailability map.
+     * @param {string} riderName
+     */
+    function updateSingleRiderAvailability(riderName) {
+        var availability = riderAvailability[riderName] || 'Available';
+        var card = document.querySelector('.rider-card[data-rider-name="' + riderName.replace(/"/g,'\\"') + '"]');
+        if (!card) return;
+        var statusDiv = card.querySelector('.rider-status');
+
+        card.classList.toggle('unavailable', availability !== 'Available');
+
+        if (statusDiv) {
+            statusDiv.classList.remove('status-available', 'status-busy', 'status-unavailable');
+            statusDiv.classList.add('status-' + availability.toLowerCase());
         }
 
-        var saveBtn = document.querySelector('.btn-success');
-        if (saveBtn) {
-            saveBtn.disabled = selectedRiders.size === 0;
-            saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
+        var info = card.querySelector('.conflict-info');
+        if (availability !== 'Available') {
+            if (!info) {
+                info = document.createElement('div');
+                info.className = 'rider-info conflict-info';
+                info.style.color = '#e74c3c';
+                info.style.fontWeight = 'bold';
+                card.appendChild(info);
+            }
+            info.textContent = '⚠️ ' + availability;
+        } else if (info) {
+            info.remove();
         }
     }
 
@@ -1359,8 +1548,7 @@ if (!document.getElementById('debug-styles')) {
                 name: rider ? rider.name : name,
                 jpNumber: rider ? rider.jpNumber : '',
                 phone: rider ? rider.phone : '',
-                email: rider ? rider.email : '',
-                carrier: rider ? rider.carrier : ''
+                email: rider ? rider.email : ''
             });
         });
 
@@ -1540,6 +1728,16 @@ if (!document.getElementById('debug-styles')) {
     function handleError(error) {
         hideLoading();
         showError(error.message || (typeof error === 'string' ? error : 'An unexpected error occurred'));
+    }
+
+    function logout() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(url => { window.location.href = url; })
+                .logout();
+        } else {
+            window.location.href = 'https://accounts.google.com/Logout';
+        }
     }
 
 </script>

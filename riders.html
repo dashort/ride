@@ -40,6 +40,18 @@
             gap: 0.75rem;
         }
 
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+
         .user-avatar {
             width: 32px;
             height: 32px;
@@ -279,6 +291,9 @@
             border-bottom: 1px solid #ecf0f1;
             vertical-align: middle;
         }
+        .rider-name-cell, .rider-phone-cell {
+            white-space: nowrap;
+        }
 
         .riders-table tr:hover {
             background: rgba(52, 152, 219, 0.05);
@@ -320,8 +335,8 @@
             margin: 2% auto;
             padding: 0;
             border-radius: 15px;
-            width: 90%;
-            max-width: 600px;
+            width: 95%;
+            max-width: 1000px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
@@ -472,6 +487,7 @@
                 <div id="userName">Loading...</div>
                 <div id="userRole">User</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -496,12 +512,12 @@
                     <div class="stat-label">Inactive</div>
                 </div>
                 <div class="stat-card warning">
-                    <span class="stat-number" id="onVacation">-</span>
-                    <div class="stat-label">On Vacation</div>
+                    <span class="stat-number" id="partTimeRiders">-</span>
+                    <div class="stat-label">Part Time Riders</div>
                 </div>
                 <div class="stat-card danger">
-                    <span class="stat-number" id="inTraining">-</span>
-                    <div class="stat-label">In Training</div>
+                    <span class="stat-number" id="fullTimeRiders">-</span>
+                    <div class="stat-label">Full time Riders</div>
                 </div>
             </div>
         </div>
@@ -522,6 +538,10 @@
                     <option value="Vacation">On Vacation</option>
                     <option value="Training">In Training</option>
                     <option value="Suspended">Suspended</option>
+                </select>
+                <select class="filter-select" id="motorFilter" onchange="filterRiders()">
+                    <option value="Motors" selected>Motors</option>
+                    <option value="All">All</option>
                 </select>
             </div>
             
@@ -571,6 +591,7 @@
                             <th>Phone</th>
                             <th>Email</th>
                             <th>Status</th>
+                            <th>Part Time</th>
                             <th>Certification</th>
                             <th>Part-Time Rider</th>
                             <th>Assignments</th>
@@ -632,7 +653,15 @@
                                 <option value="Suspended">Suspended</option>
                             </select>
                         </div>
-                        
+
+                        <div class="form-group">
+                            <label for="riderPartTime">Part Time Rider</label>
+                            <select id="riderPartTime" name="riderPartTime">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+
                         <div class="form-group">
                             <label for="riderCertification">Certification</label>
                             <select id="riderCertification" name="riderCertification">
@@ -647,7 +676,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-danger" onclick="closeRiderModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRiderModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteRiderBtn" onclick="deleteCurrentRider()" style="display:none">🗑️ Delete</button>
                 <button type="button" class="btn btn-success" onclick="saveRider()">💾 Save Rider</button>
             </div>
         </div>
@@ -688,6 +718,7 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Riders page loading...');
+        addScheduleLinks();
 
         const params = new URLSearchParams(window.location.search);
         const statusParam = params.get('status');
@@ -700,54 +731,24 @@
 
         loadRidersData();
         setupEventListeners();
+
+        // Fetch the web app URL when running inside Apps Script
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            try {
+                google.script.run
+                    .withSuccessHandler(url => { window.ridersBaseUrl = url; })
+                    .withFailureHandler(() => { window.ridersBaseUrl = null; })
+                    .getWebAppUrl();
+            } catch (e) {
+                window.ridersBaseUrl = null;
+            }
+        }
     });
 
 /**
  * IMPROVED: Better event listener setup
  * Replace the setupEventListeners function in riders.html
  */
-function setupEventListeners() {
-  console.log('🔧 Setting up event listeners...');
-  
-  // Search box with multiple event types
-  const searchBox = document.getElementById('searchBox');
-  if (searchBox) {
-    console.log('✅ Search box found, adding listeners');
-    
-    // Remove any existing listeners
-    searchBox.removeEventListener('input', filterRiders);
-    searchBox.removeEventListener('keyup', filterRiders);
-    searchBox.removeEventListener('change', filterRiders);
-    
-    // Add multiple event listeners for better responsiveness
-    searchBox.addEventListener('input', debounce(filterRiders, 300));
-    searchBox.addEventListener('keyup', debounce(filterRiders, 300));
-    searchBox.addEventListener('change', filterRiders);
-    
-    console.log('✅ Search box listeners added');
-  } else {
-    console.error('❌ Search box not found!');
-  }
-  
-  // Status filter
-  const statusFilter = document.getElementById('statusFilter');
-  if (statusFilter) {
-    console.log('✅ Status filter found, adding listener');
-    statusFilter.addEventListener('change', filterRiders);
-  } else {
-    console.error('❌ Status filter not found!');
-  }
-  
-  // Modal close on outside click
-  window.onclick = function(event) {
-    const modal = document.getElementById('riderModal');
-    if (event.target === modal) {
-      closeRiderModal();
-    }
-  }
-  
-  console.log('✅ Event listeners setup complete');
-}
 
     function loadRidersData() {
         showLoading();
@@ -763,25 +764,7 @@ function setupEventListeners() {
         }
     }
 
-    function handleRidersDataSuccess(data) {
-        hideLoading();
-        
-        if (data && data.success) {
-            console.log('✅ Riders data loaded:', data);
-            app.user = data.user;
-            app.riders = data.riders || [];
-            app.filteredRiders = [...app.riders];
-            app.config = data.options || {}; // Store config options
-            
-            updateUserInfo(data.user);
-            updateStats(data.stats);
-            renderRidersTable(app.filteredRiders);
-            showTable();
-        } else {
-            console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
-            showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
-        }
-    }
+
 
     function handleRidersDataFailure(error) {
         hideLoading();
@@ -799,8 +782,23 @@ function setupEventListeners() {
         document.getElementById('totalRiders').textContent = stats.totalRiders || 0;
         document.getElementById('activeRiders').textContent = stats.activeRiders || 0;
         document.getElementById('inactiveRiders').textContent = stats.inactiveRiders || 0;
-        document.getElementById('onVacation').textContent = stats.onVacation || 0;
-        document.getElementById('inTraining').textContent = stats.inTraining || 0;
+
+        document.getElementById('partTimeRiders').textContent = stats.partTimeRiders || 0;
+
+        const fullTimeEl = document.getElementById('fullTimeRiders');
+        if (fullTimeEl) {
+            const fullTimeCount =
+                stats.fullTimeRiders !== undefined
+                    ? stats.fullTimeRiders
+                    : (stats.totalRiders || 0) - (stats.partTimeRiders || 0);
+            fullTimeEl.textContent = fullTimeCount;
+        }
+
+        const trainingEl = document.getElementById('inTraining');
+        if (trainingEl) {
+            trainingEl.textContent = stats.inTraining || 0;
+        }
+
     }
 
 
@@ -831,7 +829,8 @@ function filterRiders() {
   
   const searchBox = document.getElementById('searchBox');
   const statusFilter = document.getElementById('statusFilter');
-  
+  const motorFilter = document.getElementById('motorFilter');
+
   if (!searchBox || !statusFilter) {
     console.error('❌ Search elements not found');
     return;
@@ -839,8 +838,9 @@ function filterRiders() {
   
   const searchTerm = searchBox.value.toLowerCase().trim();
   const statusFilter_value = statusFilter.value;
+  const motorFilter_value = motorFilter ? motorFilter.value : 'Motors';
   
-  console.log(`🔍 Filtering: search="${searchTerm}" status="${statusFilter_value}"`);
+  console.log(`🔍 Filtering: search="${searchTerm}" status="${statusFilter_value}" motors="${motorFilter_value}"`);
   console.log(`📊 Total riders to filter: ${app.riders.length}`);
   
   if (!app.riders || app.riders.length === 0) {
@@ -858,6 +858,7 @@ function filterRiders() {
       const phone = rider.phone || rider['Phone Number'] || '';
       const email = rider.email || rider['Email'] || '';
       const status = rider.status || rider['Status'] || 'Active';
+      const certification = rider.certification || rider['Certification'] || '';
       
       // Debug first few riders during filtering
       if (index < 3 && searchTerm) {
@@ -879,12 +880,22 @@ function filterRiders() {
       if (statusFilter_value && statusFilter_value !== 'All') {
         matchesStatus = status === statusFilter_value;
       }
-      
-      const shouldInclude = matchesSearch && matchesStatus;
+
+      // Motor filter
+      let matchesMotor = true;
+      if (motorFilter_value === 'Motors') {
+        const certLower = certification.toLowerCase();
+
+
+matchesMotor = certLower === 'standard' || certLower === 'instructor';
+
+      }
+
+      const shouldInclude = matchesSearch && matchesStatus && matchesMotor;
       
       // Debug matches for first few riders
       if (index < 3 && searchTerm) {
-        console.log(`    Search match: ${matchesSearch}, Status match: ${matchesStatus}, Include: ${shouldInclude}`);
+        console.log(`    Search match: ${matchesSearch}, Status match: ${matchesStatus}, Motor match: ${matchesMotor}, Include: ${shouldInclude}`);
       }
       
       return shouldInclude;
@@ -935,11 +946,19 @@ function setupEventListeners() {
   
   // Status filter
   const statusFilter = document.getElementById('statusFilter');
+  const motorFilter = document.getElementById('motorFilter');
   if (statusFilter) {
     console.log('✅ Status filter found, adding listener');
     statusFilter.addEventListener('change', filterRiders);
   } else {
     console.error('❌ Status filter not found!');
+  }
+
+  if (motorFilter) {
+    console.log('✅ Motor filter found, adding listener');
+    motorFilter.addEventListener('change', filterRiders);
+  } else {
+    console.error('❌ Motor filter not found!');
   }
   
   // Modal close on outside click
@@ -992,17 +1011,12 @@ function testSearch(searchTerm = 'test') {
   console.log('✅ Search test complete');
 }
 
-    function openAddRiderModal() {
+function openAddRiderModal() {
         document.getElementById('modalTitle').textContent = 'Add New Rider';
         document.getElementById('riderForm').reset();
         document.getElementById('originalRiderId').value = '';
 
-        // Populate dropdowns
-        populateDropdown('riderStatus', app.config.riderStatuses || ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'], 'Select Status');
-        populateDropdown('riderCertification', app.config.certificationTypes || ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'], 'Select Certification');
-        // No longer populating riderEmploymentType dropdown
-        document.getElementById('riderIsPartTime').checked = false; // Ensure checkbox is unchecked for new rider
-
+        document.getElementById('deleteRiderBtn').style.display = 'none';
         document.getElementById('riderModal').style.display = 'block';
     }
 
@@ -1087,15 +1101,26 @@ function editRider(riderId) {
   document.getElementById('riderPhone').value = rider.phone || rider['Phone Number'] || '';
   document.getElementById('riderEmail').value = rider.email || rider['Email'] || '';
   document.getElementById('riderStatus').value = rider.status || rider['Status'] || 'Active';
+  document.getElementById('riderPartTime').value = rider.partTime || rider['Part Time'] || 'No';
   document.getElementById('riderCertification').value = rider.certification || rider['Certification'] || 'Standard';
-  document.getElementById('riderIsPartTime').checked = (String(rider.isPartTime).toLowerCase() === 'yes' || rider.isPartTime === true); // Set checkbox state
-  
+
+  document.getElementById('deleteRiderBtn').style.display = 'inline-block';
+
   document.getElementById('riderModal').style.display = 'block';
 }
 
-    function closeRiderModal() {
-        document.getElementById('riderModal').style.display = 'none';
-    }
+function closeRiderModal() {
+    document.getElementById('riderModal').style.display = 'none';
+}
+
+function deleteCurrentRider() {
+  const riderId = document.getElementById('originalRiderId').value;
+  if (!riderId) {
+    alert('No rider selected for deletion');
+    return;
+  }
+  deleteRider(riderId);
+}
 /**
     function saveRider() {
         const formData = new FormData(document.getElementById('riderForm'));
@@ -1195,8 +1220,10 @@ function saveRider() {
     'Phone Number': formData.get('riderPhone'),
     'Email': formData.get('riderEmail'),
     'Status': formData.get('riderStatus'),
-    'Certification': formData.get('riderCertification')
-    // 'Employment Type' is removed, 'Part-Time Rider' added below
+
+    'Part Time': formData.get('riderPartTime'),
+    'Certification': formData.get('riderCertification') // ← Check this value
+
   };
   riderData['Part-Time Rider'] = document.getElementById('riderIsPartTime').checked ? 'Yes' : 'No';
   
@@ -1250,9 +1277,15 @@ function handleRidersDataSuccess(data) {
     updateStats(data.stats);
     renderRidersTable(app.filteredRiders); // Use filtered riders
     showTable();
+    fetchAssignmentCountsForRiders(app.filteredRiders);
 
     // IMPORTANT: Setup search after data is loaded
     setupEventListeners();
+
+    // Ensure initial results are visible even if no filter is applied
+    // Using the same filtering logic as the dropdowns avoids cases where the
+    // table remains empty until a filter change triggers re-rendering.
+    filterRiders();
 
     // Apply filter from URL if provided
     const params = new URLSearchParams(window.location.search);
@@ -1514,24 +1547,7 @@ if (typeof handleRiderOperationFailure === 'undefined') {
             notification.remove();
         }, 3000);
     }
-    // Quick fix for delete buttons - add this to your riders.html script section
-document.addEventListener('DOMContentLoaded', function() {
-  // Add event delegation for delete buttons
-  document.addEventListener('click', function(event) {
-    if (event.target.closest('[onclick*="deleteRider"]')) {
-      const button = event.target.closest('button');
-      const onclickAttr = button.getAttribute('onclick');
-      
-      if (onclickAttr) {
-        const match = onclickAttr.match(/deleteRider\(['"]([^'"]+)['"]\)/);
-        if (match) {
-          event.preventDefault();
-          deleteRider(match[1]);
-        }
-      }
-    }
-  });
-});
+
 <!-- Add these functions to your riders.html <script> section -->
 
 // Enhanced renderRidersTable with clickable rider names
@@ -1553,6 +1569,7 @@ function renderRidersTable(riders) {
     const riderPhone = rider.phone || rider['Phone Number'] || '';
     const riderEmail = rider.email || rider['Email'] || '';
     const riderStatus = rider.status || rider['Status'] || 'Active';
+    const riderPartTime = rider.partTime || rider['Part Time'] || 'No';
     const riderCertification = rider.certification || rider['Certification'] || 'Standard';
     const totalAssignments = rider.totalAssignments || rider['Total Assignments'] || 0;
     const lastAssignment = rider.lastAssignmentDate || rider['Last Assignment Date'] || 'Never';
@@ -1568,19 +1585,18 @@ function renderRidersTable(riders) {
       </td>
       <td>${riderId}</td>
       <td class="rider-name-cell">${riderNameCell}</td>
-      <td>${riderPhone}</td>
+      <td class="rider-phone-cell">${riderPhone}</td>
       <td>${riderEmail}</td>
       <td><span class="status-badge status-${riderStatus.toLowerCase()}">${riderStatus}</span></td>
+      <td>${riderPartTime}</td>
       <td>${riderCertification}</td>
-      <td>${rider.isPartTime || 'No'}</td>
-      <td>${totalAssignments}</td>
-      <td>${lastAssignment}</td>
+
+      <td id="assign-count-${riderId}">${totalAssignments}</td>
+      <td id="last-assignment-${riderId}">${lastAssignment}</td>
+
       <td class="actions-cell">
         <button onclick="editRider('${riderId}')" class="btn btn-sm btn-primary" title="Edit ${riderName}">
           ✏️ Edit
-        </button>
-        <button onclick="deleteRider('${riderId}')" class="btn btn-sm btn-danger" title="Delete ${riderName}">
-          🗑️ Delete
         </button>
       </td>
     `;
@@ -1594,19 +1610,88 @@ function renderRidersTable(riders) {
 // Create clickable rider name link
 function createRiderNameLink(riderName, riderId, totalAssignments) {
   const hasAssignments = totalAssignments && totalAssignments > 0;
-  const linkTitle = hasAssignments 
-    ? `View ${totalAssignments} assignment(s) for ${riderName}`
-    : `${riderName} - No current assignments`;
+  const linkTitle = hasAssignments
+    ? `View ${totalAssignments} upcoming assignment(s) for ${riderName}`
+    : `${riderName} - No upcoming assignments`;
   
   return `
-    <a href="#" 
-       class="rider-name-link ${hasAssignments ? 'has-assignments' : 'no-assignments'}" 
+    <a href="#"
+       data-rider-id="${riderId}"
+       class="rider-name-link ${hasAssignments ? 'has-assignments' : 'no-assignments'}"
        onclick="viewRiderAssignments('${riderId}', '${riderName.replace(/'/g, "\\'")}'); return false;"
        title="${linkTitle}">
       ${riderName}
       ${hasAssignments ? ` <span class="assignment-count">(${totalAssignments})</span>` : ''}
     </a>
   `;
+}
+
+// Fetch assignment counts for each rider and update tooltips
+function fetchAssignmentCountsForRiders(riders) {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) {
+    return; // Google Apps Script not available
+  }
+
+  riders.forEach(rider => {
+    const riderId = rider.jpNumber || rider['Rider ID'];
+    const riderName = rider.name || rider['Full Name'];
+    if (!riderId || !riderName) return;
+
+    google.script.run
+      .withSuccessHandler(summary => {
+        const count = summary && summary.summary ? summary.summary.upcoming : 0;
+        let lastDate = '';
+        if (summary && summary.assignments && summary.assignments.length > 0) {
+          const dates = summary.assignments
+            .map(a => new Date(a.eventDate))
+            .filter(d => !isNaN(d));
+          if (dates.length > 0) {
+            const latest = new Date(Math.max(...dates.map(d => d.getTime())));
+            lastDate = latest.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric'
+            });
+          }
+        }
+        const link = document.querySelector(
+          `.rider-name-link[data-rider-id="${riderId}"]`
+        );
+        if (link) {
+          if (count > 0) {
+            link.title = `View ${count} upcoming assignment(s) for ${riderName}`;
+            let span = link.querySelector('.assignment-count');
+            if (!span) {
+              span = document.createElement('span');
+              span.className = 'assignment-count';
+              link.appendChild(span);
+            }
+            span.textContent = `(${count})`;
+            link.classList.add('has-assignments');
+            link.classList.remove('no-assignments');
+          } else {
+            link.title = `${riderName} - No upcoming assignments`;
+            const span = link.querySelector('.assignment-count');
+            if (span) span.remove();
+            link.classList.add('no-assignments');
+            link.classList.remove('has-assignments');
+          }
+        }
+
+        const countCell = document.getElementById(`assign-count-${riderId}`);
+        if (countCell) {
+          countCell.textContent = count;
+        }
+        const lastCell = document.getElementById(`last-assignment-${riderId}`);
+        if (lastCell) {
+          lastCell.textContent = lastDate || 'Never';
+        }
+      })
+      .withFailureHandler(err => {
+        console.error('Failed to fetch assignment summary', err);
+      })
+      .getRiderAssignmentSummary(riderId, riderName);
+  });
 }
 
 // Main function to view rider assignments
@@ -1791,7 +1876,9 @@ function createAssignmentRow(assignment, isPast = false) {
   return `
     <tr class="assignment-row ${isPast ? 'past-assignment' : 'upcoming-assignment'}">
       <td class="request-id">
-        <strong>${requestId}</strong>
+        <a href="#" class="request-link" onclick="openAssignment('${requestId}'); return false;">
+          ${requestId}
+        </a>
       </td>
       <td class="event-date">${eventDate}</td>
       <td class="start-time">${startTime}</td>
@@ -1808,10 +1895,16 @@ function createAssignmentRow(assignment, isPast = false) {
 function viewRequestDetails(requestId) {
   console.log(`📋 Viewing details for request: ${requestId}`);
   closeAssignmentsModal();
-  
+
   // Navigate to requests page with the specific request highlighted
-  const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-  window.open(`${baseUrl}?page=requests&highlight=${encodeURIComponent(requestId)}`, '_blank');
+  navigateTo('requests', { highlight: requestId });
+}
+
+// Open the assignments page for the given request
+function openAssignment(requestId) {
+  console.log(`🏍️ Opening assignment for request: ${requestId}`);
+  closeAssignmentsModal();
+  navigateTo('assignments', { requestId: requestId });
 }
 
 // Close assignments modal
@@ -1824,8 +1917,34 @@ function closeAssignmentsModal() {
 
 // Go to assignments page
 function goToAssignmentsPage() {
-  const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-  window.open(`${baseUrl}?page=assignments`, '_blank');
+  navigateTo('assignments');
+}
+
+// General navigation helper similar to other pages
+function navigateTo(page, params = {}) {
+  const search = new URLSearchParams();
+  search.set('page', page);
+  Object.keys(params).forEach(key => search.set(key, params[key]));
+
+  let base = window.location.origin + window.location.pathname;
+  let url;
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    // Apps Script deployments use the current URL as the base
+    url = base + '?' + search.toString();
+  } else {
+    // For local usage fall back to the current page with query parameters
+    url = base + '?' + search.toString();
+  }
+
+  try {
+    window.location.href = url;
+  } catch (error) {
+    try {
+      window.top.location.href = url;
+    } catch (topError) {
+      window.open(url, '_blank');
+    }
+  }
 }
 
 // Close modal when clicking outside
@@ -1874,6 +1993,16 @@ const riderLinkStyles = `
   color: #7f8c8d;
 }
 
+.request-link {
+  color: #2980b9;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.request-link:hover {
+  text-decoration: underline;
+}
+
 .assignment-count {
   font-size: 0.85em;
   color: #e67e22;
@@ -1882,7 +2011,7 @@ const riderLinkStyles = `
 
 /* Assignments modal styles */
 .assignments-modal-content {
-  max-width: 900px;
+  max-width: 1000px;
   max-height: 80vh;
   overflow-y: auto;
 }
@@ -1938,7 +2067,7 @@ const riderLinkStyles = `
   opacity: 0.8;
 }
 
-.request-id strong {
+.request-id .request-link {
   color: #2980b9;
 }
 
@@ -1972,8 +2101,38 @@ const riderLinkStyles = `
     padding: 0.5rem;
   }
 }
-</style>
+  </style>
 `;
+
+function addScheduleLinks() {
+  const nav = document.querySelector('nav.navigation');
+  if (!nav) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const currentPage = params.get('page');
+
+  if (!nav.querySelector('[data-page="rider-schedule"]')) {
+    const mySchedule = document.createElement('a');
+    google.script.run.withSuccessHandler(url => { mySchedule.href = url + '?page=rider-schedule'; }).getWebAppUrl();
+    mySchedule.className = 'nav-button';
+    mySchedule.id = 'nav-rider-schedule';
+    mySchedule.dataset.page = 'rider-schedule';
+    mySchedule.textContent = '📆 My Schedule';
+    if (currentPage === 'rider-schedule') mySchedule.classList.add('active');
+    nav.appendChild(mySchedule);
+  }
+
+  if (!nav.querySelector('[data-page="admin-schedule"]')) {
+    const manageSchedules = document.createElement('a');
+    google.script.run.withSuccessHandler(url => { manageSchedules.href = url + '?page=admin-schedule'; }).getWebAppUrl();
+    manageSchedules.className = 'nav-button';
+    manageSchedules.id = 'nav-admin-schedule';
+    manageSchedules.dataset.page = 'admin-schedule';
+    manageSchedules.textContent = '🗓️ Manage Schedules';
+    if (currentPage === 'admin-schedule') manageSchedules.classList.add('active');
+    nav.appendChild(manageSchedules);
+  }
+}
 
 // Add styles to document head
 if (!document.getElementById('rider-link-styles')) {
@@ -1981,6 +2140,16 @@ if (!document.getElementById('rider-link-styles')) {
   styleSheet.id = 'rider-link-styles';
   styleSheet.innerHTML = riderLinkStyles;
   document.head.appendChild(styleSheet);
+}
+
+function logout() {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(url => { window.location.href = url; })
+      .logout();
+  } else {
+    window.location.href = 'https://accounts.google.com/Logout';
+  }
 }
 </script>
 </body>
