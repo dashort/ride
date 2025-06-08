@@ -7,12 +7,19 @@
     <a href="?page=reports" class="nav-button" id="nav-reports" data-page="reports">📊 Reports</a>
 </nav>
 <script>
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run.withSuccessHandler(function(url) {
+  (function() {
+    function setLinks(base) {
       document.querySelectorAll('nav.navigation a').forEach(function(a) {
         var page = a.getAttribute('data-page');
-        a.href = page === 'dashboard' ? url : url + '?page=' + page;
+        a.href = page === 'dashboard' ? base : base + '?page=' + page;
       });
-    }).getWebAppUrl();
-  }
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
+    } else {
+      var base = window.location.origin + window.location.pathname;
+      setLinks(base);
+    }
+  })();
 </script>
