@@ -447,21 +447,6 @@
                 </div>
             </div>
 
-            <!-- Monthly Trends -->
-            <div class="report-card">
-                <h3 class="report-title">📅 Monthly Trends</h3>
-                <div class="chart-container">
-                    <div class="chart-placeholder" id="monthlyTrendsChart">
-                    </div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportChart('monthlyTrends')">
-                        📥 Export Chart
-                    </button>
-                </div>
-            </div>
-
-
             <!-- Location Hotspots -->
             <div class="report-card">
                 <h3 class="report-title">📍 Popular Locations</h3>
@@ -688,14 +673,6 @@
                 document.getElementById('requestTypesChart').innerHTML = typesHtml;
             }
 
-            if (charts.monthlyTrends) {
-                document.getElementById('monthlyTrendsChart').innerHTML = 
-                    '<div style="padding: 2rem; text-align: center;">' +
-                    '<h4>Monthly Trends</h4>' +
-                    '<p>Average per month: ' + charts.monthlyTrends.average + '</p>' +
-                    '<p>Growth rate: ' + charts.monthlyTrends.growth + '%</p>' +
-                    '</div>';
-            }
         }
 
         function updateTables(tables) {
@@ -771,7 +748,7 @@
             }
         }
 
-        function displayRiderActivityReport(result) {
+function displayRiderActivityReport(result) {
             hideLoading();
             if (!result || !result.success) {
                 showError(result && result.error ? result.error : 'Failed to generate report');
@@ -784,6 +761,41 @@
                 rows += '<tr><td>' + r.name + '</td><td>' + r.escorts + '</td><td>' + r.hours + '</td></tr>';
             }
             var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title><style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style></head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th><th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+        }
+
+        function showLoading(message) {
+            console.log('Loading:', message);
+        }
+
+        function hideLoading() {
+            console.log('Loading complete');
+        }
+
+        function showNotification(message, color) {
+            var notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.background = color;
+            notification.style.color = 'white';
+            notification.style.padding = '1rem';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '9999';
+            notification.style.maxWidth = '300px';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(function () {
+                notification.remove();
+            }, 3000);
+        }
+
+        function showError(message) {
+            showNotification('Error: ' + message, '#e74c3c');
+        }
+
+        function handleError(error) {
+            hideLoading();
+            showError(error && error.message ? error.message : error);
         }
     </script>
 </body>
