@@ -40,6 +40,18 @@
             gap: 0.75rem;
         }
 
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+
         .user-avatar {
             width: 32px;
             height: 32px;
@@ -339,6 +351,7 @@
                 <div id="userName">Loading...</div>
                 <div id="userRole">User</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -725,6 +738,16 @@
     function sendBulkNotifications() {
         if (confirm('This will send notifications to all pending assignments. Continue?')) {
             showMessage('Notification feature will be available soon!', 'info');
+        }
+    }
+
+    function logout() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(url => { window.location.href = url; })
+                .logout();
+        } else {
+            window.location.href = 'https://accounts.google.com/Logout';
         }
     }
 

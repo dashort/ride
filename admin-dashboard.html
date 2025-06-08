@@ -40,6 +40,18 @@
             gap: 10px;
         }
 
+        .logout-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            text-decoration: underline;
+        }
+
         .user-avatar {
             width: 40px;
             height: 40px;
@@ -319,6 +331,7 @@
                 <div class="user-name" id="userName">Administrator</div>
                 <div class="user-role" id="userRole">Admin</div>
             </div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </header>
 
@@ -705,6 +718,16 @@
                 { description: 'System backup completed successfully', time: '1 hour ago' },
                 { description: 'New user registration pending approval', time: '2 hours ago' }
             ];
+        }
+
+        function logout() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => { window.location.href = url; })
+                    .logout();
+            } else {
+                window.location.href = 'https://accounts.google.com/Logout';
+            }
         }
     </script>
 </body>
