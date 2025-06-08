@@ -5988,6 +5988,37 @@ function getSystemLogs(limit) {
     return [];
   }
 }
+
+/**
+ * Wrapper for getSystemLogs to support the user management page
+ * and provide a clearer function name.
+ * @param {number} limit Number of log entries to return.
+ * @return {Array<Object>} Array of log objects.
+ */
+function getAuditLogs(limit) {
+  return getSystemLogs(limit);
+}
+
+/**
+ * Get a summary count of users by role.
+ * @return {Object<string, number>} Mapping of role to count.
+ */
+function getUserRolesSummary() {
+  try {
+    const data = getUserManagementData();
+    const summary = {};
+    if (data && Array.isArray(data.users)) {
+      data.users.forEach(u => {
+        const role = u.role || 'unknown';
+        summary[role] = (summary[role] || 0) + 1;
+      });
+    }
+    return summary;
+  } catch (error) {
+    logError('Error getting user roles summary', error);
+    return {};
+  }
+}
 /**
  * Test function to debug what's working
  */
