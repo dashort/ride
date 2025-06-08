@@ -40,39 +40,39 @@
             padding: 2rem;
         }
 
-.navigation {
-    display: flex !important;
-    gap: 1rem !important;
-    margin: 1rem auto 2rem auto !important;
-    max-width: 1400px !important;
-    padding: 0 2rem !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    position: relative !important;
-    z-index: 10 !important;
-}
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
 
-.nav-button {
-    padding: 0.75rem 1.5rem !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: none !important;
-    border-radius: 25px !important;
-    color: #2c3e50 !important;
-    text-decoration: none !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    cursor: pointer !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
 
-.nav-button:hover, .nav-button.active {
-    background: #3498db !important;
-    color: white !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-}
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
 
         .reports-header {
             background: rgba(255, 255, 255, 0.95);
@@ -326,17 +326,17 @@
 </head>
 <body>
     <header class="header">
-    <h1>🏍️ Motorcycle Escort Management</h1>
-    
-    <!-- SIMPLIFIED USER INFO -->
-    <div class="user-info">
-        <div class="user-avatar" id="userAvatar">?</div>
-        <div class="user-details">
-            <div class="user-name" id="userName">Loading...</div>
-            <div class="user-role" id="userRole">User</div>
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        
+        <!-- SIMPLIFIED USER INFO -->
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div class="user-details">
+                <div class="user-name" id="userName">Loading...</div>
+                <div class="user-role" id="userRole">User</div>
+            </div>
         </div>
-    </div>
-</header>
+    </header>
 
     <!--NAVIGATION_MENU_PLACEHOLDER-->
 
@@ -531,26 +531,22 @@
     </div>
 
     <script>
-        // Global state
         let reportData = {};
         let currentPeriod = { start: null, end: null };
 
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             setDefaultDates();
             setupEventListeners();
-            // Initial data load will include user and then reports
             loadInitialReportData();
         });
         
         function loadInitialReportData() {
-            // Initial load should retrieve user info and report data together
             generateReports();
         }
 
         function setDefaultDates() {
-            const today = new Date();
-            const thirtyDaysAgo = new Date(today);
+            var today = new Date();
+            var thirtyDaysAgo = new Date(today);
             thirtyDaysAgo.setDate(today.getDate() - 30);
 
             document.getElementById('startDate').value = formatDateForInput(thirtyDaysAgo);
@@ -558,21 +554,19 @@
         }
 
         function setupEventListeners() {
-            // Quick period selector
-            document.getElementById('quickPeriod').addEventListener('change', (e) => {
+            document.getElementById('quickPeriod').addEventListener('change', function(e) {
                 if (e.target.value) {
                     setQuickPeriod(e.target.value);
                 }
             });
 
-            // Date inputs
             document.getElementById('startDate').addEventListener('change', updatePeriod);
             document.getElementById('endDate').addEventListener('change', updatePeriod);
         }
 
         function setQuickPeriod(period) {
-            const today = new Date();
-            let startDate, endDate = new Date(today);
+            var today = new Date();
+            var startDate, endDate = new Date(today);
 
             switch (period) {
                 case 'today':
@@ -602,8 +596,8 @@
         }
 
         function updatePeriod() {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
             
             if (startDate && endDate) {
                 currentPeriod = { start: startDate, end: endDate };
@@ -611,10 +605,10 @@
         }
 
         function generateReports() {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const requestType = document.getElementById('requestTypeFilter').value;
-            const status = document.getElementById('statusFilter').value;
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+            var requestType = document.getElementById('requestTypeFilter').value;
+            var status = document.getElementById('statusFilter').value;
 
             if (!startDate || !endDate) {
                 showError('Please select both start and end dates');
@@ -623,7 +617,7 @@
 
             showLoading('Generating reports...');
 
-            const filters = {
+            var filters = {
                 startDate: startDate,
                 endDate: endDate,
                 requestType: requestType,
@@ -636,7 +630,7 @@
                     .withFailureHandler(handlePageDataFailure)
                     .getPageDataForReports(filters);
             } else {
-                console.log('⚠️ Google Apps Script not available for reports page.');
+                console.log('Google Apps Script not available for reports page.');
                 handlePageDataFailure({ message: 'Google Apps Script not available.' });
             }
         }
@@ -648,16 +642,16 @@
                 updateUserInfoSafely(data.user);
                 handleReportData(data.reportData);
             } else {
-                console.error('❌ Failed to load reports data:', data ? data.error : 'No data');
+                console.error('Failed to load reports data:', data ? data.error : 'No data');
                 handlePageDataFailure(data || { message: 'Received success:false or no data.' });
             }
         }
 
         function handlePageDataFailure(error) {
             hideLoading();
-            console.error('❌ Error loading reports data:', error && error.message ? error.message : error);
+            console.error('Error loading reports data:', error && error.message ? error.message : error);
 
-            const fallbackUser = (error && error.user) ? error.user : {
+            var fallbackUser = (error && error.user) ? error.user : {
                 name: 'System User',
                 email: 'user@system.com',
                 roles: ['admin'],
@@ -670,14 +664,15 @@
 
         function updateUserInfoSafely(user) {
             try {
-                const safeUpdate = (id, value, property = 'textContent') => {
+                var safeUpdate = function(id, value, property) {
+                    property = property || 'textContent';
                     try {
-                        const element = document.getElementById(id);
+                        var element = document.getElementById(id);
                         if (element && element[property] !== undefined) {
                             element[property] = value;
                         }
                     } catch (e) {
-                        console.log(`❌ Error updating ${id}:`, e.message);
+                        console.log('Error updating ' + id + ':', e.message);
                     }
                 };
 
@@ -685,7 +680,7 @@
                 safeUpdate('userRole', (user.roles || ['user']).join(', '));
                 safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
             } catch (error) {
-                console.log('❌ Error in updateUserInfoSafely:', error);
+                console.log('Error in updateUserInfoSafely:', error);
             }
         }
 
@@ -706,162 +701,95 @@
         }
 
         function updateCharts(charts) {
-            // In a real implementation, you would use a charting library like Chart.js
-            // For now, showing placeholder text with data
-            
             if (charts.requestVolume) {
-                document.getElementById('requestVolumeChart').innerHTML = `
-                    <div style="padding: 2rem; text-align: center;">
-                        <h4>Request Volume Data</h4>
-                        <p>Total: ${charts.requestVolume.total}</p>
-                        <p>Peak Day: ${charts.requestVolume.peakDay}</p>
-                        <p>Trend: ${charts.requestVolume.trend}</p>
-                    </div>
-                `;
+                document.getElementById('requestVolumeChart').innerHTML = 
+                    '<div style="padding: 2rem; text-align: center;">' +
+                    '<h4>Request Volume Data</h4>' +
+                    '<p>Total: ' + charts.requestVolume.total + '</p>' +
+                    '<p>Peak Day: ' + charts.requestVolume.peakDay + '</p>' +
+                    '<p>Trend: ' + charts.requestVolume.trend + '</p>' +
+                    '</div>';
             }
 
             if (charts.requestTypes) {
-                const totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
-                document.getElementById('requestTypesChart').innerHTML = `
-                    <div style="padding: 2rem;">
-                        <h4>Request Types</h4>
-                        ${Object.entries(charts.requestTypes).map(([type, count]) =>
-                            `<p>${type}: ${count} (${totalRequests > 0 ? Math.round(count/totalRequests*100) : 0}%)</p>`
-                        ).join('')}
-                    </div>
-                `;
+                var totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
+                var typesHtml = '<div style="padding: 2rem;"><h4>Request Types</h4>';
+                for (var type in charts.requestTypes) {
+                    var count = charts.requestTypes[type];
+                    var percentage = totalRequests > 0 ? Math.round(count/totalRequests*100) : 0;
+                    typesHtml += '<p>' + type + ': ' + count + ' (' + percentage + '%)</p>';
+                }
+                typesHtml += '</div>';
+                document.getElementById('requestTypesChart').innerHTML = typesHtml;
             }
 
             if (charts.monthlyTrends) {
-                document.getElementById('monthlyTrendsChart').innerHTML = `
-                    <div style="padding: 2rem; text-align: center;">
-                        <h4>Monthly Trends</h4>
-                        <p>Average per month: ${charts.monthlyTrends.average}</p>
-                        <p>Growth rate: ${charts.monthlyTrends.growth}%</p>
-                    </div>
-                `;
+                document.getElementById('monthlyTrendsChart').innerHTML = 
+                    '<div style="padding: 2rem; text-align: center;">' +
+                    '<h4>Monthly Trends</h4>' +
+                    '<p>Average per month: ' + charts.monthlyTrends.average + '</p>' +
+                    '<p>Growth rate: ' + charts.monthlyTrends.growth + '%</p>' +
+                    '</div>';
             }
         }
 
         function updateTables(tables) {
-            // Rider Performance Table
             if (tables.riderPerformance) {
-                const riderTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Rider</th>
-                                <th>Assignments</th>
-                                <th>Completion Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tables.riderPerformance.map(rider => `
-                                <tr>
-                                    <td>${rider.name}</td>
-                                    <td>${rider.assignments}</td>
-                                    <td>${rider.completionRate}%</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
+                var rows = '';
+                for (var i = 0; i < tables.riderPerformance.length; i++) {
+                    var rider = tables.riderPerformance[i];
+                    rows += '<tr><td>' + rider.name + '</td><td>' + rider.assignments + '</td><td>' + rider.completionRate + '%</td></tr>';
+                }
+                var riderTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Assignments</th><th>Completion Rate</th></tr></thead><tbody>' + rows + '</tbody></table>';
                 document.getElementById('riderPerformanceTable').innerHTML = riderTable;
             }
 
-            // Rider Hours Table
             if (tables.riderHours) {
-                const hoursTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr><th>Rider</th><th>Hours</th></tr>
-                        </thead>
-                        <tbody>
-                            ${tables.riderHours.map(r => `<tr><td>${r.name}</td><td>${r.hours}</td></tr>`).join('')}
-                        </tbody>
-                    </table>
-                `;
+                var hoursRows = '';
+                for (var i = 0; i < tables.riderHours.length; i++) {
+                    var r = tables.riderHours[i];
+                    hoursRows += '<tr><td>' + r.name + '</td><td>' + r.hours + '</td></tr>';
+                }
+                var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             }
 
-            // Response Time Analysis
-            // Response Time Analysis
             if (tables.responseTime) {
-                const responseTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Metric</th>
-                                <th>Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>Average Response Time</td><td>${tables.responseTime.average}</td></tr>
-                            <tr><td>Fastest Response</td><td>${tables.responseTime.fastest}</td></tr>
-                            <tr><td>Slowest Response</td><td>${tables.responseTime.slowest}</td></tr>
-                            <tr><td>Within SLA</td><td>${tables.responseTime.withinSLA}</td></tr>
-                        </tbody>
-                    </table>
-                `;
+                var responseTable = '<table class="stats-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' +
+                    '<tr><td>Average Response Time</td><td>' + tables.responseTime.average + '</td></tr>' +
+                    '<tr><td>Fastest Response</td><td>' + tables.responseTime.fastest + '</td></tr>' +
+                    '<tr><td>Slowest Response</td><td>' + tables.responseTime.slowest + '</td></tr>' +
+                    '<tr><td>Within SLA</td><td>' + tables.responseTime.withinSLA + '</td></tr>' +
+                    '</tbody></table>';
                 document.getElementById('responseTimeAnalysis').innerHTML = responseTable;
             }
 
-            // Popular Locations Table
             if (tables.locations) {
-                const locationsTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr><th>Location</th><th>Count</th></tr>
-                        </thead>
-                        <tbody>
-                            ${tables.locations.map(loc => `<tr><td>${loc.name}</td><td>${loc.count}</td></tr>`).join('')}
-                        </tbody>
-                    </table>
-                `;
+                var locRows = '';
+                for (var i = 0; i < tables.locations.length; i++) {
+                    var loc = tables.locations[i];
+                    locRows += '<tr><td>' + loc.name + '</td><td>' + loc.count + '</td></tr>';
+                }
+                var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
                 document.getElementById('locationHotspots').innerHTML = locationsTable;
             }
         }
 
-        function formatDateForInput(dateStr) {
-            if (!dateStr) return '';
+        function formatDateForInput(date) {
+            if (!date) return '';
             try {
-                const date = new Date(dateStr);
                 if (isNaN(date.getTime())) return '';
                 return date.toISOString().split('T')[0];
             } catch (e) {
-                console.error('Error formatting date for input:', dateStr, e);
-                return '';
-            }
-        }
-
-        function formatTimeForInput(timeStr) {
-            if (!timeStr) return '';
-            try {
-                if (/^\d{1,2}:\d{2}$/.test(timeStr.trim())) {
-                    const parts = timeStr.trim().split(':');
-                    let hours = parseInt(parts[0], 10);
-                    const minutes = parseInt(parts[1], 10);
-                    if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-                        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                    }
-                }
-
-                const tempDate = new Date(`1/1/1970 ${timeStr}`);
-                if (isNaN(tempDate.getTime())) return '';
-
-                const hours = tempDate.getHours();
-                const minutes = tempDate.getMinutes();
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-            } catch (e) {
-                console.error('Error formatting time for input:', timeStr, e);
+                console.error('Error formatting date for input:', date, e);
                 return '';
             }
         }
 
         function setFallbackReportData() {
             hideLoading();
-            console.log('⚠️ Using fallback data for reports');
-            const data = {
+            console.log('Using fallback data for reports');
+            var data = {
                 summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0, avgResponseTime: '-' },
                 charts: {},
                 tables: {}
@@ -874,8 +802,8 @@
 
         function generateComprehensiveReport(type) {
             if (type === 'rider') {
-                const start = document.getElementById('startDate').value;
-                const end = document.getElementById('endDate').value;
+                var start = document.getElementById('startDate').value;
+                var end = document.getElementById('endDate').value;
                 if (!start || !end) {
                     showError('Please select a date range');
                     return;
@@ -903,9 +831,13 @@
                 return;
             }
 
-            const rows = result.data.map(r => `<tr><td>${r.name}</td><td>${r.escorts}</td><td>${r.hours}</td></tr>`).join('');
-            const html = `<!DOCTYPE html><html><head><title>Rider Activity Report</title><style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style></head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th><th>Total Hours</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
-            const w = window.open('', '_blank');
+            var rows = '';
+            for (var i = 0; i < result.data.length; i++) {
+                var r = result.data[i];
+                rows += '<tr><td>' + r.name + '</td><td>' + r.escorts + '</td><td>' + r.hours + '</td></tr>';
+            }
+            var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title><style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style></head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th><th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+            var w = window.open('', '_blank');
             if (w) {
                 w.document.write(html);
                 w.document.close();
@@ -913,8 +845,8 @@
         }
 
         function exportRiderActivityCSV() {
-            const start = document.getElementById('startDate').value;
-            const end = document.getElementById('endDate').value;
+            var start = document.getElementById('startDate').value;
+            var end = document.getElementById('endDate').value;
             if (!start || !end) {
                 showError('Please select a date range');
                 return;
@@ -937,14 +869,14 @@
                 showError(result && result.message ? result.message : 'Failed to export');
                 return;
             }
-            const blob = new Blob([result.csvContent], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
+            var blob = new Blob([result.csvContent], { type: 'text/csv' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
             a.href = url;
             a.download = result.filename;
             a.click();
             URL.revokeObjectURL(url);
-            showSuccess(`Exported ${result.count} records`);
+            showSuccess('Exported ' + result.count + ' records');
         }
 
         function exportChart(id) {
@@ -955,8 +887,9 @@
             alert('Export table ' + id + ' not implemented');
         }
 
-        function showLoading(message = 'Loading...') {
-            const overlay = document.createElement('div');
+        function showLoading(message) {
+            message = message || 'Loading...';
+            var overlay = document.createElement('div');
             overlay.id = 'loading-overlay';
             overlay.style.position = 'fixed';
             overlay.style.top = '50%';
@@ -972,12 +905,12 @@
         }
 
         function hideLoading() {
-            const overlay = document.getElementById('loading-overlay');
+            var overlay = document.getElementById('loading-overlay');
             if (overlay) overlay.remove();
         }
 
         function showNotification(message, color) {
-            const note = document.createElement('div');
+            var note = document.createElement('div');
             note.style.position = 'fixed';
             note.style.top = '20px';
             note.style.right = '20px';
@@ -989,7 +922,7 @@
             note.style.maxWidth = '300px';
             note.textContent = message;
             document.body.appendChild(note);
-            setTimeout(() => note.remove(), 3000);
+            setTimeout(function() { note.remove(); }, 3000);
         }
 
         function showSuccess(message) {
