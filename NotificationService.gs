@@ -390,7 +390,7 @@ function sendAssignmentNotification(assignmentId, type) {
     }
     
     // Enhanced message formatting with request details
-    const message = formatNotificationMessage({
+    const smsMessage = formatNotificationMessage({
       assignmentId,
       requestId,
       riderName,
@@ -398,11 +398,21 @@ function sendAssignmentNotification(assignmentId, type) {
       startTime,
       startLocation,
       endLocation
-    });
+    }, true);
 
-    // Build an email-specific message that includes other assigned riders and full request details
-    let emailMessage = message;
+    // Build an email-specific message (without links) that includes other assigned riders
+    let emailMessage = smsMessage;
+
     if (type === 'Email' || type === 'Both') {
+      emailMessage = formatNotificationMessage({
+        assignmentId,
+        requestId,
+        riderName,
+        eventDate,
+        startTime,
+        startLocation,
+        endLocation
+      }, false);
       try {
         const relatedAssignments = getAssignmentsForRequest(requestId);
         const otherRiders = relatedAssignments
@@ -428,7 +438,7 @@ function sendAssignmentNotification(assignmentId, type) {
     let emailResult = { success: true };
     
     if ((type === 'SMS' || type === 'Both') && riderPhone) {
-      smsResult = sendSMS(riderPhone, riderCarrier, message);
+      smsResult = sendSMS(riderPhone, riderCarrier, smsMessage);
     }
     if ((type === 'Email' || type === 'Both') && riderEmail) {
       emailResult = sendEmail(riderEmail, `Assignment ${assignmentId} - ${requestId}`, emailMessage);
