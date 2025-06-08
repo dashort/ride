@@ -725,6 +725,15 @@
             showNotification('Some report features are unavailable.', '#f39c12');
         }
 
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         function generateComprehensiveReport(type) {
             if (type === 'rider') {
                 var start = document.getElementById('startDate').value;
@@ -759,7 +768,7 @@ function displayRiderActivityReport(result) {
             var rows = '';
             for (var i = 0; i < result.data.length; i++) {
                 var r = result.data[i];
-                rows += '<tr><td>' + r.name + '</td><td>' + r.escorts + '</td><td>' + r.hours + '</td></tr>';
+                rows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' + escapeHtml(r.hours) + '</td></tr>';
             }
 
             var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
