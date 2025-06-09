@@ -4069,3 +4069,28 @@ function getUserAvailability(email) {
   }
 }
 
+
+/**
+ * Returns recent entries from the system log sheet.
+ * @param {number} [limit=50] Maximum number of log entries to return.
+ * @return {Array<Object>} Array of log objects with Timestamp, Type, Message, and Details.
+ */
+function getSystemLogs(limit) {
+  try {
+    var max = limit || 50;
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.log);
+    if (!sheet) return [];
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+    var headers = data[0];
+    var rows = data.slice(-Math.min(max, data.length - 1)).reverse();
+    return rows.map(function(row) {
+      var entry = {};
+      headers.forEach(function(h, i) { entry[h] = row[i]; });
+      return entry;
+    });
+  } catch (error) {
+    logError('Error in getSystemLogs', error);
+    return [];
+  }
+}
