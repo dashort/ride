@@ -224,7 +224,7 @@ function testCompleteNavigationFlow() {
     console.log('4. Testing doGet simulation...');
     const mockEvent = { parameter: { page: 'dashboard' } };
     try {
-      const result = doGet(mockEvent);
+      const result = doGetLegacy(mockEvent);
       console.log(`   ✅ doGet completed successfully`);
       
       const finalContent = result.getContent();
@@ -342,7 +342,7 @@ function verifyNavigationInjection() {
       
       try {
         const mockEvent = { parameter: { page: pageName === 'dashboard' ? undefined : pageName } };
-        const result = doGet(mockEvent);
+        const result = doGetLegacy(mockEvent);
         const content = result.getContent();
         
         console.log(`✅ Page loads: ${pageName}`);
@@ -393,7 +393,7 @@ function showActualWebAppOutput() {
     console.log('=== ACTUAL WEB APP OUTPUT SAMPLE ===');
     
     const mockEvent = { parameter: {} }; // Dashboard
-    const result = doGet(mockEvent);
+    const result = doGetLegacy(mockEvent);
     const content = result.getContent();
     
     console.log(`Total content length: ${content.length} characters`);
@@ -456,7 +456,7 @@ function checkDeploymentStatus() {
     
     // Test the doGet function directly
     try {
-      const result = doGet({ parameter: {} });
+      const result = doGetLegacy({ parameter: {} });
       console.log('✅ doGet function works');
       
       const content = result.getContent();
@@ -772,10 +772,10 @@ function getNavigationHtml(currentPage = '') {
  * @return {GoogleAppsScript.ContentService.TextOutput} A JSON response indicating success or failure.
  */
 /**
- * Complete doPost function with SMS webhook handler
- * Replace your existing doPost function in Code.js with this version
+ * Legacy doPost implementation with SMS webhook handler. The active doPost
+ * handler is defined in NotificationService.gs.
  */
-function doPost(e) {
+function doPostLegacy(e) {
   try {
     console.log('📨 doPost called');
     
@@ -2478,7 +2478,7 @@ function debugNavigationUrls() {
       
       // Test actual doGet call
       const mockEvent = { parameter: pageName === 'dashboard' ? {} : { page: pageName } };
-      const result = doGet(mockEvent);
+      const result = doGetLegacy(mockEvent);
       const content = result.getContent();
       
       // Check if navigation exists in final content
@@ -2627,10 +2627,11 @@ function debugNotificationsFile() {
 
 /**
  * 🔧 USER MANAGEMENT ROUTING FIX
- * Replace your doGet function with this simplified version that handles user management properly
+ * Legacy doGet implementation retained for reference. The main doGet function
+ * is defined in AccessControl.gs.
  */
 
-function doGet(e) {
+function doGetLegacy(e) {
   try {
     console.log('🚀 doGet started...');
     console.log('Parameters received:', JSON.stringify(e.parameter));
@@ -3203,7 +3204,7 @@ function testUserManagementRouting() {
     const e = { parameter: { page: 'user-management' } };
     
     console.log('Testing doGet with user-management parameter...');
-    const result = doGet(e);
+    const result = doGetLegacy(e);
     
     console.log('✅ doGet completed without errors');
     console.log('Result type:', typeof result);
@@ -4795,7 +4796,7 @@ function testDoGetFunction() {
     
     // Test requests page
     const mockEvent = { parameter: { page: 'requests' } };
-    const result = doGet(mockEvent);
+    const result = doGetLegacy(mockEvent);
     const content = result.getContent();
     
     console.log(`Content length: ${content.length}`);
@@ -4869,7 +4870,7 @@ function testForNavigationDuplicates() {
       
       try {
         const mockEvent = { parameter: { page: pageName } };
-        const result = doGet(mockEvent);
+        const result = doGetLegacy(mockEvent);
         const content = result.getContent();
         
         // Count navigation elements
@@ -4973,7 +4974,7 @@ function testNewDoGetFunction() {
     console.log('=== TESTING NEW doGet FUNCTION ===');
     
     const mockEvent = { parameter: { page: 'requests' } };
-    const result = doGet(mockEvent);
+    const result = doGetLegacy(mockEvent);
     const content = result.getContent();
     
     console.log(`Result content length: ${content.length}`);
