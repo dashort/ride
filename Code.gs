@@ -3024,13 +3024,13 @@ function getSimpleNavigation(currentPage, user) {
   
   const menuItems = user.role === 'admin' ? adminNav : dispatcherNav;
   
-  let navHtml = '<nav style="text-align: center; padding: 20px; background: rgba(255,255,255,0.9); margin-bottom: 20px;">';
-  
+  let navHtml = '<nav class="navigation">';
+
   menuItems.forEach(item => {
-    const isActive = item.page === currentPage ? 'style="background: #3498db; color: white;"' : '';
-    navHtml += '<a href="' + item.url + '" ' + isActive + ' style="display: inline-block; padding: 10px 20px; margin: 5px; text-decoration: none; border-radius: 20px; background: #f8f9fa; color: #333;">' + item.label + '</a>';
+    const activeClass = item.page === currentPage ? ' active' : '';
+    navHtml += `<a href="${item.url}" class="nav-button${activeClass}" data-page="${item.page}">${item.label}</a>`;
   });
-  
+
   navHtml += '</nav>';
   
   return navHtml;
