@@ -125,61 +125,58 @@ function testNavigationUrls() {
 // Make sure this function is working correctly:
 
 /**
- * Robust getNavigationHtml function
+ * FIXED navigation functions - no recursion
+ * Add these to your Code.gs file
+ */
+
+/**
+ * Simple navigation function that doesn't call other functions
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    console.log(`🧭 Getting navigation for page: ${currentPage}`);
+    const BASE_URL = ScriptApp.getService().getUrl(); // Direct call only
     
-    let navContent;
-    try {
-      navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-      console.log(`📄 Navigation file loaded: ${navContent.length} chars`);
-    } catch (error) {
-      console.error('❌ Could not load _navigation.html:', error);
-      throw error;
-    }
+    const pages = [
+      { id: 'dashboard', label: '📊 Dashboard', url: BASE_URL },
+      { id: 'requests', label: '📋 Requests', url: BASE_URL + '?page=requests' },
+      { id: 'assignments', label: '🏍️ Assignments', url: BASE_URL + '?page=assignments' },
+      { id: 'riders', label: '👥 Riders', url: BASE_URL + '?page=riders' },
+      { id: 'notifications', label: '📱 Notifications', url: BASE_URL + '?page=notifications' },
+      { id: 'reports', label: '📊 Reports', url: BASE_URL + '?page=reports' }
+    ];
     
-    if (!navContent || navContent.length === 0) {
-      throw new Error('Navigation file is empty');
-    }
+    let navHtml = '<nav class="navigation">\n';
     
-    // Add active class if needed
-    if (currentPage) {
-      // Find the anchor with the matching data-page attribute regardless of
-      // attribute order and ensure it has the "active" class
-      const linkPattern = new RegExp(
-        `<a[^>]*data-page="${currentPage}"[^>]*>`,
-        'i'
-      );
-      navContent = navContent.replace(linkPattern, function(anchorHtml) {
-        // Update the class attribute inside the matched anchor
-        return anchorHtml.replace(/class="([^"]*)"/, function(_, classes) {
-          const classList = classes.split(/\s+/);
-          if (!classList.includes('active')) {
-            classList.push('active');
-          }
-          return `class="${classList.join(' ')}"`;
-        });
-      });
-    }
+    pages.forEach(page => {
+      const activeClass = page.id === currentPage ? ' active' : '';
+      navHtml += `    <a href="${page.url}" class="nav-button${activeClass}" data-page="${page.id}">${page.label}</a>\n`;
+    });
     
-    return navContent;
+    navHtml += '</nav>';
+    
+    return navHtml;
     
   } catch (error) {
-    console.error('❌ Error in getNavigationHtml:', error);
-    
-    // Return basic fallback navigation
-    const baseUrl = getWebAppUrl();
-    return `<nav class="navigation">
-      <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}">📊 Dashboard</a>
-      <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}">📋 Requests</a>
-      <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}">🏍️ Assignments</a>
-      <a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders">👥 Riders</a>
-      <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}">📱 Notifications</a>
-      <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}">📊 Reports</a>
-    </nav>`;
+    console.error('Error in getNavigationHtml:', error);
+    // Return minimal navigation instead of calling other functions
+    const BASE_URL = ScriptApp.getService().getUrl();
+    return `<nav class="navigation"><a href="${BASE_URL}" class="nav-button">📊 Dashboard</a></nav>`;
   }
+}
+
+/**
+ * Replace any other navigation functions with this simple version
+ */
+function getNavigationHtmlWithDynamicUrls(currentPage = '') {
+  return getNavigationHtml(currentPage);
+}
+
+function getNavigationHtmlWithAbsoluteUrls(currentPage = '') {
+  return getNavigationHtml(currentPage);
+}
+
+function createFallbackNavigation(currentPage = '') {
+  return getNavigationHtml(currentPage);
 }
 
 // ISSUE 4: Test the complete flow
@@ -3639,7 +3636,27 @@ console.log('👤 User context loaded:', window.currentUser);
     return content;
   }
 }
+/**
+ * FIXED getWebAppUrl function - no recursion
+ * Replace your current getWebAppUrl function with this
+ */
+function getWebAppUrl() {
+  try {
+    // Direct call to ScriptApp service - no recursion possible
+    return ScriptApp.getService().getUrl();
+  } catch (error) {
+    console.error('Error getting web app URL:', error);
+    // Return empty string instead of calling other functions
+    return '';
+  }
+}
 
+/**
+ * Also fix any getWebAppUrlSafe functions
+ */
+function getWebAppUrlSafe() {
+  return getWebAppUrl();
+}
 /**
  * Create a proper sign-in page that actually works
  */

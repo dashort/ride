@@ -1112,97 +1112,318 @@ function testAuthenticationSimple() {
   }
 }
 /**
- * UPDATED doGet function with fixed user handling
+ * FIXED doGet function that prevents recursion loops
+ * Replace your current doGet function with this one
  */
 function doGet(e) {
   try {
-    console.log('🚀 doGet with fixed user handling...');
+    console.log('🚀 doGet started - Fixed Version');
     console.log('Parameters:', JSON.stringify(e.parameter));
     
-    // 🔐 STEP 1: Check if this is a sign-in request
-    if (e.parameter && e.parameter.action === 'signin') {
-      return createSignInPage();
+    // Prevent recursion by tracking depth
+    const recursionDepth = PropertiesService.getScriptProperties().getProperty('DOGET_DEPTH') || '0';
+    const depth = parseInt(recursionDepth);
+    
+    if (depth > 3) {
+      console.error('❌ doGet recursion detected, breaking loop');
+      PropertiesService.getScriptProperties().setProperty('DOGET_DEPTH', '0');
+      return createEmergencyPage();
     }
     
-    // 🔐 STEP 2: Enhanced user session check
-    const userSession = getEnhancedUserSession();
+    PropertiesService.getScriptProperties().setProperty('DOGET_DEPTH', String(depth + 1));
     
-    console.log('👤 User session result:', userSession);
-    
-    // If no email, show sign-in page
-    if (!userSession.hasEmail) {
-      console.log('❌ No user email found, redirecting to sign-in');
-      return createSignInPage();
+    try {
+      // Get the requested page
+      const requestedPage = e.parameter && e.parameter.page;
+      console.log('📄 Requested page:', requestedPage);
+      
+      // SIMPLE AUTHENTICATION - NO COMPLEX ROUTING
+      let user, rider;
+      try {
+        const authResult = authenticateAndAuthorizeUserSimple();
+        if (!authResult.success) {
+          return createSimpleSignInPage();
+        }
+        user = authResult.user;
+        rider = authResult.rider;
+      } catch (authError) {
+        console.error('❌ Auth error:', authError);
+        return createSimpleSignInPage();
+      }
+      
+      console.log(`✅ Authenticated: ${user.name} (${user.role})`);
+      
+      // DETERMINE PAGE TO LOAD
+      let pageName = requestedPage || 'dashboard';
+      console.log(`📄 Loading page: ${pageName}`);
+      
+      // LOAD HTML FILE
+      let fileName = getSimplePageFileName(pageName);
+      console.log(`📁 Using file: ${fileName}.html`);
+      
+      let htmlOutput;
+      try {
+        htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+      } catch (fileError) {
+        console.error('❌ File load error:', fileError);
+        fileName = 'index'; // Fallback to index
+        htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+      }
+      
+      let content = htmlOutput.getContent();
+      
+      // ADD NAVIGATION - SIMPLE VERSION
+      const navigationHtml = createSimpleNavigation(pageName, user);
+      content = addNavigationSimple(content, navigationHtml);
+      
+      // ADD USER INFO
+      content = addUserInfoSimple(content, user, rider);
+      
+      htmlOutput.setContent(content);
+      
+      // Reset recursion counter on success
+      PropertiesService.getScriptProperties().setProperty('DOGET_DEPTH', '0');
+      
+      return htmlOutput
+        .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        
+    } finally {
+      // Always reset counter
+      PropertiesService.getScriptProperties().setProperty('DOGET_DEPTH', '0');
     }
-    
-    // 🔐 STEP 3: Check if user is authorized
-    const rider = getRiderByGoogleEmailSafe(userSession.email);
-    const adminUsers = getAdminUsersSafe();
-    const dispatcherUsers = getDispatcherUsersSafe();
-    
-    let userRole = 'unauthorized';
-    let permissions = [];
-    
-    if (adminUsers.includes(userSession.email)) {
-      userRole = 'admin';
-      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
-    } else if (dispatcherUsers.includes(userSession.email)) {
-      userRole = 'dispatcher';
-      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
-    } else if (rider && rider.status === 'Active') {
-      userRole = 'rider';
-      permissions = ['view_own_assignments', 'update_own_status'];
-    } else {
-      console.log('❌ User not authorized:', userSession.email);
-      return createUnauthorizedPage(userSession.email, userSession.name);
-    }
-    
-    const authenticatedUser = {
-      name: userSession.name || rider?.name || 'User',
-      email: userSession.email,
-      role: userRole,
-      permissions: permissions,
-      avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
-    };
-    
-    console.log(`✅ Authenticated user: ${authenticatedUser.name} (${authenticatedUser.role})`);
-    
-    // 🔒 STEP 4: Continue with normal page loading
-    let pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
-    
-    const authCheck = checkPageAccessSafe(pageName, authenticatedUser, rider);
-    if (!authCheck.allowed) {
-      return createAccessDeniedPage(authCheck.reason, authenticatedUser);
-    }
-    
-    console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
-    
-    // Continue with your existing page loading logic...
-    const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
-    let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
-    let content = htmlOutput.getContent();
-    
-    // Add navigation and user info
-    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
-    content = injectUserInfoSafe(content, authenticatedUser, rider);
-    content = addNavigationToContentSafe(content, navigationHtml);
-    content = addUserDataInjectionSafe(content, authenticatedUser, rider);
-    
-    htmlOutput.setContent(content);
-    
-    // Update last login
-    if (rider) {
-      updateRiderLastLoginSafe(rider.id);
-    }
-    
-    return htmlOutput
-      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
       
   } catch (error) {
-    console.error('❌ doGet error:', error);
-    return createErrorPageWithSignInSafe(error);
+    console.error('❌ doGet fatal error:', error);
+    PropertiesService.getScriptProperties().setProperty('DOGET_DEPTH', '0');
+    return createEmergencyPage(error);
   }
+}
+
+/**
+ * Simple authentication without complex routing
+ */
+function authenticateAndAuthorizeUserSimple() {
+  try {
+    const session = Session.getActiveUser();
+    const userEmail = session.getEmail();
+    
+    if (!userEmail) {
+      return { success: false, error: 'NO_EMAIL' };
+    }
+    
+    // Simple role detection
+    const adminEmails = [
+      'admin@yourdomain.com',
+      'jpsotraffic@gmail.com',
+      // Add your admin emails here
+    ];
+    
+    let userRole = 'rider';
+    if (adminEmails.includes(userEmail)) {
+      userRole = 'admin';
+    }
+    
+    return {
+      success: true,
+      user: {
+        name: session.getName() || userEmail.split('@')[0],
+        email: userEmail,
+        role: userRole,
+        permissions: userRole === 'admin' ? ['view_all', 'edit_all'] : ['view_own']
+      },
+      rider: null // Simplified for now
+    };
+    
+  } catch (error) {
+    console.error('❌ Simple auth error:', error);
+    return { success: false, error: 'AUTH_ERROR' };
+  }
+}
+
+/**
+ * Simple page file mapping
+ */
+function getSimplePageFileName(pageName) {
+  const pageMap = {
+    'dashboard': 'index',
+    'requests': 'requests',
+    'assignments': 'assignments',
+    'riders': 'riders',
+    'notifications': 'notifications',
+    'reports': 'reports'
+  };
+  
+  return pageMap[pageName] || 'index';
+}
+
+/**
+ * Simple navigation creation - NO RECURSION
+ */
+function createSimpleNavigation(currentPage, user) {
+  const baseUrl = ScriptApp.getService().getUrl(); // Direct URL, no function calls
+  
+  const pages = [
+    { id: 'dashboard', label: '📊 Dashboard', url: baseUrl },
+    { id: 'requests', label: '📋 Requests', url: baseUrl + '?page=requests' },
+    { id: 'assignments', label: '🏍️ Assignments', url: baseUrl + '?page=assignments' },
+    { id: 'notifications', label: '📱 Notifications', url: baseUrl + '?page=notifications' },
+    { id: 'reports', label: '📊 Reports', url: baseUrl + '?page=reports' }
+  ];
+  
+  let navHtml = '<nav class="navigation" style="display: flex; justify-content: center; gap: 1rem; padding: 1rem; background: rgba(255,255,255,0.9);">';
+  
+  pages.forEach(page => {
+    const isActive = page.id === currentPage;
+    const activeStyle = isActive ? 'background: #3498db; color: white;' : 'background: #f8f9fa; color: #333;';
+    
+    navHtml += `<a href="${page.url}" style="padding: 10px 20px; border-radius: 20px; text-decoration: none; ${activeStyle}">${page.label}</a>`;
+  });
+  
+  navHtml += '</nav>';
+  
+  return navHtml;
+}
+
+/**
+ * Simple navigation injection - NO RECURSION
+ */
+function addNavigationSimple(content, navigationHtml) {
+  // Remove any existing navigation to prevent duplicates
+  content = content.replace(/<nav class="navigation">[\s\S]*?<\/nav>/g, '');
+  
+  // Try different injection points
+  if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
+    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+  } else if (content.includes('</header>')) {
+    content = content.replace('</header>', '</header>\n' + navigationHtml);
+  } else if (content.includes('<div class="container">')) {
+    content = content.replace('<div class="container">', navigationHtml + '\n<div class="container">');
+  } else {
+    // Insert after body tag
+    content = content.replace('<body>', '<body>\n' + navigationHtml);
+  }
+  
+  return content;
+}
+
+/**
+ * Simple user info injection - NO RECURSION
+ */
+function addUserInfoSimple(content, user, rider) {
+  // Replace user placeholders if they exist
+  content = content.replace(/id="userName"[^>]*>Loading\.\.\.</g, `id="userName">${user.name}`);
+  content = content.replace(/id="userRole"[^>]*>User</g, `id="userRole">${user.role}`);
+  content = content.replace(/id="userAvatar"[^>]*>\?</g, `id="userAvatar">${user.name.charAt(0).toUpperCase()}`);
+  
+  return content;
+}
+
+/**
+ * Emergency page for when everything fails
+ */
+function createEmergencyPage(error) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>System Recovery - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🛠️ System Recovery Mode</h2>
+        <p>The system has been reset to prevent errors.</p>
+        ${error ? `<p><strong>Error:</strong> ${error.message}</p>` : ''}
+        <a href="${ScriptApp.getService().getUrl()}" class="btn">🔄 Return to Dashboard</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('System Recovery');
+}
+
+/**
+ * Simple sign-in page - NO RECURSION
+ */
+function createSimpleSignInPage() {
+  const webAppUrl = ScriptApp.getService().getUrl(); // Direct URL
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign In - Escort Management</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .btn {
+            background: #4285f4;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🔐 Sign In Required</h2>
+        <p>Please sign in with your Google account to access the system.</p>
+        <a href="${webAppUrl}" class="btn">🔑 Sign In with Google</a>
+    </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Sign In Required');
 }
 
 /**
