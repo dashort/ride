@@ -1832,16 +1832,19 @@ function createAssignmentRow(assignment, isPast = false) {
   const statusClass = status.toLowerCase().replace(' ', '-');
   const actionButtons = isPast ? '' : `
     <td class="assignment-actions">
-      <button onclick="viewRequestDetails('${requestId}')" class="btn btn-sm btn-info" title="View Request Details">
+      <a class="btn btn-sm btn-info" title="View Request Details"
+         href="requests.html?requestId=${requestId}"
+         onclick="viewRequestDetails('${requestId}')">
         👁️ View
-      </button>
+      </a>
     </td>
   `;
   
   return `
     <tr class="assignment-row ${isPast ? 'past-assignment' : 'upcoming-assignment'}">
       <td class="request-id">
-        <a href="#" class="request-link" onclick="openAssignment('${requestId}'); return false;">
+        <a href="assignments.html?requestId=${requestId}" class="request-link"
+           onclick="openAssignment('${requestId}')">
           ${requestId}
         </a>
       </td>
