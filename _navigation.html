@@ -18,8 +18,11 @@
     if (typeof google !== 'undefined' && google.script && google.script.run) {
       google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
     } else {
-      var base = window.location.origin + window.location.pathname;
-      setLinks(base);
+      // When running locally, link directly to HTML files
+      document.querySelectorAll('nav.navigation a').forEach(function(a) {
+        var page = a.getAttribute('data-page');
+        a.href = page === 'dashboard' ? 'index.html' : page + '.html';
+      });
     }
   })();
 </script>
