@@ -3010,6 +3010,8 @@ function getSimpleNavigation(currentPage, user) {
   const adminNav = [
     { page: 'dashboard', label: '📊 Dashboard', url: baseUrl },
     { page: 'requests', label: '📋 Requests', url: baseUrl + '?page=requests' },
+    { page: 'assignments', label: '🏍️ Assignments', url: baseUrl + '?page=assignments' },
+    { page: 'riders', label: '👥 Riders', url: baseUrl + '?page=riders' },
     { page: 'user-management', label: '👥 User Management', url: baseUrl + '?page=user-management' },
     { page: 'reports', label: '📊 Reports', url: baseUrl + '?page=reports' }
   ];
