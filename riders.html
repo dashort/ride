@@ -1833,8 +1833,8 @@ function createAssignmentRow(assignment, isPast = false) {
   const actionButtons = isPast ? '' : `
     <td class="assignment-actions">
       <a class="btn btn-sm btn-info" title="View Request Details"
-         href="requests.html?requestId=${requestId}"
-         onclick="viewRequestDetails('${requestId}')">
+         href="#"
+         onclick="viewRequestDetails('${requestId}'); return false;">
         👁️ View
       </a>
     </td>
@@ -1843,8 +1843,8 @@ function createAssignmentRow(assignment, isPast = false) {
   return `
     <tr class="assignment-row ${isPast ? 'past-assignment' : 'upcoming-assignment'}">
       <td class="request-id">
-        <a href="assignments.html?requestId=${requestId}" class="request-link"
-           onclick="openAssignment('${requestId}')">
+        <a href="#" class="request-link"
+           onclick="openAssignment('${requestId}'); return false;">
           ${requestId}
         </a>
       </td>
