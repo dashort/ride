@@ -882,7 +882,8 @@
                 String(r.requesterName).toLowerCase().includes(term) ||
                 String(r.requestType).toLowerCase().includes(term) ||
                 String(r.startLocation).toLowerCase().includes(term) ||
-                String(r.endLocation).toLowerCase().includes(term)
+                String(r.endLocation).toLowerCase().includes(term) ||
+                (r.ridersAssigned && r.ridersAssigned.toLowerCase().includes(term))
             );
         }
 
