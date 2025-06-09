@@ -1964,6 +1964,70 @@ function exportRiderActivityCSV(startDate, endDate) {
 }
 
 /**
+ * Generates an executive summary for the given period or the last 30 days.
+ * @param {string} [startDate] Start date in YYYY-MM-DD format.
+ * @param {string} [endDate] End date in YYYY-MM-DD format.
+ * @return {object} Result object with summary data or an error message.
+ */
+function generateExecutiveSummary(startDate, endDate) {
+  try {
+    const today = new Date();
+    const start = startDate ? parseDateString(startDate) : new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate ? parseDateString(endDate) : today;
+
+    if (!start || !end) {
+      throw new Error('Invalid date range');
+    }
+
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const requestsData = getRequestsData();
+    let completed = 0;
+    let totalHours = 0;
+    const typeMap = {};
+
+    requestsData.data.forEach(row => {
+      const eventDate = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      if (eventDate instanceof Date) {
+        if (eventDate < start || eventDate > end) return;
+      } else {
+        return;
+      }
+
+      const type = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type) || 'Other';
+      typeMap[type] = (typeMap[type] || 0) + 1;
+
+      const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+      if (status === 'Completed') {
+        completed++;
+        const s = parseTimeString(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime));
+        const e = parseTimeString(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endTime));
+        if (s && e && e > s) {
+          totalHours += (e.getTime() - s.getTime()) / (1000 * 60 * 60);
+        }
+      }
+    });
+
+    totalHours = Math.round(totalHours * 100) / 100;
+
+    return {
+      success: true,
+      data: {
+        start: formatDateForDisplay(start),
+        end: formatDateForDisplay(end),
+        completedEscorts: completed,
+        totalHours: totalHours,
+        requestTypes: typeMap
+      }
+    };
+  } catch (error) {
+    logError('Error in generateExecutiveSummary', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * Fetches and formats recent requests for web app display.
  * @param {number} [limit=10] The maximum number of recent requests to return.
  * @return {Array<object>} An array of formatted recent request objects.
