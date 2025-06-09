@@ -1691,6 +1691,30 @@ function getNotificationHistory() {
   }
 }
 
+/**
+ * Wrapper for admin dashboard notifications
+ */
+function getSystemNotifications() {
+  try {
+    return getNotificationHistory().slice(0, 10);
+  } catch (error) {
+    logError('Error getting system notifications', error);
+    return [];
+  }
+}
+
+/**
+ * Wrapper for dispatcher dashboard notifications
+ */
+function getDispatchNotifications() {
+  try {
+    return getNotificationHistory().slice(0, 10);
+  } catch (error) {
+    logError('Error getting dispatch notifications', error);
+    return [];
+  }
+}
+
 // ===== REPORTS FUNCTIONS =====
 /**
  * Generates report data based on filters.
@@ -2038,13 +2062,17 @@ function getPageDataForDashboard() {
     const stats = getDashboardStats();
     const recentRequests = getRecentRequestsForWebApp(5);
     const upcomingAssignments = getUpcomingAssignmentsForWebApp(5);
+    const notifications = (typeof getNotificationHistory === 'function')
+      ? getNotificationHistory().slice(0, 10)
+      : [];
     
     return {
       success: true,
       user: user,
       stats: stats,
       recentRequests: recentRequests,
-      upcomingAssignments: upcomingAssignments
+      upcomingAssignments: upcomingAssignments,
+      notifications: notifications
     };
   } catch (error) {
     logError('Error in getPageDataForDashboard', error);

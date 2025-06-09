@@ -416,6 +416,14 @@
                     </button>
                 </div>
             </div>
+
+            <!-- Recent Notifications -->
+            <div class="card">
+                <h3>🔔 Recent Notifications</h3>
+                <div class="request-list" id="recentNotificationsList">
+                    <div class="loading">Loading notifications...</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -472,6 +480,7 @@
             updateStats(data.stats);
             updateRecentRequests(data.recentRequests);
             updateUpcomingAssignments(data.upcomingAssignments);
+            updateNotifications(data.notifications);
         } else {
             console.error('❌ Failed to load dashboard data or success flag false:', data ? data.error : 'No data returned');
             handleDashboardDataFailure(data || { message: "Received success:false or no data." });
@@ -669,6 +678,42 @@
         }
     }
 
+    function updateNotifications(notifications) {
+        console.log('🔔 Updating notifications:', notifications);
+        const container = document.getElementById('recentNotificationsList');
+
+        if (!container) {
+            console.error('❌ Notifications container not found');
+            return;
+        }
+
+        if (!notifications || notifications.length === 0) {
+            container.innerHTML = `
+                <div class="empty-message">
+                    <p>No recent notifications</p>
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            container.innerHTML = notifications.map(n => `
+                <div class="request-item">
+                    <div class="request-info">
+                        <h4>${n.recipient}</h4>
+                        <div class="request-meta">${n.type} • ${new Date(n.timestamp).toLocaleString()}</div>
+                    </div>
+                    <span class="status-badge">${n.requestId}</span>
+                </div>
+            `).join('');
+
+            console.log('✅ Notifications updated successfully');
+        } catch (error) {
+            console.error('❌ Error updating notifications HTML:', error);
+            container.innerHTML = '<div class="empty-message"><p>Error loading notifications</p></div>';
+        }
+    }
+
     function setFallbackValues() {
         console.log('⚠️ Setting fallback values due to loading timeout or errors');
 
@@ -681,6 +726,7 @@
 
         updateRecentRequests([]);
         updateUpcomingAssignments([]);
+        updateNotifications([]);
 
         showMessage('Some dashboard data may not be current. Please try refreshing.', 'warning');
     }
@@ -763,6 +809,7 @@
 
         document.getElementById('recentRequestsList').innerHTML = '<div class="loading">Loading recent requests...</div>';
         document.getElementById('upcomingAssignmentsList').innerHTML = '<div class="loading">Loading assignments...</div>';
+        document.getElementById('recentNotificationsList').innerHTML = '<div class="loading">Loading notifications...</div>';
 
         initializeDashboard();
 
