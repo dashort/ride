@@ -195,17 +195,22 @@ function setColumnValue(row, columnMap, columnName, value) {
  * @param {any} data The data structure to format.
  * @return {any} The formatted data structure.
  */
-function applyTimeFormatting(data) {
+function applyTimeFormatting(data, seen = new WeakSet()) {
   if (data === null || typeof data !== 'object') {
     return data;
   }
+
+  if (seen.has(data)) {
+    return data; // Prevent infinite recursion on circular refs
+  }
+  seen.add(data);
 
   if (data instanceof Date) {
     return data;
   }
 
   if (Array.isArray(data)) {
-    return data.map(item => applyTimeFormatting(item));
+    return data.map(item => applyTimeFormatting(item, seen));
   }
 
   const formatted = {};
@@ -239,10 +244,10 @@ function applyTimeFormatting(data) {
         } else if (key.toLowerCase().includes('time')) {
           formatted[key] = formatTimeForDisplay(value);
         } else {
-          formatted[key] = applyTimeFormatting(value);
+          formatted[key] = applyTimeFormatting(value, seen);
         }
       } else {
-        formatted[key] = applyTimeFormatting(value);
+        formatted[key] = applyTimeFormatting(value, seen);
       }
     }
   }
