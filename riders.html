@@ -1891,14 +1891,18 @@ function navigateTo(page, params = {}) {
   search.set('page', page);
   Object.keys(params).forEach(key => search.set(key, params[key]));
 
-  let base = window.location.origin + window.location.pathname;
+  let base;
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    base = window.location.origin + window.location.pathname;
+  } else {
+    base = page === 'dashboard' ? 'index.html' : page + '.html';
+  }
   let url;
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     // Apps Script deployments use the current URL as the base
     url = base + '?' + search.toString();
   } else {
-    // For local usage fall back to the current page with query parameters
-    url = base + '?' + search.toString();
+    url = base + (search.toString() ? '?' + search.toString() : '');
   }
 
   try {

@@ -690,16 +690,18 @@
         search.set('page', page);
         Object.keys(params).forEach(key => search.set(key, params[key]));
 
-        let base = window.location.origin + window.location.pathname;
+        let base;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            base = window.location.origin + window.location.pathname;
+        } else {
+            base = page === 'dashboard' ? 'index.html' : page + '.html';
+        }
         let url;
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             // In Apps Script the base already points to the deployed web app
             url = base + '?' + search.toString();
         } else {
-            // When running locally fall back to current page with query params
-            // instead of trying to load separate HTML files which may not be
-            // routed correctly in some environments.
-            url = base + '?' + search.toString();
+            url = base + (search.toString() ? '?' + search.toString() : '');
         }
 
         try {
