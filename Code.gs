@@ -1,9 +1,16 @@
 
 /**
+
  * @fileoverview
- * Main server-side functions for the Motorcycle Escort Management System.
- * Global configuration and caching utilities have been moved to Config.gs.
+ * This is the main server-side script file for the Motorcycle Escort Management System.
+ * It contains global configurations, core functions like onOpen and doGet/doPost for web app handling,
+ * utility classes like DataCache, and event handlers like _onEdit.
+ * It serves as the central hub for the Google Apps Script project.
  */
+
+// The global configuration and caching utilities are defined in `Config.gs`.
+// Remove the duplicate definitions from this file to avoid "already declared"
+// errors when the script is compiled.
 
 // ===== MAIN FUNCTIONS & MENU SETUP =====
 
