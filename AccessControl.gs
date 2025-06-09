@@ -423,17 +423,12 @@ function getUserManagementData() {
     
     // Add riders
     riders.forEach(rider => {
-      const roles = ['rider'];
-      if (admins.includes(rider.googleEmail || rider.email)) roles.unshift('admin');
-      if (dispatchers.includes(rider.googleEmail || rider.email)) roles.push('dispatcher');
-
       allUsers.push({
         id: rider.id || rider.jpNumber || rider['Rider ID'],
         name: rider.name || rider['Full Name'],
         email: rider.email || rider['Email'],
         googleEmail: rider.googleEmail || rider['Google Email'],
-        role: roles[0],
-        roles: roles,
+        role: 'Rider',
         status: rider.status || 'Unknown',
         avatar: (rider.name || 'R').charAt(0).toUpperCase(),
         lastLogin: rider.lastLogin || rider['Last Login'] || 'Unknown',
@@ -443,18 +438,12 @@ function getUserManagementData() {
     
     // Add admins
     admins.forEach((email, index) => {
-      const roles = ['admin'];
-      if (dispatchers.includes(email)) roles.push('dispatcher');
-      const riderMatch = riders.find(r => (r.googleEmail || r.email || '').toLowerCase() === email.toLowerCase());
-      if (riderMatch) roles.push('rider');
-
       allUsers.push({
         id: 'admin_' + index,
         name: email.split('@')[0].replace(/[._]/g, ' '),
         email: email,
         googleEmail: email,
-        role: roles[0],
-        roles: roles,
+        role: 'Admin',
         status: 'Active',
         avatar: email.charAt(0).toUpperCase(),
         lastLogin: 'Unknown',
@@ -464,18 +453,12 @@ function getUserManagementData() {
     
     // Add dispatchers
     dispatchers.forEach((email, index) => {
-      const roles = ['dispatcher'];
-      if (admins.includes(email)) roles.unshift('admin');
-      const riderMatch = riders.find(r => (r.googleEmail || r.email || '').toLowerCase() === email.toLowerCase());
-      if (riderMatch) roles.push('rider');
-
       allUsers.push({
         id: 'dispatcher_' + index,
         name: email.split('@')[0].replace(/[._]/g, ' '),
         email: email,
         googleEmail: email,
-        role: roles[0],
-        roles: roles,
+        role: 'Dispatcher',
         status: 'Active',
         avatar: email.charAt(0).toUpperCase(),
         lastLogin: 'Unknown',
@@ -556,12 +539,19 @@ function authenticateAndAuthorizeUser() {
     const adminUsers = getAdminUsersSafe();
     const dispatcherUsers = getDispatcherUsersSafe();
     
-    const roles = [];
-    if (adminUsers.includes(userSession.email)) roles.push('admin');
-    if (dispatcherUsers.includes(userSession.email)) roles.push('dispatcher');
-    if (rider && rider.status === 'Active') roles.push('rider');
-
-    if (roles.length === 0) {
+    let userRole = 'unauthorized';
+    let permissions = [];
+    
+    if (adminUsers.includes(userSession.email)) {
+      userRole = 'admin';
+      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+    } else if (dispatcherUsers.includes(userSession.email)) {
+      userRole = 'dispatcher';
+      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+    } else if (rider && rider.status === 'Active') {
+      userRole = 'rider';
+      permissions = ['view_own_assignments', 'update_own_status'];
+    } else {
       return {
         success: false,
         error: 'UNAUTHORIZED',
@@ -570,19 +560,11 @@ function authenticateAndAuthorizeUser() {
         userName: userSession.name
       };
     }
-
-    const permissions =
-      typeof calculatePermissions === 'function'
-        ? calculatePermissions(roles)
-        : [];
-
-    const userRole = roles[0];
     
     const authenticatedUser = {
       name: userSession.name || rider?.name || 'User',
       email: userSession.email,
       role: userRole,
-      roles: roles,
       permissions: permissions,
       avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
     };

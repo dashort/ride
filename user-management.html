@@ -837,17 +837,14 @@
                 return;
             }
 
-            usersGrid.innerHTML = users.map(user => {
-                const primaryRole = (user.roles && user.roles.length) ? user.roles[0] : user.role;
-                const roleLabel = (user.roles && user.roles.length) ? user.roles.join(', ') : user.role;
-                return `
-                <div class="user-card ${primaryRole.toLowerCase()}">
+            usersGrid.innerHTML = users.map(user => `
+                <div class="user-card ${user.role.toLowerCase()}">
                     <div class="user-header">
                         <div class="user-avatar-large">${user.avatar || user.name.charAt(0).toUpperCase()}</div>
                         <div class="user-details-card">
                             <div class="user-name-large">${user.name}</div>
                             <div class="user-email">${user.email}</div>
-                            <span class="user-role-badge role-${primaryRole.toLowerCase()}">${roleLabel}</span>
+                            <span class="user-role-badge role-${user.role.toLowerCase()}">${user.role}</span>
                         </div>
                     </div>
                     
@@ -868,7 +865,7 @@
                         <button class="btn btn-warning btn-small" onclick="resetUserPassword('${user.id}')">
                             🔑 Reset
                         </button>
-                        ${(user.roles || [user.role]).indexOf('admin') === -1 ? `
+                        ${user.role !== 'admin' ? `
                             <button class="btn btn-danger btn-small" onclick="deactivateUser('${user.id}')">
                                 🚫 Deactivate
                             </button>
@@ -887,10 +884,9 @@
             let filteredUsers = allUsers;
             
             if (roleFilter) {
-                filteredUsers = filteredUsers.filter(user => {
-                    const roles = user.roles || [user.role];
-                    return roles.some(r => r.toLowerCase() === roleFilter.toLowerCase());
-                });
+                filteredUsers = filteredUsers.filter(user => 
+                    user.role.toLowerCase() === roleFilter.toLowerCase()
+                );
             }
             
             if (statusFilter) {
@@ -1086,13 +1082,9 @@
         function editUser(userId) {
             const user = allUsers.find(u => u.id === userId);
             if (user) {
-                const current = (user.roles && user.roles.length) ? user.roles.join(', ') : user.role;
-                const newRoles = prompt(`Change roles for ${user.name} (comma separated):`, current);
-                if (newRoles) {
-                    const rolesArray = newRoles.split(',').map(r => r.trim().toLowerCase()).filter(r => ['admin','dispatcher','rider'].includes(r));
-                    if (rolesArray.length > 0) {
-                        updateUserRole(userId, rolesArray.join(','));
-                    }
+                const newRole = prompt(`Change role for ${user.name}:`, user.role);
+                if (newRole && ['admin', 'dispatcher', 'rider'].includes(newRole.toLowerCase())) {
+                    updateUserRole(userId, newRole.toLowerCase());
                 }
             }
         }
