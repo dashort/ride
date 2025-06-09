@@ -305,9 +305,13 @@ function getAdminDashboardData() {
     let assignments = [];
     
     try {
-      requests = getRidersDataSafe() || []; // This might be using wrong function - let's fix
       if (typeof getRequestsData === 'function') {
-        requests = getRequestsData() || [];
+        const reqData = getRequestsData();
+        if (reqData && reqData.data) {
+          requests = reqData.data.map(row => mapRowToGenericObject(row, reqData.columnMap));
+        } else if (Array.isArray(reqData)) {
+          requests = reqData;
+        }
       }
     } catch (e) {
       console.log('⚠️ Could not get requests data:', e.message);
@@ -323,7 +327,12 @@ function getAdminDashboardData() {
     
     try {
       if (typeof getAssignmentsData === 'function') {
-        assignments = getAssignmentsData() || [];
+        const assignData = getAssignmentsData();
+        if (assignData && assignData.data) {
+          assignments = assignData.data.map(row => mapRowToGenericObject(row, assignData.columnMap));
+        } else if (Array.isArray(assignData)) {
+          assignments = assignData;
+        }
       }
     } catch (e) {
       console.log('⚠️ Could not get assignments data:', e.message);
@@ -392,6 +401,21 @@ function getAdminDashboardData() {
       systemHealth: 100
     };
   }
+}
+
+/**
+ * Convert a row array into an object using the provided column map.
+ * @param {Array} row - The sheet row data.
+ * @param {Object<string,number>} columnMap - Mapping of header name to index.
+ * @return {Object} Row data as an object keyed by header.
+ */
+function mapRowToGenericObject(row, columnMap) {
+  const obj = {};
+  if (!row || !columnMap) return obj;
+  for (const [header, idx] of Object.entries(columnMap)) {
+    obj[header] = row[idx];
+  }
+  return obj;
 }
 
 /**
