@@ -571,6 +571,27 @@
                 alert('System logs feature requires Google Apps Script connection');
             }
         }
+function displaySystemLogs(logs) {
+    const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
+    const doc = win.document;
+    doc.write('<html><head><title>System Logs</title></head><body>');
+    doc.write('<h2>System Logs</h2>');
+    if (!logs || logs.length === 0) {
+        doc.write('<p>No logs available.</p>');
+    } else {
+        doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
+        doc.write('<tr><th>Timestamp</th><th>Type</th><th>Message</th><th>Details</th></tr>');
+        logs.forEach(function(log) {
+            doc.write('<tr><td>' + (log.Timestamp || log.timestamp || '') + '</td>' +
+                     '<td>' + (log.Type || log.type || '') + '</td>' +
+                     '<td>' + (log.Message || log.message || '') + '</td>' +
+                     '<td>' + (log.Details || log.details || '') + '</td></tr>');
+        });
+        doc.write('</table>');
+    }
+    doc.write('</body></html>');
+    doc.close();
+}
 
         function runDiagnostics() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
