@@ -471,6 +471,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- Recent Notifications -->
+        <div class="recent-activity">
+            <div class="activity-title">
+                🔔 Recent Notifications
+            </div>
+            <div class="activity-list" id="notificationList">
+                <div class="activity-item">
+                    <div class="activity-description">Loading notifications...</div>
+                    <div class="activity-time">--</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -478,7 +491,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadAdminDashboardData();
             loadRecentActivity();
-            
+            loadRecentNotifications();
+
             // Auto-refresh every 30 seconds
             setInterval(loadAdminDashboardData, 30000);
         });
@@ -528,6 +542,17 @@
             }
         }
 
+        function loadRecentNotifications() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(updateRecentNotifications)
+                    .withFailureHandler(handleActivityError)
+                    .getNotificationHistory();
+            } else {
+                updateRecentNotifications(getDemoNotifications());
+            }
+        }
+
         function updateRecentActivity(activities) {
             const activityList = document.getElementById('activityList');
             
@@ -542,6 +567,26 @@
                 activityList.innerHTML = `
                     <div class="activity-item">
                         <div class="activity-description">No recent activity</div>
+                        <div class="activity-time">--</div>
+                    </div>
+                `;
+            }
+        }
+
+        function updateRecentNotifications(notifications) {
+            const container = document.getElementById('notificationList');
+
+            if (notifications && notifications.length > 0) {
+                container.innerHTML = notifications.map(n => `
+                    <div class="activity-item">
+                        <div class="activity-description">${n.recipient} (${n.type})</div>
+                        <div class="activity-time">${new Date(n.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-description">No notifications</div>
                         <div class="activity-time">--</div>
                     </div>
                 `;
@@ -738,6 +783,13 @@ function displaySystemLogs(logs) {
                 { description: 'Rider John Smith completed assignment E-123-25', time: '15 min ago' },
                 { description: 'System backup completed successfully', time: '1 hour ago' },
                 { description: 'New user registration pending approval', time: '2 hours ago' }
+            ];
+        }
+
+        function getDemoNotifications() {
+            return [
+                { recipient: 'John Doe', type: 'SMS', timestamp: new Date().toISOString(), requestId: 'REQ-1' },
+                { recipient: 'Jane Smith', type: 'Email', timestamp: new Date().toISOString(), requestId: 'REQ-2' }
             ];
         }
 
