@@ -305,15 +305,9 @@ function getAdminDashboardData() {
     let assignments = [];
     
     try {
+      requests = getRidersDataSafe() || []; // This might be using wrong function - let's fix
       if (typeof getRequestsData === 'function') {
-        const reqResult = getRequestsData();
-        if (Array.isArray(reqResult)) {
-          requests = reqResult;
-        } else if (reqResult && Array.isArray(reqResult.data)) {
-          requests = reqResult.data;
-        } else {
-          requests = [];
-        }
+        requests = getRequestsData() || [];
       }
     } catch (e) {
       console.log('⚠️ Could not get requests data:', e.message);
@@ -329,14 +323,7 @@ function getAdminDashboardData() {
     
     try {
       if (typeof getAssignmentsData === 'function') {
-        const assignResult = getAssignmentsData();
-        if (Array.isArray(assignResult)) {
-          assignments = assignResult;
-        } else if (assignResult && Array.isArray(assignResult.data)) {
-          assignments = assignResult.data;
-        } else {
-          assignments = [];
-        }
+        assignments = getAssignmentsData() || [];
       }
     } catch (e) {
       console.log('⚠️ Could not get assignments data:', e.message);
