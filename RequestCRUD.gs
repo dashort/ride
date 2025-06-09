@@ -1030,6 +1030,33 @@ function testAuthentication() {
     return { error: error.message };
   }
 }
+
+/**
+ * Ensure riders sheet has required authentication columns.
+ * Runs setupGoogleAuthentication if any are missing.
+ */
+function ensureGoogleAuthSetup() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Riders');
+    if (!sheet) {
+      setupGoogleAuthentication();
+      return;
+    }
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const required = ['Google Email', 'Auth Status', 'Last Login', 'Login Count', 'Account Created'];
+    const missing = required.filter(c => headers.indexOf(c) === -1);
+
+    if (missing.length > 0) {
+      console.log('🔧 Missing auth columns detected:', missing.join(', '));
+      setupRidersSheetForAuth();
+      setupAuthLogSheet();
+    }
+  } catch (error) {
+    console.error('❌ ensureGoogleAuthSetup failed:', error);
+  }
+}
 /**
  * FIXED AUTHENTICATION MAPPING FUNCTIONS
  * Place these in your RequestCRUD.gs or create a new AuthMapping.gs file
@@ -1041,7 +1068,10 @@ function testAuthentication() {
 function createAuthMappingPage() {
   try {
     console.log('📋 Creating authentication mapping page...');
-    
+
+    // Ensure the Riders sheet has the necessary columns
+    ensureGoogleAuthSetup();
+
     // Get riders data with error handling
     let riders = [];
     try {
