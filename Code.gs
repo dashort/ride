@@ -3013,20 +3013,29 @@ function createUserManagementDashboard() {
  */
 function getSimpleNavigation(currentPage, user) {
   const baseUrl = getWebAppUrlSafe();
-  
+
+  // When running outside Apps Script, getWebAppUrlSafe returns "#". In that
+  // scenario use local HTML file links so navigation works during development.
+  const usingLocal = !baseUrl || baseUrl === '#';
+  function navUrl(page) {
+    return usingLocal
+      ? (page === 'dashboard' ? 'index.html' : page + '.html')
+      : (page === 'dashboard' ? baseUrl : `${baseUrl}?page=${page}`);
+  }
+
   const adminNav = [
-    { page: 'dashboard', label: '📊 Dashboard', url: baseUrl },
-    { page: 'requests', label: '📋 Requests', url: baseUrl + '?page=requests' },
-    { page: 'assignments', label: '🏍️ Assignments', url: baseUrl + '?page=assignments' },
-    { page: 'riders', label: '👥 Riders', url: baseUrl + '?page=riders' },
-    { page: 'user-management', label: '👥 User Management', url: baseUrl + '?page=user-management' },
-    { page: 'reports', label: '📊 Reports', url: baseUrl + '?page=reports' }
+    { page: 'dashboard', label: '📊 Dashboard', url: navUrl('dashboard') },
+    { page: 'requests', label: '📋 Requests', url: navUrl('requests') },
+    { page: 'assignments', label: '🏍️ Assignments', url: navUrl('assignments') },
+    { page: 'riders', label: '👥 Riders', url: navUrl('riders') },
+    { page: 'user-management', label: '👥 User Management', url: navUrl('user-management') },
+    { page: 'reports', label: '📊 Reports', url: navUrl('reports') }
   ];
-  
+
   const dispatcherNav = [
-    { page: 'dashboard', label: '📊 Dashboard', url: baseUrl },
-    { page: 'requests', label: '📋 Requests', url: baseUrl + '?page=requests' },
-    { page: 'assignments', label: '🏍️ Assignments', url: baseUrl + '?page=assignments' }
+    { page: 'dashboard', label: '📊 Dashboard', url: navUrl('dashboard') },
+    { page: 'requests', label: '📋 Requests', url: navUrl('requests') },
+    { page: 'assignments', label: '🏍️ Assignments', url: navUrl('assignments') }
   ];
   
   const menuItems = user.role === 'admin' ? adminNav : dispatcherNav;
