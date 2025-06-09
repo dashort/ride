@@ -544,6 +544,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
   rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
+  rider.isPartTime = getColumnValue(row, columnMap, CONFIG.columns.riders.isPartTime) || 'No'; // Changed from employmentType, default to 'No'
   rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
   rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
   

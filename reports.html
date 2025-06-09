@@ -649,73 +649,127 @@
         }
 
         function updateCharts(charts) {
-            // In a real implementation, you would use a charting library like Chart.js
-            // For now, showing placeholder text with data
-            
-            if (charts.requestVolume) {
-                document.getElementById('requestVolumeChart').innerHTML = `
+            const unavailableMsg = '<div class="chart-placeholder">Data unavailable.</div>';
+
+            // Request Volume Chart
+            const rvChartEl = document.getElementById('requestVolumeChart');
+            if (charts && charts.requestVolume) {
+                const rv = charts.requestVolume;
+                const total = (rv && typeof rv.total === 'number') ? rv.total : 'N/A';
+                const peakDay = (rv && rv.peakDay) ? String(rv.peakDay).substring(0, 100) : 'N/A';
+                const trend = (rv && rv.trend) ? String(rv.trend).substring(0, 100) : 'N/A';
+                rvChartEl.innerHTML = `
                     <div style="padding: 2rem; text-align: center;">
                         <h4>Request Volume Data</h4>
-                        <p>Total: ${charts.requestVolume.total}</p>
-                        <p>Peak Day: ${charts.requestVolume.peakDay}</p>
-                        <p>Trend: ${charts.requestVolume.trend}</p>
+                        <p>Total: ${total}</p>
+                        <p>Peak Day: ${peakDay}</p>
+                        <p>Trend: ${trend}</p>
                     </div>
                 `;
+            } else {
+                rvChartEl.innerHTML = unavailableMsg;
             }
 
-            if (charts.requestTypes) {
-                document.getElementById('requestTypesChart').innerHTML = `
+            // Request Types Chart
+            const rtChartEl = document.getElementById('requestTypesChart');
+            if (charts && charts.requestTypes && typeof charts.requestTypes === 'object' && Object.keys(charts.requestTypes).length > 0 && typeof charts.total === 'number' && charts.total > 0) {
+                rtChartEl.innerHTML = `
                     <div style="padding: 2rem;">
                         <h4>Request Types</h4>
-                        ${Object.entries(charts.requestTypes).map(([type, count]) => 
-                            `<p>${type}: ${count} (${Math.round(count/charts.total*100)}%)</p>`
-                        ).join('')}
+                        ${Object.entries(charts.requestTypes).map(([type, count]) => {
+                            const typeName = String(type).substring(0, 50);
+                            const typeCount = (typeof count === 'number') ? count : 0;
+                            const percentage = Math.round(typeCount / charts.total * 100);
+                            return `<p>${typeName}: ${typeCount} (${percentage}%)</p>`;
+                        }).join('')}
                     </div>
                 `;
+            } else if (charts && charts.requestTypes && typeof charts.requestTypes === 'object' && Object.keys(charts.requestTypes).length > 0) {
+                // Handle case where charts.total might be missing for percentages
+                rtChartEl.innerHTML = `
+                    <div style="padding: 2rem;">
+                        <h4>Request Types</h4>
+                        ${Object.entries(charts.requestTypes).map(([type, count]) => {
+                            const typeName = String(type).substring(0, 50);
+                            const typeCount = (typeof count === 'number') ? count : 0;
+                            return `<p>${typeName}: ${typeCount}</p>`;
+                        }).join('')}
+                         <p><small><i>Percentage data unavailable if total is not provided.</i></small></p>
+                    </div>
+                `;
+            } else {
+                rtChartEl.innerHTML = unavailableMsg;
             }
 
-            if (charts.monthlyTrends) {
-                document.getElementById('monthlyTrendsChart').innerHTML = `
+            // Monthly Trends Chart
+            const mtChartEl = document.getElementById('monthlyTrendsChart');
+            if (charts && charts.monthlyTrends) {
+                const mt = charts.monthlyTrends;
+                const average = (mt && typeof mt.average === 'number') ? mt.average.toFixed(1) : 'N/A';
+                const growth = (mt && typeof mt.growth === 'number') ? mt.growth.toFixed(1) : 'N/A';
+                mtChartEl.innerHTML = `
                     <div style="padding: 2rem; text-align: center;">
                         <h4>Monthly Trends</h4>
-                        <p>Average per month: ${charts.monthlyTrends.average}</p>
-                        <p>Growth rate: ${charts.monthlyTrends.growth}%</p>
+                        <p>Average per month: ${average}</p>
+                        <p>Growth rate: ${growth}%</p>
                     </div>
                 `;
+            } else {
+                mtChartEl.innerHTML = unavailableMsg;
             }
         }
 
         function updateTables(tables) {
+            const unavailableMsg = '<div class="chart-placeholder">Data unavailable.</div>'; // Re-use placeholder style for tables
+
             // Rider Performance Table
-            if (tables.riderPerformance) {
-                const riderTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr>
-                                <th>Rider</th>
-                                <th>Assignments</th>
-                                <th>Completion Rate</th>
-                                <th>Avg Rating</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${tables.riderPerformance.map(rider => `
+            const rpTableEl = document.getElementById('riderPerformanceTable');
+            if (tables && tables.riderPerformance && Array.isArray(tables.riderPerformance)) {
+                if (tables.riderPerformance.length > 0) {
+                    const riderTable = `
+                        <table class="stats-table">
+                            <thead>
                                 <tr>
-                                    <td>${rider.name}</td>
-                                    <td>${rider.assignments}</td>
-                                    <td>${rider.completionRate}%</td>
-                                    <td>${rider.rating}/5</td>
+                                    <th>Rider</th>
+                                    <th>Assignments</th>
+                                    <th>Completion Rate</th>
+                                    <th>Avg Rating</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                `;
-                document.getElementById('riderPerformanceTable').innerHTML = riderTable;
+                            </thead>
+                            <tbody>
+                                ${tables.riderPerformance.map(rider => {
+                                    const name = (rider && rider.name) ? String(rider.name).substring(0, 75) : 'N/A';
+                                    const assignments = (rider && typeof rider.assignments === 'number') ? rider.assignments : 0;
+                                    const completionRate = (rider && typeof rider.completionRate === 'number') ? rider.completionRate.toFixed(0) + '%' : 'N/A';
+                                    const rating = (rider && typeof rider.rating === 'number') ? rider.rating.toFixed(1) + '/5' : 'N/A';
+                                    return `
+                                        <tr>
+                                            <td>${name}</td>
+                                            <td>${assignments}</td>
+                                            <td>${completionRate}</td>
+                                            <td>${rating}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    rpTableEl.innerHTML = riderTable;
+                } else {
+                    rpTableEl.innerHTML = '<div class="chart-placeholder">No rider performance data for this period.</div>';
+                }
+            } else {
+                rpTableEl.innerHTML = unavailableMsg;
             }
 
             // Response Time Analysis
-            // Response Time Analysis
-            if (tables.responseTime) {
+            const rtTableEl = document.getElementById('responseTimeAnalysis');
+            if (tables && tables.responseTime) {
+                const rt = tables.responseTime;
+                const average = (rt && rt.average) ? String(rt.average).substring(0, 50) : 'N/A';
+                const fastest = (rt && rt.fastest) ? String(rt.fastest).substring(0, 50) : 'N/A';
+                const slowest = (rt && rt.slowest) ? String(rt.slowest).substring(0, 50) : 'N/A';
+                const withinSLA = (rt && rt.withinSLA) ? String(rt.withinSLA).substring(0, 50) : 'N/A';
                 const responseTable = `
                     <table class="stats-table">
                         <thead>
@@ -725,29 +779,42 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr><td>Average Response Time</td><td>${tables.responseTime.average}</td></tr>
-                            <tr><td>Fastest Response</td><td>${tables.responseTime.fastest}</td></tr>
-                            <tr><td>Slowest Response</td><td>${tables.responseTime.slowest}</td></tr>
-                            <tr><td>Within SLA</td><td>${tables.responseTime.withinSLA}</td></tr>
+                            <tr><td>Average Response Time</td><td>${average}</td></tr>
+                            <tr><td>Fastest Response</td><td>${fastest}</td></tr>
+                            <tr><td>Slowest Response</td><td>${slowest}</td></tr>
+                            <tr><td>Within SLA</td><td>${withinSLA}</td></tr>
                         </tbody>
                     </table>
                 `;
-                document.getElementById('responseTimeAnalysis').innerHTML = responseTable;
+                rtTableEl.innerHTML = responseTable;
+            } else {
+                rtTableEl.innerHTML = unavailableMsg;
             }
 
             // Popular Locations Table
-            if (tables.locations) {
-                const locationsTable = `
-                    <table class="stats-table">
-                        <thead>
-                            <tr><th>Location</th><th>Count</th></tr>
-                        </thead>
-                        <tbody>
-                            ${tables.locations.map(loc => `<tr><td>${loc.name}</td><td>${loc.count}</td></tr>`).join('')}
-                        </tbody>
-                    </table>
-                `;
-                document.getElementById('locationHotspots').innerHTML = locationsTable;
+            const locTableEl = document.getElementById('locationHotspots');
+            if (tables && tables.locations && Array.isArray(tables.locations)) {
+                if (tables.locations.length > 0) {
+                    const locationsTable = `
+                        <table class="stats-table">
+                            <thead>
+                                <tr><th>Location</th><th>Count</th></tr>
+                            </thead>
+                            <tbody>
+                                ${tables.locations.map(loc => {
+                                    const name = (loc && loc.name) ? String(loc.name).substring(0, 100) : 'N/A';
+                                    const count = (loc && typeof loc.count === 'number') ? loc.count : 0;
+                                    return `<tr><td>${name}</td><td>${count}</td></tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    locTableEl.innerHTML = locationsTable;
+                } else {
+                     locTableEl.innerHTML = '<div class="chart-placeholder">No location data for this period.</div>';
+                }
+            } else {
+                locTableEl.innerHTML = unavailableMsg;
             }
         }
 
