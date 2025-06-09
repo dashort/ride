@@ -3002,6 +3002,13 @@ function createSimpleUserManagementPage() {
 }
 
 /**
+ * Fallback dashboard if user-management.html is missing
+ */
+function createUserManagementDashboard() {
+  return createSimpleUserManagementPage();
+}
+
+/**
  * Simple navigation for testing
  */
 function getSimpleNavigation(currentPage, user) {
