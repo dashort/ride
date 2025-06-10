@@ -1440,6 +1440,9 @@ function selectRequestById(requestId) {
     function toggleRider(riderName) {
         if (selectedRiders.has(riderName)) {
             selectedRiders.delete(riderName);
+            // Immediately mark the rider as available again
+            riderAvailability[riderName] = 'Available';
+            updateSingleRiderAvailability(riderName);
         } else {
             selectedRiders.add(riderName);
         }
