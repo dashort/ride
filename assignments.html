@@ -399,6 +399,12 @@
 
         .current-assigned li {
             margin-bottom: 0.25rem;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .current-assigned li:hover {
+            color: #e74c3c;
         }
 
         .selected-count {
@@ -1482,10 +1488,25 @@ function updateSelectedCount() {
 function updateAssignedRidersList() {
     var listContainer = document.getElementById('assignedRidersList');
     if (!listContainer) return;
-    var html = selectedRiders.size > 0 ?
-        '<ul>' + Array.from(selectedRiders).map(function(name){ return '<li>' + name + '</li>'; }).join('') + '</ul>' :
-        '<ul><li>None</li></ul>';
+
+    if (selectedRiders.size === 0) {
+        listContainer.innerHTML = '<ul><li>None</li></ul>';
+        return;
+    }
+
+    var html = '<ul>' + Array.from(selectedRiders).map(function(name){
+        return '<li class="assigned-rider" data-rider-name="' + name.replace(/"/g,'&quot;') + '">' + name + '</li>';
+    }).join('') + '</ul>';
     listContainer.innerHTML = html;
+
+    var items = listContainer.querySelectorAll('.assigned-rider');
+    for (var i = 0; i < items.length; i++) {
+        items[i].style.cursor = 'pointer';
+        items[i].addEventListener('click', function() {
+            var riderName = this.dataset.riderName;
+            toggleRider(riderName);
+        });
+    }
 }
 
 
