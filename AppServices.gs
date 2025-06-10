@@ -2218,16 +2218,17 @@ function getPageDataForAssignments(requestIdToLoad) {
     
     // If a specific request ID was requested, try to get its details
     if (requestIdToLoad) {
+      const cleanedRequestIdToLoad = String(requestIdToLoad).trim();
       try {
-        const specificRequest = result.requests.find(r => r.id === requestIdToLoad);
+        const specificRequest = result.requests.find(r => String(r.id).trim() === cleanedRequestIdToLoad);
         if (specificRequest) {
           result.initialRequestDetails = specificRequest;
-          console.log(`✅ Found initial request details for: ${requestIdToLoad}`);
+          console.log(`✅ Found initial request details for ID: "${cleanedRequestIdToLoad}"`);
         } else {
-          console.log(`⚠️ Request ID ${requestIdToLoad} not found in assignable requests`);
+          console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection not found among ${result.requests.length} assignable requests. This is not an error if the ID is invalid or not currently assignable.`);
         }
       } catch (detailsError) {
-        console.log('⚠️ Could not load initial request details:', detailsError);
+        console.error(`⚠️ Error while trying to find initial request details for ID "${cleanedRequestIdToLoad}":`, detailsError);
       }
     }
     
