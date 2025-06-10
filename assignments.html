@@ -1476,6 +1476,7 @@ function updateSelectedCount() {
     }
 
     updateAssignedRidersList();
+    updateAssignmentOrder();
 }
 
 function updateAssignedRidersList() {
@@ -1489,14 +1490,16 @@ function updateAssignedRidersList() {
 
 
 function updateAssignmentOrder() {
-    var orderContainer = document.getElementById("assignmentOrderList");
+    var orderContainer = document.getElementById('assignmentOrderList');
     if (!orderContainer) return;
 
-
+    // Filter out part-time riders and those already selected
     var list = activeRiders.filter(function(r) {
-        return String(r.partTime || 'No').toLowerCase() !== 'yes';
+        var isPartTime = String(r.partTime || 'No').toLowerCase() === 'yes';
+        return !isPartTime && !selectedRiders.has(r.name);
     });
 
+    // Sort by last name then full name
     list.sort(function(a, b) {
         function getLastName(fullName) {
             if (!fullName) return '';
@@ -1509,6 +1512,7 @@ function updateAssignmentOrder() {
         return cmp !== 0 ? cmp : a.name.localeCompare(b.name);
     });
 
+    // Only show riders that are currently available
     list = list.filter(function(r) {
         var avail = riderAvailability[r.name];
         return !avail || avail === 'Available';
@@ -1517,24 +1521,10 @@ function updateAssignmentOrder() {
     var nextFive = list.slice(0, 5);
     if (nextFive.length === 0) {
         orderContainer.innerHTML = '<li>No available riders</li>';
-
     } else {
-        var list = activeRiders.filter(function(r) {
-            return String(r.partTime || "No").toLowerCase() !== "yes";
-        });
-        list.sort(function(a, b) { return a.name.localeCompare(b.name); });
-        list = list.filter(function(r) {
-            var avail = riderAvailability[r.name];
-            return !avail || avail === "Available";
-        });
-        var nextFive = list.slice(0, 5);
-        if (nextFive.length === 0) {
-            orderContainer.innerHTML = "<li>No available riders</li>";
-        } else {
-            orderContainer.innerHTML = nextFive.map(function(r) {
-                return "<li>" + r.name + "</li>";
-            }).join("");
-        }
+        orderContainer.innerHTML = nextFive.map(function(r) {
+            return '<li>' + r.name + '</li>';
+        }).join('');
     }
 }
     /**
@@ -1683,6 +1673,7 @@ function updateAssignmentOrder() {
             selectedRiders.clear();
             updateRiderSelection();
             updateSelectedCount();
+            updateAssignmentOrder();
         }
     }
 
