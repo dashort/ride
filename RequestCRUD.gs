@@ -1075,13 +1075,24 @@ function createAuthMappingPage() {
     // Get riders data with error handling
     let riders = [];
     try {
-      riders = getRidersData();
+      const ridersDataObj = getRidersData();
+      riders = (ridersDataObj && Array.isArray(ridersDataObj.data)) ? ridersDataObj.data.map(row => {
+        const colMap = ridersDataObj.columnMap;
+        return {
+          id: getColumnValue(row, colMap, CONFIG.columns.riders.jpNumber) || row.id || row['Rider ID'] || '',
+          name: getColumnValue(row, colMap, CONFIG.columns.riders.name) || row.name || row['Full Name'] || '',
+          email: getColumnValue(row, colMap, CONFIG.columns.riders.email) || row.email || row['Email'] || '',
+          status: getColumnValue(row, colMap, CONFIG.columns.riders.status) || row.status || row['Status'] || '',
+          googleEmail: getColumnValue(row, colMap, 'Google Email') || row.googleEmail || row['Google Email'] || '',
+          authStatus: getColumnValue(row, colMap, 'Auth Status') || row.authStatus || row['Auth Status'] || 'Not Set'
+        };
+      }) : ridersDataObj;
       console.log(`Found ${riders ? riders.length : 0} riders`);
     } catch (error) {
       console.error('❌ Error getting riders data:', error);
       return createErrorMappingPage('Error loading riders data: ' + error.message);
     }
-    
+
     // Ensure riders is an array
     if (!Array.isArray(riders)) {
       console.error('❌ Riders data is not an array:', typeof riders);
@@ -1815,7 +1826,22 @@ function exportRiderMappings() {
   try {
     console.log('📥 Exporting rider mappings...');
     
-    const riders = getRidersData();
+    const ridersDataObj = getRidersData();
+    let riders = [];
+    if (ridersDataObj && Array.isArray(ridersDataObj.data)) {
+      const colMap = ridersDataObj.columnMap;
+      riders = ridersDataObj.data.map(row => ({
+        id: getColumnValue(row, colMap, CONFIG.columns.riders.jpNumber) || row.id || row['Rider ID'] || '',
+        name: getColumnValue(row, colMap, CONFIG.columns.riders.name) || row.name || row['Full Name'] || '',
+        email: getColumnValue(row, colMap, CONFIG.columns.riders.email) || row.email || row['Email'] || '',
+        googleEmail: getColumnValue(row, colMap, 'Google Email') || row.googleEmail || row['Google Email'] || '',
+        authStatus: getColumnValue(row, colMap, 'Auth Status') || row.authStatus || row['Auth Status'] || '' ,
+        status: getColumnValue(row, colMap, CONFIG.columns.riders.status) || row.status || row['Status'] || ''
+      }));
+    } else {
+      riders = Array.isArray(ridersDataObj) ? ridersDataObj : [];
+    }
+
     if (!Array.isArray(riders)) {
       return { success: false, error: 'Invalid riders data' };
     }
