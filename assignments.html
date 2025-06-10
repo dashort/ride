@@ -1487,31 +1487,52 @@ function updateAssignedRidersList() {
     listContainer.innerHTML = html;
 }
 
+
 function updateAssignmentOrder() {
-    var orderContainer = document.getElementById('assignmentOrderList');
+    var orderContainer = document.getElementById("assignmentOrderList");
     if (!orderContainer) return;
-
-    var list = activeRiders.filter(function(r) {
-        return String(r.partTime || 'No').toLowerCase() !== 'yes';
-    });
-
-    list.sort(function(a, b) { return a.name.localeCompare(b.name); });
-
-    list = list.filter(function(r) {
-        var avail = riderAvailability[r.name];
-        return !avail || avail === 'Available';
-    });
-
-    var nextFive = list.slice(0, 5);
-    if (nextFive.length === 0) {
-        orderContainer.innerHTML = '<li>No available riders</li>';
+    if (typeof google !== "undefined" && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(function(order) {
+                if (!Array.isArray(order)) {
+                    orderContainer.innerHTML = "<li>No data</li>";
+                    return;
+                }
+                var filtered = order.filter(function(name) {
+                    var avail = riderAvailability[name];
+                    return !avail || avail === "Available";
+                });
+                var nextFive = filtered.slice(0, 5);
+                if (nextFive.length === 0) {
+                    orderContainer.innerHTML = "<li>No available riders</li>";
+                } else {
+                    orderContainer.innerHTML = nextFive.map(function(n) { return "<li>" + n + "</li>"; }).join("");
+                }
+            })
+            .withFailureHandler(function(err) {
+                console.error("Failed to load assignment order:", err);
+                orderContainer.innerHTML = "<li>Error loading order</li>";
+            })
+            .getAssignmentOrderForWeb();
     } else {
-        orderContainer.innerHTML = nextFive.map(function(r) {
-            return '<li>' + r.name + '</li>';
-        }).join('');
+        var list = activeRiders.filter(function(r) {
+            return String(r.partTime || "No").toLowerCase() !== "yes";
+        });
+        list.sort(function(a, b) { return a.name.localeCompare(b.name); });
+        list = list.filter(function(r) {
+            var avail = riderAvailability[r.name];
+            return !avail || avail === "Available";
+        });
+        var nextFive = list.slice(0, 5);
+        if (nextFive.length === 0) {
+            orderContainer.innerHTML = "<li>No available riders</li>";
+        } else {
+            orderContainer.innerHTML = nextFive.map(function(r) {
+                return "<li>" + r.name + "</li>";
+            }).join("");
+        }
     }
 }
-
     /**
      * Fetch availability/conflict status for each rider for the selected request.
      * Updates riderAvailability map and the UI accordingly.
