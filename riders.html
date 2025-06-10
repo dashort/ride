@@ -1679,8 +1679,14 @@ function viewRiderAssignments(riderId, riderName) {
   } else {
     hideLoading();
     // Fallback: Navigate to assignments page with rider filter
-    const baseUrl = 'https://script.google.com/macros/s/AKfycbyGPHwTNYnqK59cdsI6NVv5O5aBlrzSnulpVu-WJ86-1rlkT3PqIf_FAWgrFpcNbMVU/exec';
-    window.open(`${baseUrl}?page=assignments&rider=${encodeURIComponent(riderName)}`, '_blank');
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run.withSuccessHandler(function(url) {
+        window.open(`${url}?page=assignments&rider=${encodeURIComponent(riderName)}`, '_blank');
+      }).getWebAppUrl();
+    } else {
+      const baseUrl = 'assignments.html';
+      window.open(`${baseUrl}?rider=${encodeURIComponent(riderName)}`, '_blank');
+    }
   }
 }
 
@@ -1894,28 +1900,24 @@ function navigateTo(page, params = {}) {
   search.set('page', page);
   Object.keys(params).forEach(key => search.set(key, params[key]));
 
-  let base;
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    base = window.location.origin + window.location.pathname;
-  } else {
-    base = page === 'dashboard' ? 'index.html' : page + '.html';
-  }
-  let url;
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    // Apps Script deployments use the current URL as the base
-    url = base + '?' + search.toString();
-  } else {
-    url = base + (search.toString() ? '?' + search.toString() : '');
+  function openUrl(base) {
+    const url = base + '?' + search.toString();
+    try {
+      window.location.href = url;
+    } catch (error) {
+      try {
+        window.top.location.href = url;
+      } catch (topError) {
+        window.open(url, '_blank');
+      }
+    }
   }
 
-  try {
-    window.location.href = url;
-  } catch (error) {
-    try {
-      window.top.location.href = url;
-    } catch (topError) {
-      window.open(url, '_blank');
-    }
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(openUrl).getWebAppUrl();
+  } else {
+    const base = page === 'dashboard' ? 'index.html' : page + '.html';
+    openUrl(base);
   }
 }
 

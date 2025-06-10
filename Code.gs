@@ -3025,9 +3025,19 @@ function createSimpleUserManagementPage() {
             usersDiv.innerHTML = html;
         }
         
+        function getDeployedUrl(callback) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(callback).getWebAppUrl();
+            } else {
+                const local = window.location.origin + window.location.pathname;
+                callback(local);
+            }
+        }
+
         function openAuthSetup() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=auth-setup', '_blank');
+            getDeployedUrl(function(baseUrl) {
+                window.open(baseUrl + '?page=auth-setup', '_blank');
+            });
         }
         
         function testSystem() {
