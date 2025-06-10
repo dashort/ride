@@ -1362,18 +1362,24 @@ function navigateTo(page, params = {}) {
     search.set('page', page);
     Object.keys(params).forEach(key => search.set(key, params[key]));
 
-    let base;
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        base = window.location.origin + window.location.pathname;
-    } else {
-        base = page === 'dashboard' ? 'index.html' : page + '.html';
+    function openUrl(base) {
+        const url = base + '?' + search.toString();
+        try {
+            window.location.href = url;
+        } catch (error) {
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
+            }
+        }
     }
-    let url;
+
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        // When running in Apps Script use the current deployment URL
-        url = base + '?' + search.toString();
+        google.script.run.withSuccessHandler(openUrl).getWebAppUrl();
     } else {
-        url = base + (search.toString() ? '?' + search.toString() : '');
+        const base = page === 'dashboard' ? 'index.html' : page + '.html';
+        openUrl(base);
     }
 
     try {

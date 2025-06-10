@@ -594,14 +594,25 @@
         }
 
         // Admin Action Functions
+        function getDeployedUrl(callback) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(callback).getWebAppUrl();
+            } else {
+                const local = window.location.origin + window.location.pathname;
+                callback(local);
+            }
+        }
+
         function openUserManagement() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=user-management', '_blank');
+            getDeployedUrl(function(baseUrl) {
+                window.open(baseUrl + '?page=user-management', '_blank');
+            });
         }
 
         function openAuthSetup() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=auth-setup', '_blank');
+            getDeployedUrl(function(baseUrl) {
+                window.open(baseUrl + '?page=auth-setup', '_blank');
+            });
         }
 
         function viewSystemLogs() {
@@ -680,8 +691,9 @@ function displaySystemLogs(logs) {
         }
 
         function generateReports() {
-            const baseUrl = window.location.origin + window.location.pathname;
-            window.open(baseUrl + '?page=reports', '_blank');
+            getDeployedUrl(function(baseUrl) {
+                window.open(baseUrl + '?page=reports', '_blank');
+            });
         }
 
         function emergencyLockdown() {

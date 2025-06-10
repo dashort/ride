@@ -738,7 +738,7 @@
 
         let base;
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            base = window.location.origin + window.location.pathname;
+            base = app.baseUrl || (window.location.origin + window.location.pathname);
         } else {
             base = page === 'dashboard' ? 'index.html' : page + '.html';
         }
