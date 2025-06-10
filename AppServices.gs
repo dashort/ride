@@ -3413,6 +3413,7 @@ function removeExistingAssignments(requestId) {
     const data = assignmentsSheet.getDataRange().getValues();
     const headers = data[0];
     const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
+    const riderNameCol = headers.indexOf(CONFIG.columns.assignments.riderName);
 
     if (requestIdCol === -1) {
       throw new Error('Request ID column not found in assignments sheet');
@@ -3420,9 +3421,14 @@ function removeExistingAssignments(requestId) {
 
     // Find rows to delete (in reverse order to avoid index shifting)
     const rowsToDelete = [];
+    const removedNames = [];
     for (let i = data.length - 1; i >= 1; i--) { // Start from bottom, skip header
       if (String(data[i][requestIdCol]).trim() === String(requestId).trim()) {
         rowsToDelete.push(i + 1); // Convert to 1-based row number
+        if (riderNameCol !== -1) {
+          const name = String(data[i][riderNameCol]).trim();
+          if (name) removedNames.push(name);
+        }
       }
     }
 
@@ -3432,6 +3438,12 @@ function removeExistingAssignments(requestId) {
     }
 
     console.log(`🗑️ Removed ${rowsToDelete.length} existing assignments for request ${requestId}`);
+
+    if (removedNames.length > 0) {
+      updateRotationOnUnassign(removedNames);
+    }
+
+    return removedNames;
 
   } catch (error) {
     logError('Error removing existing assignments', error);
@@ -4152,6 +4164,37 @@ function updateAssignmentRotation(assignedNames) {
     return order;
   } catch (error) {
     logError('Error in updateAssignmentRotation', error);
+    return getAssignmentRotation();
+  }
+}
+
+/**
+ * Updates the assignment rotation when riders are unassigned by moving them to the
+ * front of the order. Riders not currently in the rotation are ignored.
+ * @param {string[]} unassignedNames Array of rider names that were unassigned.
+ * @return {string[]} Updated order array.
+ */
+function updateRotationOnUnassign(unassignedNames) {
+  try {
+    if (!unassignedNames || unassignedNames.length === 0) {
+      return getAssignmentRotation();
+    }
+    let order = getAssignmentRotation();
+    // Remove unassigned names from current order
+    unassignedNames.forEach(function(name) {
+      const idx = order.indexOf(name);
+      if (idx !== -1) {
+        order.splice(idx, 1);
+      }
+    });
+    // Add them back to the front in the same order provided
+    for (let i = unassignedNames.length - 1; i >= 0; i--) {
+      order.unshift(unassignedNames[i]);
+    }
+    PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', order.join('\n'));
+    return order;
+  } catch (error) {
+    logError('Error in updateRotationOnUnassign', error);
     return getAssignmentRotation();
   }
 }
