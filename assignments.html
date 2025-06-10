@@ -1369,7 +1369,7 @@ function selectRequestById(requestId) {
             '</div>' +
             '</div>' +
             '<div class="assignment-actions">' +
-            '<button class="btn btn-success" onclick="saveAssignment()" ' + (selectedRiders.size === 0 ? 'disabled' : '') + '>' +
+            '<button class="btn btn-success" onclick="saveAssignment()">' +
             '💾 Save Assignment' +
             '</button>' +
             '<button class="btn btn-warning" onclick="clearAssignment()">' +
@@ -1480,8 +1480,8 @@ function updateSelectedCount() {
 
     var saveBtn = document.querySelector('.btn-success');
     if (saveBtn) {
-        saveBtn.disabled = selectedRiders.size === 0;
-        saveBtn.style.opacity = selectedRiders.size === 0 ? '0.5' : '1';
+        saveBtn.disabled = !selectedRequest;
+        saveBtn.style.opacity = !selectedRequest ? '0.5' : '1';
     }
 
     updateAssignedRidersList();
@@ -1626,8 +1626,8 @@ function updateAssignmentOrder() {
      * @return {void}
      */
     function saveAssignment() {
-        if (!selectedRequest || selectedRiders.size === 0) {
-            showError('Please select at least one rider');
+        if (!selectedRequest) {
+            showError('No request selected');
             return;
         }
 
