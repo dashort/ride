@@ -379,6 +379,19 @@
             border-left: 4px solid #f39c12;
         }
 
+        .assignment-order {
+            background: #f0f8ff;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .assignment-order ul {
+            padding-left: 1.25rem;
+            list-style: disc;
+        }
+
         .current-assigned ul {
             margin: 0;
             padding-left: 1.2rem;
@@ -580,6 +593,7 @@
     var preselectAttempted = false;
     /** Map of rider name to availability status */
     var riderAvailability = {}; // e.g., {"John Doe": "Unavailable"}
+    var remainingAvailabilityCallbacks = 0;
     /** @type {AppStateAssignments} */
     var app = {
         user: null,
@@ -1029,6 +1043,7 @@ if (!document.getElementById('debug-styles')) {
 
         activeRiders = Array.isArray(data) ? data : [];
         console.log('📊 Stored riders count:', activeRiders.length);
+        updateAssignmentOrder();
     }
 
     /**
@@ -1332,6 +1347,10 @@ function selectRequestById(requestId) {
             '<div id="assignedRidersList">' + assignedListHtml + '</div>' +
 
             '</div>' +
+            '<div class="assignment-order">' +
+            '<h4>Assignment Order</h4>' +
+            '<ul id="assignmentOrderList"><li>Loading...</li></ul>' +
+            '</div>' +
             '<div class="assignment-summary">' +
             '<div>Selected Riders: <span class="selected-count" id="selectedCount">' + selectedRiders.size + '</span> / ' + selectedRequest.ridersNeeded + '</div>' +
             '</div>' +
@@ -1356,6 +1375,7 @@ function selectRequestById(requestId) {
             '</div>';
 
         updateSelectedCount();
+        updateAssignmentOrder();
         fetchRiderAvailabilityForRequest();
     }
 
@@ -1467,6 +1487,31 @@ function updateAssignedRidersList() {
     listContainer.innerHTML = html;
 }
 
+function updateAssignmentOrder() {
+    var orderContainer = document.getElementById('assignmentOrderList');
+    if (!orderContainer) return;
+
+    var list = activeRiders.filter(function(r) {
+        return String(r.partTime || 'No').toLowerCase() !== 'yes';
+    });
+
+    list.sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+    list = list.filter(function(r) {
+        var avail = riderAvailability[r.name];
+        return !avail || avail === 'Available';
+    });
+
+    var nextFive = list.slice(0, 5);
+    if (nextFive.length === 0) {
+        orderContainer.innerHTML = '<li>No available riders</li>';
+    } else {
+        orderContainer.innerHTML = nextFive.map(function(r) {
+            return '<li>' + r.name + '</li>';
+        }).join('');
+    }
+}
+
     /**
      * Fetch availability/conflict status for each rider for the selected request.
      * Updates riderAvailability map and the UI accordingly.
@@ -1476,6 +1521,11 @@ function updateAssignedRidersList() {
         if (!selectedRequest) return;
 
         riderAvailability = {};
+        remainingAvailabilityCallbacks = activeRiders.length;
+        if (remainingAvailabilityCallbacks === 0) {
+            updateAssignmentOrder();
+            return;
+        }
 
         activeRiders.forEach(function(rider) {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -1483,11 +1533,18 @@ function updateAssignedRidersList() {
                     .withSuccessHandler(function(available) {
                         riderAvailability[rider.name] = available ? 'Available' : 'Unavailable';
                         updateSingleRiderAvailability(rider.name);
+                        remainingAvailabilityCallbacks--;
+                        if (remainingAvailabilityCallbacks === 0) updateAssignmentOrder();
                     })
                     .withFailureHandler(function(err) {
                         console.error('Availability check failed for', rider.name, err);
+                        remainingAvailabilityCallbacks--;
+                        if (remainingAvailabilityCallbacks === 0) updateAssignmentOrder();
                     })
                     .isRiderAvailable(rider.name, selectedRequest.eventDate, selectedRequest.startTime);
+            } else {
+                remainingAvailabilityCallbacks--;
+                if (remainingAvailabilityCallbacks === 0) updateAssignmentOrder();
             }
         });
     }

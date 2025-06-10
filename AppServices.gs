@@ -1694,6 +1694,14 @@ function getActiveRidersForAssignments() {
       'Email',
       'Email Address'
     ];
+
+    const partTimeColumns = [
+      CONFIG.columns.riders.partTime,
+      'Part Time',
+      'Part-Time',
+      'Part Time Rider',
+      'PartTime'
+    ];
     
     // Find the best column matches
     const getColumnIndex = (possibleNames) => {
@@ -1710,6 +1718,7 @@ function getActiveRidersForAssignments() {
     const jpNumberColIndex = getColumnIndex(jpNumberColumns);
     const phoneColIndex = getColumnIndex(phoneColumns);
     const emailColIndex = getColumnIndex(emailColumns);
+    const partTimeColIndex = getColumnIndex(partTimeColumns);
     
     console.log('🔍 Column detection results:');
     console.log(`  Name column: index ${nameColIndex} (${nameColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
@@ -1728,7 +1737,7 @@ function getActiveRidersForAssignments() {
         const row = ridersData.data[i];
         
         // Get rider data with enhanced fallback logic
-        let riderName, status, jpNumber, phone, email;
+        let riderName, status, jpNumber, phone, email, partTime;
         
         if (usePositionalFallback) {
           // Assume standard order: ID, Name, Phone, Email, Status, ...
@@ -1737,12 +1746,14 @@ function getActiveRidersForAssignments() {
           phone = row[2] || '';
           email = row[3] || '';
           status = row[4] || 'Active'; // Default to Active
+          partTime = row[5] || 'No';
         } else {
           riderName = nameColIndex >= 0 ? row[nameColIndex] : (row[1] || '');
           status = statusColIndex >= 0 ? row[statusColIndex] : 'Active';
           jpNumber = jpNumberColIndex >= 0 ? row[jpNumberColIndex] : (row[0] || '');
           phone = phoneColIndex >= 0 ? row[phoneColIndex] : (row[2] || '');
           email = emailColIndex >= 0 ? row[emailColIndex] : (row[3] || '');
+          partTime = partTimeColIndex >= 0 ? row[partTimeColIndex] : (row[5] || 'No');
         }
         
         // Debug first few riders
@@ -1751,6 +1762,7 @@ function getActiveRidersForAssignments() {
             name: riderName,
             jpNumber: jpNumber,
             status: status,
+            partTime: partTime,
             phone: phone,
             hasValidName: !!(riderName && String(riderName).trim().length > 0)
           });
@@ -1792,7 +1804,8 @@ function getActiveRidersForAssignments() {
           phone: phone ? String(phone).trim() : '555-0000',
           email: email ? String(email).trim() : '',
           carrier: 'Unknown',
-          status: 'Available'
+          status: 'Available',
+          partTime: partTime ? String(partTime).trim() : 'No'
         });
         
         if (i < 3) {
