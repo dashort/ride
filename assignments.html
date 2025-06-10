@@ -1495,7 +1495,17 @@ function updateAssignmentOrder() {
         return String(r.partTime || 'No').toLowerCase() !== 'yes';
     });
 
-    list.sort(function(a, b) { return a.name.localeCompare(b.name); });
+    list.sort(function(a, b) {
+        function getLastName(fullName) {
+            if (!fullName) return '';
+            var parts = String(fullName).trim().split(/\s+/);
+            return parts.length > 0 ? parts[parts.length - 1].toLowerCase() : '';
+        }
+        var lastA = getLastName(a.name);
+        var lastB = getLastName(b.name);
+        var cmp = lastA.localeCompare(lastB);
+        return cmp !== 0 ? cmp : a.name.localeCompare(b.name);
+    });
 
     list = list.filter(function(r) {
         var avail = riderAvailability[r.name];
