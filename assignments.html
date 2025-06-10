@@ -596,7 +596,7 @@
     /** @type {Set<string>} */
     var selectedRiders = new Set(); // Stores names of selected riders
     var preselectedRequestId = null;
-    var preselectAttempted = false;
+    var preselectAttempted = false; // Ensured this is the single global declaration
     /** Map of rider name to availability status */
     var riderAvailability = {}; // e.g., {"John Doe": "Unavailable"}
     var remainingAvailabilityCallbacks = 0;
@@ -607,6 +607,9 @@
         loadingTimeout: 15000,
         dateFilter: 'all'
     };
+
+    // The duplicate declarations of preselectedRequestId and preselectAttempted that were here previously should be removed by this change.
+    // var currentRequests = []; ... etc. will remain as is.
 
     /**
      * Initializes the assignments page when the DOM content is fully loaded.
@@ -937,24 +940,24 @@ if (!document.getElementById('debug-styles')) {
         if (data && data.success) {
             console.log('✅ Assignments page data loaded successfully:', data);
             handleUserData(data.user);
-            handleRequestsLoaded(data.requests);
+            handleRequestsLoaded(data.requests); // This calls filterRequests internally
             handleRidersLoaded(data.riders);
 
-            if (data.initialRequestDetails) {
+            // filterRequests(); // filterRequests is called within handleRequestsLoaded now.
+
+            var requestIdToSelect = null;
+            if (data.initialRequestDetails && data.initialRequestDetails.id) {
+                requestIdToSelect = data.initialRequestDetails.id;
+            } else if (preselectedRequestId) { // preselectedRequestId is from URL params, set in DOMContentLoaded
+                requestIdToSelect = preselectedRequestId;
+            }
+
+            if (requestIdToSelect && !preselectAttempted) {
                 setTimeout(function() {
-                     const preloadedRequestId = data.initialRequestDetails.id || data.initialRequestDetails.requestId;
-                     if (preloadedRequestId) {
-                        console.log('Attempting to pre-select request:', preloadedRequestId);
-                        selectRequest(preloadedRequestId, true);
-                     }
-                }, 500);
-            } else {
-                 var urlParams = new URLSearchParams(window.location.search);
-                 var requestIdFromUrl = urlParams.get('requestId');
-                 if (requestIdFromUrl) {
-                     console.log('Attempting to select request from URL param (fallback):', requestIdFromUrl);
-                     setTimeout(function() { selectRequest(requestIdFromUrl, true); }, 500);
-                 }
+                    if (selectRequest(requestIdToSelect)) {
+                        preselectAttempted = true;
+                    }
+                }, 100); // 100ms delay
             }
         } else {
             console.error('❌ Failed to load assignments page data:', data ? data.error : 'No data returned');
@@ -1207,50 +1210,55 @@ if (!document.getElementById('debug-styles')) {
         }).join('');
 
         container.innerHTML = html;
-        attemptPreselectRequest();
+        // attemptPreselectRequest(); // Removed as per instructions
     }
 
     /**
      * Handles the selection of a request from the list.
      * Updates the UI to show details for the selected request and renders the rider assignment panel.
      * @param {string} requestId - The ID of the request to select.
-     * @param {boolean} [isPreselection=false] - Flag indicating if this is a pre-selection (e.g., from URL).
-     * @return {void}
+     * @return {boolean} True if the request was found and selected, false otherwise.
      */
     function selectRequest(requestId) {
         console.log('🎯 Selecting request:', requestId);
-
+        var requestElement = null;
         var requestItems = document.querySelectorAll('.request-item');
-        for (var i = 0; i < requestItems.length; i++) {
-            requestItems[i].classList.remove('selected');
-        }
 
-        var requestElement = document.querySelector('[data-request-id="' + requestId + '"]');
-        if (requestElement) {
-            requestElement.classList.add('selected');
-            // Ensure the selected request is visible when navigated via URL
-            requestElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
-        selectedRequest = null;
-        for (var j = 0; j < currentRequests.length; j++) {
-            if (currentRequests[j].id === requestId) {
-                selectedRequest = currentRequests[j];
-                break;
+        requestItems.forEach(function(item) {
+            if (item.dataset.requestId === requestId) {
+                item.classList.add('selected');
+                requestElement = item;
+            } else {
+                item.classList.remove('selected');
             }
-        }
+        });
 
-        selectedRiders.clear();
+        // Find the request object from currentRequests
+        selectedRequest = currentRequests.find(function(r) { return r.id === requestId; });
+
+        selectedRiders.clear(); // Clear riders from any previously selected request
 
         if (selectedRequest) {
-            console.log('✅ Selected request:', selectedRequest);
+            console.log('✅ Selected request object:', selectedRequest);
+            if (requestElement) {
+                requestElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                console.warn('⚠️ Request element with ID [' + requestId + '] not found in DOM. Might not be in current view/filter.');
+            }
             renderAssignmentPanel();
+            return true;
         } else {
-            console.error('❌ Request not found:', requestId);
-            // If it was a pre-selection that failed, show a message.
-            // if (isPreselection) {
-            //     showError(`Could not automatically select request ID: ${requestId}. It might not be in the current list of assignable requests.`);
-            // }
+            console.error('❌ Request object with ID [' + requestId + '] not found in currentRequests array.');
+            var assignmentContent = document.getElementById('assignmentContent');
+            if (assignmentContent) {
+                assignmentContent.innerHTML =
+                    '<div class="empty-state">' +
+                    '<h3>Request Not Found</h3>' +
+                    '<p>The request with ID <strong>' + requestId + '</strong> could not be found. ' +
+                    'It might have been removed or is not currently available in the list.</p>' +
+                    '</div>';
+            }
+            return false;
         }
     }
 
@@ -1280,14 +1288,7 @@ function selectRequestById(requestId) {
      * Attempts to auto-select the request provided via query parameter.
      * This runs only once after the requests list is rendered.
      */
-    function attemptPreselectRequest() {
-        if (preselectAttempted || !preselectedRequestId) return;
-        var elem = document.querySelector('[data-request-id="' + preselectedRequestId + '"]');
-        if (elem) {
-            selectRequest(preselectedRequestId, true);
-            preselectAttempted = true;
-        }
-    }
+    /* Entire attemptPreselectRequest function is deleted */
 
     /**
      * Renders the main assignment panel for the currently `selectedRequest`.
