@@ -3206,6 +3206,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders) {
 
     // Update the request with assigned rider names
     updateRequestWithAssignedRiders(requestId, assignedRiderNames);
+    updateAssignmentRotation(assignedRiderNames);
 
     // Clear caches to ensure fresh data
     clearRequestsCache();
@@ -4107,3 +4108,59 @@ function getSystemLogs(limit) {
     return [];
   }
 }
+
+/**
+ * Retrieves the current assignment rotation order from script properties.
+ * Generates a default order from active riders if none exists.
+ * @return {string[]} Ordered list of rider names.
+ */
+function getAssignmentRotation() {
+  try {
+    const prop = PropertiesService.getScriptProperties().getProperty('ASSIGNMENT_ORDER');
+    if (prop) {
+      return prop.split('\n').map(n => n.trim()).filter(n => n);
+    }
+    const riders = getActiveRidersForAssignments().filter(r => String(r.partTime || 'No').toLowerCase() !== 'yes');
+    const order = riders.sort((a, b) => a.name.localeCompare(b.name)).map(r => r.name);
+    PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', order.join('\n'));
+    return order;
+  } catch (error) {
+    logError('Error in getAssignmentRotation', error);
+    return [];
+  }
+}
+
+/**
+ * Updates the assignment rotation by moving newly assigned riders to the end.
+ * @param {string[]} assignedNames Array of rider names that were just assigned.
+ * @return {string[]} Updated order array.
+ */
+function updateAssignmentRotation(assignedNames) {
+  try {
+    if (!assignedNames || assignedNames.length === 0) {
+      return getAssignmentRotation();
+    }
+    let order = getAssignmentRotation();
+    assignedNames.forEach(function(name) {
+      const idx = order.indexOf(name);
+      if (idx !== -1) {
+        order.splice(idx, 1);
+      }
+      order.push(name);
+    });
+    PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', order.join('\n'));
+    return order;
+  } catch (error) {
+    logError('Error in updateAssignmentRotation', error);
+    return getAssignmentRotation();
+  }
+}
+
+/**
+ * Exposed function for the web application to retrieve the assignment order.
+ * @return {string[]} Current assignment order.
+ */
+function getAssignmentOrderForWeb() {
+  return getAssignmentRotation();
+}
+
