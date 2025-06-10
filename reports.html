@@ -785,6 +785,24 @@
                     hideLoading();
                     showError('Google Apps Script not available.');
                 }
+            } else if (type === 'summary') {
+                var start = document.getElementById('startDate').value;
+                var end = document.getElementById('endDate').value;
+                if (!start || !end) {
+                    showError('Please select a date range');
+                    return;
+                }
+
+                showLoading('Generating executive summary...');
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(displayExecutiveSummary)
+                        .withFailureHandler(handleError)
+                        .generateExecutiveSummary(start, end);
+                } else {
+                    hideLoading();
+                    showError('Google Apps Script not available.');
+                }
             } else {
                 alert('Generate ' + type + ' report not implemented');
             }
@@ -808,6 +826,40 @@ function displayRiderActivityReport(result) {
                 'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
                 '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
                 '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+
+            var reportWindow = window.open('', '_blank');
+            if (reportWindow) {
+                reportWindow.document.write(html);
+                reportWindow.document.close();
+            } else {
+                showError('Unable to open report window.');
+            }
+
+        }
+
+        function displayExecutiveSummary(result) {
+            hideLoading();
+            if (!result || !result.success) {
+                showError(result && result.error ? result.error : 'Failed to generate report');
+                return;
+            }
+
+            var rows = '';
+            var types = result.data.requestTypes || {};
+            for (var t in types) {
+                rows += '<tr><td>' + escapeHtml(t) + '</td><td>' + escapeHtml(types[t]) + '</td></tr>';
+            }
+
+            var html = '<!DOCTYPE html><html><head><title>Executive Summary</title>' +
+                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
+                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
+                '</head><body><h2>Executive Summary</h2>' +
+                '<p>Period: ' + escapeHtml(result.data.start) + ' to ' + escapeHtml(result.data.end) + '</p>' +
+                '<p>Total Completed Escorts: ' + escapeHtml(result.data.completedEscorts) + '</p>' +
+                '<p>Total Hours: ' + escapeHtml(result.data.totalHours) + '</p>' +
+                '<h3>Request Type Distribution</h3>' +
+                '<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+                '</body></html>';
 
             var reportWindow = window.open('', '_blank');
             if (reportWindow) {

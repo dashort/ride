@@ -1392,7 +1392,7 @@ function navigateTo(page, params = {}) {
         if (currentEditingRequest && currentEditingRequest.requestId) {
             const requestId = currentEditingRequest.requestId;
             console.log('Navigating to assignments page for request:', requestId);
-            closeEditModal();
+
             navigateTo('assignments', { requestId: requestId });
         } else {
             showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
