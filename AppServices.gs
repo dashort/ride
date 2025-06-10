@@ -3155,8 +3155,8 @@ function processAssignmentAndPopulate(requestId, selectedRiders) {
     console.log(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
     console.log('Selected riders:', JSON.stringify(selectedRiders, null, 2));
     
-    if (!requestId || !selectedRiders || selectedRiders.length === 0) {
-      throw new Error('Request ID and riders are required for assignment');
+    if (!requestId || !selectedRiders) {
+      throw new Error('Request ID is required for assignment');
     }
 
     // Validate that the request exists and get its details
@@ -3501,9 +3501,10 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
       requestsSheet.getRange(sheetRowNumber, ridersAssignedCol + 1).setValue(ridersText);
     }
 
-    // Update status to 'Assigned' if riders were assigned
-    if (statusCol !== undefined && riderNames.length > 0) {
-      requestsSheet.getRange(sheetRowNumber, statusCol + 1).setValue('Assigned');
+    // Update status based on whether riders were assigned
+    if (statusCol !== undefined) {
+      const newStatus = riderNames.length > 0 ? 'Assigned' : 'Unassigned';
+      requestsSheet.getRange(sheetRowNumber, statusCol + 1).setValue(newStatus);
     }
 
     // Update last modified timestamp
