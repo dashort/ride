@@ -2173,7 +2173,8 @@ function getPageDataForAssignments(requestIdToLoad) {
       user: null,
       requests: [],
       riders: [],
-      initialRequestDetails: null
+      initialRequestDetails: null,
+      assignmentOrder: []
     };
     
     // Get user data
@@ -2205,6 +2206,14 @@ function getPageDataForAssignments(requestIdToLoad) {
     } catch (ridersError) {
       console.log('⚠️ Could not load riders:', ridersError);
       result.riders = [];
+    }
+
+    try {
+      result.assignmentOrder = getAssignmentRotation();
+      console.log(`✅ Loaded assignment rotation with ${result.assignmentOrder.length} riders`);
+    } catch (orderError) {
+      console.log('⚠️ Could not load assignment order:', orderError);
+      result.assignmentOrder = [];
     }
     
     // If a specific request ID was requested, try to get its details

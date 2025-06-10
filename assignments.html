@@ -578,13 +578,16 @@
      * @typedef {object} AppStateAssignments
      * @property {UserProfile|null} user - Current user's profile.
      * @property {boolean} isOnline - Network status.
-     * @property {number} loadingTimeout - Timeout for loading operations in milliseconds.
-     */
+ * @property {number} loadingTimeout - Timeout for loading operations in milliseconds.
+ * @property {Array<string>} [assignmentOrder] - Current global assignment rotation.
+ */
 
     /** Global state for the assignments page. */
     var currentRequests = [];
     /** @type {Array<RiderItemAssignmentsPage>} */
     var activeRiders = [];
+    /** Global assignment rotation order */
+    var assignmentOrder = [];
     /** @type {RequestItemAssignmentsPage|null} */
     var selectedRequest = null;
     /** @type {Set<string>} */
@@ -933,6 +936,8 @@ if (!document.getElementById('debug-styles')) {
             handleUserData(data.user);
             handleRequestsLoaded(data.requests);
             handleRidersLoaded(data.riders);
+            assignmentOrder = Array.isArray(data.assignmentOrder) ? data.assignmentOrder : [];
+            updateAssignmentOrder();
 
             if (data.initialRequestDetails) {
                 setTimeout(function() {
@@ -1493,28 +1498,21 @@ function updateAssignmentOrder() {
     var orderContainer = document.getElementById('assignmentOrderList');
     if (!orderContainer) return;
 
-    // Filter out part-time riders and those already selected
-    var list = activeRiders.filter(function(r) {
-        var isPartTime = String(r.partTime || 'No').toLowerCase() === 'yes';
-        return !isPartTime && !selectedRiders.has(r.name);
-    });
+    var list = assignmentOrder.length > 0 ? assignmentOrder.slice() : activeRiders.map(function(r) { return r.name; });
 
-    // Sort by last name then full name
-    list.sort(function(a, b) {
-        function getLastName(fullName) {
-            if (!fullName) return '';
-            var parts = String(fullName).trim().split(/\s+/);
-            return parts.length > 0 ? parts[parts.length - 1].toLowerCase() : '';
+    list = list.filter(function(name) {
+        var rider = null;
+        for (var i = 0; i < activeRiders.length; i++) {
+            if (activeRiders[i].name === name) {
+                rider = activeRiders[i];
+                break;
+            }
         }
-        var lastA = getLastName(a.name);
-        var lastB = getLastName(b.name);
-        var cmp = lastA.localeCompare(lastB);
-        return cmp !== 0 ? cmp : a.name.localeCompare(b.name);
-    });
-
-    // Only show riders that are currently available
-    list = list.filter(function(r) {
-        var avail = riderAvailability[r.name];
+        if (!rider) return false;
+        var isPartTime = String(rider.partTime || 'No').toLowerCase() === 'yes';
+        if (isPartTime) return false;
+        if (selectedRiders.has(name)) return false;
+        var avail = riderAvailability[name];
         return !avail || avail === 'Available';
     });
 
@@ -1522,8 +1520,8 @@ function updateAssignmentOrder() {
     if (nextFive.length === 0) {
         orderContainer.innerHTML = '<li>No available riders</li>';
     } else {
-        orderContainer.innerHTML = nextFive.map(function(r) {
-            return '<li>' + r.name + '</li>';
+        orderContainer.innerHTML = nextFive.map(function(n) {
+            return '<li>' + n + '</li>';
         }).join('');
     }
 }
