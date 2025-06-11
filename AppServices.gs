@@ -566,11 +566,11 @@ function getRiderNotifications(riderId) {
  * Get page data for riders page
  * Add this function to AppServices.gs (or any .gs file)
  */
-function getPageDataForRiders() {
+function getPageDataForRiders(user) { // Added user parameter
   try {
     console.log('🔄 Loading riders page data...');
     
-    const user = getCurrentUser();
+    // const user = getCurrentUser(); // Removed: user is now a parameter
     const riders = getRiders(); // This should work now with our previous fixes
     
     // Calculate stats using the same filtered data
@@ -621,7 +621,7 @@ function getPageDataForRiders() {
     return {
       success: false,
       error: error.message,
-      user: getCurrentUser(),
+      user: user, // Use passed user
       riders: [],
       stats: {
         totalRiders: 0,
@@ -886,11 +886,12 @@ function getRidersWithAvailability(filterActive) {
  *
  * @return {object} An object containing `stats`, `requests` (formatted), and `riderSchedule` (formatted).
  */
-function getDashboardData() {
+function getDashboardData(user) { // Added user parameter
   try {
-    const requests = getFormattedRequestsForDashboard();
-    const riderSchedule = getRiderScheduleFormatted();
-    const stats = calculateDashboardStatistics();
+    // Assuming these functions will be refactored to accept user
+    const requests = getFormattedRequestsForDashboard(user);
+    const riderSchedule = getRiderScheduleFormatted(user);
+    const stats = calculateDashboardStatistics(user);
 
     return {
       stats: stats,
@@ -1406,7 +1407,7 @@ function getPageDataForRequests(filter = 'All') {
     console.log('✅ User data retrieved:', user?.name || 'Unknown');
     
     // Get requests using the enhanced function
-    const requests = getFilteredRequestsForWebApp(filter);
+    const requests = getFilteredRequestsForWebApp(user, filter); // Pass user
     console.log(`✅ Requests retrieved: ${requests?.length || 0} items`);
     
     // Ensure we return an array
@@ -2131,14 +2132,14 @@ function debugAssignmentsPageData() {
  * Fetches all necessary data for the main dashboard (index.html) in a single call.
  * @return {object} An object containing `user`, `stats`, `recentRequests`, and `upcomingAssignments`. Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForDashboard() {
+function getPageDataForDashboard(user) { // Added user parameter
   try {
-    const user = getCurrentUser();
+    // const user = getCurrentUser(); // Removed: user is now a parameter
     const stats = calculateDashboardStatistics();
     const rawRequests = getRequestsData();
     let recentRequests = [];
     if (rawRequests && rawRequests.data) {
-      const allFormattedRequests = getFilteredRequestsForWebApp(rawRequests, 'All');
+      const allFormattedRequests = getFilteredRequestsForWebApp(user, 'All', rawRequests); // Adjusted parameters
       try {
         recentRequests = allFormattedRequests.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
       } catch (e) {
@@ -2151,7 +2152,7 @@ function getPageDataForDashboard() {
   } catch (error) {
     logError('Error in getPageDataForDashboard', error);
     return {
-      success: false, error: error.message, user: getCurrentUser(),
+      success: false, error: error.message, user: user, // Use passed user
       stats: { activeRiders: 0, pendingRequests: 0, todayAssignments: 0, weekAssignments: 0, totalRequests: 0, completedRequests: 0 },
       recentRequests: [], upcomingAssignments: []
     };
@@ -2258,12 +2259,12 @@ function getPageDataForAssignments(requestIdToLoad) {
  * Enhanced function to get filtered requests for web app with better error handling
  * Add this to your Dashboard.js or AppServices.gs file
  */
-function getFilteredRequestsForWebApp(filter = 'All') {
+function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = null) { // Added user, rawRequestsInput
   try {
-    console.log(`📋 Getting filtered requests for web app with filter: ${filter}`);
+    console.log(`📋 Getting filtered requests for web app with filter: ${filter} for user: ${user ? user.name : 'Unknown'}`);
     
     // Get the raw requests data
-    const requestsData = getRequestsData();
+    const requestsData = rawRequestsInput || getRequestsData(); // Use input or fetch
     
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
       console.log('❌ No requests data found');
@@ -2513,30 +2514,30 @@ function testRequestsPageData() {
  * Gets consolidated data for the notifications page
  * @return {object} Consolidated data object with user, assignments, and stats
  */
-function getPageDataForNotifications() {
+function getPageDataForNotifications(user) { // Added user parameter
   try {
     console.log('🔄 Loading notifications page data...');
     
     const result = {
       success: true,
-      user: null,
+      user: user, // Use passed user
       assignments: [],
       stats: {},
       recentActivity: []
     };
     
     // Get user data
-    try {
-      result.user = getCurrentUser();
-    } catch (userError) {
-      console.log('⚠️ Could not load user data:', userError);
-      result.user = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['send_notifications']
-      };
-    }
+    // try { // Removed block
+    //   result.user = getCurrentUser();
+    // } catch (userError) {
+    //   console.log('⚠️ Could not load user data:', userError);
+    //   result.user = {
+    //     name: 'System User',
+    //     email: 'user@system.com',
+    //     roles: ['admin'],
+    //     permissions: ['send_notifications']
+    //   };
+    // }
     
     // Get all assignments for notifications
     try {
@@ -2577,7 +2578,7 @@ function getPageDataForNotifications() {
     return {
       success: false,
       error: error.message,
-      user: {
+      user: user || { // Use passed user or fallback
         name: 'System User',
         email: 'user@system.com',
         roles: ['admin'],
@@ -2871,14 +2872,14 @@ function getRecentNotificationActivity(assignments) {
  * @return {object} An object containing `user` and `reportData`.
  *                  Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForReports(filters) {
+function getPageDataForReports(user, filters) { // Added user parameter
   try {
-    const user = getCurrentUser();
+    // const user = getCurrentUser(); // Removed: user is now a parameter
     const reportData = generateReportData(filters); // From Reports.js
     return { success: true, user, reportData };
   } catch (error) {
     logError('Error in getPageDataForReports', error);
-    return { success: false, error: error.message, user: getCurrentUser(), reportData: null };
+    return { success: false, error: error.message, user: user, reportData: null }; // Use passed user
   }
 }
 
@@ -2888,23 +2889,24 @@ function getPageDataForReports(filters) {
  * @return {object} An object containing `user`, `requests`, and `assignments`.
  *                  Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForMobileRiderView(filter = 'All') {
-  let user = null;
+function getPageDataForMobileRiderView(user, filter = 'All') { // Added user parameter
+  // let user = null; // Removed: user is now a parameter
   try {
-    user = getCurrentUser(); // Attempt to get user info first
+    // user = getCurrentUser(); // Attempt to get user info first // Removed
 
     // Fetch general requests
     const rawRequests = getRequestsData();
     let requests = [];
     // Ensure getFilteredRequestsForWebApp is available in the global scope or defined in AppServices.gs
     if (typeof getFilteredRequestsForWebApp === 'function') {
-        requests = getFilteredRequestsForWebApp(rawRequests, filter);
+        // Assuming getFilteredRequestsForWebApp will be refactored to take user as first param
+        requests = getFilteredRequestsForWebApp(user, filter, rawRequests); // Corrected parameter order
     } else {
         // console.warn('getFilteredRequestsForWebApp is not defined. Skipping general requests.');
     }
 
     // Fetch assignments specific to the rider
-    const assignments = getMobileAssignmentsForRider(); // Newly added function
+    const assignments = getMobileAssignmentsForRider(user); // Pass user
 
     return {
       success: true,
@@ -2920,13 +2922,13 @@ function getPageDataForMobileRiderView(filter = 'All') {
     } else {
       // console.error('logError function not available. Error in getPageDataForMobileRiderView:', error);
     }
-    if (!user) {
-      try { user = getCurrentUser(); } catch (e) { /* ignore secondary error */ }
-    }
+    // if (!user) { // user is now a parameter, this block might be redundant
+    //   try { user = getCurrentUser(); } catch (e) { /* ignore secondary error */ }
+    // }
     return {
       success: false,
       error: error.message,
-      user: user,
+      user: user, // Use passed user
       requests: [],
       assignments: []
     };
@@ -3000,9 +3002,9 @@ function calculateStatsFromAssignmentsData(assignments) {
  *                         startLocation, status.
  *                         Returns an empty array if no assignments or an error occurs.
  */
-function getMobileAssignmentsForRider() {
+function getMobileAssignmentsForRider(user) { // Added user parameter
   try {
-    const userEmail = Session.getActiveUser().getEmail();
+    const userEmail = user.email; // Use user.email from parameter
     if (!userEmail) {
       // console.warn('No active user email found for getMobileAssignmentsForRider.');
       return [];
@@ -3041,8 +3043,8 @@ function getMobileAssignmentsForRider() {
         const assignedRiderNameColumn = CONFIG.columns.assignments.riderName;
         if (columnMap.hasOwnProperty(assignedRiderNameColumn)) {
           const assignedRiderName = getColumnValue(row, columnMap, assignedRiderNameColumn);
-          const userProfile = getCurrentUser();
-          const currentUserName = userProfile ? userProfile.name : Session.getActiveUser().getUsername();
+          // const userProfile = getCurrentUser(); // Removed
+          const currentUserName = user.name; // Use user.name from parameter
           if (assignedRiderName && currentUserName && String(assignedRiderName).trim().toLowerCase() === String(currentUserName).trim().toLowerCase()){
             riderIdentifierFound = true;
             // console.log(`Matched assignment by name for ${currentUserName} as email was not found or didn't match.`);
@@ -3130,7 +3132,7 @@ function getMobileAssignmentsForRider() {
     return riderAssignments;
 
   } catch (error) {
-    // console.error(`❌ Error in getMobileAssignmentsForRider for ${Session.getActiveUser().getEmail()}:`, error.message, error.stack);
+    // console.error(`❌ Error in getMobileAssignmentsForRider for ${user.email}:`, error.message, error.stack); // Use user.email
     if (typeof logError === 'function') {
       logError('Error in getMobileAssignmentsForRider', error);
     } else {
@@ -3996,11 +3998,11 @@ function testActiveRidersFix() {
  * @param {object} entry Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
  * @return {object} Result object with success boolean and row number.
  */
-function saveUserAvailability(entry) {
+function saveUserAvailability(user, entry) { // Added user parameter
   try {
     if (!entry) throw new Error('No availability data provided');
 
-    const user = getCurrentUser();
+    // const user = getCurrentUser(); // Removed: user is now a parameter
     const email = entry.email || user.email;
     const repeat = entry.repeat || 'none';
     const untilDate = entry.repeatUntil ? new Date(entry.repeatUntil) : new Date(entry.date);
@@ -4072,9 +4074,9 @@ function saveUserAvailability(entry) {
  * @param {string} [email] Optional email address. Defaults to current user.
  * @return {Array<object>} Array of availability objects.
  */
-function getUserAvailability(email) {
+function getUserAvailability(user, email) { // Added user parameter
   try {
-    const user = getCurrentUser();
+    // const user = getCurrentUser(); // Removed: user is now a parameter
     const targetEmail = email || user.email;
 
     const sheetData = getSheetData(CONFIG.sheets.availability, true);
