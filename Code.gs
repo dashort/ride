@@ -2678,6 +2678,7 @@ function debugNotificationsFile() {
  * Replace your doGet function with this simplified version that handles user management properly
  */
 
+/*
 function doGet(e) {
   try {
     console.log('🚀 doGet started...');
@@ -2794,6 +2795,7 @@ function doGet(e) {
     return createErrorPageSimple(error);
   }
 }
+*/
 
 /**
  * Simple user management page (if HTML file doesn't exist)

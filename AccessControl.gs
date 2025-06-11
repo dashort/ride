@@ -740,9 +740,9 @@ function getRiderByGoogleEmailSafe(email) {
  */
 function getRiderByGoogleEmailFallback(email) {
   try {
-    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders); // Use CONFIG
     if (!ridersSheet) {
-      console.log('⚠️ Riders sheet not found');
+      console.log('⚠️ Riders sheet not found: ' + CONFIG.sheets.riders); // Log with CONFIG name
       return null;
     }
     
@@ -750,11 +750,11 @@ function getRiderByGoogleEmailFallback(email) {
     if (data.length < 2) return null;
     
     const headers = data[0];
-    const emailCol = headers.indexOf('Email');
-    const googleEmailCol = headers.indexOf('Google Email');
-    const nameCol = headers.indexOf('Full Name');
-    const statusCol = headers.indexOf('Status');
-    const idCol = headers.indexOf('Rider ID');
+    const emailCol = headers.indexOf(CONFIG.columns.riders.email); // Use CONFIG
+    const googleEmailCol = headers.indexOf(CONFIG.columns.riders.googleEmail); // Use CONFIG
+    const nameCol = headers.indexOf(CONFIG.columns.riders.name); // Use CONFIG
+    const statusCol = headers.indexOf(CONFIG.columns.riders.status); // Use CONFIG
+    const idCol = headers.indexOf(CONFIG.columns.riders.jpNumber); // Use CONFIG (jpNumber is 'Rider ID')
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -803,8 +803,11 @@ function getAdminUsersSafe() {
  */
 function getAdminUsersFallback() {
   try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.settings); // Use CONFIG
     if (settingsSheet) {
+      // Assuming admin emails are in a fixed range B2:B10 as CONFIG doesn't specify a column name.
+      // For more flexibility, consider adding a CONFIG.columns.settings.adminEmailColumn
+      // and then finding that column by header to read all its values.
       const adminRange = settingsSheet.getRange('B2:B10').getValues();
       const admins = adminRange.flat().filter(email => email && email.trim());
       if (admins.length > 0) return admins;
@@ -844,16 +847,20 @@ function getDispatcherUsersSafe() {
  */
 function getDispatcherUsersFallback() {
   try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.settings); // Use CONFIG
     if (settingsSheet) {
+      // Assuming dispatcher emails are in a fixed range C2:C10 as CONFIG doesn't specify a column name.
+      // For more flexibility, consider adding a CONFIG.columns.settings.dispatcherEmailColumn
+      // and then finding that column by header to read all its values.
       const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
       const dispatchers = dispatcherRange.flat().filter(email => email && email.trim());
-      return dispatchers;
+      return dispatchers; // Return even if empty, fallback below will handle if no dispatchers found
     }
   } catch (error) {
-    console.log('⚠️ Could not read Settings sheet');
+    console.log('⚠️ Could not read Settings sheet for dispatchers');
   }
   
+  // Default dispatcher emails if sheet/range is empty or fails
   return [
     'dispatcher@yourdomain.com'
     // Add dispatcher emails here
