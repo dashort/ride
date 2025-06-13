@@ -1,5 +1,20 @@
 // 🔒 ACCESS CONTROL MATRIX - Place this in a new file: AccessControl.js
 
+// Helper function to escape strings for JavaScript injection
+function escapeJsString(str) {
+  if (str === null || typeof str === 'undefined') {
+    return '';
+  }
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, '\\\'')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\u2028/g, '\\u2028') // Line separator
+    .replace(/\u2029/g, '\\u2029'); // Paragraph separator
+}
+
 /**
  * PERMISSIONS MATRIX
  * Define what each role can do in the system
@@ -1494,11 +1509,11 @@ function addUserDataInjectionSafe(content, user, rider) {
     const userScript = `
 <script>
 window.currentUser = {
-  name: '${user.name}',
-  email: '${user.email}',
-  role: '${user.role}',
+  name: '${escapeJsString(user.name)}',
+  email: '${escapeJsString(user.email)}',
+  role: '${escapeJsString(user.role)}',
   permissions: ${JSON.stringify(user.permissions)},
-  riderId: '${rider ? rider.id : ''}',
+  riderId: '${rider ? escapeJsString(rider.id) : ''}',
   isRider: ${rider ? 'true' : 'false'}
 };
 console.log('👤 User context loaded:', window.currentUser);
