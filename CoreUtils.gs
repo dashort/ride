@@ -346,6 +346,11 @@ function clearDashboardCache() {
 // --- Content from AuthService.js ---
 /**
  * Retrieves the current active user's information.
+ * @warning This function should not be the primary source for user role determination
+ *          in the application's authentication/authorization flow.
+ *          User roles and permissions should be established via the main authentication
+ *          process (e.g., involving AccessControl.gs or a dedicated auth module) and
+ *          the resulting user object (with roles/permissions) should be passed to functions.
  * @return {object} An object representing the current user.
  */
 function getCurrentUser() {
@@ -367,10 +372,14 @@ function getCurrentUser() {
  * Determines the roles for a given user email.
  * @param {string} email The email address of the user.
  * @return {Array<string>} An array of role strings.
+ * @deprecated This function is deprecated for primary role assignment.
+ *             Roles should be determined by the main authentication flow (e.g., AccessControl.gs)
+ *             and included in the user object.
  */
 function getUserRoles(email) {
-  const roleMapping = { 'jpsotraffic@gmail.com': ['admin', 'dispatcher', 'rider'] };
-  return roleMapping[email] || ['admin'];
+  // const roleMapping = { 'jpsotraffic@gmail.com': ['admin', 'dispatcher', 'rider'] };
+  // return roleMapping[email] || ['admin'];
+  return ['deprecated_role_from_CoreUtils']; // Return a specific value to indicate if this is still being called.
 }
 
 /**
