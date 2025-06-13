@@ -4219,4 +4219,3 @@ function updateRotationOnUnassign(unassignedNames) {
 function getAssignmentOrderForWeb() {
   return getAssignmentRotation();
 }
-

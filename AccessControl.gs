@@ -1198,10 +1198,10 @@ function doGet(e) {
     let content = htmlOutput.getContent();
     
     // Add navigation and user info
-    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
-    content = injectUserInfoSafe(content, authenticatedUser, rider);
-    content = addNavigationToContentSafe(content, navigationHtml);
-    content = addUserDataInjectionSafe(content, authenticatedUser, rider);
+    // const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // Commented out for debugging
+    // content = injectUserInfoSafe(content, authenticatedUser, rider); // Commented out for debugging
+    // content = addNavigationToContentSafe(content, navigationHtml); // Commented out for debugging
+    // content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Commented out for debugging
     
     htmlOutput.setContent(content);
     
@@ -1506,18 +1506,7 @@ function addUserDataInjectionSafe(content, user, rider) {
     }
     
     // Simple user data injection
-    const userScript = `
-<script>
-window.currentUser = {
-  name: '${escapeJsString(user.name)}',
-  email: '${escapeJsString(user.email)}',
-  role: '${escapeJsString(user.role)}',
-  permissions: ${JSON.stringify(user.permissions)},
-  riderId: '${rider ? escapeJsString(rider.id) : ''}',
-  isRider: ${rider ? 'true' : 'false'}
-};
-console.log('👤 User context loaded:', window.currentUser);
-</script>`;
+    const userScript = "<script>console.log('Simplified user data injection test point. If you see this in console and page is fine, the issue is with the original window.currentUser content.');</script>";
     
     if (content.includes('</body>')) {
       return content.replace('</body>', userScript + '\n</body>');
