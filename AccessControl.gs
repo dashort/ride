@@ -1195,16 +1195,16 @@ function doGet(e) {
     // Continue with your existing page loading logic...
     const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
-    htmlOutput.append("<script>console.log('Direct append test. If page is clean, string replacement was the issue.');</script>"); // Added this line
+    // htmlOutput.append("<script>console.log('Direct append test. If page is clean, string replacement was the issue.');</script>"); // Removed this test line
     let content = htmlOutput.getContent();
     
     // Add navigation and user info
     // const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // Commented out for debugging
     // content = injectUserInfoSafe(content, authenticatedUser, rider); // Commented out for debugging
     // content = addNavigationToContentSafe(content, navigationHtml); // Commented out for debugging
-    // content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Commented out for debugging
     
-    htmlOutput.setContent(content);
+    htmlOutput.setContent(content); // Set main content first
+    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider); // Append user data script
     
     // Update last login
     if (rider) {
@@ -1500,24 +1500,32 @@ function addNavigationToContentSafe(content, navigationHtml) {
   }
 }
 
-function addUserDataInjectionSafe(content, user, rider) {
+function addUserDataInjectionSafe(htmlOutput, user, rider) { // Changed signature
   try {
-    if (typeof addUserDataInjection === 'function') {
-      return addUserDataInjection(content, user, rider);
+    if (typeof addUserDataInjection === 'function' && addUserDataInjection.toString().includes("htmlOutput")) { // Basic check if it's already the new version
+      return addUserDataInjection(htmlOutput, user, rider); // Call the potentially overridden new version
     }
+
+    // Restore userScript to define window.currentUser
+    const userScript = `
+<script>
+window.currentUser = {
+  name: '${escapeJsString(user.name)}',
+  email: '${escapeJsString(user.email)}',
+  role: '${escapeJsString(user.role)}',
+  permissions: ${JSON.stringify(user.permissions)},
+  riderId: '${rider ? escapeJsString(rider.id) : ''}',
+  isRider: ${rider ? 'true' : 'false'}
+};
+console.log('👤 User context loaded via addUserDataInjectionSafe (appended).');
+</script>`;
     
-    // Simple user data injection
-    const userScript = "<script>console.log('Simplified user data injection test point. If you see this in console and page is fine, the issue is with the original window.currentUser content.');</script>";
-    
-    if (content.includes('</body>')) {
-      return content.replace('</body>', userScript + '\n</body>');
-    }
-    
-    return content;
+    htmlOutput.append(userScript); // Append directly to htmlOutput
+    // No return needed, or return htmlOutput if preferred by other parts of the system
     
   } catch (error) {
     console.error('Error adding user data injection:', error);
-    return content;
+    // Potentially return htmlOutput or throw, depending on error handling strategy
   }
 }
 
