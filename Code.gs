@@ -92,11 +92,13 @@ function testNavigationUrls() {
  */
 function getNavigationHtml(currentPage = '') {
   try {
+    console.log('getNavigationHtml: Called for page: ' + currentPage); // Added
     console.log(`🧭 Getting navigation for page: ${currentPage}`);
     
     let navContent;
     try {
       navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
+      console.log('getNavigationHtml: _navigation.html content length: ' + (navContent ? navContent.length : 'null')); // Added
       console.log(`📄 Navigation file loaded: ${navContent.length} chars`);
     } catch (error) {
       console.error('❌ Could not load _navigation.html:', error);
@@ -126,11 +128,13 @@ function getNavigationHtml(currentPage = '') {
         });
       });
     }
-    
+    console.log('getNavigationHtml: Returning HTML (first 100 chars): ' + (navContent ? navContent.substring(0,100) : 'null')); // Added
     return navContent;
     
   } catch (error) {
     console.error('❌ Error in getNavigationHtml:', error);
+    // Log error before returning fallback
+    console.log('getNavigationHtml: Returning HTML (first 100 chars): ' + 'null (error fallback)'); // Added for error path
     
     // Return basic fallback navigation
     const baseUrl = getWebAppUrl();

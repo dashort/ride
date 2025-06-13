@@ -202,6 +202,32 @@ const RESOURCE_ACCESS = {
     }
   }
 };
+
+function getRoleBasedNavigation(currentPage, user, rider) {
+  console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
+  if (!user) {
+    console.error('getRoleBasedNavigation: User object is null/undefined.');
+    return '<nav class="navigation"><!-- User object missing --></nav>';
+  }
+
+  const menuItems = getUserNavigationMenu(user); // This function is already in AccessControl.gs
+  if (!menuItems || menuItems.length === 0) {
+    console.warn('getRoleBasedNavigation: No menu items returned by getUserNavigationMenu for role: ' + user.role);
+    return '<nav class="navigation"><!-- No menu items for role --></nav>';
+  }
+
+  let navHtml = '<nav class="navigation">';
+  menuItems.forEach(item => {
+    const isActive = item.page === currentPage ? ' active' : '';
+    // item.url should already be correctly formed by getUserNavigationMenu using getWebAppUrl()
+    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}">${item.label}</a>`;
+  });
+  navHtml += '</nav>';
+
+  console.log('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
+  return navHtml;
+}
+
 // 🔧 FIXED USER OBJECT HANDLING - Replace your authentication functions
 
 /**
@@ -1195,15 +1221,16 @@ function doGet(e) {
     // Continue with your existing page loading logic...
     const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    // htmlOutput.append("<script>console.log('Direct append test. If page is clean, string replacement was the issue.');</script>"); // Removed this test line
     let content = htmlOutput.getContent();
     
     // Add navigation and user info
-    // const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // Commented out for debugging
-    // content = injectUserInfoSafe(content, authenticatedUser, rider); // Commented out for debugging
-    // content = addNavigationToContentSafe(content, navigationHtml); // Commented out for debugging
-    // content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Commented out for debugging
+    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // UNCOMMENTED
+    // content = injectUserInfoSafe(content, authenticatedUser, rider); // REMAINS Commented out
+    content = addNavigationToContentSafe(content, navigationHtml); // UNCOMMENTED
     
-    htmlOutput.setContent(content);
+    htmlOutput.setContent(content); // Set main content first
+    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider); // Append user data script
     
     // Update last login
     if (rider) {
@@ -1480,43 +1507,67 @@ function getPageFileNameSafe(pageName, userRole) {
 
 function addNavigationToContentSafe(content, navigationHtml) {
   try {
-    if (typeof addNavigationToContent === 'function') {
-      return addNavigationToContent(content, navigationHtml);
+    console.log('addNavigationToContentSafe: Called. Navigation HTML length: ' + (navigationHtml ? navigationHtml.length : 'null')); // Added
+    console.log('addNavigationToContentSafe: Placeholder found: ' + content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')); // Added
+    console.log('addNavigationToContentSafe: Header end found: ' + content.includes('</header>')); // Added
+    const originalContentLength = content.length; // Store original length
+    console.log('addNavigationToContentSafe: Content length before: ' + originalContentLength); // Added
+
+    // Check if a more specific addNavigationToContent exists and is not this function itself
+    if (typeof addNavigationToContent === 'function' && addNavigationToContent.toString() !== addNavigationToContentSafe.toString()) {
+      content = addNavigationToContent(content, navigationHtml);
+      console.log('addNavigationToContentSafe: Content length after (delegated to addNavigationToContent): ' + content.length); // Added
+      return content;
     }
     
     // Simple fallback injection
     if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
-      return content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+      content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
     } else if (content.includes('</header>')) {
-      return content.replace('</header>', `</header>\n${navigationHtml}\n`);
+      content = content.replace('</header>', `</header>\n${navigationHtml}\n`);
     }
+    // If no specific placeholder, try to append before </body> or at the end
+    else if (content.includes('</body>')) {
+        content = content.replace('</body>', navigationHtml + '\n</body>');
+    } else {
+        content += navigationHtml;
+    }
+    console.log('addNavigationToContentSafe: Content length after (fallback injection): ' + content.length); // Added
     
     return content;
     
   } catch (error) {
     console.error('Error adding navigation to content:', error);
-    return content;
+    return content; // Return original content on error
   }
 }
 
-function addUserDataInjectionSafe(content, user, rider) {
+function addUserDataInjectionSafe(htmlOutput, user, rider) { // Changed signature
   try {
-    if (typeof addUserDataInjection === 'function') {
-      return addUserDataInjection(content, user, rider);
+    if (typeof addUserDataInjection === 'function' && addUserDataInjection.toString().includes("htmlOutput")) { // Basic check if it's already the new version
+      return addUserDataInjection(htmlOutput, user, rider); // Call the potentially overridden new version
     }
+
+    // Restore userScript to define window.currentUser
+    const userScript = `
+<script>
+window.currentUser = {
+  name: '${escapeJsString(user.name)}',
+  email: '${escapeJsString(user.email)}',
+  role: '${escapeJsString(user.role)}',
+  permissions: ${JSON.stringify(user.permissions)},
+  riderId: '${rider ? escapeJsString(rider.id) : ''}',
+  isRider: ${rider ? 'true' : 'false'}
+};
+console.log('👤 User context loaded via addUserDataInjectionSafe (appended).');
+</script>`;
     
-    // Simple user data injection
-    const userScript = "<script>console.log('Simplified user data injection test point. If you see this in console and page is fine, the issue is with the original window.currentUser content.');</script>";
-    
-    if (content.includes('</body>')) {
-      return content.replace('</body>', userScript + '\n</body>');
-    }
-    
-    return content;
+    htmlOutput.append(userScript); // Append directly to htmlOutput
+    // No return needed, or return htmlOutput if preferred by other parts of the system
     
   } catch (error) {
     console.error('Error adding user data injection:', error);
-    return content;
+    // Potentially return htmlOutput or throw, depending on error handling strategy
   }
 }
 
@@ -1903,7 +1954,7 @@ function getUserNavigationMenu(user) {
     return rolePermissions.pages.map(page => ({
       page: page,
       label: pageLabels[page] || page,
-      url: `${getWebAppUrl()}${page === 'dashboard' ? '' : '?page=' + page}`
+      url: `${getWebAppUrlSafe()}${page === 'dashboard' ? '' : '?page=' + page}` // Changed to getWebAppUrlSafe()
     }));
     
   } catch (error) {
