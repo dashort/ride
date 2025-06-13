@@ -202,6 +202,32 @@ const RESOURCE_ACCESS = {
     }
   }
 };
+
+function getRoleBasedNavigation(currentPage, user, rider) {
+  console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
+  if (!user) {
+    console.error('getRoleBasedNavigation: User object is null/undefined.');
+    return '<nav class="navigation"><!-- User object missing --></nav>';
+  }
+
+  const menuItems = getUserNavigationMenu(user); // This function is already in AccessControl.gs
+  if (!menuItems || menuItems.length === 0) {
+    console.warn('getRoleBasedNavigation: No menu items returned by getUserNavigationMenu for role: ' + user.role);
+    return '<nav class="navigation"><!-- No menu items for role --></nav>';
+  }
+
+  let navHtml = '<nav class="navigation">';
+  menuItems.forEach(item => {
+    const isActive = item.page === currentPage ? ' active' : '';
+    // item.url should already be correctly formed by getUserNavigationMenu using getWebAppUrl()
+    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}">${item.label}</a>`;
+  });
+  navHtml += '</nav>';
+
+  console.log('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
+  return navHtml;
+}
+
 // 🔧 FIXED USER OBJECT HANDLING - Replace your authentication functions
 
 /**
@@ -1199,9 +1225,9 @@ function doGet(e) {
     let content = htmlOutput.getContent();
     
     // Add navigation and user info
-    // const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // Commented out for debugging
-    // content = injectUserInfoSafe(content, authenticatedUser, rider); // Commented out for debugging
-    // content = addNavigationToContentSafe(content, navigationHtml); // Commented out for debugging
+    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // UNCOMMENTED
+    // content = injectUserInfoSafe(content, authenticatedUser, rider); // REMAINS Commented out
+    content = addNavigationToContentSafe(content, navigationHtml); // UNCOMMENTED
     
     htmlOutput.setContent(content); // Set main content first
     addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider); // Append user data script
@@ -1481,22 +1507,38 @@ function getPageFileNameSafe(pageName, userRole) {
 
 function addNavigationToContentSafe(content, navigationHtml) {
   try {
-    if (typeof addNavigationToContent === 'function') {
-      return addNavigationToContent(content, navigationHtml);
+    console.log('addNavigationToContentSafe: Called. Navigation HTML length: ' + (navigationHtml ? navigationHtml.length : 'null')); // Added
+    console.log('addNavigationToContentSafe: Placeholder found: ' + content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')); // Added
+    console.log('addNavigationToContentSafe: Header end found: ' + content.includes('</header>')); // Added
+    const originalContentLength = content.length; // Store original length
+    console.log('addNavigationToContentSafe: Content length before: ' + originalContentLength); // Added
+
+    // Check if a more specific addNavigationToContent exists and is not this function itself
+    if (typeof addNavigationToContent === 'function' && addNavigationToContent.toString() !== addNavigationToContentSafe.toString()) {
+      content = addNavigationToContent(content, navigationHtml);
+      console.log('addNavigationToContentSafe: Content length after (delegated to addNavigationToContent): ' + content.length); // Added
+      return content;
     }
     
     // Simple fallback injection
     if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
-      return content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+      content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
     } else if (content.includes('</header>')) {
-      return content.replace('</header>', `</header>\n${navigationHtml}\n`);
+      content = content.replace('</header>', `</header>\n${navigationHtml}\n`);
     }
+    // If no specific placeholder, try to append before </body> or at the end
+    else if (content.includes('</body>')) {
+        content = content.replace('</body>', navigationHtml + '\n</body>');
+    } else {
+        content += navigationHtml;
+    }
+    console.log('addNavigationToContentSafe: Content length after (fallback injection): ' + content.length); // Added
     
     return content;
     
   } catch (error) {
     console.error('Error adding navigation to content:', error);
-    return content;
+    return content; // Return original content on error
   }
 }
 
