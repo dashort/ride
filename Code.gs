@@ -4458,6 +4458,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
 
 // 👤 User Information Injection
 function injectUserInfo(content, user, rider) {
+  console.log('Code.gs#injectUserInfo: Received user object: ' + JSON.stringify(user));
   // Replace user placeholders
   content = content.replace(/\{\{USER_NAME\}\}/g, user.name);
   content = content.replace(/\{\{USER_EMAIL\}\}/g, user.email);

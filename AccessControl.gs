@@ -220,7 +220,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
   menuItems.forEach(item => {
     const isActive = item.page === currentPage ? ' active' : '';
     // item.url should already be correctly formed by getUserNavigationMenu using getWebAppUrl()
-    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}">${item.label}</a>`;
+    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}" target="_top">${item.label}</a>`;
   });
   navHtml += '</nav>';
 
