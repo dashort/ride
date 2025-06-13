@@ -2683,6 +2683,7 @@ function debugNotificationsFile() {
  */
 
 /*
+/*
 function doGet(e) {
   try {
     console.log('🚀 doGet started...');
@@ -2799,6 +2800,7 @@ function doGet(e) {
     return createErrorPageSimple(error);
   }
 }
+*/
 */
 
 /**

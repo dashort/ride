@@ -923,11 +923,8 @@ function checkFileExists(fileName) {
 /**
  * Safe wrapper for getting web app URL
  */
-function getWebAppUrlSafe() {
+function getWebAppUrl() {
   try {
-    if (typeof getWebAppUrl === 'function') {
-      return getWebAppUrl();
-    }
     return ScriptApp.getService().getUrl();
   } catch (error) {
     console.error('Error getting web app URL:', error);
@@ -1226,7 +1223,7 @@ function doGet(e) {
     
     // Add navigation and user info
     const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // UNCOMMENTED
-    // content = injectUserInfoSafe(content, authenticatedUser, rider); // REMAINS Commented out
+    content = injectUserInfoSafe(content, authenticatedUser, rider); // UNCOMMENTED
     content = addNavigationToContentSafe(content, navigationHtml); // UNCOMMENTED
     
     htmlOutput.setContent(content); // Set main content first
