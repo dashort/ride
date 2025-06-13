@@ -1954,7 +1954,7 @@ function getUserNavigationMenu(user) {
     return rolePermissions.pages.map(page => ({
       page: page,
       label: pageLabels[page] || page,
-      url: `${getWebAppUrl()}${page === 'dashboard' ? '' : '?page=' + page}`
+      url: `${getWebAppUrlSafe()}${page === 'dashboard' ? '' : '?page=' + page}` // Changed to getWebAppUrlSafe()
     }));
     
   } catch (error) {
