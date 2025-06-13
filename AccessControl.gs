@@ -1201,7 +1201,7 @@ function doGet(e) {
     // const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // Commented out for debugging
     // content = injectUserInfoSafe(content, authenticatedUser, rider); // Commented out for debugging
     // content = addNavigationToContentSafe(content, navigationHtml); // Commented out for debugging
-    // content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Commented out for debugging
+    content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Re-enabled for debugging
     
     htmlOutput.setContent(content);
     
