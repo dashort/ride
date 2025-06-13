@@ -1195,13 +1195,14 @@ function doGet(e) {
     // Continue with your existing page loading logic...
     const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    htmlOutput.append("<script>console.log('Direct append test. If page is clean, string replacement was the issue.');</script>"); // Added this line
     let content = htmlOutput.getContent();
     
     // Add navigation and user info
     // const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // Commented out for debugging
     // content = injectUserInfoSafe(content, authenticatedUser, rider); // Commented out for debugging
     // content = addNavigationToContentSafe(content, navigationHtml); // Commented out for debugging
-    content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Re-enabled for debugging
+    // content = addUserDataInjectionSafe(content, authenticatedUser, rider); // Commented out for debugging
     
     htmlOutput.setContent(content);
     
