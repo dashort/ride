@@ -2683,6 +2683,7 @@ function debugNotificationsFile() {
  */
 
 /*
+/*
 function doGet(e) {
   try {
     console.log('🚀 doGet started...');
@@ -2800,6 +2801,7 @@ function doGet(e) {
   }
 }
 */
+
 
 /**
  * Simple user management page (if HTML file doesn't exist)
@@ -4456,6 +4458,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
 
 // 👤 User Information Injection
 function injectUserInfo(content, user, rider) {
+  console.log('Code.gs#injectUserInfo: Received user object: ' + JSON.stringify(user));
   // Replace user placeholders
   content = content.replace(/\{\{USER_NAME\}\}/g, user.name);
   content = content.replace(/\{\{USER_EMAIL\}\}/g, user.email);

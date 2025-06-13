@@ -220,7 +220,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
   menuItems.forEach(item => {
     const isActive = item.page === currentPage ? ' active' : '';
     // item.url should already be correctly formed by getUserNavigationMenu using getWebAppUrl()
-    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}">${item.label}</a>`;
+    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}" target="_top">${item.label}</a>`;
   });
   navHtml += '</nav>';
 
@@ -923,11 +923,8 @@ function checkFileExists(fileName) {
 /**
  * Safe wrapper for getting web app URL
  */
-function getWebAppUrlSafe() {
+function getWebAppUrl() {
   try {
-    if (typeof getWebAppUrl === 'function') {
-      return getWebAppUrl();
-    }
     return ScriptApp.getService().getUrl();
   } catch (error) {
     console.error('Error getting web app URL:', error);
@@ -1226,7 +1223,7 @@ function doGet(e) {
     
     // Add navigation and user info
     const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // UNCOMMENTED
-    // content = injectUserInfoSafe(content, authenticatedUser, rider); // REMAINS Commented out
+    content = injectUserInfoSafe(content, authenticatedUser, rider); // UNCOMMENTED
     content = addNavigationToContentSafe(content, navigationHtml); // UNCOMMENTED
     
     htmlOutput.setContent(content); // Set main content first
