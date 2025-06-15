@@ -392,6 +392,10 @@
             list-style: disc;
         }
 
+        .priority-checkbox {
+            margin-bottom: 1rem;
+        }
+
         .current-assigned ul {
             margin: 0;
             padding-left: 1.2rem;
@@ -599,6 +603,7 @@
     var preselectAttempted = false; // Ensured this is the single global declaration
     /** Map of rider name to availability status */
     var riderAvailability = {}; // e.g., {"John Doe": "Unavailable"}
+    var priorityEnabled = true;
     var remainingAvailabilityCallbacks = 0;
     /** @type {AppStateAssignments} */
     var app = {
@@ -1349,6 +1354,10 @@ function selectRequestById(requestId) {
             '</div>' +
             '</div>' +
 
+            '<div class="priority-checkbox">' +
+            '<label><input type="checkbox" id="priorityCheckbox" checked> Priority</label>' +
+            '</div>' +
+
             '<div class="current-assigned">' +
             '<h4>Assigned Riders</h4>' +
             '<div id="assignedRidersList">' + assignedListHtml + '</div>' +
@@ -1380,6 +1389,15 @@ function selectRequestById(requestId) {
             '👁️ Preview' +
             '</button>' +
             '</div>';
+
+        var priorityCheckbox = document.getElementById('priorityCheckbox');
+        if (priorityCheckbox) {
+            priorityEnabled = priorityCheckbox.checked;
+            priorityCheckbox.addEventListener('change', function() {
+                priorityEnabled = this.checked;
+                updateAssignmentOrder();
+            });
+        }
 
         updateSelectedCount();
         updateAssignmentOrder();
@@ -1516,7 +1534,11 @@ function updateAssignedRidersList() {
 
 function updateAssignmentOrder() {
     var orderContainer = document.getElementById('assignmentOrderList');
-    if (!orderContainer) return;
+    var orderWrapper = document.querySelector('.assignment-order');
+    if (orderWrapper) {
+        orderWrapper.style.display = priorityEnabled ? '' : 'none';
+    }
+    if (!priorityEnabled || !orderContainer) return;
 
     // Filter out part-time riders and those already selected
     var list = activeRiders.filter(function(r) {
@@ -1655,7 +1677,7 @@ function updateAssignmentOrder() {
             google.script.run
                 .withSuccessHandler(handleAssignmentSuccess)
                 .withFailureHandler(handleError) // Generic error handler
-                .processAssignmentAndPopulate(selectedRequest.id, ridersArray);
+                .processAssignmentAndPopulate(selectedRequest.id, ridersArray, priorityEnabled);
         } catch (error) {
             console.error('Error calling processAssignmentAndPopulate:', error);
             hideLoading();
