@@ -4400,7 +4400,18 @@ function getDispatcherUsers() {
 // 🔒 Authorization Functions
 function checkPageAccess(pageName, user, rider) {
   const rolePermissions = {
-    admin: ['dashboard', 'requests', 'assignments', 'riders', 'notifications', 'reports', 'admin-schedule'],
+    admin: [
+      'dashboard',
+      'requests',
+      'assignments',
+      'riders',
+      'notifications',
+      'reports',
+      'admin-schedule',
+      // allow pages only accessible to admins
+      'user-management',
+      'auth-setup'
+    ],
     dispatcher: ['dashboard', 'requests', 'assignments', 'notifications', 'reports'],
     rider: ['dashboard', 'rider-schedule', 'my-assignments']
   };
