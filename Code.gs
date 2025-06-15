@@ -2125,8 +2125,25 @@ function getRecentRequestsForWebApp(limit = 10) {
 function getPageDataForDashboard() {
   try {
     console.log('🚀 Loading consolidated dashboard data...');
-    
-    const user = getCurrentUser();
+
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        }
+      };
+    }
+
+    const user = Object.assign({}, auth.user, {
+      roles: auth.user.roles || [auth.user.role]
+    });
+
     const stats = getDashboardStats();
     const recentRequests = getRecentRequestsForWebApp(5);
     const upcomingAssignments = getUpcomingAssignmentsForWebApp(5);
@@ -2147,7 +2164,12 @@ function getPageDataForDashboard() {
     return {
       success: false,
       error: error.message,
-      user: getCurrentUser() // Try to at least return user data
+      user: {
+        name: 'System User',
+        email: '',
+        roles: ['system'],
+        permissions: []
+      }
     };
   }
 }
@@ -2157,8 +2179,33 @@ function getPageDataForDashboard() {
 function getPageDataForRiders() {
   try {
     console.log('🔄 Loading riders page data with consistent counts...');
-    
-    const user = getCurrentUser();
+
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        riders: [],
+        stats: {
+          totalRiders: 0,
+          activeRiders: 0,
+          inactiveRiders: 0,
+          onVacation: 0,
+          inTraining: 0,
+          partTimeRiders: 0
+        }
+      };
+    }
+
+    const user = Object.assign({}, auth.user, {
+      roles: auth.user.roles || [auth.user.role]
+    });
     const riders = getRiders(); // Uses consistent filtering
     
     // Calculate stats using consistent logic
@@ -2209,14 +2256,18 @@ function getPageDataForRiders() {
     return {
       success: false,
       error: error.message,
-      user: getCurrentUser(),
+      user: {
+        name: 'System User',
+        email: '',
+        roles: ['system'],
+        permissions: []
+      },
       riders: [],
       stats: {
         totalRiders: 0,
         activeRiders: 0,
         inactiveRiders: 0,
         onVacation: 0,
-
         inTraining: 0,
         partTimeRiders: 0
 

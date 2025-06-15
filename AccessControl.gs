@@ -609,7 +609,14 @@ function authenticateAndAuthorizeUser() {
         error: 'UNAUTHORIZED',
         message: 'Your account is not authorized to access this system',
         userEmail: userSession.email,
-        userName: userSession.name
+        userName: userSession.name,
+        user: {
+          name: userSession.name || 'User',
+          email: userSession.email,
+          roles: ['unauthorized'],
+          role: 'unauthorized',
+          permissions: []
+        }
       };
     }
     
@@ -617,6 +624,7 @@ function authenticateAndAuthorizeUser() {
       name: userSession.name || rider?.name || 'User',
       email: userSession.email,
       role: userRole,
+      roles: [userRole], // for backward compatibility with older code
       permissions: permissions,
       avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
     };

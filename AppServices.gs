@@ -1401,11 +1401,26 @@ function renderEscortSidebarForWebApp() {
 function getPageDataForRequests(filter = 'All') {
   try {
     console.log(`📋 getPageDataForRequests called with filter: ${filter}`);
-    
-    // Get user data
-    const user = getCurrentUser();
-    console.log('✅ User data retrieved:', user?.name || 'Unknown');
-    
+
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        requests: []
+      };
+    }
+
+    const user = Object.assign({}, auth.user, {
+      roles: auth.user.roles || [auth.user.role]
+    });
+
     // Get requests using the enhanced function
     const requests = getFilteredRequestsForWebApp(user, filter); // Pass user
     console.log(`✅ Requests retrieved: ${requests?.length || 0} items`);
@@ -1434,7 +1449,12 @@ function getPageDataForRequests(filter = 'All') {
     return {
       success: false,
       error: error.message,
-      user: getCurrentUser() || { name: 'Guest', roles: ['guest'], permissions: ['view'] },
+      user: {
+        name: 'System User',
+        email: '',
+        roles: ['system'],
+        permissions: []
+      },
       requests: []
     };
   }
@@ -2168,28 +2188,35 @@ function getPageDataForDashboard(user) { // Added user parameter
 function getPageDataForAssignments(requestIdToLoad) {
   try {
     console.log('🔄 Loading assignments page data...', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
-    
+
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        requests: [],
+        riders: [],
+        initialRequestDetails: null,
+        assignmentOrder: []
+      };
+    }
+
+    const user = Object.assign({}, auth.user, { roles: auth.user.roles || [auth.user.role] });
+
     const result = {
       success: true,
-      user: null,
+      user: user,
       requests: [],
       riders: [],
       initialRequestDetails: null,
       assignmentOrder: []
     };
-    
-    // Get user data
-    try {
-      result.user = getCurrentUser();
-    } catch (userError) {
-      console.log('⚠️ Could not load user data:', userError);
-      result.user = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view', 'assign_riders']
-      };
-    }
     
     // Get assignable requests
     try {
@@ -2242,9 +2269,9 @@ function getPageDataForAssignments(requestIdToLoad) {
       error: error.message,
       user: {
         name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view', 'assign_riders']
+        email: '',
+        roles: ['system'],
+        permissions: []
       }
     };
   }
