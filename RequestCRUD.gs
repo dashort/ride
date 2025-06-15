@@ -1705,9 +1705,10 @@ function mapRiderToGoogleAccount(riderId, googleEmail) {
       return { success: false, error: 'Google Email column not found. Run setupGoogleAuthentication() first.' };
     }
     
-    // Find the rider row
+    // Find the rider row using string comparison to handle numeric IDs
     for (let i = 1; i < data.length; i++) {
-      if (data[i][idCol] === riderId) {
+      const sheetId = data[i][idCol];
+      if (String(sheetId).trim() === String(riderId).trim()) {
         // Update Google email
         ridersSheet.getRange(i + 1, googleEmailCol + 1).setValue(googleEmail);
         
@@ -1720,7 +1721,8 @@ function mapRiderToGoogleAccount(riderId, googleEmail) {
         return { success: true, message: 'Rider mapped successfully' };
       }
     }
-    
+
+    console.log(`❌ Rider not found for ID "${riderId}"`);
     return { success: false, error: 'Rider not found' };
     
   } catch (error) {
