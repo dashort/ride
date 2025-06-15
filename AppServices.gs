@@ -3151,9 +3151,10 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
  * This is the function called from the web app (assignments.html).
  * @param {string} requestId - The ID of the request to assign riders to.
  * @param {Array<object>} selectedRiders - Array of rider objects with their details.
+ * @param {boolean} [usePriority=true] - Whether to update the assignment rotation.
  * @return {object} Result object indicating success/failure and details.
  */
-function processAssignmentAndPopulate(requestId, selectedRiders) {
+function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
   try {
     console.log(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
     console.log('Selected riders:', JSON.stringify(selectedRiders, null, 2));
@@ -3218,7 +3219,9 @@ function processAssignmentAndPopulate(requestId, selectedRiders) {
 
     // Update the request with assigned rider names
     updateRequestWithAssignedRiders(requestId, assignedRiderNames);
-    updateAssignmentRotation(assignedRiderNames);
+    if (usePriority !== false) {
+      updateAssignmentRotation(assignedRiderNames);
+    }
 
     // Clear caches to ensure fresh data
     clearRequestsCache();
