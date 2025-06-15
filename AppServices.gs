@@ -828,7 +828,8 @@ function getActiveRidersForWebApp() {
       name: rider.name || '',
       phone: rider.phone || '',
       email: rider.email || '',
-      carrier: rider.carrier || 'Unknown'
+      carrier: rider.carrier || 'Unknown',
+      partTime: rider.partTime || 'No'
     }));
     
     console.log(`✅ Returning ${webAppRiders.length} active riders for web app`);
@@ -869,7 +870,8 @@ function getRidersWithAvailability(filterActive) {
       name: rider.name || '',
       phone: rider.phone || '',
       email: rider.email || '',
-      carrier: rider.carrier || 'Unknown'
+      carrier: rider.carrier || 'Unknown',
+      partTime: rider.partTime || 'No'
     }));
 
   } catch (error) {
