@@ -392,6 +392,15 @@
             list-style: disc;
         }
 
+        .assignment-order li {
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .assignment-order li:hover {
+            color: #27ae60;
+        }
+
         .priority-checkbox {
             margin-bottom: 1rem;
         }
@@ -1570,8 +1579,16 @@ function updateAssignmentOrder() {
         orderContainer.innerHTML = '<li>No available riders</li>';
     } else {
         orderContainer.innerHTML = nextFive.map(function(r) {
-            return '<li>' + r.name + '</li>';
+            return '<li class="order-rider" data-rider-name="' + r.name.replace(/"/g,'&quot;') + '">' + r.name + '</li>';
         }).join('');
+
+        var items = orderContainer.querySelectorAll('.order-rider');
+        for (var i = 0; i < items.length; i++) {
+            items[i].addEventListener('click', function() {
+                var riderName = this.dataset.riderName;
+                toggleRider(riderName);
+            });
+        }
     }
 }
     /**
