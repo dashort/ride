@@ -1430,7 +1430,7 @@ function selectRequestById(requestId) {
             return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" data-rider-name="' + rider.name.replace(/"/g,'&quot;') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
                 '<div class="rider-status status-' + availability.toLowerCase() + '"></div>' +
                 '<div class="rider-name">' + rider.name + '</div>' +
-                '<div class="rider-info">ID: ' + rider.jpNumber + '</div>' +
+                '<div class="rider-info">JP: ' + rider.jpNumber + '</div>' +
                 '<div class="rider-info">📞 ' + rider.phone + '</div>' +
                 '<div class="rider-info">📧 ' + rider.email + '</div>' +
                 (isUnavailable ? '<div class="rider-info conflict-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
