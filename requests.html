@@ -1381,16 +1381,6 @@ function navigateTo(page, params = {}) {
         const base = page === 'dashboard' ? 'index.html' : page + '.html';
         openUrl(base);
     }
-
-    try {
-        window.location.href = url;
-    } catch (error) {
-        try {
-            window.top.location.href = url;
-        } catch (topError) {
-            window.open(url, '_blank');
-        }
-    }
 }
 
 
