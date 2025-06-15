@@ -1220,9 +1220,14 @@ function doGet(e) {
     if (!authCheck.allowed) {
       return createAccessDeniedPage(authCheck.reason, authenticatedUser);
     }
-    
+
     console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
-    
+
+    // special handling for the authentication setup page
+    if (pageName === 'auth-setup') {
+      return createAuthMappingPage();
+    }
+
     // Continue with your existing page loading logic...
     const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
