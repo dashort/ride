@@ -775,8 +775,9 @@ function getAllActiveAssignmentsForWebApp() {
  * @return {Array<object>} Array of active rider objects
  */
 function getActiveRidersForWebApp() {
+  console.log('ADP_LOG: getActiveRidersForWebApp_ENTRY');
   try {
-    console.log('🌐 Getting active riders for web app...');
+    console.log('🌐 Getting active riders for web app...'); // Existing log
     
     let assignmentRiders = [];
     
@@ -868,12 +869,14 @@ function getActiveRidersForWebApp() {
       status: rider.status || 'Active'
     }));
     
-    console.log(`✅ Returning ${webAppRiders.length} active riders for web app`);
+    console.log(`✅ Returning ${webAppRiders.length} active riders for web app`); // Existing log
+    console.log('ADP_LOG: getActiveRidersForWebApp_RETURN - Count: ' + webAppRiders.length);
     return webAppRiders;
     
   } catch (error) {
-    console.error('❌ Critical error in getActiveRidersForWebApp:', error);
-    logError('Error in getActiveRidersForWebApp', error);
+    console.log('ADP_LOG: getActiveRidersForWebApp_ERROR - ' + error.toString() + ' Stack: ' + error.stack);
+    console.error('❌ Critical error in getActiveRidersForWebApp:', error); // Existing log
+    logError('Error in getActiveRidersForWebApp', error); // Existing log
     
     // Return emergency fallback
     return [
@@ -1709,12 +1712,14 @@ function testRequestsAccess() {
  * @return {Array<object>} An array of formatted request objects suitable for assignment.
  */
 function getFilteredRequestsForAssignments(user) {
+  console.log('ADP_LOG: getFilteredRequestsForAssignments_ENTRY - User: ' + (user ? user.name : 'null'));
   try {
-    console.log('📋 Getting filtered requests for assignments page...');
-    console.log('User parameter:', user);
+    console.log('📋 Getting filtered requests for assignments page...'); // Existing log
+    console.log('User parameter:', user); // Existing log
     const requestsData = getRequestsData();
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      console.log('❌ No requests data found');
+      console.log('❌ No requests data found'); // Existing log
+      console.log('ADP_LOG: getFilteredRequestsForAssignments_NO_DATA_FOUND');
       return [];
     }
     const columnMap = requestsData.columnMap;
@@ -1775,12 +1780,14 @@ function getFilteredRequestsForAssignments(user) {
         return dateB.getTime() - dateA.getTime();
       } catch (sortError) { return 0; }
     });
-    console.log(`✅ Returning ${sortedRequests.length} assignable requests`);
-    if (sortedRequests.length > 0) console.log('First processed request:', sortedRequests[0]);
+    console.log(`✅ Returning ${sortedRequests.length} assignable requests`); // Existing log
+    if (sortedRequests.length > 0) console.log('First processed request:', sortedRequests[0]); // Existing log
+    console.log('ADP_LOG: getFilteredRequestsForAssignments_RETURN - Count: ' + sortedRequests.length);
     return sortedRequests;
   } catch (error) {
-    console.error('❌ Error getting filtered requests for assignments:', error);
-    logError('Error in getFilteredRequestsForAssignments', error);
+    console.log('ADP_LOG: getFilteredRequestsForAssignments_ERROR - ' + error.toString() + ' Stack: ' + error.stack);
+    console.error('❌ Error getting filtered requests for assignments:', error); // Existing log
+    logError('Error in getFilteredRequestsForAssignments', error); // Existing log
     return [];
   }
 }
@@ -2083,9 +2090,11 @@ function getPageDataForDashboard(user) { // Added user parameter
  * @return {object} Consolidated data object
  */
 function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
-    console.log('ADP_LOG: getPageDataForAssignments received raw userOrRequestId:', userOrRequestId);
+    // ADP_LOG: Entry point
+    console.log('ADP_LOG: getPageDataForAssignments_ENTRY - Raw userOrRequestId: ' + JSON.stringify(userOrRequestId) + ', Raw filters: ' + JSON.stringify(filters));
+    console.log('ADP_LOG: getPageDataForAssignments received raw userOrRequestId:', userOrRequestId); // Existing log, kept for compatibility
     try {
-        console.log('📊 getPageDataForAssignments called with:', typeof userOrRequestId, userOrRequestId);
+        console.log('📊 getPageDataForAssignments called with:', typeof userOrRequestId, userOrRequestId); // Existing log, kept
         
         let user = null;
         let requestIdToLoad = null;
@@ -2104,6 +2113,7 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
             // Get user from authentication
             const auth = authenticateAndAuthorizeUser();
             if (!auth.success) {
+                console.log('ADP_LOG: getPageDataForAssignments_AUTH_FAIL - Error: ' + (auth.error || 'Authentication failed'));
                 return {
                     success: false,
                     error: auth.error || 'Authentication failed',
@@ -2113,11 +2123,13 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
                 };
             }
             user = auth.user;
+            console.log('ADP_LOG: getPageDataForAssignments_AUTH_SUCCESS - User: ' + user.name + ', Email: ' + user.email + ', Roles: ' + JSON.stringify(user.roles));
             
         } else if (userOrRequestId && typeof userOrRequestId === 'object') {
             // Called with user object (from secured functions)
-            console.log('👤 Called with user object pattern');
+            console.log('👤 Called with user object pattern'); // Existing log
             user = userOrRequestId;
+            console.log('ADP_LOG: getPageDataForAssignments_USER_OBJECT_PARAM - User: ' + user.name + ', Email: ' + user.email + ', Roles: ' + JSON.stringify(user.roles));
             
             // Check if requestId is in filters
             if (filters.requestId) {
@@ -2131,9 +2143,10 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
             
         } else {
             // Called with no parameters or null
-            console.log('🔄 Called with no parameters, getting user from auth');
+            console.log('🔄 Called with no parameters, getting user from auth'); // Existing log
             const auth = authenticateAndAuthorizeUser();
             if (!auth.success) {
+                console.log('ADP_LOG: getPageDataForAssignments_AUTH_FAIL_NO_PARAMS - Error: ' + (auth.error || 'Authentication failed'));
                 return {
                     success: false,
                     error: auth.error || 'Authentication failed',
@@ -2143,12 +2156,15 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
                 };
             }
             user = auth.user;
+            console.log('ADP_LOG: getPageDataForAssignments_AUTH_SUCCESS_NO_PARAMS - User: ' + user.name + ', Email: ' + user.email + ', Roles: ' + JSON.stringify(user.roles));
         }
         
-        console.log('✅ User determined:', user.name, '| RequestId:', requestIdToLoad);
+        console.log('✅ User determined:', user.name, '| RequestId:', requestIdToLoad); // Existing log
+        console.log('ADP_LOG: getPageDataForAssignments_USER_DETERMINED - User: ' + (user ? user.name : 'null') + ', RequestIdToLoad: ' + requestIdToLoad);
         
         // Check permissions
         if (!canAccessPage(user, 'assignments')) {
+            console.log('ADP_LOG: getPageDataForAssignments_ACCESS_DENIED - User: ' + (user ? user.name : 'null') + ' to assignments page');
             return {
                 success: false,
                 error: 'Access denied to assignments page',
@@ -2169,21 +2185,27 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
         
         // Get assignable requests
         try {
-            console.log('📋 Loading assignable requests...');
+            console.log('ADP_LOG: getPageDataForAssignments_FETCH_REQUESTS_START');
+            console.log('📋 Loading assignable requests...'); // Existing log
             result.requests = getFilteredRequestsForAssignments(user);
-            console.log(`✅ Loaded ${result.requests.length} assignable requests`);
+            console.log(`✅ Loaded ${result.requests.length} assignable requests`); // Existing log
+            console.log('ADP_LOG: getPageDataForAssignments_FETCH_REQUESTS_END - Count: ' + (result.requests ? result.requests.length : 'null|error'));
         } catch (requestsError) {
-            console.warn('⚠️ Error loading requests:', requestsError.message);
+            console.warn('⚠️ Error loading requests:', requestsError.message); // Existing log
+            console.log('ADP_LOG: getPageDataForAssignments_FETCH_REQUESTS_ERROR - ' + requestsError.toString() + ' Stack: ' + requestsError.stack);
             result.requests = [];
         }
         
         // Get active riders
         try {
-            console.log('👥 Loading active riders...');
+            console.log('ADP_LOG: getPageDataForAssignments_FETCH_RIDERS_START');
+            console.log('👥 Loading active riders...'); // Existing log
             result.riders = getActiveRidersForWebApp();
-            console.log(`✅ Loaded ${result.riders.length} active riders`);
+            console.log(`✅ Loaded ${result.riders.length} active riders`); // Existing log
+            console.log('ADP_LOG: getPageDataForAssignments_FETCH_RIDERS_END - Count: ' + (result.riders ? result.riders.length : 'null|error'));
         } catch (ridersError) {
-            console.warn('⚠️ Error loading riders:', ridersError.message);
+            console.warn('⚠️ Error loading riders:', ridersError.message); // Existing log
+            console.log('ADP_LOG: getPageDataForAssignments_FETCH_RIDERS_ERROR - ' + ridersError.toString() + ' Stack: ' + ridersError.stack);
             result.riders = [];
         }
         
@@ -2195,7 +2217,8 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
         
         // Handle specific request ID
         if (requestIdToLoad) {
-            console.log('🎯 Looking for specific request:', requestIdToLoad);
+            console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_START - RequestIdToLoad: ' + requestIdToLoad);
+            console.log('🎯 Looking for specific request:', requestIdToLoad); // Existing log
             
             // First check in loaded requests
             const foundRequest = result.requests.find(req => 
@@ -2205,9 +2228,11 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
             
             if (foundRequest) {
                 result.initialRequestDetails = foundRequest;
-                console.log('✅ Found initial request in list:', foundRequest.id || foundRequest.requestId);
+                console.log('✅ Found initial request in list:', foundRequest.id || foundRequest.requestId); // Existing log
+                console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_FOUND_IN_LIST - ID: ' + (foundRequest.id || foundRequest.requestId) + ', Requester: ' + foundRequest.requesterName);
             } else {
-                console.warn('⚠️ Requested ID not found in assignable requests:', requestIdToLoad);
+                console.warn('⚠️ Requested ID not found in assignable requests:', requestIdToLoad); // Existing log
+                console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_NOT_IN_LIST - Attempting direct lookup for: ' + requestIdToLoad);
                 
                 // Try to get it directly (might be completed/cancelled but still viewable)
                 try {
@@ -2215,32 +2240,41 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
                         const directRequest = getRequestDetails(requestIdToLoad);
                         if (directRequest) {
                             result.initialRequestDetails = directRequest;
-                            console.log('✅ Found request via direct lookup');
+                            console.log('✅ Found request via direct lookup'); // Existing log
+                            console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_SUCCESS - ID: ' + (directRequest.id || directRequest.requestId) + ', Requester: ' + directRequest.requesterName);
+                        } else {
+                            console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_NOT_FOUND');
                         }
+                    } else {
+                        console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_HELPER_MISSING');
                     }
                 } catch (directError) {
-                    console.warn('⚠️ Direct request lookup failed:', directError.message);
+                    console.warn('⚠️ Direct request lookup failed:', directError.message); // Existing log
+                    console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_ERROR - ' + directError.toString() + ' Stack: ' + directError.stack);
                 }
                 
                 // Set flags for not found
                 if (!result.initialRequestDetails) {
                     result.requestNotFound = true;
                     result.requestedId = requestIdToLoad;
+                    console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_NOT_FOUND_FLAG_SET - RequestedId: ' + requestIdToLoad);
                 }
             }
         }
         
-        console.log('✅ Returning unified assignments data');
-        console.log('  - Success:', result.success);
-        console.log('  - User:', result.user.name);
-        console.log('  - Requests:', result.requests.length);
-        console.log('  - Riders:', result.riders.length);
-        console.log('  - Initial request:', !!result.initialRequestDetails);
+        console.log('✅ Returning unified assignments data'); // Existing log
+        console.log('  - Success:', result.success); // Existing log
+        console.log('  - User:', result.user.name); // Existing log
+        console.log('  - Requests:', result.requests.length); // Existing log
+        console.log('  - Riders:', result.riders.length); // Existing log
+        console.log('  - Initial request:', !!result.initialRequestDetails); // Existing log
+        console.log('ADP_LOG: getPageDataForAssignments_RETURN_SUMMARY - Success: ' + result.success + ', User: ' + (result.user ? result.user.name : 'null') + ', Requests: ' + (result.requests ? result.requests.length : 'null') + ', Riders: ' + (result.riders ? result.riders.length : 'null') + ', InitialRequestDetails: ' + (result.initialRequestDetails ? 'Present' : 'Not Present') + ', RequestNotFound: ' + (result.requestNotFound || false));
         
         return result;
         
     } catch (error) {
-        console.error('❌ Critical error in unified getPageDataForAssignments:', error);
+        console.error('❌ Critical error in unified getPageDataForAssignments:', error); // Existing log
+        console.log('ADP_LOG: getPageDataForAssignments_CRITICAL_ERROR - ' + error.toString() + ' Stack: ' + error.stack);
         return {
             success: false,
             error: 'Server error: ' + error.message,
