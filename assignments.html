@@ -934,14 +934,16 @@ console.log('🚨 SIMPLE TEST: Emergency functions loaded');
 // REPLACE the loadAllData function in your assignments.html with this version:
 
 function loadAllData() {
-    console.log('📊 Starting consolidated data loading for assignments page...');
+    console.log('ADP_LOG: loadAllData() called');
+    console.log('📊 Starting consolidated data loading for assignments page...'); // Existing log
     var urlParams = new URLSearchParams(window.location.search);
     var requestIdToLoad = urlParams.get('requestId');
     
-    console.log('Request ID from URL:', requestIdToLoad);
+    console.log('ADP_LOG: loadAllData - Initial requestIdToLoad from URL:', requestIdToLoad);
+    console.log('Request ID from URL:', requestIdToLoad); // Existing log
 
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        console.log('🔄 Attempting to call server function...');
+        console.log('🔄 Attempting to call server function...'); // Existing log
         
         // Try multiple function names in case of deployment issues
         const functionNames = [
@@ -973,40 +975,41 @@ function loadAllData() {
                     return;
                 }
                 
+                console.log('ADP_LOG: loadAllData - Calling google.script.run.' + functionName + ' with requestIdToLoad:', requestIdToLoad);
                 google.script.run
                     .withSuccessHandler(function(result) {
-                        console.log(`✅ Success with ${functionName}:`, result);
+                        console.log(`✅ Success with ${functionName}:`, result); // Existing log
                         
                         // Validate the result
                         if (!result) {
-                            console.error('❌ Server returned null/undefined');
+                            console.error('❌ Server returned null/undefined'); // Existing log
                             handleAssignmentsDataFailure({ message: 'Server returned no data' });
                             return;
                         }
                         
                         if (result.success === false) {
-                            console.error('❌ Server returned success:false:', result.error);
+                            console.error('❌ Server returned success:false:', result.error); // Existing log
                             handleAssignmentsDataFailure({ message: result.error || 'Server error' });
                             return;
                         }
                         
                         if (!result.success && !result.user) {
-                            console.error('❌ Server returned invalid data structure:', result);
+                            console.error('❌ Server returned invalid data structure:', result); // Existing log
                             handleAssignmentsDataFailure({ message: 'Invalid server response' });
                             return;
                         }
                         
                         // Success!
-                        console.log('📊 Valid data received, calling success handler');
+                        console.log('📊 Valid data received, calling success handler'); // Existing log
                         handleAssignmentsDataSuccess(result);
                     })
                     .withFailureHandler(function(error) {
-                        console.error(`❌ ${functionName} failed:`, error);
+                        console.error(`❌ ${functionName} failed:`, error); // Existing log
                         
                         // Try next function
                         attemptCount++;
                         if (attemptCount < functionNames.length) {
-                            console.log('🔄 Trying next function...');
+                            console.log('🔄 Trying next function...'); // Existing log
                             setTimeout(tryNextFunction, 1000);
                         } else {
                             handleAssignmentsDataFailure(error);
@@ -1015,7 +1018,7 @@ function loadAllData() {
                     [functionName](requestIdToLoad);
                     
             } catch (error) {
-                console.error(`❌ Error calling ${functionName}:`, error);
+                console.error(`❌ Error calling ${functionName}:`, error); // Existing log
                 attemptCount++;
                 tryNextFunction();
             }
@@ -1033,18 +1036,19 @@ function loadAllData() {
 // REPLACE the handleAssignmentsDataSuccess function in your assignments.html with this fixed version:
 
 function handleAssignmentsDataSuccess(data) {
-    console.log('📊 handleAssignmentsDataSuccess called with:', data);
+    console.log('ADP_LOG: handleAssignmentsDataSuccess() called with raw data:', JSON.stringify(data));
+    console.log('📊 handleAssignmentsDataSuccess called with:', data); // Existing log
     
     // More flexible data validation
     if (!data) {
-        console.error('❌ No data provided to success handler');
+        console.error('❌ No data provided to success handler'); // Existing log
         handleAssignmentsDataFailure({ message: 'No data returned from server' });
         return;
     }
     
     // Don't fail if success property is missing - just check for actual data
     if (data.success === false) {
-        console.error('❌ Server explicitly returned success:false');
+        console.error('❌ Server explicitly returned success:false'); // Existing log
         handleAssignmentsDataFailure({ message: data.error || 'Server returned failure' });
         return;
     }
@@ -1054,20 +1058,31 @@ function handleAssignmentsDataSuccess(data) {
     const hasRequests = data.requests && Array.isArray(data.requests);
     const hasRiders = data.riders && Array.isArray(data.riders);
     
-    console.log('📋 Data validation:');
-    console.log('  - Has user:', hasUser, data.user ? data.user.name : 'Missing');
-    console.log('  - Has requests:', hasRequests, hasRequests ? data.requests.length : 'Missing');
-    console.log('  - Has riders:', hasRiders, hasRiders ? data.riders.length : 'Missing');
-    console.log('  - Has initial request:', !!data.initialRequestDetails);
+    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.user:', JSON.stringify(data.user));
+    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.requests: Length=' + (hasRequests ? data.requests.length : 'N/A') + (hasRequests && data.requests.length > 0 ? ', First: ' + JSON.stringify(data.requests[0]) : ''));
+    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.riders: Length=' + (hasRiders ? data.riders.length : 'N/A') + (hasRiders && data.riders.length > 0 ? ', First: ' + JSON.stringify(data.riders[0]) : ''));
+    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.initialRequestDetails:', JSON.stringify(data.initialRequestDetails));
+    if (data.initialRequestDetails) {
+        console.log('ADP_LOG: handleAssignmentsDataSuccess - InitialRequestDetails ID: ' + data.initialRequestDetails.id + ', Requester: ' + data.initialRequestDetails.requesterName);
+    }
+    if (data.requestNotFound !== undefined) {
+        console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.requestNotFound:', data.requestNotFound, ', Data.requestedId:', data.requestedId);
+    }
+
+    console.log('📋 Data validation:'); // Existing log
+    console.log('  - Has user:', hasUser, data.user ? data.user.name : 'Missing'); // Existing log
+    console.log('  - Has requests:', hasRequests, hasRequests ? data.requests.length : 'Missing'); // Existing log
+    console.log('  - Has riders:', hasRiders, hasRiders ? data.riders.length : 'Missing'); // Existing log
+    console.log('  - Has initial request:', !!data.initialRequestDetails); // Existing log
     
     // Don't fail the whole page if some data is missing - use defaults
     if (!hasUser && !hasRequests && !hasRiders) {
-        console.error('❌ No valid data in response');
+        console.error('❌ No valid data in response'); // Existing log
         handleAssignmentsDataFailure({ message: 'Server response contains no valid data' });
         return;
     }
     
-    console.log('✅ Processing assignments data (with defaults for missing parts)');
+    console.log('✅ Processing assignments data (with defaults for missing parts)'); // Existing log
     
     // Set defaults for missing data
     const processedData = {
@@ -1082,27 +1097,28 @@ function handleAssignmentsDataSuccess(data) {
         initialRequestDetails: data.initialRequestDetails || null
     };
     
-    console.log('📊 Final processed data:');
-    console.log('  - User:', processedData.user.name);
-    console.log('  - Requests:', processedData.requests.length);
-    console.log('  - Riders:', processedData.riders.length);
-    console.log('  - Initial request:', processedData.initialRequestDetails ? processedData.initialRequestDetails.id : 'None');
+    console.log('📊 Final processed data:'); // Existing log
+    console.log('  - User:', processedData.user.name); // Existing log
+    console.log('  - Requests:', processedData.requests.length); // Existing log
+    console.log('  - Riders:', processedData.riders.length); // Existing log
+    console.log('  - Initial request:', processedData.initialRequestDetails ? processedData.initialRequestDetails.id : 'None'); // Existing log
+    console.log('ADP_LOG: handleAssignmentsDataSuccess - ProcessedData before further handling: User: ' + processedData.user.name + ', Requests: ' + processedData.requests.length + ', Riders: ' + processedData.riders.length + ', InitialRequest ID: ' + (processedData.initialRequestDetails ? processedData.initialRequestDetails.id : 'None'));
     
     try {
         // Process user data
-        console.log('👤 Processing user data...');
+        console.log('👤 Processing user data...'); // Existing log
         if (typeof handleUserData === 'function') {
             handleUserData(processedData.user);
         } else {
-            console.warn('⚠️ handleUserData function not found');
+            console.warn('⚠️ handleUserData function not found'); // Existing log
         }
         
         // Process requests data
-        console.log('📋 Processing requests data...');
+        console.log('📋 Processing requests data...'); // Existing log
         if (typeof handleRequestsLoaded === 'function') {
             handleRequestsLoaded(processedData.requests);
         } else {
-            console.warn('⚠️ handleRequestsLoaded function not found');
+            console.warn('⚠️ handleRequestsLoaded function not found'); // Existing log
             // Direct fallback
             currentRequests = processedData.requests;
             if (typeof renderRequestsList === 'function') {
@@ -1111,18 +1127,18 @@ function handleAssignmentsDataSuccess(data) {
         }
         
         // Process riders data
-        console.log('👥 Processing riders data...');
+        console.log('👥 Processing riders data...'); // Existing log
         if (typeof handleRidersLoaded === 'function') {
             handleRidersLoaded(processedData.riders);
         } else {
-            console.warn('⚠️ handleRidersLoaded function not found');
+            console.warn('⚠️ handleRidersLoaded function not found'); // Existing log
             // Direct fallback
             activeRiders = processedData.riders;
         }
         
         // Handle pre-selection
         if (preselectedRequestId && !preselectAttempted && processedData.requests.length > 0) {
-            console.log('🎯 Attempting pre-selection for:', preselectedRequestId);
+            console.log('🎯 Attempting pre-selection for:', preselectedRequestId); // Existing log
             
             let requestToSelect = null;
             
@@ -1181,10 +1197,11 @@ function handleAssignmentsDataSuccess(data) {
 // ALSO ADD this enhanced error handler:
 
 function handleAssignmentsDataFailure(error) {
-    console.error('❌ handleAssignmentsDataFailure called with:', error);
+    console.log('ADP_LOG: handleAssignmentsDataFailure() called with error:', JSON.stringify(error));
+    console.error('❌ handleAssignmentsDataFailure called with:', error); // Existing log
     
     const errorMessage = error?.message || error?.error || error || 'Unknown error loading assignments data';
-    console.error('Error details:', errorMessage);
+    console.error('Error details:', errorMessage); // Existing log
     
     // Show user-friendly error
     if (typeof showError === 'function') {

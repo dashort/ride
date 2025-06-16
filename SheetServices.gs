@@ -100,6 +100,8 @@ function getSheetData(sheetName, useCache = true) {
       columnMap[header] = index;
     });
 
+    console.log('ADP_LOG: getSheetData - Sheet: ' + sheetName + ', columnMap: ' + JSON.stringify(columnMap));
+
     const result = {
       headers,
       data,
@@ -163,6 +165,10 @@ function getColumnIndex(columnMap, columnName) {
     if (normalizeColumnName(name) === normalized) {
       return idx;
     }
+  }
+  // ADP_LOG: Log if column not found
+  if (index === undefined) { // This 'index' variable seems to be a typo, should be based on the logic's flow or not used here. Assuming the check is for 'undefined' status of found index.
+    console.log('ADP_LOG: getColumnIndex - Column "' + columnName + '" (normalized: "' + normalized + '") not found in columnMap: ' + JSON.stringify(Object.keys(columnMap)));
   }
   return undefined;
 }
@@ -259,6 +265,30 @@ function applyTimeFormatting(data) {
  */
 function getRequestsData(useCache = true) {
   const data = getSheetData(CONFIG.sheets.requests, useCache);
+
+  // ADP_LOG: Log column lookups
+  if (data && data.columnMap) {
+    const idHeader = CONFIG.columns.requests.id;
+    const nameHeader = CONFIG.columns.requests.requesterName;
+    const statusHeader = CONFIG.columns.requests.status;
+    console.log('ADP_LOG: getRequestsData - Request ID column ("' + idHeader + '") found at index: ' + data.columnMap[idHeader]);
+    console.log('ADP_LOG: getRequestsData - Requester Name column ("' + nameHeader + '") found at index: ' + data.columnMap[nameHeader]);
+    console.log('ADP_LOG: getRequestsData - Status column ("' + statusHeader + '") found at index: ' + data.columnMap[statusHeader]);
+  }
+
+  // ADP_LOG: Log empty data scenarios
+  if (data && data.data && data.headers) { // Ensure data and data.data are not null
+    if (data.data.length === 0 && data.headers.length > 0) {
+        console.log('ADP_LOG: getRequestsData - Returning empty data rows, although headers were found.');
+    } else if (data.data.length === 0 && data.headers.length === 0) {
+        console.log('ADP_LOG: getRequestsData - Returning empty data as the sheet appears completely empty (no headers, no data).');
+    }
+  } else if (data && !data.data && data.headers) { // data.data is null/undefined but headers exist
+     console.log('ADP_LOG: getRequestsData - Data rows are null/undefined, but headers exist.');
+  } else { // data itself might be minimal or problematic
+     console.log('ADP_LOG: getRequestsData - getSheetData returned minimal or problematic data structure: ' + JSON.stringify(data));
+  }
+
   return data;
 }
 
@@ -314,6 +344,19 @@ function getRidersData(useCache = true) {
       return name.length > 0 || riderId.length > 0;
     });
 
+    const nameHeader = CONFIG.columns.riders.name;
+    const idHeader = CONFIG.columns.riders.jpNumber;
+    const nameIdxLog = columnMap[nameHeader];
+    const idIdxLog = columnMap[idHeader];
+    console.log('ADP_LOG: getRidersData - Rider Name column ("' + nameHeader + '") found at index: ' + nameIdxLog);
+    console.log('ADP_LOG: getRidersData - Rider ID column ("' + idHeader + '") found at index: ' + idIdxLog);
+
+    if (validData.length === 0 && allData.length > 0) {
+        console.log('ADP_LOG: getRidersData - Returning empty data because no riders had a valid Name or ID after filtering ' + allData.length + ' initial rows.');
+    } else if (validData.length === 0 && allData.length === 0) { // This condition implies values.length was 0 or 1 initially
+        console.log('ADP_LOG: getRidersData - Returning empty data because initial sheet fetch returned no data rows (or only headers).');
+    }
+
     const result = {
       headers,
       data: validData, // Use filtered data instead of allData
@@ -325,11 +368,11 @@ function getRidersData(useCache = true) {
       dataCache.set(cacheKey, result);
     }
 
-    console.log(`✅ getRidersData: Filtered ${allData.length} total rows to ${validData.length} valid riders`);
+    console.log(`✅ getRidersData: Filtered ${allData.length} total rows to ${validData.length} valid riders`); // Existing log
     return result;
 
   } catch (error) {
-    logError(`Error getting data from ${CONFIG.sheets.riders}`, error);
+    logError(`Error getting data from ${CONFIG.sheets.riders}`, error); // Existing log
     return {
       headers: [],
       data: [],
