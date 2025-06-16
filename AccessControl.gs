@@ -590,20 +590,26 @@ function authenticateAndAuthorizeUser() {
     const rider = getRiderByGoogleEmailSafe(userSession.email);
     const adminUsers = getAdminUsersSafe();
     const dispatcherUsers = getDispatcherUsersSafe();
+
+    console.log(`Admin users list loaded: ${adminUsers ? adminUsers.length : '0'} users. Dispatcher users list loaded: ${dispatcherUsers ? dispatcherUsers.length : '0'} users.`);
+    // Be cautious with logging full lists in production if they are large or contain sensitive info.
+    // For controlled debugging, this can be useful:
+    // console.log(`Admin users: ${JSON.stringify(adminUsers)}. Dispatcher users: ${JSON.stringify(dispatcherUsers)}`);
     
     let userRole = 'unauthorized';
     let permissions = [];
     
     if (adminUsers.includes(userSession.email)) {
       userRole = 'admin';
-      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+      console.log(`User ${userSession.email} identified as ADMIN because their email was found in the admin users list.`);
     } else if (dispatcherUsers.includes(userSession.email)) {
       userRole = 'dispatcher';
-      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+      console.log(`User ${userSession.email} identified as DISPATCHER because their email was found in the dispatcher users list.`);
     } else if (rider && rider.status === 'Active') {
       userRole = 'rider';
-      permissions = ['view_own_assignments', 'update_own_status'];
+      console.log(`User ${userSession.email} identified as RIDER. Rider details: ${JSON.stringify(rider)}`);
     } else {
+      console.log(`User ${userSession.email} is UNAUTHORIZED. Not in admin/dispatcher lists, and not an active rider (rider details: ${JSON.stringify(rider)}).`);
       return {
         success: false,
         error: 'UNAUTHORIZED',
@@ -618,6 +624,32 @@ function authenticateAndAuthorizeUser() {
           permissions: []
         }
       };
+    }
+
+    // Dynamically assign permissions from PERMISSIONS_MATRIX
+    let determinedRolePermissions = PERMISSIONS_MATRIX[userRole];
+    if (determinedRolePermissions) {
+      permissions = []; // Initialize as empty array
+      // Process resource permissions (e.g., requests, riders)
+      for (const resource in determinedRolePermissions) {
+        if (resource !== 'pages' && typeof determinedRolePermissions[resource] === 'object') {
+          for (const action in determinedRolePermissions[resource]) {
+            if (determinedRolePermissions[resource][action] === true) {
+              permissions.push(`${resource}_${action}`); // e.g., 'requests_create', 'riders_view_all'
+            }
+          }
+        }
+      }
+      // Process page permissions
+      if (determinedRolePermissions.pages && Array.isArray(determinedRolePermissions.pages)) {
+        determinedRolePermissions.pages.forEach(page => {
+          permissions.push(`page_${page}`); // e.g., 'page_dashboard'
+        });
+      }
+      console.log(`Permissions for role '${userRole}': ${JSON.stringify(permissions)}`);
+    } else {
+      console.warn(`No permissions defined in PERMISSIONS_MATRIX for role: ${userRole}`);
+      permissions = []; // Default to no permissions if role not in matrix
     }
     
     const authenticatedUser = {
