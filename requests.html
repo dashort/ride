@@ -1418,7 +1418,8 @@ function fallbackNavigation(requestId) {
         console.error('❌ Form submission navigation failed:', error);
         
         // Last resort: show user the URL
-        const assignmentsUrl = `${window.location.origin}${window.location.pathname}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
+        const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
+        const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
         
         if (confirm(`Automatic navigation failed. Would you like to copy the assignments URL?\n\nURL: ${assignmentsUrl}`)) {
             if (navigator.clipboard) {
@@ -1448,7 +1449,8 @@ function navigateTo(page, params = {}) {
         }
     });
     
-    const newUrl = `${window.location.origin}${window.location.pathname}?${urlParams.toString()}`;
+    const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
+    const newUrl = `${base}?${urlParams.toString()}`;
     console.log('🔗 Navigating to:', newUrl);
     
     // Try multiple navigation methods
@@ -1506,7 +1508,8 @@ function redirectToAssignmentPage() {
     // Method 1: Try top-level navigation (works in iframe)
     try {
         console.log('🔄 Attempting top-level navigation...');
-        const assignmentsUrl = `${window.location.origin}${window.location.pathname}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
+        const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
+        const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
         console.log('🔗 Top-level navigation to:', assignmentsUrl);
         
         if (window.top && window.top !== window) {
@@ -1524,7 +1527,8 @@ function redirectToAssignmentPage() {
     // Method 2: Try parent navigation
     try {
         console.log('🔄 Attempting parent navigation...');
-        const assignmentsUrl = `${window.location.origin}${window.location.pathname}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
+        const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
+        const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
         console.log('🔗 Parent navigation to:', assignmentsUrl);
         
         if (window.parent && window.parent !== window) {
@@ -1587,8 +1591,8 @@ function redirectToAssignmentPageDirect() {
     }
     
     const requestId = currentEditingRequest.requestId;
-    const currentUrl = window.location.href.split('?')[0];
-    const assignmentsUrl = `${currentUrl}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
+    const base = window.requestBaseUrl || window.location.href.split('?')[0];
+    const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
     
     console.log('🔗 Direct navigation to:', assignmentsUrl);
     
@@ -1704,7 +1708,7 @@ function handleAssignRidersClick() {
     
     // Method 4: Last resort - prompt user
     console.error('❌ All navigation methods failed');
-    const baseUrl = window.location.href.split('?')[0];
+    const baseUrl = window.requestBaseUrl || window.location.href.split('?')[0];
     const assignmentsUrl = `${baseUrl}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
     
     if (confirm(`Navigation failed automatically. Would you like to copy the assignments URL to your clipboard?\n\nURL: ${assignmentsUrl}`)) {
@@ -1767,7 +1771,7 @@ window.forceNavigateToAssignments = function(requestId) {
         return;
     }
     
-    const baseUrl = window.location.href.split('?')[0];
+    const baseUrl = window.requestBaseUrl || window.location.href.split('?')[0];
     const url = `${baseUrl}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
     
     console.log('🚀 Force navigating to:', url);
