@@ -2374,24 +2374,30 @@ function getDashboardStats() {
 function getUpcomingAssignmentsForWebApp(limit = 5) {
   try {
     const assignmentsData = getAssignmentsData();
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const upcomingAssignments = assignmentsData.data
       .filter(assignment => {
-        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        let eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        if (!(eventDate instanceof Date)) {
+          eventDate = parseDateString(eventDate);
+        }
         const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
         const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        
-        return (eventDate instanceof Date) && 
-               eventDate >= today && 
-               riderName && 
+
+        return eventDate &&
+               eventDate >= today &&
+               riderName &&
                !['Cancelled', 'Completed', 'No Show'].includes(status);
       })
       .sort((a, b) => {
-        const dateA = getColumnValue(a, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-        const dateB = getColumnValue(b, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const dateAValue = getColumnValue(a, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const dateBValue = getColumnValue(b, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const dateA = dateAValue instanceof Date ? dateAValue : parseDateString(dateAValue);
+        const dateB = dateBValue instanceof Date ? dateBValue : parseDateString(dateBValue);
+        if (!dateA || !dateB) return 0;
         return dateA.getTime() - dateB.getTime();
       })
       .slice(0, limit)
@@ -2399,7 +2405,7 @@ function getUpcomingAssignmentsForWebApp(limit = 5) {
         assignmentId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
         requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
         riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
-        eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
+        eventDate: formatDateForDisplay(parseDateString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate))),
         startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
         startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation)
       }));
