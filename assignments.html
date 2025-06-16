@@ -1505,10 +1505,11 @@ function initializeAssignmentsPage() {
     
     // Extract requestId from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const requestIdFromUrl = urlParams.get('requestId');
+    let requestIdFromUrl = urlParams.get('requestId'); // Changed to let
     
     if (requestIdFromUrl) {
-        console.log('🎯 Found requestId in URL:', requestIdFromUrl);
+        requestIdFromUrl = String(requestIdFromUrl).trim(); // Sanitize
+        console.log('🎯 Found and sanitized requestId in URL:', requestIdFromUrl);
         preselectedRequestId = requestIdFromUrl;
         preselectAttempted = false; // Reset the flag
     }
@@ -1542,8 +1543,11 @@ function selectAndRenderRequestObject(requestObject) {
         console.warn('❌ selectAndRenderRequestObject: Invalid request object provided');
         return false;
     }
+    // Sanitize requestObject.id
+    requestObject.id = String(requestObject.id).trim();
+    console.log('✨ Selecting and rendering request object (ID sanitized):', requestObject.id);
     
-    console.log('🎯 Attempting to select and render request:', requestObject.id);
+    // console.log('🎯 Attempting to select and render request:', requestObject.id); // Original log
     
     // Find the request in the current list
     const foundRequest = currentRequests.find(req => req.id === requestObject.id);
@@ -1561,6 +1565,8 @@ function selectAndRenderRequestObject(requestObject) {
     
     // Set as selected request
     selectedRequest = requestObject;
+    console.log('ADP_LOG: selectedRequest object after assignment in selectAndRenderRequestObject (enhanced version):');
+    console.log('ADP_LOG: selectedRequest.id:', selectedRequest ? selectedRequest.id : 'selectedRequest is null');
     
     // Update the UI to show selection
     updateRequestItemSelection(requestObject.id);
@@ -1709,9 +1715,13 @@ if (!document.getElementById('debug-styles')) {
             console.error('❌ Invalid request object passed to selectAndRenderRequestObject');
             return false;
         }
-        console.log('✨ Selecting and rendering request object:', requestObj.id);
+        // Sanitize requestObj.id
+        requestObj.id = String(requestObj.id).trim();
+        console.log('✨ Selecting and rendering request object (ID sanitized):', requestObj.id);
 
         selectedRequest = requestObj; // Set the global selectedRequest
+        console.log('ADP_LOG: selectedRequest object after assignment in selectAndRenderRequestObject (second version):');
+        console.log('ADP_LOG: selectedRequest.id:', selectedRequest ? selectedRequest.id : 'selectedRequest is null');
 
         // Visually select in the list
         var requestItems = document.querySelectorAll('.request-item');
@@ -2043,6 +2053,9 @@ function selectRequestById(requestId) {
             container.innerHTML = '<div class="empty-state"><h3>Select a Request</h3><p>Choose a request from the left panel to begin assigning riders</p></div>';
             return;
         }
+        console.log('ADP_LOG: selectedRequest object at the start of renderAssignmentPanel:');
+        console.log('ADP_LOG: selectedRequest.id:', selectedRequest.id);
+        console.log('ADP_LOG: selectedRequest.requesterName:', selectedRequest.requesterName);
 
         var assignedRidersArray = selectedRequest.ridersAssigned ?
             selectedRequest.ridersAssigned.split(/[,\n]/).map(function(name) { return name.trim(); }).filter(function(name) { return name.length > 0; }) : [];
@@ -2416,6 +2429,7 @@ function updateAssignmentOrder() {
         });
 
         showLoading('Saving assignment...');
+        console.log('ADP_LOG: Saving assignment for request ID (already sanitized):', selectedRequest ? selectedRequest.id : 'selectedRequest is null');
 
         try {
             google.script.run

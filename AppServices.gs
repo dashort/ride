@@ -2083,6 +2083,7 @@ function getPageDataForDashboard(user) { // Added user parameter
  * @return {object} Consolidated data object
  */
 function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
+    console.log('ADP_LOG: getPageDataForAssignments received raw userOrRequestId:', userOrRequestId);
     try {
         console.log('📊 getPageDataForAssignments called with:', typeof userOrRequestId, userOrRequestId);
         
@@ -2094,6 +2095,11 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
             // Called with requestId (from assignments page)
             console.log('🎯 Called with requestId pattern');
             requestIdToLoad = userOrRequestId;
+            console.log('ADP_LOG: Extracted requestIdToLoad (from string input):', requestIdToLoad);
+            if (requestIdToLoad) {
+                requestIdToLoad = String(requestIdToLoad).trim();
+                console.log('ADP_LOG: Sanitized requestIdToLoad:', requestIdToLoad);
+            }
             
             // Get user from authentication
             const auth = authenticateAndAuthorizeUser();
@@ -2116,6 +2122,11 @@ function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
             // Check if requestId is in filters
             if (filters.requestId) {
                 requestIdToLoad = filters.requestId;
+                console.log('ADP_LOG: Extracted requestIdToLoad (from filters):', requestIdToLoad);
+                if (requestIdToLoad) {
+                    requestIdToLoad = String(requestIdToLoad).trim();
+                    console.log('ADP_LOG: Sanitized requestIdToLoad:', requestIdToLoad);
+                }
             }
             
         } else {
@@ -3189,27 +3200,55 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
  * @return {object} Result object indicating success/failure and details.
  */
 function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
+  // Existing log for requestId
+  console.log('ADP_LOG: processAssignmentAndPopulate received raw requestId:', requestId);
+
+  // Enhanced logging for selectedRiders
+  console.log('ADP_LOG: Type of selectedRiders:', typeof selectedRiders);
+  if (Array.isArray(selectedRiders)) {
+      console.log('ADP_LOG: selectedRiders.length:', selectedRiders.length);
+      if (selectedRiders.length > 0) {
+          console.log('ADP_LOG: Type of selectedRiders[0]:', typeof selectedRiders[0]);
+          console.log('ADP_LOG: selectedRiders[0] (JSON):', JSON.stringify(selectedRiders[0]));
+      } else {
+          console.log('ADP_LOG: selectedRiders is an empty array.');
+      }
+  } else {
+      console.log('ADP_LOG: selectedRiders is NOT an array.');
+  }
+
+  // Existing log for usePriority
+  console.log('ADP_LOG: processAssignmentAndPopulate received usePriority:', usePriority);
+  console.log('ADP_LOG: Type of usePriority:', typeof usePriority);
+
+  // Sanitization of requestId (already added in the previous step)
+  var cleanRequestId = requestId;
+  if (cleanRequestId) {
+      cleanRequestId = String(cleanRequestId).trim();
+  }
+  console.log('ADP_LOG: Sanitized requestId for processAssignmentAndPopulate:', cleanRequestId);
+
   try {
-    console.log(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
+    console.log(`🏍️ Starting assignment process for request ${cleanRequestId} with ${selectedRiders.length} riders`);
     console.log('Selected riders:', JSON.stringify(selectedRiders, null, 2));
     
-    if (!requestId || !selectedRiders) {
+    if (!cleanRequestId || !selectedRiders) {
       throw new Error('Request ID is required for assignment');
     }
 
     // Validate that the request exists and get its details
-    const requestDetails = getRequestDetails(requestId);
+    const requestDetails = getRequestDetails(cleanRequestId);
     if (!requestDetails) {
-      throw new Error(`Request ${requestId} not found`);
+      throw new Error(`Request ${cleanRequestId} not found`);
     }
 
     console.log('Request details found:', requestDetails);
 
     // Remove any existing assignments for this request first
-    const existingAssignments = getAssignmentsForRequest(requestId);
+    const existingAssignments = getAssignmentsForRequest(cleanRequestId);
     if (existingAssignments.length > 0) {
-      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
-      removeExistingAssignments(requestId);
+      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${cleanRequestId}`);
+      removeExistingAssignments(cleanRequestId);
     }
 
     // Create new assignments
@@ -3222,7 +3261,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       
       try {
         const assignmentId = generateAssignmentId();
-        const assignmentRow = buildAssignmentRow(assignmentId, requestId, rider, requestDetails);
+        const assignmentRow = buildAssignmentRow(assignmentId, cleanRequestId, rider, requestDetails);
         
         // Add the assignment to the sheet
         const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
@@ -3252,7 +3291,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     }
 
     // Update the request with assigned rider names
-    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
+    updateRequestWithAssignedRiders(cleanRequestId, assignedRiderNames);
     if (usePriority !== false) {
       updateAssignmentRotation(assignedRiderNames);
     }
@@ -3265,12 +3304,12 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
-    logActivity(`Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
+    logActivity(`Assignment process completed for ${cleanRequestId}: ${successCount} successful, ${failCount} failed`);
 
     return {
       success: true,
-      message: `Successfully assigned ${successCount} rider(s) to request ${requestId}`,
-      requestId: requestId,
+      message: `Successfully assigned ${successCount} rider(s) to request ${cleanRequestId}`,
+      requestId: cleanRequestId,
       assignmentResults: assignmentResults,
       successCount: successCount,
       failCount: failCount
@@ -3282,7 +3321,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     return {
       success: false,
       message: `Failed to process assignments: ${error.message}`,
-      requestId: requestId || 'unknown',
+      requestId: cleanRequestId || 'unknown',
       error: error.message
     };
   }
@@ -3369,15 +3408,15 @@ function generateAssignmentId() {
 /**
  * Builds an assignment row array for the assignments sheet.
  * @param {string} assignmentId - The assignment ID.
- * @param {string} requestId - The request ID.
+ * @param {string} cleanRequestId - The request ID.
  * @param {object} rider - The rider object with details.
  * @param {object} requestDetails - The request details object.
  * @return {Array} Array of values for the assignment row.
  */
-function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
+function buildAssignmentRow(assignmentId, cleanRequestId, rider, requestDetails) {
   try {
-    const assignmentsData = getAssignmentsData();
-    const headers = assignmentsData.headers;
+    const assignmentsData = getAssignmentsData(); // This function call seems problematic in context, might need getAssignmentsSheetData()
+    const headers = assignmentsData.headers; // Assuming getAssignmentsData returns headers
     const row = [];
 
     // Build row based on headers order
@@ -3389,7 +3428,7 @@ function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
           value = assignmentId;
           break;
         case CONFIG.columns.assignments.requestId:
-          value = requestId;
+          value = cleanRequestId;
           break;
         case CONFIG.columns.assignments.eventDate:
           value = requestDetails.eventDate || '';
@@ -3449,10 +3488,10 @@ function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
 
 /**
  * Removes existing assignments for a request.
- * @param {string} requestId - The request ID to clear assignments for.
+ * @param {string} cleanRequestId - The request ID to clear assignments for.
  * @return {void}
  */
-function removeExistingAssignments(requestId) {
+function removeExistingAssignments(cleanRequestId) {
   try {
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
     if (!assignmentsSheet) {
@@ -3472,7 +3511,7 @@ function removeExistingAssignments(requestId) {
     const rowsToDelete = [];
     const removedNames = [];
     for (let i = data.length - 1; i >= 1; i--) { // Start from bottom, skip header
-      if (String(data[i][requestIdCol]).trim() === String(requestId).trim()) {
+      if (String(data[i][requestIdCol]).trim() === String(cleanRequestId).trim()) {
         rowsToDelete.push(i + 1); // Convert to 1-based row number
         if (riderNameCol !== -1) {
           const name = String(data[i][riderNameCol]).trim();
@@ -3486,7 +3525,7 @@ function removeExistingAssignments(requestId) {
       assignmentsSheet.deleteRow(rowNum);
     }
 
-    console.log(`🗑️ Removed ${rowsToDelete.length} existing assignments for request ${requestId}`);
+    console.log(`🗑️ Removed ${rowsToDelete.length} existing assignments for request ${cleanRequestId}`);
 
     if (removedNames.length > 0) {
       updateRotationOnUnassign(removedNames);
@@ -3502,11 +3541,11 @@ function removeExistingAssignments(requestId) {
 
 /**
  * Updates the request with the list of assigned rider names.
- * @param {string} requestId - The request ID to update.
+ * @param {string} cleanRequestId - The request ID to update.
  * @param {Array<string>} riderNames - Array of assigned rider names.
  * @return {void}
  */
-function updateRequestWithAssignedRiders(requestId, riderNames) {
+function updateRequestWithAssignedRiders(cleanRequestId, riderNames) {
   try {
     const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
     if (!requestsSheet) {
@@ -3520,14 +3559,14 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     let targetRowIndex = -1;
     for (let i = 0; i < requestsData.data.length; i++) {
       const rowRequestId = getColumnValue(requestsData.data[i], columnMap, CONFIG.columns.requests.id);
-      if (String(rowRequestId).trim() === String(requestId).trim()) {
+      if (String(rowRequestId).trim() === String(cleanRequestId).trim()) {
         targetRowIndex = i;
         break;
       }
     }
 
     if (targetRowIndex === -1) {
-      throw new Error(`Request ${requestId} not found for rider assignment update`);
+      throw new Error(`Request ${cleanRequestId} not found for rider assignment update`);
     }
 
     const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
@@ -3552,13 +3591,13 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
       requestsSheet.getRange(sheetRowNumber, lastUpdatedCol + 1).setValue(new Date());
     }
 
-    console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
+    console.log(`📝 Updated request ${cleanRequestId} with ${riderNames.length} assigned riders`);
 
     if (typeof syncRequestToCalendar === 'function') {
       try {
-        syncRequestToCalendar(requestId);
+        syncRequestToCalendar(cleanRequestId);
       } catch (syncError) {
-        logError(`Failed to sync request ${requestId} to calendar`, syncError);
+        logError(`Failed to sync request ${cleanRequestId} to calendar`, syncError);
       }
     }
 
@@ -4462,10 +4501,16 @@ function getRequestsForAssignments() {
 
 /**
  * Gets all data needed for the assignments page in one consolidated call
- * @param {string} [requestId] - Optional request ID to pre-load
+ * @param {string} [requestIdInput] - Optional request ID to pre-load
  * @returns {object} Combined data for assignments page
  */
-function getPageDataForAssignments(requestId = null) {
+function getPageDataForAssignments(requestIdInput = null) { // Renamed to avoid conflict with outer scope
+    console.log('ADP_LOG: (Inner getPageDataForAssignments) received raw requestIdInput:', requestIdInput);
+    let requestId = requestIdInput;
+    if (requestId) {
+        requestId = String(requestId).trim();
+        console.log('ADP_LOG: (Inner getPageDataForAssignments) sanitized requestId:', requestId);
+    }
     try {
         console.log('📊 Getting assignments page data, requestId:', requestId);
         
