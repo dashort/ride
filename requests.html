@@ -1376,7 +1376,13 @@ function navigateTo(page, params = {}) {
     }
 
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(openUrl).getWebAppUrl();
+        google.script.run
+            .withSuccessHandler(openUrl)
+            .withFailureHandler(function() {
+                var fallbackBase = window.location.origin + window.location.pathname;
+                openUrl(fallbackBase);
+            })
+            .getWebAppUrl();
     } else {
         const base = page === 'dashboard' ? 'index.html' : page + '.html';
         openUrl(base);
