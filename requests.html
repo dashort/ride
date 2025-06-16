@@ -610,13 +610,7 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                <button type="button" 
-        class="btn btn-info" 
-        id="assignRidersBtnModal" 
-        onclick="handleAssignRidersClick()"
-        title="Go to assignments page for this request">
-    🏍️ Assign Riders
-</button>
+                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button>
                 <button type="button" class="btn btn-primary" id="saveChangesBtn" onclick="saveRequest()">💾 Save Changes</button>
                 <button type="button" class="btn btn-success" id="completeRequestBtn" onclick="completeRequest()" style="display:none;">✅ Complete Request</button>
             </div>
@@ -1360,423 +1354,53 @@
         URL.revokeObjectURL(url);
     }
 
-// Add debugging for iframe environment
-function debugIframeEnvironment() {
-    console.log('=== IFRAME ENVIRONMENT DEBUG ===');
-    console.log('window.location.href:', window.location.href);
-    console.log('window.location.origin:', window.location.origin);
-    console.log('window.location.pathname:', window.location.pathname);
-    console.log('window === window.top:', window === window.top);
-    console.log('window === window.parent:', window === window.parent);
-    console.log('window.top available:', !!window.top);
-    console.log('window.parent available:', !!window.parent);
-    console.log('google.script available:', typeof google !== 'undefined' && !!google.script);
-    console.log('google.script.host available:', typeof google !== 'undefined' && !!google.script && !!google.script.host);
-    console.log('================================');
-}
 
-// Run iframe debug on page load
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        debugIframeEnvironment();
-    }, 1000);
-});
-function fallbackNavigation(requestId) {
-    console.log('🔄 Using fallback navigation method');
-    
-    // Create a temporary form and submit it (this often works in iframes)
-    try {
-        const form = document.createElement('form');
-        form.method = 'GET';
-        form.action = window.location.pathname;
-        form.target = '_top';
-        
-        // Add hidden inputs for parameters
-        const pageInput = document.createElement('input');
-        pageInput.type = 'hidden';
-        pageInput.name = 'page';
-        pageInput.value = 'assignments';
-        form.appendChild(pageInput);
-        
-        const requestIdInput = document.createElement('input');
-        requestIdInput.type = 'hidden';
-        requestIdInput.name = 'requestId';
-        requestIdInput.value = requestId;
-        form.appendChild(requestIdInput);
-        
-        // Add form to page and submit
-        document.body.appendChild(form);
-        console.log('🔗 Form submission navigation');
-        form.submit();
-        
-        // Clean up
-        setTimeout(() => {
-            document.body.removeChild(form);
-        }, 100);
-        
-    } catch (error) {
-        console.error('❌ Form submission navigation failed:', error);
-        
-        // Last resort: show user the URL
-        const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
-        const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-        
-        if (confirm(`Automatic navigation failed. Would you like to copy the assignments URL?\n\nURL: ${assignmentsUrl}`)) {
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(assignmentsUrl).then(() => {
-                    alert('URL copied! Please paste it in the address bar.');
-                }).catch(() => {
-                    prompt('Please copy this URL:', assignmentsUrl);
-                });
-            } else {
-                prompt('Please copy this URL:', assignmentsUrl);
-            }
-        }
-    }
-}
 
-// Enhanced navigateTo function for iframe environment
+
 function navigateTo(page, params = {}) {
-    console.log('🧭 Iframe-aware navigation to:', page, 'with params:', params);
-    
-    // Build URL parameters
-    const urlParams = new URLSearchParams();
-    urlParams.set('page', page);
-    
-    Object.keys(params).forEach(key => {
-        if (params[key] !== null && params[key] !== undefined) {
-            urlParams.set(key, params[key]);
-        }
-    });
-    
-    const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
-    const newUrl = `${base}?${urlParams.toString()}`;
-    console.log('🔗 Navigating to:', newUrl);
-    
-    // Try multiple navigation methods
-    const navigationMethods = [
-        () => {
-            if (window.top && window.top !== window) {
-                window.top.location.href = newUrl;
-            } else {
-                window.location.href = newUrl;
-            }
-        },
-        () => {
-            if (window.parent && window.parent !== window) {
-                window.parent.location.href = newUrl;
-            } else {
-                window.location.href = newUrl;
-            }
-        },
-        () => window.open(newUrl, '_top'),
-        () => window.location.replace(newUrl)
-    ];
-    
-    for (let i = 0; i < navigationMethods.length; i++) {
+    const search = new URLSearchParams();
+    search.set('page', page);
+    Object.keys(params).forEach(key => search.set(key, params[key]));
+
+    function openUrl(base) {
+        const url = base + '?' + search.toString();
         try {
-            console.log(`🔄 Trying navigation method ${i + 1}...`);
-            navigationMethods[i]();
-            return;
+            window.location.href = url;
         } catch (error) {
-            console.warn(`⚠️ Navigation method ${i + 1} failed:`, error);
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
+            }
         }
     }
-    
-    console.error('❌ All navigation methods failed');
-    alert('Navigation failed. Please try refreshing the page.');
-}
 
-// COMPLETE REPLACEMENT for navigation functions in requests.html
-// This handles the Google Apps Script iframe environment properly
-
-function redirectToAssignmentPage() {
-    console.log('🚀 redirectToAssignmentPage called in iframe environment');
-    
-    if (!currentEditingRequest || !currentEditingRequest.requestId) {
-        console.error('❌ No valid request for assignment navigation');
-        showToast('No request selected. Please close and reopen the request details.');
-        return;
-    }
-    
-    const requestId = currentEditingRequest.requestId;
-    console.log('✅ Using request ID:', requestId);
-    
-    // Close the modal first
-    closeEditModal();
-    
-    // Method 1: Try top-level navigation (works in iframe)
-    try {
-        console.log('🔄 Attempting top-level navigation...');
-        const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
-        const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-        console.log('🔗 Top-level navigation to:', assignmentsUrl);
-        
-        if (window.top && window.top !== window) {
-            // We're in an iframe
-            window.top.location.href = assignmentsUrl;
-        } else {
-            // We're not in an iframe
-            window.location.href = assignmentsUrl;
-        }
-        return;
-    } catch (error) {
-        console.warn('⚠️ Top-level navigation failed:', error);
-    }
-    
-    // Method 2: Try parent navigation
-    try {
-        console.log('🔄 Attempting parent navigation...');
-        const base = window.requestBaseUrl || `${window.location.origin}${window.location.pathname}`;
-        const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-        console.log('🔗 Parent navigation to:', assignmentsUrl);
-        
-        if (window.parent && window.parent !== window) {
-            window.parent.location.href = assignmentsUrl;
-        } else {
-            window.location.href = assignmentsUrl;
-        }
-        return;
-    } catch (error) {
-        console.warn('⚠️ Parent navigation failed:', error);
-    }
-    
-    // Method 3: Use Google Apps Script host method (if available)
-    try {
-        if (typeof google !== 'undefined' && google.script && google.script.host) {
-            console.log('🔄 Attempting Google Script host navigation...');
-            
-            // Get the web app URL and navigate
-            google.script.run
-                .withSuccessHandler(function(baseUrl) {
-                    const assignmentsUrl = `${baseUrl}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-                    console.log('🔗 Google Script navigation to:', assignmentsUrl);
-                    
-                    // Try multiple methods to open the URL
-                    try {
-                        window.open(assignmentsUrl, '_top');
-                    } catch (openError) {
-                        try {
-                            window.location.replace(assignmentsUrl);
-                        } catch (replaceError) {
-                            console.error('❌ All navigation methods failed');
-                            showToast('Navigation failed. Please manually navigate to Assignments page.');
-                        }
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    console.error('❌ Google Script URL fetch failed:', error);
-                    fallbackNavigation(requestId);
-                })
-                .getWebAppUrl();
-            return;
-        }
-    } catch (error) {
-        console.warn('⚠️ Google Script navigation failed:', error);
-    }
-    
-    // Method 4: Fallback navigation
-    fallbackNavigation(requestId);
-}
-
-/**
- * Alternative direct navigation method (fallback)
- */
-function redirectToAssignmentPageDirect() {
-    console.log('🔄 Using direct navigation method');
-    
-    if (!currentEditingRequest || !currentEditingRequest.requestId) {
-        showToast('No request selected or request ID is missing.');
-        return;
-    }
-    
-    const requestId = currentEditingRequest.requestId;
-    const base = window.requestBaseUrl || window.location.href.split('?')[0];
-    const assignmentsUrl = `${base}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-    
-    console.log('🔗 Direct navigation to:', assignmentsUrl);
-    
-    // Close modal
-    closeEditModal();
-    
-    // Navigate directly
-    window.location.href = assignmentsUrl;
-}
-
-/**
- * Enhanced modal close function
- */
-function closeEditModal() {
-    console.log('🚪 Closing edit modal');
-    
-    const modal = document.getElementById('editRequestModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    
-    // Clear any potential modal backdrop
-    const backdrops = document.querySelectorAll('.modal-backdrop');
-    backdrops.forEach(backdrop => backdrop.remove());
-    
-    // Re-enable body scrolling if it was disabled
-    document.body.style.overflow = '';
-}
-
-/**
- * Test function to verify navigation works
- */
-function testNavigation() {
-    console.log('🧪 Testing navigation...');
-    
-    // Test 1: Basic navigation
-    try {
-        const testParams = { test: 'true' };
-        console.log('Test 1: Basic navigation with params:', testParams);
-        // Don't actually navigate in test
-        console.log('✅ Test 1 passed');
-    } catch (error) {
-        console.error('❌ Test 1 failed:', error);
-    }
-    
-    // Test 2: URL building
-    try {
-        const urlParams = new URLSearchParams();
-        urlParams.set('page', 'assignments');
-        urlParams.set('requestId', 'TEST-123');
-        const testUrl = window.location.href.split('?')[0] + '?' + urlParams.toString();
-        console.log('Test 2: Built URL:', testUrl);
-        console.log('✅ Test 2 passed');
-    } catch (error) {
-        console.error('❌ Test 2 failed:', error);
-    }
-    
-    console.log('🏁 Navigation tests completed');
-}
-
-// Add debug logging to the existing button click
-function debugAssignRidersButton() {
-    const button = document.getElementById('assignRidersBtnModal');
-    if (button) {
-        console.log('✅ Assign Riders button found:', button);
-        console.log('Button onclick:', button.onclick);
-        console.log('Button attributes:', Array.from(button.attributes).map(attr => `${attr.name}="${attr.value}"`));
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(openUrl)
+            .withFailureHandler(function() {
+                var fallbackBase = window.location.origin + window.location.pathname;
+                openUrl(fallbackBase);
+            })
+            .getWebAppUrl();
     } else {
-        console.error('❌ Assign Riders button not found');
+        const base = page === 'dashboard' ? 'index.html' : page + '.html';
+        openUrl(base);
     }
 }
-// Add this function to handle the button click with multiple fallback methods
-function handleAssignRidersClick() {
-    console.log('🎯 Assign Riders button clicked');
-    console.log('Current editing request:', currentEditingRequest);
-    
-    // Validate we have a request
-    if (!currentEditingRequest || !currentEditingRequest.requestId) {
-        console.error('❌ No valid request for assignment navigation');
-        showToast('No request selected. Please close and reopen the request details.');
-        return;
-    }
-    
-    const requestId = currentEditingRequest.requestId;
-    console.log('✅ Using request ID:', requestId);
-    
-    // Method 1: Try the standard navigation
-    try {
-        console.log('🔄 Attempting standard navigation...');
-        redirectToAssignmentPage();
-        return;
-    } catch (error) {
-        console.warn('⚠️ Standard navigation failed:', error);
-    }
-    
-    // Method 2: Try direct navigation
-    try {
-        console.log('🔄 Attempting direct navigation...');
-        redirectToAssignmentPageDirect();
-        return;
-    } catch (error) {
-        console.warn('⚠️ Direct navigation failed:', error);
-    }
-    
-    // Method 3: Force navigation with manual URL construction
-    try {
-        console.log('🔄 Attempting force navigation...');
-        window.forceNavigateToAssignments(requestId);
-        return;
-    } catch (error) {
-        console.warn('⚠️ Force navigation failed:', error);
-    }
-    
-    // Method 4: Last resort - prompt user
-    console.error('❌ All navigation methods failed');
-    const baseUrl = window.requestBaseUrl || window.location.href.split('?')[0];
-    const assignmentsUrl = `${baseUrl}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-    
-    if (confirm(`Navigation failed automatically. Would you like to copy the assignments URL to your clipboard?\n\nURL: ${assignmentsUrl}`)) {
-        // Try to copy to clipboard
-        if (navigator.clipboard) {
-            navigator.clipboard.writeText(assignmentsUrl).then(() => {
-                alert('URL copied to clipboard! Please paste it in your address bar.');
-            }).catch(() => {
-                prompt('Please copy this URL:', assignmentsUrl);
-            });
+
+
+    function redirectToAssignmentPage() {
+        if (currentEditingRequest && currentEditingRequest.requestId) {
+            const requestId = currentEditingRequest.requestId;
+            console.log('Navigating to assignments page for request:', requestId);
+
+            navigateTo('assignments', { requestId: requestId });
         } else {
-            prompt('Please copy this URL:', assignmentsUrl);
+            showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
+            console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
         }
     }
-}
-
-// Additional debugging function
-function debugCurrentState() {
-    console.log('=== DEBUGGING CURRENT STATE ===');
-    console.log('currentEditingRequest:', currentEditingRequest);
-    console.log('window.location.href:', window.location.href);
-    console.log('Available functions:', {
-        navigateTo: typeof navigateTo,
-        redirectToAssignmentPage: typeof redirectToAssignmentPage,
-        forceNavigateToAssignments: typeof window.forceNavigateToAssignments
-    });
-    console.log('================================');
-}
-
-// You can call this from the browser console to debug
-window.debugCurrentState = debugCurrentState;
-// Run debug check when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 Page loaded, running navigation debug checks...');
-    
-    setTimeout(() => {
-        debugAssignRidersButton();
-        testNavigation();
-    }, 1000);
-});
-
-// Global error handler for navigation issues
-window.addEventListener('error', function(event) {
-    if (event.message && event.message.includes('navigation')) {
-        console.error('🚨 Navigation error detected:', event.error);
-    }
-});
-
-// Add this as a backup method that can be called from the button directly
-window.forceNavigateToAssignments = function(requestId) {
-    console.log('🔧 Force navigation called with requestId:', requestId);
-    
-    if (!requestId && currentEditingRequest) {
-        requestId = currentEditingRequest.requestId;
-    }
-    
-    if (!requestId) {
-        console.error('❌ No requestId available for navigation');
-        showToast('No request ID available. Cannot navigate to assignments.');
-        return;
-    }
-    
-    const baseUrl = window.requestBaseUrl || window.location.href.split('?')[0];
-    const url = `${baseUrl}?page=assignments&requestId=${encodeURIComponent(requestId)}`;
-    
-    console.log('🚀 Force navigating to:', url);
-    window.location.href = url;
-};
 </script>
 </body>
 </html>

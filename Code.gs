@@ -2374,30 +2374,24 @@ function getDashboardStats() {
 function getUpcomingAssignmentsForWebApp(limit = 5) {
   try {
     const assignmentsData = getAssignmentsData();
-
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
+    
     const upcomingAssignments = assignmentsData.data
       .filter(assignment => {
-        let eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-        if (!(eventDate instanceof Date)) {
-          eventDate = parseDateString(eventDate);
-        }
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
         const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
         const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-
-        return eventDate &&
-               eventDate >= today &&
-               riderName &&
+        
+        return (eventDate instanceof Date) && 
+               eventDate >= today && 
+               riderName && 
                !['Cancelled', 'Completed', 'No Show'].includes(status);
       })
       .sort((a, b) => {
-        const dateAValue = getColumnValue(a, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-        const dateBValue = getColumnValue(b, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-        const dateA = dateAValue instanceof Date ? dateAValue : parseDateString(dateAValue);
-        const dateB = dateBValue instanceof Date ? dateBValue : parseDateString(dateBValue);
-        if (!dateA || !dateB) return 0;
+        const dateA = getColumnValue(a, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        const dateB = getColumnValue(b, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
         return dateA.getTime() - dateB.getTime();
       })
       .slice(0, limit)
@@ -2405,7 +2399,7 @@ function getUpcomingAssignmentsForWebApp(limit = 5) {
         assignmentId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
         requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
         riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
-        eventDate: formatDateForDisplay(parseDateString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate))),
+        eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
         startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
         startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation)
       }));
@@ -4524,314 +4518,46 @@ function getRoleBasedNavigation(currentPage, user, rider) {
   return navHtml;
 }
 
-// REPLACE your existing injectUserInfo function in Code.gs with this fixed version:
-
+// 👤 User Information Injection
 function injectUserInfo(content, user, rider) {
-  try {
-    console.log('Code.gs#injectUserInfo: Received user object:', JSON.stringify(user));
-    
-    // Ensure content is a string
-    let htmlContent;
-    if (typeof content === 'string') {
-      htmlContent = content;
-    } else if (content && typeof content.getContent === 'function') {
-      htmlContent = content.getContent();
-    } else {
-      console.error('❌ injectUserInfo: Invalid content type:', typeof content);
-      return content;
-    }
-    
-    // Verify we have a string
-    if (typeof htmlContent !== 'string') {
-      console.error('❌ injectUserInfo: Could not get string content');
-      return content;
-    }
-    
-    console.log('✅ injectUserInfo: Processing HTML content:', htmlContent.length, 'characters');
-    
-    // Replace user placeholders
-    htmlContent = htmlContent.replace(/\{\{USER_NAME\}\}/g, user.name || '');
-    htmlContent = htmlContent.replace(/\{\{USER_EMAIL\}\}/g, user.email || '');
-    htmlContent = htmlContent.replace(/\{\{USER_ROLE\}\}/g, user.role || '');
-    htmlContent = htmlContent.replace(/\{\{USER_AVATAR\}\}/g, user.avatar || '');
-    
-    if (rider) {
-      htmlContent = htmlContent.replace(/\{\{RIDER_ID\}\}/g, rider.id || '');
-      htmlContent = htmlContent.replace(/\{\{RIDER_STATUS\}\}/g, rider.status || '');
-    }
-    
-    // Add user info to existing elements (safely check if they exist)
-    if (htmlContent.includes('id="userName"')) {
-      htmlContent = htmlContent.replace('id="userName">Loading...', `id="userName">${user.name || 'User'}`);
-      // Also handle empty content
-      htmlContent = htmlContent.replace(/id="userName">\s*</, `id="userName">${user.name || 'User'}<`);
-    }
-    
-    if (htmlContent.includes('id="userRole"')) {
-      htmlContent = htmlContent.replace('id="userRole">User', `id="userRole">${user.role || 'User'}`);
-      htmlContent = htmlContent.replace(/id="userRole">\s*</, `id="userRole">${user.role || 'User'}<`);
-    }
-    
-    if (htmlContent.includes('id="userAvatar"')) {
-      htmlContent = htmlContent.replace('id="userAvatar">?', `id="userAvatar">${user.avatar || '?'}`);
-      htmlContent = htmlContent.replace(/id="userAvatar">\s*</, `id="userAvatar">${user.avatar || '?'}<`);
-    }
-    
-    console.log('✅ injectUserInfo: User info injection completed');
-    return htmlContent;
-    
-  } catch (error) {
-    console.error('❌ Error in injectUserInfo:', error);
-    console.error('Error details:', error.message);
-    return content; // Return original content on error
+  console.log('Code.gs#injectUserInfo: Received user object: ' + JSON.stringify(user));
+  // Replace user placeholders
+  content = content.replace(/\{\{USER_NAME\}\}/g, user.name);
+  content = content.replace(/\{\{USER_EMAIL\}\}/g, user.email);
+  content = content.replace(/\{\{USER_ROLE\}\}/g, user.role);
+  content = content.replace(/\{\{USER_AVATAR\}\}/g, user.avatar);
+  
+  if (rider) {
+    content = content.replace(/\{\{RIDER_ID\}\}/g, rider.id);
+    content = content.replace(/\{\{RIDER_STATUS\}\}/g, rider.status);
   }
-}
-
-// ALSO ADD this test function to verify the fix:
-
-function testInjectUserInfoFix() {
-  try {
-    console.log('🧪 Testing injectUserInfo fix...');
-    
-    // Test data
-    const testUser = {
-      name: 'Test User',
-      email: 'test@example.com',
-      role: 'admin',
-      avatar: 'T'
-    };
-    
-    // Test 1: String content
-    console.log('Test 1: String content...');
-    const stringContent = '<html><body><span id="userName">Loading...</span></body></html>';
-    const result1 = injectUserInfo(stringContent, testUser);
-    console.log('String test result:', typeof result1, result1.includes('Test User') ? '✅ SUCCESS' : '❌ FAILED');
-    
-    // Test 2: HtmlOutput content
-    console.log('Test 2: HtmlOutput content...');
-    const htmlOutput = HtmlService.createHtmlOutput(stringContent);
-    const result2 = injectUserInfo(htmlOutput, testUser);
-    console.log('HtmlOutput test result:', typeof result2, result2.includes('Test User') ? '✅ SUCCESS' : '❌ FAILED');
-    
-    // Test 3: File content
-    console.log('Test 3: File content...');
-    try {
-      const fileContent = HtmlService.createHtmlOutputFromFile('index');
-      const result3 = injectUserInfo(fileContent, testUser);
-      console.log('File test result:', typeof result3, '✅ SUCCESS - No errors');
-    } catch (fileError) {
-      console.log('File test: File not found (normal if index.html doesn\'t exist)');
-    }
-    
-    console.log('✅ injectUserInfo test completed');
-    return { success: true };
-    
-  } catch (error) {
-    console.error('❌ injectUserInfo test failed:', error);
-    return { success: false, error: error.message };
+  
+  // Add user info to existing elements
+  if (content.includes('id="userName"')) {
+    content = content.replace('id="userName">Loading...', `id="userName">${user.name}`);
   }
-}
-
-// FINALLY, add this simple debug function to test the assignments page flow:
-
-function testAssignmentsPageFlow() {
-  try {
-    console.log('🧪 Testing complete assignments page flow...');
-    
-    // Test the exact scenario that's failing
-    const mockEvent = { 
-      parameter: { 
-        page: 'assignments', 
-        requestId: 'E-13-25' 
-      } 
-    };
-    
-    console.log('1. Calling doGet with assignments parameters...');
-    const result = doGet(mockEvent);
-    
-    console.log('2. Checking result type:', typeof result);
-    
-    if (result && typeof result.getContent === 'function') {
-      const content = result.getContent();
-      console.log('3. Content length:', content.length);
-      console.log('4. Has assignments content:', content.includes('assignment') ? '✅ YES' : '❌ NO');
-      console.log('5. Has JavaScript:', content.includes('<script>') ? '✅ YES' : '❌ NO');
-      console.log('6. Has user data:', content.includes('currentUser') ? '✅ YES' : '❌ NO');
-      
-      if (content.length > 0) {
-        console.log('✅ Assignments page flow test PASSED');
-        return { success: true, contentLength: content.length };
-      } else {
-        console.log('❌ Assignments page flow test FAILED - Empty content');
-        return { success: false, error: 'Empty content' };
-      }
-    } else {
-      console.log('❌ doGet did not return valid HtmlOutput');
-      return { success: false, error: 'Invalid result type' };
-    }
-    
-  } catch (error) {
-    console.error('❌ Assignments page flow test failed:', error);
-    return { success: false, error: error.message };
+  if (content.includes('id="userRole"')) {
+    content = content.replace('id="userRole">User', `id="userRole">${user.role}`);
   }
-}
-
-// ALSO ADD this helper function to debug content types:
-
-/**
- * Debug function to check content types
- */
-function debugContentTypes() {
-    try {
-        console.log('=== DEBUGGING CONTENT TYPES ===');
-        
-        // Test 1: String content
-        const stringContent = '<html><head></head><body>Test</body></html>';
-        console.log('String content test:', typeof stringContent);
-        
-        // Test 2: HtmlOutput content
-        const htmlOutput = HtmlService.createHtmlOutput(stringContent);
-        console.log('HtmlOutput test:', typeof htmlOutput);
-        console.log('HtmlOutput.getContent():', typeof htmlOutput.getContent());
-        
-        // Test 3: File content
-        const fileContent = HtmlService.createHtmlOutputFromFile('index');
-        console.log('File content test:', typeof fileContent);
-        console.log('File content.getContent():', typeof fileContent.getContent());
-        
-        // Test 4: Test injection on real content
-        const testUser = { name: 'Test User', email: 'test@example.com', role: 'admin' };
-        
-        console.log('4a. Testing string injection...');
-        const result1 = injectUserInfo(stringContent, testUser);
-        console.log('String injection result:', typeof result1);
-        
-        console.log('4b. Testing HtmlOutput injection...');
-        const result2 = injectUserInfo(htmlOutput, testUser);
-        console.log('HtmlOutput injection result:', typeof result2);
-        
-        console.log('=== CONTENT TYPE DEBUG COMPLETE ===');
-        return { success: true };
-        
-    } catch (error) {
-        console.error('❌ Content type debug failed:', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// AND ADD this safer version of doGet that handles errors better:
-
-/**
- * Safer doGet function with better error handling
- */
-function doGetSafe(e) {
-    try {
-        console.log('🚀 doGetSafe started...');
-        console.log('Parameters:', JSON.stringify(e.parameter));
-        
-        // Get page and auth
-        const requestedPage = (e && e.parameter && e.parameter.page) || 'dashboard';
-        console.log('📄 Requested page:', requestedPage);
-        
-        // Authenticate user
-        const authResult = authenticateAndAuthorizeUser();
-        if (!authResult.success) {
-            console.log('❌ Authentication failed');
-            return createSignInPageSimple();
-        }
-        
-        console.log('✅ Authenticated user:', authResult.user.name, '(' + authResult.user.role + ')');
-        
-        // Get file name
-        const fileName = getPageFileNameSafe(requestedPage, authResult.user.role);
-        console.log('📄 Loading file:', fileName);
-        
-        // Load the HTML file
-        let htmlOutput;
-        try {
-            htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
-            console.log('✅ HTML file loaded successfully');
-        } catch (fileError) {
-            console.error('❌ Error loading HTML file:', fileError);
-            return HtmlService.createHtmlOutput('<h1>Page Not Found</h1><p>Could not load ' + fileName + '.html</p>');
-        }
-        
-        // Try to inject user info safely
-        try {
-            console.log('🔧 Attempting user info injection...');
-            htmlOutput = injectUserInfo(htmlOutput, authResult.user);
-            console.log('✅ User info injection completed');
-        } catch (injectionError) {
-            console.error('❌ User injection failed:', injectionError);
-            // Continue without user injection rather than failing completely
-        }
-        
-        // Set basic properties
-        htmlOutput.setTitle('Escort Management System - ' + requestedPage.charAt(0).toUpperCase() + requestedPage.slice(1))
-                  .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
-        console.log('✅ doGetSafe completed successfully');
-        return htmlOutput;
-        
-    } catch (error) {
-        console.error('❌ doGetSafe failed:', error);
-        
-        // Return basic error page
-        return HtmlService.createHtmlOutput(`
-            <html>
-                <body style="font-family: Arial, sans-serif; padding: 2rem; text-align: center;">
-                    <h2>⚠️ Application Error</h2>
-                    <p>There was an error loading the page.</p>
-                    <p><strong>Error:</strong> ${error.message}</p>
-                    <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px;">
-                        🔄 Refresh Page
-                    </button>
-                </body>
-            </html>
-        `).setTitle('Application Error');
-    }
+  if (content.includes('id="userAvatar"')) {
+    content = content.replace('id="userAvatar">?', `id="userAvatar">${user.avatar}`);
+  }
+  
+  return content;
 }
 
 // 📊 User-specific Data Injection
-// REPLACE your existing addUserDataInjection function in Code.gs with this fixed version:
-
 function addUserDataInjection(content, user, rider) {
-  try {
-    console.log('📊 addUserDataInjection: Starting user data injection');
-    
-    // Handle both string content and HtmlOutput objects
-    let htmlContent;
-    let isHtmlOutput = false;
-    
-    if (typeof content === 'string') {
-      htmlContent = content;
-    } else if (content && typeof content.getContent === 'function') {
-      htmlContent = content.getContent();
-      isHtmlOutput = true;
-    } else {
-      console.error('❌ addUserDataInjection: Invalid content type:', typeof content);
-      return content;
-    }
-    
-    // Verify we have a string
-    if (typeof htmlContent !== 'string') {
-      console.error('❌ addUserDataInjection: Could not get string content');
-      return content;
-    }
-    
-    console.log('✅ addUserDataInjection: Processing HTML content:', htmlContent.length, 'characters');
-    
-    // Only inject if </body> exists
-    if (htmlContent.includes('</body>')) {
-      const dataScript = `
+  if (content.includes('</body>')) {
+    const dataScript = `
 <script>
 // Inject user context into the page
 window.currentUser = {
-  name: '${escapeJsStringForInjection(user.name || '')}',
-  email: '${escapeJsStringForInjection(user.email || '')}',
-  role: '${escapeJsStringForInjection(user.role || '')}',
-  permissions: ${JSON.stringify(user.permissions || [])},
-  riderId: '${rider ? escapeJsStringForInjection(rider.id || '') : ''}',
+  name: '${user.name}',
+  email: '${user.email}',
+  role: '${user.role}',
+  permissions: ${JSON.stringify(user.permissions)},
+  riderId: '${rider ? rider.id : ''}',
   isRider: ${rider ? 'true' : 'false'}
 };
 
@@ -4861,145 +4587,11 @@ document.addEventListener('DOMContentLoaded', function() {
   document.body.classList.add('role-' + window.currentUser.role);
 });
 </script>`;
-      
-      htmlContent = htmlContent.replace('</body>', dataScript + '\n</body>');
-      console.log('✅ addUserDataInjection: User data script injected before </body>');
-    } else {
-      console.warn('⚠️ addUserDataInjection: No </body> tag found, appending to end');
-      htmlContent += `
-<script>
-window.currentUser = {
-  name: '${escapeJsStringForInjection(user.name || '')}',
-  email: '${escapeJsStringForInjection(user.email || '')}',
-  role: '${escapeJsStringForInjection(user.role || '')}',
-  permissions: ${JSON.stringify(user.permissions || [])},
-  riderId: '${rider ? escapeJsStringForInjection(rider.id || '') : ''}',
-  isRider: ${rider ? 'true' : 'false'}
-};
-console.log('👤 User context loaded (appended):', window.currentUser);
-</script>`;
-    }
     
-    // Return the appropriate type
-    if (isHtmlOutput) {
-      // Create new HtmlOutput with modified content
-      return HtmlService.createHtmlOutput(htmlContent)
-        .setTitle(content.getTitle ? content.getTitle() : 'Escort Management System')
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    } else {
-      return htmlContent;
-    }
-    
-  } catch (error) {
-    console.error('❌ Error in addUserDataInjection:', error);
-    console.error('Error details:', error.message);
-    return content; // Return original content on error
+    content = content.replace('</body>', dataScript + '\n</body>');
   }
-}
-
-// ALSO ADD this helper function for safe JavaScript string escaping:
-
-function escapeJsStringForInjection(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/\\/g, '\\\\')    // Escape backslashes
-    .replace(/'/g, "\\'")      // Escape single quotes
-    .replace(/"/g, '\\"')      // Escape double quotes
-    .replace(/\n/g, '\\n')     // Escape newlines
-    .replace(/\r/g, '\\r')     // Escape carriage returns
-    .replace(/\t/g, '\\t');    // Escape tabs
-}
-
-// AND UPDATE the addUserDataInjectionSafe function to handle the new return type:
-
-function addUserDataInjectionSafe(htmlOutput, user, rider) {
-  try {
-    console.log('📊 addUserDataInjectionSafe: Starting...');
-    
-    if (typeof addUserDataInjection === 'function') {
-      // Call the main function
-      const result = addUserDataInjection(htmlOutput, user, rider);
-      
-      // If result is an HtmlOutput, return it directly
-      if (result && typeof result.getContent === 'function') {
-        console.log('✅ addUserDataInjectionSafe: Received HtmlOutput from addUserDataInjection');
-        return result;
-      }
-      
-      // If result is a string, we need to set it back to the htmlOutput
-      if (typeof result === 'string') {
-        console.log('✅ addUserDataInjectionSafe: Received string from addUserDataInjection, setting content');
-        htmlOutput.setContent(result);
-        return htmlOutput;
-      }
-    }
-    
-    // Fallback: simple user script injection
-    console.log('⚠️ addUserDataInjectionSafe: Using fallback injection');
-    const userScript = `
-<script>
-window.currentUser = {
-  name: '${escapeJsStringForInjection(user.name || '')}',
-  email: '${escapeJsStringForInjection(user.email || '')}',
-  role: '${escapeJsStringForInjection(user.role || '')}',
-  permissions: ${JSON.stringify(user.permissions || [])},
-  riderId: '${rider ? escapeJsStringForInjection(rider.id || '') : ''}',
-  isRider: ${rider ? 'true' : 'false'}
-};
-console.log('👤 User context loaded via fallback.');
-</script>`;
-    
-    htmlOutput.append(userScript);
-    return htmlOutput;
-    
-  } catch (error) {
-    console.error('❌ Error in addUserDataInjectionSafe:', error);
-    return htmlOutput; // Return original on error
-  }
-}
-
-// FINALLY, add a test function to verify everything works:
-
-function testUserDataInjectionFix() {
-  try {
-    console.log('🧪 Testing addUserDataInjection fix...');
-    
-    const testUser = {
-      name: 'Test User',
-      email: 'test@example.com',
-      role: 'admin',
-      permissions: ['view_all', 'edit_all']
-    };
-    
-    const testRider = {
-      id: 'RIDER001'
-    };
-    
-    // Test 1: String content with </body>
-    console.log('Test 1: String content with </body>...');
-    const stringContent = '<html><body><h1>Test</h1></body></html>';
-    const result1 = addUserDataInjection(stringContent, testUser, testRider);
-    console.log('String test result:', typeof result1, result1.includes('currentUser') ? '✅ SUCCESS' : '❌ FAILED');
-    
-    // Test 2: HtmlOutput content
-    console.log('Test 2: HtmlOutput content...');
-    const htmlOutput = HtmlService.createHtmlOutput(stringContent);
-    const result2 = addUserDataInjection(htmlOutput, testUser, testRider);
-    console.log('HtmlOutput test result:', typeof result2, result2.getContent().includes('currentUser') ? '✅ SUCCESS' : '❌ FAILED');
-    
-    // Test 3: Test the Safe wrapper
-    console.log('Test 3: Safe wrapper...');
-    const htmlOutput2 = HtmlService.createHtmlOutput(stringContent);
-    const result3 = addUserDataInjectionSafe(htmlOutput2, testUser, testRider);
-    console.log('Safe wrapper test result:', typeof result3, result3.getContent().includes('currentUser') ? '✅ SUCCESS' : '❌ FAILED');
-    
-    console.log('✅ addUserDataInjection test completed');
-    return { success: true };
-    
-  } catch (error) {
-    console.error('❌ addUserDataInjection test failed:', error);
-    return { success: false, error: error.message };
-  }
+  
+  return content;
 }
 
 // 📱 Utility Functions
@@ -6879,254 +6471,3 @@ function debugSystemSetup() {
     return { error: error.message };
   }
 }
-
-// RUN this in Google Apps Script to see what getPageDataForAssignments is actually returning
-
-function diagnosticAssignmentsData() {
-    try {
-        console.log('=== DIAGNOSTIC: ASSIGNMENTS DATA ===');
-        
-        // Test 1: Check if function exists
-        console.log('1. Function exists:', typeof getPageDataForAssignments === 'function');
-        
-        // Test 2: Call function with requestId
-        console.log('2. Calling getPageDataForAssignments with requestId E-13-25...');
-        const result = getPageDataForAssignments('E-13-25');
-        
-        console.log('3. Result type:', typeof result);
-        console.log('4. Result structure:', JSON.stringify(result, null, 2));
-        
-        // Test 3: Check individual components
-        if (result) {
-            console.log('5. Result.success:', result.success);
-            console.log('6. Result.error:', result.error);
-            console.log('7. Result.user:', !!result.user);
-            console.log('8. Result.requests:', result.requests ? `Array(${result.requests.length})` : 'null/undefined');
-            console.log('9. Result.riders:', result.riders ? `Array(${result.riders.length})` : 'null/undefined');
-            console.log('10. Result.initialRequestDetails:', !!result.initialRequestDetails);
-        } else {
-            console.log('5. Result is null/undefined!');
-        }
-        
-        // Test 4: Check authentication directly
-        console.log('11. Testing authentication...');
-        const authResult = authenticateAndAuthorizeUser();
-        console.log('12. Auth success:', authResult.success);
-        console.log('13. Auth user:', authResult.user ? authResult.user.name : 'null');
-        console.log('14. Auth error:', authResult.error);
-        
-        // Test 5: Check data functions individually
-        console.log('15. Testing data functions...');
-        
-        try {
-            const requestsData = getAssignableRequestsBasic();
-            console.log('16. Requests data:', requestsData ? `Array(${requestsData.length})` : 'null');
-        } catch (error) {
-            console.log('16. Requests data error:', error.message);
-        }
-        
-        try {
-            const ridersData = getActiveRidersBasic();
-            console.log('17. Riders data:', ridersData ? `Array(${ridersData.length})` : 'null');
-        } catch (error) {
-            console.log('17. Riders data error:', error.message);
-        }
-        
-        console.log('=== DIAGNOSTIC COMPLETE ===');
-        return result;
-        
-    } catch (error) {
-        console.error('❌ Diagnostic failed:', error);
-        console.error('Error stack:', error.stack);
-        return { success: false, error: error.message };
-    }
-}
-
-
-
-// Add this to Code.gs as a backup function
-function getPageDataForAssignments(requestId = null) {
-    try {
-        console.log('📊 Simple getPageDataForAssignments called with requestId:', requestId);
-        
-        // Simple user
-        const user = {
-            name: 'System User',
-            email: 'system@example.com',
-            role: 'admin',
-            permissions: ['view_all', 'assign_riders']
-        };
-        
-        // Mock data that will definitely work
-        const requests = [
-            {
-                id: 'E-13-25',
-                requestId: 'E-13-25',
-                requesterName: 'Test Requester',
-                eventDate: '2025-01-20',
-                startTime: '10:00 AM',
-                startLocation: 'Test Location',
-                ridersNeeded: 2,
-                status: 'New'
-            }
-        ];
-        
-        const riders = [
-            {
-                name: 'Test Rider 1',
-                jpNumber: 'JP001',
-                phone: '555-0001',
-                email: 'rider1@test.com',
-                status: 'Active'
-            }
-        ];
-        
-        const response = {
-            success: true,
-            user: user,
-            requests: requests,
-            riders: riders
-        };
-        
-        // If requestId provided, set it as initial request
-        if (requestId) {
-            const foundRequest = requests.find(req => req.id === requestId);
-            if (foundRequest) {
-                response.initialRequestDetails = foundRequest;
-            }
-        }
-        
-        return response;
-        
-    } catch (error) {
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// TEST function to verify the simple version works
-function testSimpleAssignmentsFunction() {
-    try {
-        console.log('🧪 Testing simple assignments function...');
-        
-        const result = getPageDataForAssignmentsSimple('E-13-25');
-        
-        console.log('Test result:', JSON.stringify(result, null, 2));
-        console.log('Success:', result.success ? '✅' : '❌');
-        
-        if (result.success) {
-            console.log('✅ Simple function test PASSED');
-            return true;
-        } else {
-            console.log('❌ Simple function test FAILED:', result.error);
-            return false;
-        }
-        
-    } catch (error) {
-        console.error('❌ Simple function test error:', error);
-        return false;
-    }
-}
-// OPTION 1: Quick test - Add this simple function to your Code.gs to test:
-
-function testExistingAssignmentsFunction() {
-    try {
-        console.log('🧪 Testing existing getPageDataForAssignments function...');
-        
-        // Test the function that should exist
-        const result = getPageDataForAssignments('E-13-25');
-        
-        console.log('Function result:', JSON.stringify(result, null, 2));
-        
-        if (result && result.success) {
-            console.log('✅ Function works! Data structure:');
-            console.log('  - User:', result.user ? result.user.name : 'Missing');
-            console.log('  - Requests:', result.requests ? result.requests.length : 'Missing');
-            console.log('  - Riders:', result.riders ? result.riders.length : 'Missing');
-            console.log('  - Initial request:', result.initialRequestDetails ? result.initialRequestDetails.id : 'Missing');
-            return true;
-        } else {
-            console.log('❌ Function returned error:', result.error);
-            return false;
-        }
-        
-    } catch (error) {
-        console.error('❌ Function test failed:', error);
-        return false;
-    }
-}
-
-
-// OPTION 3: Simple assignments.html fix - Replace your loadAllData function with this:
-
-function loadAllData() {
-    console.log('📊 Loading assignments data...');
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const requestIdToLoad = urlParams.get('requestId');
-    console.log('🎯 Request ID from URL:', requestIdToLoad);
-
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        
-        // Check if the function exists
-        if (typeof google.script.run.getPageDataForAssignments !== 'function') {
-            console.error('❌ getPageDataForAssignments function not found on server');
-            handleAssignmentsDataFailure({ 
-                message: 'Server function not available. Please contact administrator.' 
-            });
-            return;
-        }
-        
-        console.log('🔄 Calling getPageDataForAssignments...');
-        
-        google.script.run
-            .withSuccessHandler(function(result) {
-                console.log('📊 Raw server response:', result);
-                
-                // Validate response
-                if (!result) {
-                    console.error('❌ Server returned null/undefined');
-                    handleAssignmentsDataFailure({ message: 'No data returned from server' });
-                    return;
-                }
-                
-                if (result.success === false) {
-                    console.error('❌ Server returned error:', result.error);
-                    handleAssignmentsDataFailure({ message: result.error || 'Server error' });
-                    return;
-                }
-                
-                // Log what we received
-                console.log('✅ Valid response received:');
-                console.log('  - User:', result.user ? result.user.name : 'Missing');
-                console.log('  - Requests:', result.requests ? result.requests.length : 0);
-                console.log('  - Riders:', result.riders ? result.riders.length : 0);
-                console.log('  - Initial request:', result.initialRequestDetails ? result.initialRequestDetails.id : 'None');
-                
-                // Process the data
-                handleAssignmentsDataSuccess(result);
-            })
-            .withFailureHandler(function(error) {
-                console.error('❌ Server call failed:', error);
-                handleAssignmentsDataFailure(error);
-            })
-            .getPageDataForAssignments(requestIdToLoad);
-            
-    } else {
-        console.error('❌ Google Apps Script not available');
-        handleAssignmentsDataFailure({ message: 'Google Apps Script environment not available' });
-    }
-}
-
-// STEP-BY-STEP DEBUGGING:
-
-// 1. First, run this in Google Apps Script:
-//    testExistingAssignmentsFunction()
-
-// 2. If that fails, replace the getPageDataForAssignments function in AppServices.gs
-
-// 3. Replace the loadAllData function in assignments.html
-
-// 4. Deploy and test

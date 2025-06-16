@@ -164,7 +164,47 @@ function getPageDataForRequests(user, filters = {}) {
   }
 }
 
-
+/**
+ * Secured assignments data
+ */
+function getPageDataForAssignments(user, filters = {}) {
+  try {
+    if (!user || !user.role) {
+      return { success: false, error: 'Authentication required' };
+    }
+    
+    if (!canAccessPage(user, 'assignments')) {
+      return { success: false, error: 'Access denied to assignments' };
+    }
+    
+    const assignments = getFilteredAssignments(user, filters);
+    
+    const pageData = {
+      assignments: assignments,
+      canCreate: hasPermission(user, 'assignments', 'create'),
+      canEdit: hasPermission(user, 'assignments', 'update'),
+      canDelete: hasPermission(user, 'assignments', 'delete'),
+      canBulkAssign: hasPermission(user, 'assignments', 'bulk_assign'),
+      totalCount: assignments.length
+    };
+    
+    // Add additional data for assignment creation
+    if (hasPermission(user, 'assignments', 'create')) {
+      pageData.availableRequests = getFilteredRequests(user, { status: 'Open' });
+      pageData.availableRiders = getFilteredRiders(user);
+    }
+    
+    return {
+      success: true,
+      user: user,
+      data: pageData
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForAssignments:', error);
+    return { success: false, error: 'Failed to load assignments data' };
+  }
+}
 
 /**
  * Secured riders management
@@ -768,217 +808,48 @@ function getAllActiveAssignmentsForWebApp() {
   }
 }
 
-// REPLACE the getActiveRidersForWebApp function in AppServices.gs with this fixed version:
-
 /**
- * Fixed getActiveRidersForWebApp function with proper error handling
- * @return {Array<object>} Array of active rider objects
+ * Gets all active riders for rendering in web app forms (e.g., assignment dropdowns).
+ * Filters riders by "Active" status and ensures they have a name.
+ *
+ * @return {Array<object>} An array of active rider objects, each containing:
+ *                         jpNumber, name, phone, email, carrier.
  */
 function getActiveRidersForWebApp() {
-  console.log('ADP_LOG: getActiveRidersForWebApp_ENTRY');
   try {
-    console.log('🌐 Getting active riders for web app...'); // Existing log
+    console.log('🌐 Getting active riders for web app...');
     
-    let assignmentRiders = [];
+    // Use the enhanced assignment function as the base
+    const assignmentRiders = getActiveRidersForAssignments();
     
-    // Try to get riders from getActiveRidersForAssignments
-    try {
-      const ridersResult = getActiveRidersForAssignments();
-      console.log('getActiveRidersForAssignments returned:', typeof ridersResult, ridersResult);
-      
-      // Check if it's an array
-      if (Array.isArray(ridersResult)) {
-        assignmentRiders = ridersResult;
-        console.log(`✅ Got ${assignmentRiders.length} riders from getActiveRidersForAssignments`);
-      } else {
-        console.warn('⚠️ getActiveRidersForAssignments did not return an array:', ridersResult);
-        throw new Error('getActiveRidersForAssignments returned non-array');
-      }
-    } catch (assignmentRidersError) {
-      console.warn('⚠️ getActiveRidersForAssignments failed:', assignmentRidersError.message);
-      
-      // Fallback: try to get riders directly
-      try {
-        console.log('🔄 Fallback: getting riders directly...');
-        const ridersData = getRidersData();
-        
-        if (ridersData && ridersData.data && Array.isArray(ridersData.data)) {
-          console.log(`📊 Got riders data with ${ridersData.data.length} rows`);
-          
-          const columnMap = ridersData.columnMap;
-          assignmentRiders = [];
-          
-          for (let i = 0; i < ridersData.data.length; i++) {
-            const row = ridersData.data[i];
-            const name = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
-            const status = getColumnValue(row, columnMap, CONFIG.columns.riders.status);
-            
-            // Check if rider is active (case insensitive)
-            if (name && status && String(status).toLowerCase() === 'active') {
-              assignmentRiders.push({
-                name: name,
-                jpNumber: getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber) || '',
-                phone: getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '',
-                email: getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '',
-                status: status
-              });
-            }
-          }
-          
-          console.log(`✅ Fallback found ${assignmentRiders.length} active riders`);
-        } else {
-          throw new Error('No valid riders data found');
-        }
-      } catch (fallbackError) {
-        console.error('❌ Fallback riders method failed:', fallbackError.message);
-        
-        // Last resort: return mock data
-        console.log('🆘 Using emergency mock riders data');
-        assignmentRiders = [
-          {
-            name: 'Emergency Rider 1',
-            jpNumber: 'EMRG001',
-            phone: '555-0911',
-            email: 'emergency1@riders.com',
-            status: 'Active'
-          },
-          {
-            name: 'Emergency Rider 2', 
-            jpNumber: 'EMRG002',
-            phone: '555-0912',
-            email: 'emergency2@riders.com',
-            status: 'Active'
-          }
-        ];
-      }
-    }
-    
-    // Convert to web app format (ensure array before mapping)
-    if (!Array.isArray(assignmentRiders)) {
-      console.error('❌ assignmentRiders is still not an array:', typeof assignmentRiders);
-      assignmentRiders = [];
-    }
-    
+    // Convert to web app format if needed
     const webAppRiders = assignmentRiders.map(rider => ({
       jpNumber: rider.jpNumber || '',
       name: rider.name || '',
       phone: rider.phone || '',
       email: rider.email || '',
       carrier: rider.carrier || 'Unknown',
-      partTime: rider.partTime || 'No',
-      status: rider.status || 'Active'
+      partTime: rider.partTime || 'No'
     }));
     
-    console.log(`✅ Returning ${webAppRiders.length} active riders for web app`); // Existing log
-    console.log('ADP_LOG: getActiveRidersForWebApp_RETURN - Count: ' + webAppRiders.length);
+    console.log(`✅ Returning ${webAppRiders.length} active riders for web app`);
     return webAppRiders;
     
   } catch (error) {
-    console.log('ADP_LOG: getActiveRidersForWebApp_ERROR - ' + error.toString() + ' Stack: ' + error.stack);
-    console.error('❌ Critical error in getActiveRidersForWebApp:', error); // Existing log
-    logError('Error in getActiveRidersForWebApp', error); // Existing log
+    console.error('❌ Error getting active riders for web app:', error);
+    logError('Error in getActiveRidersForWebApp', error);
     
-    // Return emergency fallback
-    return [
-      {
-        jpNumber: 'FALL001',
-        name: 'Fallback Rider',
-        phone: '555-0000',
-        email: 'fallback@riders.com',
-        carrier: 'Emergency',
-        partTime: 'No',
-        status: 'Active'
-      }
-    ];
+    // Return fallback
+    return [{
+      jpNumber: 'WEB001',
+      name: 'Web App Rider',
+      phone: '555-0000',
+      email: 'webapp@example.com',
+      carrier: 'Unknown'
+    }];
   }
 }
 
-// ALSO ADD this diagnostic function to see what getActiveRidersForAssignments returns:
-
-function debugGetActiveRidersForAssignments() {
-  try {
-    console.log('🔍 Debugging getActiveRidersForAssignments...');
-    
-    const result = getActiveRidersForAssignments();
-    
-    console.log('Result type:', typeof result);
-    console.log('Is array:', Array.isArray(result));
-    console.log('Result value:', result);
-    
-    if (result && typeof result === 'object' && !Array.isArray(result)) {
-      console.log('Object keys:', Object.keys(result));
-      console.log('Has length property:', 'length' in result);
-    }
-    
-    return {
-      type: typeof result,
-      isArray: Array.isArray(result),
-      value: result,
-      length: result ? result.length : 'N/A'
-    };
-    
-  } catch (error) {
-    console.error('❌ Debug failed:', error);
-    return { error: error.message };
-  }
-}
-
-// AND ADD this function to test the complete riders chain:
-
-function testCompleteRidersChain() {
-  try {
-    console.log('🧪 Testing complete riders chain...');
-    
-    const results = {};
-    
-    // Test 1: getRidersData
-    try {
-      const ridersData = getRidersData();
-      results.getRidersData = {
-        success: true,
-        hasData: !!ridersData,
-        hasDataArray: !!(ridersData && ridersData.data),
-        dataLength: ridersData?.data?.length || 0
-      };
-    } catch (error) {
-      results.getRidersData = { success: false, error: error.message };
-    }
-    
-    // Test 2: getActiveRidersForAssignments
-    try {
-      const assignmentRiders = getActiveRidersForAssignments();
-      results.getActiveRidersForAssignments = {
-        success: true,
-        type: typeof assignmentRiders,
-        isArray: Array.isArray(assignmentRiders),
-        length: assignmentRiders?.length || 'No length property'
-      };
-    } catch (error) {
-      results.getActiveRidersForAssignments = { success: false, error: error.message };
-    }
-    
-    // Test 3: getActiveRidersForWebApp
-    try {
-      const webAppRiders = getActiveRidersForWebApp();
-      results.getActiveRidersForWebApp = {
-        success: true,
-        type: typeof webAppRiders,
-        isArray: Array.isArray(webAppRiders),
-        length: webAppRiders?.length || 0,
-        sample: webAppRiders?.[0] || null
-      };
-    } catch (error) {
-      results.getActiveRidersForWebApp = { success: false, error: error.message };
-    }
-    
-    console.log('🧪 Complete riders chain test results:', results);
-    return results;
-    
-  } catch (error) {
-    console.error('❌ Complete test failed:', error);
-    return { error: error.message };
-  }
-}
 /**
  * Returns riders for the assignments page optionally filtered by active status.
  * When `filterActive` is true, only active riders are returned. Otherwise all
@@ -1712,14 +1583,12 @@ function testRequestsAccess() {
  * @return {Array<object>} An array of formatted request objects suitable for assignment.
  */
 function getFilteredRequestsForAssignments(user) {
-  console.log('ADP_LOG: getFilteredRequestsForAssignments_ENTRY - User: ' + (user ? user.name : 'null'));
   try {
-    console.log('📋 Getting filtered requests for assignments page...'); // Existing log
-    console.log('User parameter:', user); // Existing log
+    console.log('📋 Getting filtered requests for assignments page...');
+    console.log('User parameter:', user);
     const requestsData = getRequestsData();
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      console.log('❌ No requests data found'); // Existing log
-      console.log('ADP_LOG: getFilteredRequestsForAssignments_NO_DATA_FOUND');
+      console.log('❌ No requests data found');
       return [];
     }
     const columnMap = requestsData.columnMap;
@@ -1780,19 +1649,249 @@ function getFilteredRequestsForAssignments(user) {
         return dateB.getTime() - dateA.getTime();
       } catch (sortError) { return 0; }
     });
-    console.log(`✅ Returning ${sortedRequests.length} assignable requests`); // Existing log
-    if (sortedRequests.length > 0) console.log('First processed request:', sortedRequests[0]); // Existing log
-    console.log('ADP_LOG: getFilteredRequestsForAssignments_RETURN - Count: ' + sortedRequests.length);
+    console.log(`✅ Returning ${sortedRequests.length} assignable requests`);
+    if (sortedRequests.length > 0) console.log('First processed request:', sortedRequests[0]);
     return sortedRequests;
   } catch (error) {
-    console.log('ADP_LOG: getFilteredRequestsForAssignments_ERROR - ' + error.toString() + ' Stack: ' + error.stack);
-    console.error('❌ Error getting filtered requests for assignments:', error); // Existing log
-    logError('Error in getFilteredRequestsForAssignments', error); // Existing log
+    console.error('❌ Error getting filtered requests for assignments:', error);
+    logError('Error in getFilteredRequestsForAssignments', error);
     return [];
   }
 }
 
+/**
+ * Fetches active riders for the assignments page.
+ * Filters riders by status (Active or Available, or no status) and ensures they have a name.
+ *
+ * @return {Array<object>} An array of active rider objects, each containing:
+ *                         name, jpNumber, phone, email, carrier, status ('Available').
+ */
+function getActiveRidersForAssignments() {
+  try {
+    console.log('🏍️ Getting active riders for assignments page with enhanced logic...');
+    
+    const ridersData = getRidersData();
+    
+    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
+      console.log('❌ No riders data found');
+      return [];
+    }
+    
+    console.log(`📊 Total riders in sheet: ${ridersData.data.length}`);
+    console.log('📋 Available columns:', ridersData.headers);
+    console.log('🗂️ Column mapping:', ridersData.columnMap);
+    
+    const columnMap = ridersData.columnMap;
+    const activeRiders = [];
+    
+    // Enhanced column detection - try multiple possible column names
+    const nameColumns = [
+      CONFIG.columns.riders.name,
+      'Full Name',
+      'Name',
+      'Rider Name'
+    ];
+    
+    const statusColumns = [
+      CONFIG.columns.riders.status,
+      'Status',
+      'Rider Status'
+    ];
+    
+    const jpNumberColumns = [
+      CONFIG.columns.riders.jpNumber,
+      'Rider ID',
+      'JP Number',
+      'ID'
+    ];
+    
+    const phoneColumns = [
+      CONFIG.columns.riders.phone,
+      'Phone Number',
+      'Phone',
+      'Contact'
+    ];
+    
+    const emailColumns = [
+      CONFIG.columns.riders.email,
+      'Email',
+      'Email Address'
+    ];
 
+    const partTimeColumns = [
+      CONFIG.columns.riders.partTime,
+      'Part Time',
+      'Part-Time',
+      'Part Time Rider',
+      'PartTime'
+    ];
+    
+    // Find the best column matches
+    const getColumnIndex = (possibleNames) => {
+      for (const name of possibleNames) {
+        if (columnMap[name] !== undefined) {
+          return columnMap[name];
+        }
+      }
+      return -1;
+    };
+    
+    const nameColIndex = getColumnIndex(nameColumns);
+    const statusColIndex = getColumnIndex(statusColumns);
+    const jpNumberColIndex = getColumnIndex(jpNumberColumns);
+    const phoneColIndex = getColumnIndex(phoneColumns);
+    const emailColIndex = getColumnIndex(emailColumns);
+    const partTimeColIndex = getColumnIndex(partTimeColumns);
+    
+    console.log('🔍 Column detection results:');
+    console.log(`  Name column: index ${nameColIndex} (${nameColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
+    console.log(`  Status column: index ${statusColIndex} (${statusColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
+    console.log(`  JP Number column: index ${jpNumberColIndex} (${jpNumberColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
+    
+    // Fallback: if no proper columns found, use positional indexing
+    const usePositionalFallback = nameColIndex === -1;
+    
+    if (usePositionalFallback) {
+      console.log('⚠️ Using positional fallback (assuming standard column order)');
+    }
+    
+    for (let i = 0; i < ridersData.data.length; i++) {
+      try {
+        const row = ridersData.data[i];
+        
+        // Get rider data with enhanced fallback logic
+        let riderName, status, jpNumber, phone, email, partTime;
+        
+        if (usePositionalFallback) {
+          // Assume standard order: ID, Name, Phone, Email, Status, ...
+          jpNumber = row[0] || '';
+          riderName = row[1] || '';
+          phone = row[2] || '';
+          email = row[3] || '';
+          status = row[4] || 'Active'; // Default to Active
+          partTime = row[5] || 'No';
+        } else {
+          riderName = nameColIndex >= 0 ? row[nameColIndex] : (row[1] || '');
+          status = statusColIndex >= 0 ? row[statusColIndex] : 'Active';
+          jpNumber = jpNumberColIndex >= 0 ? row[jpNumberColIndex] : (row[0] || '');
+          phone = phoneColIndex >= 0 ? row[phoneColIndex] : (row[2] || '');
+          email = emailColIndex >= 0 ? row[emailColIndex] : (row[3] || '');
+          partTime = partTimeColIndex >= 0 ? row[partTimeColIndex] : (row[5] || 'No');
+        }
+        
+        // Debug first few riders
+        if (i < 3) {
+          console.log(`🔍 Rider ${i + 1}:`, {
+            name: riderName,
+            jpNumber: jpNumber,
+            status: status,
+            partTime: partTime,
+            phone: phone,
+            hasValidName: !!(riderName && String(riderName).trim().length > 0)
+          });
+        }
+        
+        // Check if rider has a name (essential requirement)
+        if (!riderName || String(riderName).trim().length === 0) {
+          if (i < 5) console.log(`⚠️ Skipping rider ${i + 1}: No name`);
+          continue;
+        }
+        
+        // ENHANCED STATUS CHECKING - be very permissive
+        const riderStatus = String(status || '').trim().toLowerCase();
+        
+        // Consider these as "active":
+        // - Empty status (default to active)
+        // - 'active', 'available', 'yes', 'y', 'true'
+        // - Any status that doesn't explicitly say inactive
+        const isActive = !riderStatus || 
+                        riderStatus === '' || 
+                        riderStatus === 'active' || 
+                        riderStatus === 'available' ||
+                        riderStatus === 'yes' ||
+                        riderStatus === 'y' ||
+                        riderStatus === 'true' ||
+                        riderStatus === '1' ||
+                        // Be permissive - exclude only clearly inactive statuses
+                        (!['inactive', 'disabled', 'suspended', 'no', 'false', '0'].includes(riderStatus));
+        
+        if (!isActive) {
+          if (i < 5) console.log(`⚠️ Skipping rider ${i + 1}: Status '${status}' considered inactive`);
+          continue;
+        }
+        
+        // Add to active riders list
+        activeRiders.push({
+          name: String(riderName).trim(),
+          jpNumber: jpNumber ? String(jpNumber).trim() : `R${i}`,
+          phone: phone ? String(phone).trim() : '555-0000',
+          email: email ? String(email).trim() : '',
+          carrier: 'Unknown',
+          status: 'Available',
+          partTime: partTime ? String(partTime).trim() : 'No'
+        });
+        
+        if (i < 3) {
+          console.log(`✅ Added rider ${i + 1}: ${riderName} (${jpNumber || `R${i}`})`);
+        }
+        
+      } catch (rowError) {
+        console.log(`⚠️ Error processing rider row ${i}:`, rowError);
+      }
+    }
+    
+    console.log(`✅ Found ${activeRiders.length} active riders out of ${ridersData.data.length} total riders`);
+    
+    // If still no active riders, provide detailed debugging info
+    if (activeRiders.length === 0) {
+      console.log('❌ NO ACTIVE RIDERS FOUND - DETAILED ANALYSIS:');
+      
+      console.log('📊 Sample of first 5 rows (raw data):');
+      for (let i = 0; i < Math.min(5, ridersData.data.length); i++) {
+        const row = ridersData.data[i];
+        console.log(`  Row ${i + 1}:`, row);
+      }
+      
+      console.log('📊 Sample processed data:');
+      for (let i = 0; i < Math.min(3, ridersData.data.length); i++) {
+        const row = ridersData.data[i];
+        const name = nameColIndex >= 0 ? row[nameColIndex] : row[1];
+        const status = statusColIndex >= 0 ? row[statusColIndex] : row[4];
+        console.log(`  Row ${i + 1}: name="${name}" status="${status}" hasName=${!!(name && String(name).trim())}`);
+      }
+      
+      // Return a fallback rider for testing if absolutely no riders found
+      console.log('🔧 Creating fallback test rider...');
+      return [{
+        name: 'Test Rider',
+        jpNumber: 'TEST001',
+        phone: '555-0000',
+        email: 'test@example.com',
+        carrier: 'Unknown',
+        status: 'Available'
+      }];
+      
+    } else {
+      console.log('📋 Sample active riders:', activeRiders.slice(0, 3));
+    }
+    
+    return activeRiders;
+    
+  } catch (error) {
+    console.error('❌ Error getting active riders for assignments:', error);
+    logError('Error in getActiveRidersForAssignments', error);
+    
+    // Return fallback rider on error
+    return [{
+      name: 'System Rider',
+      jpNumber: 'SYS001',
+      phone: '555-0000',
+      email: 'system@example.com',
+      carrier: 'Unknown',
+      status: 'Available'
+    }];
+  }
+}
 /**
  * Simple debug function to diagnose riders issue
  * Add this to your AppServices.gs or Code.gs file
@@ -2082,252 +2181,104 @@ function getPageDataForDashboard(user) { // Added user parameter
   }
 }
 
+
 /**
- * Unified getPageDataForAssignments function
- * Handles both parameter patterns for compatibility
- * @param {string|object} userOrRequestId - Either a user object or requestId string
- * @param {object} [filters] - Optional filters (when first param is user)
- * @return {object} Consolidated data object
+ * Gets consolidated data for the assignments page
+ * @param {string} [requestIdToLoad] - Optional request ID to pre-select
+ * @return {object} Consolidated data object with user, requests, riders, and optional initial request details
  */
-function getPageDataForAssignments(userOrRequestId = null, filters = {}) {
-    // ADP_LOG: Entry point
-    console.log('ADP_LOG: getPageDataForAssignments_ENTRY - Raw userOrRequestId: ' + JSON.stringify(userOrRequestId) + ', Raw filters: ' + JSON.stringify(filters));
-    console.log('ADP_LOG: getPageDataForAssignments received raw userOrRequestId:', userOrRequestId); // Existing log, kept for compatibility
-    try {
-        console.log('📊 getPageDataForAssignments called with:', typeof userOrRequestId, userOrRequestId); // Existing log, kept
-        
-        let user = null;
-        let requestIdToLoad = null;
-        
-        // Determine parameter pattern
-        if (typeof userOrRequestId === 'string') {
-            // Called with requestId (from assignments page)
-            console.log('🎯 Called with requestId pattern');
-            requestIdToLoad = userOrRequestId;
-            console.log('ADP_LOG: Extracted requestIdToLoad (from string input):', requestIdToLoad);
-            if (requestIdToLoad) {
-                requestIdToLoad = String(requestIdToLoad).trim();
-                console.log('ADP_LOG: Sanitized requestIdToLoad:', requestIdToLoad);
-            }
-            
-            // Get user from authentication
-            const auth = authenticateAndAuthorizeUser();
-            if (!auth.success) {
-                console.log('ADP_LOG: getPageDataForAssignments_AUTH_FAIL - Error: ' + (auth.error || 'Authentication failed'));
-                return {
-                    success: false,
-                    error: auth.error || 'Authentication failed',
-                    user: null,
-                    requests: [],
-                    riders: []
-                };
-            }
-            user = auth.user;
-            console.log('ADP_LOG: getPageDataForAssignments_AUTH_SUCCESS - User: ' + user.name + ', Email: ' + user.email + ', Roles: ' + JSON.stringify(user.roles));
-            
-        } else if (userOrRequestId && typeof userOrRequestId === 'object') {
-            // Called with user object (from secured functions)
-            console.log('👤 Called with user object pattern'); // Existing log
-            user = userOrRequestId;
-            console.log('ADP_LOG: getPageDataForAssignments_USER_OBJECT_PARAM - User: ' + user.name + ', Email: ' + user.email + ', Roles: ' + JSON.stringify(user.roles));
-            
-            // Check if requestId is in filters
-            if (filters.requestId) {
-                requestIdToLoad = filters.requestId;
-                console.log('ADP_LOG: Extracted requestIdToLoad (from filters):', requestIdToLoad);
-                if (requestIdToLoad) {
-                    requestIdToLoad = String(requestIdToLoad).trim();
-                    console.log('ADP_LOG: Sanitized requestIdToLoad:', requestIdToLoad);
-                }
-            }
-            
-        } else {
-            // Called with no parameters or null
-            console.log('🔄 Called with no parameters, getting user from auth'); // Existing log
-            const auth = authenticateAndAuthorizeUser();
-            if (!auth.success) {
-                console.log('ADP_LOG: getPageDataForAssignments_AUTH_FAIL_NO_PARAMS - Error: ' + (auth.error || 'Authentication failed'));
-                return {
-                    success: false,
-                    error: auth.error || 'Authentication failed',
-                    user: null,
-                    requests: [],
-                    riders: []
-                };
-            }
-            user = auth.user;
-            console.log('ADP_LOG: getPageDataForAssignments_AUTH_SUCCESS_NO_PARAMS - User: ' + user.name + ', Email: ' + user.email + ', Roles: ' + JSON.stringify(user.roles));
-        }
-        
-        console.log('✅ User determined:', user.name, '| RequestId:', requestIdToLoad); // Existing log
-        console.log('ADP_LOG: getPageDataForAssignments_USER_DETERMINED - User: ' + (user ? user.name : 'null') + ', RequestIdToLoad: ' + requestIdToLoad);
-        
-        // Check permissions
-        if (!canAccessPage(user, 'assignments')) {
-            console.log('ADP_LOG: getPageDataForAssignments_ACCESS_DENIED - User: ' + (user ? user.name : 'null') + ' to assignments page');
-            return {
-                success: false,
-                error: 'Access denied to assignments page',
-                user: user,
-                requests: [],
-                riders: []
-            };
-        }
-        
-        // Initialize result
-        const result = {
-            success: true,
-            user: user,
-            requests: [],
-            riders: [],
-            initialRequestDetails: null
-        };
-        
-        // Get assignable requests
-        try {
-            console.log('ADP_LOG: getPageDataForAssignments_FETCH_REQUESTS_START');
-            console.log('📋 Loading assignable requests...'); // Existing log
-            result.requests = getFilteredRequestsForAssignments(user);
-            console.log(`✅ Loaded ${result.requests.length} assignable requests`); // Existing log
-            console.log('ADP_LOG: getPageDataForAssignments_FETCH_REQUESTS_END - Count: ' + (result.requests ? result.requests.length : 'null|error'));
-        } catch (requestsError) {
-            console.warn('⚠️ Error loading requests:', requestsError.message); // Existing log
-            console.log('ADP_LOG: getPageDataForAssignments_FETCH_REQUESTS_ERROR - ' + requestsError.toString() + ' Stack: ' + requestsError.stack);
-            result.requests = [];
-        }
-        
-        // Get active riders
-        try {
-            console.log('ADP_LOG: getPageDataForAssignments_FETCH_RIDERS_START');
-            console.log('👥 Loading active riders...'); // Existing log
-            result.riders = getActiveRidersForWebApp();
-            console.log(`✅ Loaded ${result.riders.length} active riders`); // Existing log
-            console.log('ADP_LOG: getPageDataForAssignments_FETCH_RIDERS_END - Count: ' + (result.riders ? result.riders.length : 'null|error'));
-        } catch (ridersError) {
-            console.warn('⚠️ Error loading riders:', ridersError.message); // Existing log
-            console.log('ADP_LOG: getPageDataForAssignments_FETCH_RIDERS_ERROR - ' + ridersError.toString() + ' Stack: ' + ridersError.stack);
-            result.riders = [];
-        }
-        
-        // Add permission flags for compatibility with secured version
-        result.canCreate = hasPermission(user, 'assignments', 'create');
-        result.canEdit = hasPermission(user, 'assignments', 'update');
-        result.canDelete = hasPermission(user, 'assignments', 'delete');
-        result.canBulkAssign = hasPermission(user, 'assignments', 'bulk_assign');
-        
-        // Handle specific request ID
-        if (requestIdToLoad) {
-            console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_START - RequestIdToLoad: ' + requestIdToLoad);
-            console.log('🎯 Looking for specific request:', requestIdToLoad); // Existing log
-            
-            // First check in loaded requests
-            const foundRequest = result.requests.find(req => 
-                (req.id && req.id === requestIdToLoad) ||
-                (req.requestId && req.requestId === requestIdToLoad)
-            );
-            
-            if (foundRequest) {
-                result.initialRequestDetails = foundRequest;
-                console.log('✅ Found initial request in list:', foundRequest.id || foundRequest.requestId); // Existing log
-                console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_FOUND_IN_LIST - ID: ' + (foundRequest.id || foundRequest.requestId) + ', Requester: ' + foundRequest.requesterName);
-            } else {
-                console.warn('⚠️ Requested ID not found in assignable requests:', requestIdToLoad); // Existing log
-                console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_NOT_IN_LIST - Attempting direct lookup for: ' + requestIdToLoad);
-                
-                // Try to get it directly (might be completed/cancelled but still viewable)
-                try {
-                    if (typeof getRequestDetails === 'function') {
-                        const directRequest = getRequestDetails(requestIdToLoad);
-                        if (directRequest) {
-                            result.initialRequestDetails = directRequest;
-                            console.log('✅ Found request via direct lookup'); // Existing log
-                            console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_SUCCESS - ID: ' + (directRequest.id || directRequest.requestId) + ', Requester: ' + directRequest.requesterName);
-                        } else {
-                            console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_NOT_FOUND');
-                        }
-                    } else {
-                        console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_HELPER_MISSING');
-                    }
-                } catch (directError) {
-                    console.warn('⚠️ Direct request lookup failed:', directError.message); // Existing log
-                    console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_DIRECT_LOOKUP_ERROR - ' + directError.toString() + ' Stack: ' + directError.stack);
-                }
-                
-                // Set flags for not found
-                if (!result.initialRequestDetails) {
-                    result.requestNotFound = true;
-                    result.requestedId = requestIdToLoad;
-                    console.log('ADP_LOG: getPageDataForAssignments_LOAD_SPECIFIC_REQUEST_NOT_FOUND_FLAG_SET - RequestedId: ' + requestIdToLoad);
-                }
-            }
-        }
-        
-        console.log('✅ Returning unified assignments data'); // Existing log
-        console.log('  - Success:', result.success); // Existing log
-        console.log('  - User:', result.user.name); // Existing log
-        console.log('  - Requests:', result.requests.length); // Existing log
-        console.log('  - Riders:', result.riders.length); // Existing log
-        console.log('  - Initial request:', !!result.initialRequestDetails); // Existing log
-        console.log('ADP_LOG: getPageDataForAssignments_RETURN_SUMMARY - Success: ' + result.success + ', User: ' + (result.user ? result.user.name : 'null') + ', Requests: ' + (result.requests ? result.requests.length : 'null') + ', Riders: ' + (result.riders ? result.riders.length : 'null') + ', InitialRequestDetails: ' + (result.initialRequestDetails ? 'Present' : 'Not Present') + ', RequestNotFound: ' + (result.requestNotFound || false));
-        
-        return result;
-        
-    } catch (error) {
-        console.error('❌ Critical error in unified getPageDataForAssignments:', error); // Existing log
-        console.log('ADP_LOG: getPageDataForAssignments_CRITICAL_ERROR - ' + error.toString() + ' Stack: ' + error.stack);
-        return {
-            success: false,
-            error: 'Server error: ' + error.message,
-            user: user || null,
-            requests: [],
-            riders: []
-        };
+function getPageDataForAssignments(requestIdToLoad) {
+  try {
+    console.log('🔄 Loading assignments page data...', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
+
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        requests: [],
+        riders: [],
+        initialRequestDetails: null,
+        assignmentOrder: []
+      };
     }
-}
 
+    const user = Object.assign({}, auth.user, { roles: auth.user.roles || [auth.user.role] });
 
-
-
-// ADD this function to help debug which functions exist:
-
-function debugAssignmentsFunctions() {
+    const result = {
+      success: true,
+      user: user,
+      requests: [],
+      riders: [],
+      initialRequestDetails: null,
+      assignmentOrder: []
+    };
+    
+    // Get assignable requests
     try {
-        console.log('=== DEBUGGING ASSIGNMENTS FUNCTIONS ===');
-        
-        // Check if helper functions exist
-        const helperFunctions = [
-            'authenticateAndAuthorizeUser',
-            'canAccessPage', 
-            'hasPermission',
-            'getFilteredRequestsForAssignments',
-            'getActiveRidersForWebApp',
-            'getRequestDetails'
-        ];
-        
-        helperFunctions.forEach(funcName => {
-            const exists = typeof eval(funcName) === 'function';
-            console.log(`${funcName}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
-        });
-        
-        // Test the unified function
-        console.log('\n--- Testing unified function ---');
-        const testResult = getPageDataForAssignments('E-13-25');
-        console.log('Test result success:', testResult.success);
-        
-        if (testResult.success) {
-            console.log('✅ UNIFIED FUNCTION WORKS!');
-        } else {
-            console.log('❌ Unified function failed:', testResult.error);
-        }
-        
-        return testResult;
-        
-    } catch (error) {
-        console.error('❌ Debug failed:', error);
-        return { success: false, error: error.message };
+      result.requests = getFilteredRequestsForAssignments(result.user);
+      console.log(`✅ Loaded ${result.requests.length} assignable requests`);
+    } catch (requestsError) {
+      console.log('⚠️ Could not load requests:', requestsError);
+      result.requests = [];
     }
-}
+    
+    // Get active riders
+    try {
+      result.riders = getActiveRidersForWebApp();
+      console.log(`✅ Loaded ${result.riders.length} active riders`);
+    } catch (ridersError) {
+      console.log('⚠️ Could not load riders:', ridersError);
+      result.riders = [];
+    }
 
+    try {
+      result.assignmentOrder = getAssignmentRotation();
+      console.log(`✅ Loaded assignment rotation with ${result.assignmentOrder.length} riders`);
+    } catch (orderError) {
+      console.log('⚠️ Could not load assignment order:', orderError);
+      result.assignmentOrder = [];
+    }
+    
+    // If a specific request ID was requested, try to get its details
+    if (requestIdToLoad) {
+      const cleanedRequestIdToLoad = String(requestIdToLoad).trim();
+      try {
+        // Attempt to fetch the specific request directly
+        const directlyFetchedRequest = getRequestDetails(cleanedRequestIdToLoad); // Assuming getRequestDetails is available
+        if (directlyFetchedRequest) {
+          result.initialRequestDetails = directlyFetchedRequest;
+          console.log(`✅ Successfully fetched initial request details directly for ID: "${cleanedRequestIdToLoad}"`);
+        } else {
+          console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection was not found through direct fetch.`);
+        }
+      } catch (fetchError) {
+        console.error(`⚠️ Error during direct fetch for initial request details (ID "${cleanedRequestIdToLoad}"):`, fetchError);
+      }
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForAssignments:', error);
+    return {
+      success: false,
+      error: error.message,
+      user: {
+        name: 'System User',
+        email: '',
+        roles: ['system'],
+        permissions: []
+      }
+    };
+  }
+}
 
 /**
  * Gets consolidated data for the requests page
@@ -3234,55 +3185,27 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
  * @return {object} Result object indicating success/failure and details.
  */
 function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
-  // Existing log for requestId
-  console.log('ADP_LOG: processAssignmentAndPopulate received raw requestId:', requestId);
-
-  // Enhanced logging for selectedRiders
-  console.log('ADP_LOG: Type of selectedRiders:', typeof selectedRiders);
-  if (Array.isArray(selectedRiders)) {
-      console.log('ADP_LOG: selectedRiders.length:', selectedRiders.length);
-      if (selectedRiders.length > 0) {
-          console.log('ADP_LOG: Type of selectedRiders[0]:', typeof selectedRiders[0]);
-          console.log('ADP_LOG: selectedRiders[0] (JSON):', JSON.stringify(selectedRiders[0]));
-      } else {
-          console.log('ADP_LOG: selectedRiders is an empty array.');
-      }
-  } else {
-      console.log('ADP_LOG: selectedRiders is NOT an array.');
-  }
-
-  // Existing log for usePriority
-  console.log('ADP_LOG: processAssignmentAndPopulate received usePriority:', usePriority);
-  console.log('ADP_LOG: Type of usePriority:', typeof usePriority);
-
-  // Sanitization of requestId (already added in the previous step)
-  var cleanRequestId = requestId;
-  if (cleanRequestId) {
-      cleanRequestId = String(cleanRequestId).trim();
-  }
-  console.log('ADP_LOG: Sanitized requestId for processAssignmentAndPopulate:', cleanRequestId);
-
   try {
-    console.log(`🏍️ Starting assignment process for request ${cleanRequestId} with ${selectedRiders.length} riders`);
+    console.log(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
     console.log('Selected riders:', JSON.stringify(selectedRiders, null, 2));
     
-    if (!cleanRequestId || !selectedRiders) {
+    if (!requestId || !selectedRiders) {
       throw new Error('Request ID is required for assignment');
     }
 
     // Validate that the request exists and get its details
-    const requestDetails = getRequestDetails(cleanRequestId);
+    const requestDetails = getRequestDetails(requestId);
     if (!requestDetails) {
-      throw new Error(`Request ${cleanRequestId} not found`);
+      throw new Error(`Request ${requestId} not found`);
     }
 
     console.log('Request details found:', requestDetails);
 
     // Remove any existing assignments for this request first
-    const existingAssignments = getAssignmentsForRequest(cleanRequestId);
+    const existingAssignments = getAssignmentsForRequest(requestId);
     if (existingAssignments.length > 0) {
-      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${cleanRequestId}`);
-      removeExistingAssignments(cleanRequestId);
+      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
+      removeExistingAssignments(requestId);
     }
 
     // Create new assignments
@@ -3295,7 +3218,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       
       try {
         const assignmentId = generateAssignmentId();
-        const assignmentRow = buildAssignmentRow(assignmentId, cleanRequestId, rider, requestDetails);
+        const assignmentRow = buildAssignmentRow(assignmentId, requestId, rider, requestDetails);
         
         // Add the assignment to the sheet
         const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
@@ -3325,7 +3248,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     }
 
     // Update the request with assigned rider names
-    updateRequestWithAssignedRiders(cleanRequestId, assignedRiderNames);
+    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
     if (usePriority !== false) {
       updateAssignmentRotation(assignedRiderNames);
     }
@@ -3338,12 +3261,12 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
-    logActivity(`Assignment process completed for ${cleanRequestId}: ${successCount} successful, ${failCount} failed`);
+    logActivity(`Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
 
     return {
       success: true,
-      message: `Successfully assigned ${successCount} rider(s) to request ${cleanRequestId}`,
-      requestId: cleanRequestId,
+      message: `Successfully assigned ${successCount} rider(s) to request ${requestId}`,
+      requestId: requestId,
       assignmentResults: assignmentResults,
       successCount: successCount,
       failCount: failCount
@@ -3355,7 +3278,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     return {
       success: false,
       message: `Failed to process assignments: ${error.message}`,
-      requestId: cleanRequestId || 'unknown',
+      requestId: requestId || 'unknown',
       error: error.message
     };
   }
@@ -3442,15 +3365,15 @@ function generateAssignmentId() {
 /**
  * Builds an assignment row array for the assignments sheet.
  * @param {string} assignmentId - The assignment ID.
- * @param {string} cleanRequestId - The request ID.
+ * @param {string} requestId - The request ID.
  * @param {object} rider - The rider object with details.
  * @param {object} requestDetails - The request details object.
  * @return {Array} Array of values for the assignment row.
  */
-function buildAssignmentRow(assignmentId, cleanRequestId, rider, requestDetails) {
+function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
   try {
-    const assignmentsData = getAssignmentsData(); // This function call seems problematic in context, might need getAssignmentsSheetData()
-    const headers = assignmentsData.headers; // Assuming getAssignmentsData returns headers
+    const assignmentsData = getAssignmentsData();
+    const headers = assignmentsData.headers;
     const row = [];
 
     // Build row based on headers order
@@ -3462,7 +3385,7 @@ function buildAssignmentRow(assignmentId, cleanRequestId, rider, requestDetails)
           value = assignmentId;
           break;
         case CONFIG.columns.assignments.requestId:
-          value = cleanRequestId;
+          value = requestId;
           break;
         case CONFIG.columns.assignments.eventDate:
           value = requestDetails.eventDate || '';
@@ -3522,10 +3445,10 @@ function buildAssignmentRow(assignmentId, cleanRequestId, rider, requestDetails)
 
 /**
  * Removes existing assignments for a request.
- * @param {string} cleanRequestId - The request ID to clear assignments for.
+ * @param {string} requestId - The request ID to clear assignments for.
  * @return {void}
  */
-function removeExistingAssignments(cleanRequestId) {
+function removeExistingAssignments(requestId) {
   try {
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
     if (!assignmentsSheet) {
@@ -3545,7 +3468,7 @@ function removeExistingAssignments(cleanRequestId) {
     const rowsToDelete = [];
     const removedNames = [];
     for (let i = data.length - 1; i >= 1; i--) { // Start from bottom, skip header
-      if (String(data[i][requestIdCol]).trim() === String(cleanRequestId).trim()) {
+      if (String(data[i][requestIdCol]).trim() === String(requestId).trim()) {
         rowsToDelete.push(i + 1); // Convert to 1-based row number
         if (riderNameCol !== -1) {
           const name = String(data[i][riderNameCol]).trim();
@@ -3559,7 +3482,7 @@ function removeExistingAssignments(cleanRequestId) {
       assignmentsSheet.deleteRow(rowNum);
     }
 
-    console.log(`🗑️ Removed ${rowsToDelete.length} existing assignments for request ${cleanRequestId}`);
+    console.log(`🗑️ Removed ${rowsToDelete.length} existing assignments for request ${requestId}`);
 
     if (removedNames.length > 0) {
       updateRotationOnUnassign(removedNames);
@@ -3575,11 +3498,11 @@ function removeExistingAssignments(cleanRequestId) {
 
 /**
  * Updates the request with the list of assigned rider names.
- * @param {string} cleanRequestId - The request ID to update.
+ * @param {string} requestId - The request ID to update.
  * @param {Array<string>} riderNames - Array of assigned rider names.
  * @return {void}
  */
-function updateRequestWithAssignedRiders(cleanRequestId, riderNames) {
+function updateRequestWithAssignedRiders(requestId, riderNames) {
   try {
     const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
     if (!requestsSheet) {
@@ -3593,14 +3516,14 @@ function updateRequestWithAssignedRiders(cleanRequestId, riderNames) {
     let targetRowIndex = -1;
     for (let i = 0; i < requestsData.data.length; i++) {
       const rowRequestId = getColumnValue(requestsData.data[i], columnMap, CONFIG.columns.requests.id);
-      if (String(rowRequestId).trim() === String(cleanRequestId).trim()) {
+      if (String(rowRequestId).trim() === String(requestId).trim()) {
         targetRowIndex = i;
         break;
       }
     }
 
     if (targetRowIndex === -1) {
-      throw new Error(`Request ${cleanRequestId} not found for rider assignment update`);
+      throw new Error(`Request ${requestId} not found for rider assignment update`);
     }
 
     const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
@@ -3625,13 +3548,13 @@ function updateRequestWithAssignedRiders(cleanRequestId, riderNames) {
       requestsSheet.getRange(sheetRowNumber, lastUpdatedCol + 1).setValue(new Date());
     }
 
-    console.log(`📝 Updated request ${cleanRequestId} with ${riderNames.length} assigned riders`);
+    console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
 
     if (typeof syncRequestToCalendar === 'function') {
       try {
-        syncRequestToCalendar(cleanRequestId);
+        syncRequestToCalendar(requestId);
       } catch (syncError) {
-        logError(`Failed to sync request ${cleanRequestId} to calendar`, syncError);
+        logError(`Failed to sync request ${requestId} to calendar`, syncError);
       }
     }
 
@@ -4328,780 +4251,4 @@ function updateRotationOnUnassign(unassignedNames) {
  */
 function getAssignmentOrderForWeb() {
   return getAssignmentRotation();
-}
-// Add this section to your AppServices.gs file
-// You can place it after the existing assignment-related functions
-
-// ===== ENHANCED ASSIGNMENTS DATA FUNCTIONS =====
-
-/**
- * Enhanced getAssignmentsData function that supports pre-loading specific requests
- * @param {string} [requestId] - Optional request ID to pre-load
- * @returns {object} Combined data for assignments page
- */
-function getAssignmentsData(requestId = null) {
-    try {
-        console.log('📊 Getting assignments data, requestId:', requestId);
-        
-        // Get user information
-        const authResult = authenticateAndAuthorizeUser();
-        if (!authResult.success) {
-            return {
-                success: false,
-                error: 'Authentication failed: ' + authResult.error
-            };
-        }
-        
-        // Get requests data - use existing function
-        const requestsResult = getRequestsForAssignments();
-        if (!requestsResult.success) {
-            return {
-                success: false,
-                error: 'Failed to load requests: ' + requestsResult.error
-            };
-        }
-        
-        // Get riders data - use existing function  
-        const ridersResult = getActiveRidersForAssignments();
-        if (!ridersResult.success) {
-            return {
-                success: false,
-                error: 'Failed to load riders: ' + ridersResult.error
-            };
-        }
-        
-        const response = {
-            success: true,
-            user: authResult.user,
-            requests: requestsResult.requests || requestsResult.data || [],
-            riders: ridersResult.riders || ridersResult.data || []
-        };
-        
-        // If a specific requestId was provided, try to get its details
-        if (requestId) {
-            console.log('🎯 Loading specific request details for:', requestId);
-            
-            try {
-                // First check if it's in the regular requests list
-                const foundInList = response.requests.find(req => 
-                    (req.id && req.id === requestId) || 
-                    (req.requestId && req.requestId === requestId)
-                );
-                
-                if (foundInList) {
-                    console.log('✅ Found request in regular list');
-                    response.initialRequestDetails = foundInList;
-                } else {
-                    // Try to get it separately (might be completed/cancelled but still valid for viewing)
-                    console.log('🔍 Request not in regular list, trying to fetch separately');
-                    const specificRequest = getRequestByIdForAssignments(requestId);
-                    
-                    if (specificRequest) {
-                        console.log('✅ Found specific request');
-                        response.initialRequestDetails = specificRequest;
-                    } else {
-                        console.warn('⚠️ Could not find request:', requestId);
-                        response.requestNotFound = true;
-                        response.requestedId = requestId;
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Error loading specific request:', error);
-                // Don't fail the whole request, just log the issue
-                response.requestLoadError = error.message;
-            }
-        }
-        
-        console.log('✅ Assignments data prepared successfully');
-        return response;
-        
-    } catch (error) {
-        console.error('❌ Error in getAssignmentsData:', error);
-        return {
-            success: false,
-            error: 'Server error: ' + error.message
-        };
-    }
-}
-
-/**
- * Helper function to get a specific request by ID for assignments
- * @param {string} requestId - The request ID to find
- * @returns {object|null} The request object or null if not found
- */
-function getRequestByIdForAssignments(requestId) {
-    try {
-        const requestsData = getRequestsData();
-        if (!requestsData || !requestsData.data) {
-            console.log('❌ No requests data available');
-            return null;
-        }
-        
-        const columnMap = requestsData.columnMap;
-        
-        // Find the row with matching request ID
-        for (let i = 0; i < requestsData.data.length; i++) {
-            const row = requestsData.data[i];
-            const rowRequestId = String(getColumnValue(row, columnMap, CONFIG.columns.requests.id) || '').trim();
-            
-            if (rowRequestId === String(requestId).trim()) {
-                // Format the request for the frontend using existing logic
-                return {
-                    id: rowRequestId,
-                    requestId: rowRequestId, // For compatibility
-                    requesterName: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '',
-                    eventDate: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate)),
-                    startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.startTime)),
-                    endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.endTime)),
-                    startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || '',
-                    endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
-                    ridersNeeded: parseInt(getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1),
-                    status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || 'New',
-                    type: getColumnValue(row, columnMap, CONFIG.columns.requests.requestType) || '',
-                    ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
-                    specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.specialRequirements) || '',
-                    notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || ''
-                };
-            }
-        }
-        
-        return null;
-        
-    } catch (error) {
-        console.error('❌ Error getting request by ID for assignments:', error);
-        return null;
-    }
-}
-
-/**
- * Wrapper function to get requests suitable for assignments
- * This uses your existing logic but ensures consistent return format
- */
-function getRequestsForAssignments() {
-    try {
-        // If you have an existing function like getFilteredRequestsForAssignments, use it
-        if (typeof getFilteredRequestsForAssignments === 'function') {
-            const requests = getFilteredRequestsForAssignments();
-            return {
-                success: true,
-                requests: Array.isArray(requests) ? requests : []
-            };
-        }
-        
-        // Fallback: create a basic implementation
-        const requestsData = getRequestsData();
-        if (!requestsData || !requestsData.data) {
-            return { success: false, error: 'No requests data available' };
-        }
-        
-        const assignableStatuses = ['New', 'Pending', 'Assigned', 'Unassigned'];
-        const filteredRequests = [];
-        
-        requestsData.data.forEach((row, index) => {
-            try {
-                const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
-                const requestId = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
-                
-                if (requestId && assignableStatuses.includes(status)) {
-                    filteredRequests.push({
-                        id: requestId,
-                        requesterName: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requesterName) || '',
-                        eventDate: formatDateForDisplay(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate)),
-                        startTime: formatTimeForDisplay(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime)),
-                        startLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startLocation) || '',
-                        ridersNeeded: parseInt(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded) || 1),
-                        status: status
-                    });
-                }
-            } catch (rowError) {
-                console.warn(`Error processing request row ${index}:`, rowError);
-            }
-        });
-        
-        return {
-            success: true,
-            requests: filteredRequests
-        };
-        
-    } catch (error) {
-        console.error('❌ Error in getRequestsForAssignments:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-// ADD this function to your Code.gs or AppServices.gs file
-
-/**
- * Gets all data needed for the assignments page in one consolidated call
- * @param {string} [requestIdInput] - Optional request ID to pre-load
- * @returns {object} Combined data for assignments page
- */
-function getPageDataForAssignments(requestIdInput = null) { // Renamed to avoid conflict with outer scope
-    console.log('ADP_LOG: (Inner getPageDataForAssignments) received raw requestIdInput:', requestIdInput);
-    let requestId = requestIdInput;
-    if (requestId) {
-        requestId = String(requestId).trim();
-        console.log('ADP_LOG: (Inner getPageDataForAssignments) sanitized requestId:', requestId);
-    }
-    try {
-        console.log('📊 Getting assignments page data, requestId:', requestId);
-        
-        // Get user information
-        const authResult = authenticateAndAuthorizeUser();
-        if (!authResult.success) {
-            return {
-                success: false,
-                error: 'Authentication failed: ' + authResult.error
-            };
-        }
-        
-        // Get requests data for assignments
-        let requestsData = [];
-        try {
-            // Try to use existing function or create basic one
-            if (typeof getFilteredRequestsForAssignments === 'function') {
-                requestsData = getFilteredRequestsForAssignments(authResult.user);
-            } else {
-                // Fallback: get assignable requests
-                requestsData = getAssignableRequestsBasic();
-            }
-        } catch (error) {
-            console.error('❌ Error getting requests:', error);
-            requestsData = [];
-        }
-        
-        // Get riders data
-        let ridersData = [];
-        try {
-            ridersData = getActiveRidersBasic();
-        } catch (error) {
-            console.error('❌ Error getting riders:', error);
-            ridersData = [];
-        }
-        
-        const response = {
-            success: true,
-            user: authResult.user,
-            requests: requestsData,
-            riders: ridersData
-        };
-        
-        // If a specific requestId was provided, try to get its details
-        if (requestId) {
-            console.log('🎯 Loading specific request details for:', requestId);
-            
-            try {
-                // Check if it's in the regular requests list
-                const foundInList = requestsData.find(req => 
-                    (req.id && req.id === requestId) || 
-                    (req.requestId && req.requestId === requestId)
-                );
-                
-                if (foundInList) {
-                    console.log('✅ Found request in regular list');
-                    response.initialRequestDetails = foundInList;
-                } else {
-                    // Try to get it separately
-                    console.log('🔍 Request not in regular list, trying to fetch separately');
-                    const specificRequest = getSpecificRequestForAssignments(requestId);
-                    
-                    if (specificRequest) {
-                        console.log('✅ Found specific request');
-                        response.initialRequestDetails = specificRequest;
-                    } else {
-                        console.warn('⚠️ Could not find request:', requestId);
-                        response.requestNotFound = true;
-                        response.requestedId = requestId;
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Error loading specific request:', error);
-                response.requestLoadError = error.message;
-            }
-        }
-        
-        console.log('✅ Assignments page data prepared successfully');
-        return response;
-        
-    } catch (error) {
-        console.error('❌ Error in getPageDataForAssignments:', error);
-        return {
-            success: false,
-            error: 'Server error: ' + error.message
-        };
-    }
-}
-
-/**
- * Basic function to get assignable requests
- * @returns {Array} Array of request objects
- */
-function getAssignableRequestsBasic() {
-    try {
-        const requestsData = getRequestsData();
-        if (!requestsData || !requestsData.data) {
-            console.log('❌ No requests data available');
-            return [];
-        }
-        
-        const assignableStatuses = ['New', 'Pending', 'Assigned', 'Unassigned'];
-        const filteredRequests = [];
-        
-        requestsData.data.forEach((row, index) => {
-            try {
-                const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
-                const requestId = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
-                
-                if (requestId && assignableStatuses.includes(status)) {
-                    filteredRequests.push({
-                        id: requestId,
-                        requestId: requestId, // For compatibility
-                        requesterName: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requesterName) || '',
-                        eventDate: formatDateForDisplay(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate)),
-                        startTime: formatTimeForDisplay(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime)),
-                        endTime: formatTimeForDisplay(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endTime)),
-                        startLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startLocation) || '',
-                        endLocation: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endLocation) || '',
-                        ridersNeeded: parseInt(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded) || 1),
-                        status: status,
-                        type: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requestType) || '',
-                        ridersAssigned: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '',
-                        specialRequirements: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.specialRequirements) || '',
-                        notes: getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.notes) || ''
-                    });
-                }
-            } catch (rowError) {
-                console.warn(`Error processing request row ${index}:`, rowError);
-            }
-        });
-        
-        console.log(`✅ Found ${filteredRequests.length} assignable requests`);
-        return filteredRequests;
-        
-    } catch (error) {
-        console.error('❌ Error in getAssignableRequestsBasic:', error);
-        return [];
-    }
-}
-
-/**
- * Basic function to get active riders
- * @returns {Array} Array of rider objects
- */
-function getActiveRidersBasic() {
-    try {
-        const ridersData = getRidersData();
-        if (!ridersData || !ridersData.data) {
-            console.log('❌ No riders data available');
-            return [];
-        }
-        
-        const activeRiders = [];
-        
-        ridersData.data.forEach((row, index) => {
-            try {
-                const status = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.status);
-                const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-                
-                if (name && status === 'Active') {
-                    activeRiders.push({
-                        name: name,
-                        jpNumber: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber) || '',
-                        phone: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.phone) || '',
-                        email: getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.email) || '',
-                        status: status
-                    });
-                }
-            } catch (rowError) {
-                console.warn(`Error processing rider row ${index}:`, rowError);
-            }
-        });
-        
-        console.log(`✅ Found ${activeRiders.length} active riders`);
-        return activeRiders;
-        
-    } catch (error) {
-        console.error('❌ Error in getActiveRidersBasic:', error);
-        return [];
-    }
-}
-
-/**
- * Get a specific request by ID for assignments
- * @param {string} requestId - The request ID to find
- * @returns {object|null} The request object or null if not found
- */
-function getSpecificRequestForAssignments(requestId) {
-    try {
-        const requestsData = getRequestsData();
-        if (!requestsData || !requestsData.data) {
-            console.log('❌ No requests data available');
-            return null;
-        }
-        
-        const columnMap = requestsData.columnMap;
-        
-        // Find the row with matching request ID
-        for (let i = 0; i < requestsData.data.length; i++) {
-            const row = requestsData.data[i];
-            const rowRequestId = String(getColumnValue(row, columnMap, CONFIG.columns.requests.id) || '').trim();
-            
-            if (rowRequestId === String(requestId).trim()) {
-                // Format the request for the frontend
-                return {
-                    id: rowRequestId,
-                    requestId: rowRequestId, // For compatibility
-                    requesterName: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '',
-                    eventDate: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate)),
-                    startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.startTime)),
-                    endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.endTime)),
-                    startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || '',
-                    endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
-                    ridersNeeded: parseInt(getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1),
-                    status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || 'New',
-                    type: getColumnValue(row, columnMap, CONFIG.columns.requests.requestType) || '',
-                    ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
-                    specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.specialRequirements) || '',
-                    notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || ''
-                };
-            }
-        }
-        
-        return null;
-        
-    } catch (error) {
-        console.error('❌ Error getting specific request for assignments:', error);
-        return null;
-    }
-}
-
-// ALSO ADD this test function to verify the assignments function works
-function testAssignmentsPageData() {
-    try {
-        console.log('🧪 Testing assignments page data function...');
-        
-        // Test without requestId
-        const result1 = getPageDataForAssignments();
-        console.log('Test 1 (no requestId):', result1.success ? '✅ SUCCESS' : '❌ FAILED');
-        if (result1.success) {
-            console.log(`- Requests: ${result1.requests ? result1.requests.length : 0}`);
-            console.log(`- Riders: ${result1.riders ? result1.riders.length : 0}`);
-        } else {
-            console.log('- Error:', result1.error);
-        }
-        
-        // Test with requestId
-        const result2 = getPageDataForAssignments('E-13-25');
-        console.log('Test 2 (with requestId):', result2.success ? '✅ SUCCESS' : '❌ FAILED');
-        if (result2.success) {
-            console.log(`- Initial request details: ${result2.initialRequestDetails ? '✅ Found' : '❌ Not found'}`);
-            if (result2.initialRequestDetails) {
-                console.log(`- Request ID: ${result2.initialRequestDetails.id}`);
-                console.log(`- Requester: ${result2.initialRequestDetails.requesterName}`);
-            }
-        }
-        
-        return {
-            success: true,
-            test1: result1.success,
-            test2: result2.success
-        };
-        
-    } catch (error) {
-        console.error('❌ Test failed:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
-}
-
-// REPLACE the getActiveRidersForAssignments function in AppServices.gs with this working version:
-
-/**
- * Fixed getActiveRidersForAssignments function that always returns an array
- * @return {Array<object>} Array of active rider objects
- */
-function getActiveRidersForAssignments() {
-  try {
-    console.log('🏍️ Getting active riders for assignments (FIXED VERSION)...');
-    
-    const ridersData = getRidersData();
-    
-    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
-      console.log('❌ No riders data found, returning empty array');
-      return [];
-    }
-    
-    console.log(`📊 Processing ${ridersData.data.length} riders from sheet`);
-    console.log('📋 Headers:', ridersData.headers);
-    
-    const columnMap = ridersData.columnMap;
-    const activeRiders = [];
-    
-    // Process each rider row
-    for (let i = 0; i < ridersData.data.length; i++) {
-      try {
-        const row = ridersData.data[i];
-        
-        // Get values using getColumnValue helper
-        const name = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
-        const status = getColumnValue(row, columnMap, CONFIG.columns.riders.status);
-        const jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber);
-        const phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone);
-        const email = getColumnValue(row, columnMap, CONFIG.columns.riders.email);
-        const partTime = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
-        
-        // Debug first few rows
-        if (i < 3) {
-          console.log(`Row ${i}:`, { name, status, jpNumber, phone, email });
-        }
-        
-        // Check if rider has a name and is active
-        if (name && String(name).trim() !== '') {
-          // Check status - be flexible with status checking
-          const statusStr = String(status || '').toLowerCase().trim();
-          const isActive = statusStr === 'active' || 
-                          statusStr === 'available' || 
-                          statusStr === '' ||  // Empty status might mean active
-                          !status;  // No status might mean active
-          
-          if (isActive) {
-            const rider = {
-              name: String(name).trim(),
-              jpNumber: String(jpNumber || '').trim(),
-              phone: String(phone || '').trim(),
-              email: String(email || '').trim(),
-              status: status || 'Active',
-              partTime: String(partTime || 'No').trim()
-            };
-            
-            activeRiders.push(rider);
-            console.log(`✅ Added active rider: ${rider.name} (${rider.status})`);
-          } else {
-            console.log(`⚠️ Skipped rider ${name} - status: ${status}`);
-          }
-        } else {
-          console.log(`⚠️ Skipped row ${i} - no name: ${name}`);
-        }
-        
-      } catch (rowError) {
-        console.warn(`⚠️ Error processing rider row ${i}:`, rowError.message);
-      }
-    }
-    
-    console.log(`✅ Found ${activeRiders.length} active riders for assignments`);
-    
-    // If no active riders found, return a test rider to prevent errors
-    if (activeRiders.length === 0) {
-      console.warn('⚠️ No active riders found, returning test rider');
-      return [{
-        name: 'Test Rider (No Active Riders Found)',
-        jpNumber: 'TEST001',
-        phone: '555-0000',
-        email: 'test@riders.com',
-        status: 'Active',
-        partTime: 'No'
-      }];
-    }
-    
-    // Always return an array
-    return activeRiders;
-    
-  } catch (error) {
-    console.error('❌ Error in getActiveRidersForAssignments:', error);
-    logError('Error in getActiveRidersForAssignments', error);
-    
-    // Always return an array, even on error
-    return [{
-      name: 'Error Fallback Rider',
-      jpNumber: 'ERR001',
-      phone: '555-0000',
-      email: 'error@riders.com',
-      status: 'Active',
-      partTime: 'No'
-    }];
-  }
-}
-
-// ALSO ADD this simpler test function:
-
-function testGetActiveRidersForAssignments() {
-  try {
-    console.log('🧪 Testing getActiveRidersForAssignments...');
-    
-    const riders = getActiveRidersForAssignments();
-    
-    console.log('Result type:', typeof riders);
-    console.log('Is array:', Array.isArray(riders));
-    console.log('Length:', riders ? riders.length : 'N/A');
-    console.log('First rider:', riders && riders.length > 0 ? riders[0] : 'None');
-    
-    if (Array.isArray(riders)) {
-      console.log('✅ Function returns an array');
-      console.log(`📊 Found ${riders.length} riders`);
-      
-      if (riders.length > 0) {
-        console.log('👤 Sample rider structure:', Object.keys(riders[0]));
-        return {
-          success: true,
-          count: riders.length,
-          sample: riders[0]
-        };
-      } else {
-        console.log('⚠️ Array is empty');
-        return {
-          success: true,
-          count: 0,
-          isEmpty: true
-        };
-      }
-    } else {
-      console.log('❌ Function does NOT return an array');
-      return {
-        success: false,
-        error: 'Function did not return an array',
-        actualType: typeof riders
-      };
-    }
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-// AND this function to check your riders sheet directly:
-
-function inspectRidersSheet() {
-  try {
-    console.log('🔍 Inspecting riders sheet directly...');
-    
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    
-    if (!sheet) {
-      console.error('❌ Riders sheet not found:', CONFIG.sheets.riders);
-      return { error: 'Riders sheet not found' };
-    }
-    
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    console.log('📊 Sheet info:');
-    console.log('  - Name:', sheet.getName());
-    console.log('  - Rows:', values.length);
-    console.log('  - Columns:', values.length > 0 ? values[0].length : 0);
-    
-    if (values.length > 0) {
-      console.log('📋 Headers:', values[0]);
-      
-      if (values.length > 1) {
-        console.log('📄 Sample data rows:');
-        for (let i = 1; i < Math.min(4, values.length); i++) {
-          console.log(`  Row ${i}:`, values[i]);
-        }
-        
-        // Check for active riders
-        let activeCount = 0;
-        const statusCol = values[0].indexOf('Status') !== -1 ? values[0].indexOf('Status') : 
-                         values[0].indexOf('Rider Status') !== -1 ? values[0].indexOf('Rider Status') : -1;
-        
-        if (statusCol !== -1) {
-          for (let i = 1; i < values.length; i++) {
-            const status = String(values[i][statusCol] || '').toLowerCase();
-            if (status === 'active' || status === 'available') {
-              activeCount++;
-            }
-          }
-          console.log(`🏍️ Found ${activeCount} riders with 'Active' or 'Available' status`);
-        } else {
-          console.log('⚠️ No Status column found');
-        }
-      }
-    }
-    
-    return {
-      success: true,
-      sheetName: sheet.getName(),
-      totalRows: values.length,
-      headers: values.length > 0 ? values[0] : [],
-      sampleData: values.length > 1 ? values.slice(1, 4) : []
-    };
-    
-  } catch (error) {
-    console.error('❌ Error inspecting sheet:', error);
-    return { error: error.message };
-  }
-}
-
-function debugAssignmentsPageIssue() {
-    try {
-        console.log('=== DEBUGGING ASSIGNMENTS PAGE ISSUE ===');
-        
-        // Test 1: Check if function exists
-        console.log('1. Testing if getPageDataForAssignments function exists...');
-        if (typeof getPageDataForAssignments === 'function') {
-            console.log('✅ getPageDataForAssignments function exists');
-            
-            // Test 2: Try to call it
-            console.log('2. Testing function call...');
-            const result = getPageDataForAssignments('E-13-25');
-            console.log('Function result:', JSON.stringify(result, null, 2));
-            
-            if (result.success) {
-                console.log('✅ Function call successful');
-                console.log(`- Requests: ${result.requests ? result.requests.length : 0}`);
-                console.log(`- Riders: ${result.riders ? result.riders.length : 0}`);
-                console.log(`- User: ${result.user ? result.user.name : 'none'}`);
-            } else {
-                console.log('❌ Function call failed:', result.error);
-            }
-        } else {
-            console.log('❌ getPageDataForAssignments function does NOT exist');
-            console.log('This is the problem - the function needs to be added');
-        }
-        
-        // Test 3: Check if assignments.html loads
-        console.log('3. Testing assignments.html file...');
-        try {
-            const content = HtmlService.createHtmlOutputFromFile('assignments').getContent();
-            console.log(`✅ assignments.html exists: ${content.length} characters`);
-            
-            // Check if it calls the missing function
-            const callsFunction = content.includes('getPageDataForAssignments');
-            console.log(`Calls getPageDataForAssignments: ${callsFunction ? '✅ YES' : '❌ NO'}`);
-            
-        } catch (error) {
-            console.log('❌ assignments.html file error:', error.message);
-        }
-        
-        // Test 4: Check doGet for assignments
-        console.log('4. Testing doGet with assignments page...');
-        try {
-            const mockEvent = { parameter: { page: 'assignments', requestId: 'E-13-25' } };
-            const result = doGet(mockEvent);
-            console.log('✅ doGet completed for assignments page');
-        } catch (error) {
-            console.log('❌ doGet failed for assignments page:', error.message);
-        }
-        
-        console.log('=== DEBUG COMPLETE ===');
-        
-        return {
-            success: true,
-            hasMissingFunction: typeof getPageDataForAssignments !== 'function'
-        };
-        
-    } catch (error) {
-        console.error('❌ Debug failed:', error);
-        return {
-            success: false,
-            error: error.message
-        };
-    }
 }

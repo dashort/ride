@@ -512,7 +512,6 @@
     </style>
 </head>
 <body>
-  <script>alert('TESTING: JavaScript works!');</script>
     <header class="header">
         <h1>🏍️ Motorcycle Escort Management</h1>
         
@@ -562,282 +561,6 @@
     </div>
 
 <script>
-// TEST 1: Add this very first line to test basic JavaScript
-        console.log('🔍 BASIC TEST: Script tag is loading');
-        
-        // TEST 2: Try to create a simple function
-        function basicTest() {
-            console.log('✅ Basic function works');
-            alert('Basic function works!');
-            return true;
-        }
-        
-        // TEST 3: Try to access the page elements
-        function testElements() {
-            console.log('🔍 Testing page elements...');
-            
-            const requestsList = document.getElementById('requestsList');
-            const assignmentContent = document.getElementById('assignmentContent');
-            
-            console.log('requestsList element:', requestsList);
-            console.log('assignmentContent element:', assignmentContent);
-            
-            if (requestsList) {
-                requestsList.innerHTML = '<div style="background: green; color: white; padding: 20px;">✅ JavaScript can modify requestsList</div>';
-            }
-            
-            if (assignmentContent) {
-                assignmentContent.innerHTML = '<div style="background: blue; color: white; padding: 20px;">✅ JavaScript can modify assignmentContent</div>';
-            }
-            
-            return true;
-        }
-        
-        // TEST 4: Test Google Apps Script availability
-        function testGoogleScript() {
-            console.log('🔍 Testing Google Apps Script...');
-            
-            if (typeof google === 'undefined') {
-                console.log('❌ google object is undefined');
-                return false;
-            }
-            
-            if (!google.script) {
-                console.log('❌ google.script is undefined');
-                return false;
-            }
-            
-            if (!google.script.run) {
-                console.log('❌ google.script.run is undefined');
-                return false;
-            }
-            
-            console.log('✅ Google Apps Script is available');
-            console.log('Available functions:', Object.keys(google.script.run));
-            
-            return true;
-        }
-        
-        // TEST 5: Make a simple server call
-        function testServerCall() {
-            console.log('📞 Testing server call...');
-            
-            if (!testGoogleScript()) {
-                alert('Google Apps Script not available - cannot test server call');
-                return;
-            }
-            
-            // Show loading
-            const requestsList = document.getElementById('requestsList');
-            if (requestsList) {
-                requestsList.innerHTML = '<div style="background: orange; color: white; padding: 20px;">📞 Calling server...</div>';
-            }
-            
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    console.log('🎉 Server call succeeded:', result);
-                    
-                    if (requestsList) {
-                        requestsList.innerHTML = `
-                            <div style="background: green; color: white; padding: 20px;">
-                                <h3>🎉 Server Call Success!</h3>
-                                <p>Result: ${JSON.stringify(result, null, 2)}</p>
-                            </div>
-                        `;
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    console.error('💥 Server call failed:', error);
-                    
-                    if (requestsList) {
-                        requestsList.innerHTML = `
-                            <div style="background: red; color: white; padding: 20px;">
-                                <h3>💥 Server Call Failed!</h3>
-                                <p>Error: ${error.message || error}</p>
-                            </div>
-                        `;
-                    }
-                })
-                .getPageDataForAssignments('E-13-25');
-        }
-        
-        // Make functions globally available
-        window.basicTest = basicTest;
-        window.testElements = testElements;
-        window.testGoogleScript = testGoogleScript;
-        window.testServerCall = testServerCall;
-        
-        console.log('🚨 All test functions loaded. Try running:');
-        console.log('  basicTest()');
-        console.log('  testElements()');
-        console.log('  testGoogleScript()');
-        console.log('  testServerCall()');
-        
-        // Auto-run basic test
-        setTimeout(function() {
-            console.log('🔍 Auto-running basic tests...');
-            
-            try {
-                basicTest();
-            } catch (e) {
-                console.error('❌ basicTest failed:', e);
-            }
-            
-            try {
-                testElements();
-            } catch (e) {
-                console.error('❌ testElements failed:', e);
-            }
-            
-            try {
-                testGoogleScript();
-            } catch (e) {
-                console.error('❌ testGoogleScript failed:', e);
-            }
-            
-        }, 1000);
-        
-// STEP 1: Add this very simple test at the very top of assignments.html <script> section:
-
-console.log('🚨 SIMPLE TEST: JavaScript is loading');
-alert('🚨 SIMPLE TEST: If you see this alert, JavaScript is working');
-
-// STEP 2: Add this simpler emergency function that we can call manually:
-
-window.emergencyTest = function() {
-    console.log('🚨 Emergency test function called');
-    
-    const requestsList = document.getElementById('requestsList');
-    const assignmentContent = document.getElementById('assignmentContent');
-    
-    if (requestsList) {
-        requestsList.innerHTML = `
-            <div style="padding: 20px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px;">
-                <h3>🚨 Emergency Test Active</h3>
-                <p>JavaScript is working!</p>
-                <button onclick="emergencyCallServer()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px;">
-                    📞 Test Server Call
-                </button>
-            </div>
-        `;
-        console.log('✅ Updated requests list');
-    } else {
-        console.log('❌ Could not find requestsList element');
-    }
-    
-    if (assignmentContent) {
-        assignmentContent.innerHTML = `
-            <div style="padding: 20px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
-                <h3>🧪 Test Area</h3>
-                <p>This is the assignment content area.</p>
-            </div>
-        `;
-        console.log('✅ Updated assignment content');
-    } else {
-        console.log('❌ Could not find assignmentContent element');
-    }
-};
-
-window.emergencyCallServer = function() {
-    console.log('📞 Testing server call...');
-    
-    const requestsList = document.getElementById('requestsList');
-    if (requestsList) {
-        requestsList.innerHTML = `
-            <div style="padding: 20px; background: #d1ecf1; border: 1px solid #bee5eb; border-radius: 5px;">
-                <h3>📞 Calling Server...</h3>
-                <p>Testing getPageDataForAssignments function</p>
-            </div>
-        `;
-    }
-    
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        console.log('✅ Google Apps Script available');
-        
-        google.script.run
-            .withSuccessHandler(function(result) {
-                console.log('🎉 Server call SUCCESS:', result);
-                
-                const requestsList = document.getElementById('requestsList');
-                if (requestsList) {
-                    let html = `
-                        <div style="padding: 15px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 5px; margin-bottom: 15px;">
-                            <h3>🎉 Server Response Received!</h3>
-                            <p><strong>Success:</strong> ${result.success}</p>
-                            <p><strong>User:</strong> ${result.user ? result.user.name : 'None'}</p>
-                            <p><strong>Requests:</strong> ${result.requests ? result.requests.length : 0}</p>
-                            <p><strong>Riders:</strong> ${result.riders ? result.riders.length : 0}</p>
-                        </div>
-                    `;
-                    
-                    if (result.requests && result.requests.length > 0) {
-                        html += '<h4>📋 Requests Found:</h4>';
-                        result.requests.forEach((req, i) => {
-                            const reqId = req.id || req.requestId || `REQ-${i}`;
-                            html += `
-                                <div style="padding: 10px; margin: 5px 0; border: 1px solid #28a745; border-radius: 5px; background: #f8f9fa;">
-                                    <strong>${reqId}</strong> - ${req.requesterName || 'Unknown'} 
-                                    (${req.eventDate || 'No date'})
-                                </div>
-                            `;
-                        });
-                    }
-                    
-                    if (result.riders && result.riders.length > 0) {
-                        html += '<h4>👥 Riders Found:</h4>';
-                        result.riders.forEach(rider => {
-                            html += `
-                                <div style="padding: 8px; margin: 3px 0; border: 1px solid #007bff; border-radius: 3px; background: #f8f9fa;">
-                                    ${rider.name} (${rider.jpNumber || 'No JP#'})
-                                </div>
-                            `;
-                        });
-                    }
-                    
-                    requestsList.innerHTML = html;
-                }
-            })
-            .withFailureHandler(function(error) {
-                console.error('💥 Server call FAILED:', error);
-                
-                const requestsList = document.getElementById('requestsList');
-                if (requestsList) {
-                    requestsList.innerHTML = `
-                        <div style="padding: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px;">
-                            <h3>💥 Server Call Failed</h3>
-                            <p><strong>Error:</strong> ${error.message || error}</p>
-                            <button onclick="emergencyCallServer()" style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px;">
-                                🔄 Try Again
-                            </button>
-                        </div>
-                    `;
-                }
-            })
-            .getPageDataForAssignments('E-13-25');
-    } else {
-        console.error('❌ Google Apps Script NOT available');
-        
-        const requestsList = document.getElementById('requestsList');
-        if (requestsList) {
-            requestsList.innerHTML = `
-                <div style="padding: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px;">
-                    <h3>❌ Google Apps Script Not Available</h3>
-                    <p>The Google Apps Script environment is not loaded.</p>
-                </div>
-            `;
-        }
-    }
-};
-
-console.log('🚨 SIMPLE TEST: Emergency functions loaded');
-
-// STEP 3: After adding this code, open browser console and run:
-// emergencyTest()
-
-// Then if that works, run:
-// emergencyCallServer()
-
-
     /**
      * @typedef {object} UserProfile - (Assuming type definition from index.html or similar)
      * @property {string} name
@@ -931,418 +654,27 @@ console.log('🚨 SIMPLE TEST: Emergency functions loaded');
         // Pre-selection of request is now handled within handleAssignmentsDataSuccess
     });
 
-// REPLACE the loadAllData function in your assignments.html with this version:
+    /**
+     * Loads all necessary data for the assignments page by calling the consolidated
+     * server-side function `getPageDataForAssignments`.
+     * Passes a requestId from URL parameters if present.
+     * @return {void}
+     */
+    function loadAllData() {
+        console.log('📊 Starting consolidated data loading for assignments page...');
+        var urlParams = new URLSearchParams(window.location.search);
+        var requestIdToLoad = urlParams.get('requestId');
 
-function loadAllData() {
-    console.log('ADP_LOG: loadAllData() called');
-    console.log('📊 Starting consolidated data loading for assignments page...'); // Existing log
-    var urlParams = new URLSearchParams(window.location.search);
-    var requestIdToLoad = urlParams.get('requestId');
-    
-    console.log('ADP_LOG: loadAllData - Initial requestIdToLoad from URL:', requestIdToLoad);
-    console.log('Request ID from URL:', requestIdToLoad); // Existing log
-
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        console.log('🔄 Attempting to call server function...'); // Existing log
-        
-        // Try multiple function names in case of deployment issues
-        const functionNames = [
-            'getPageDataForAssignments',
-            'getAssignmentsData'
-        ];
-        
-        let attemptCount = 0;
-        
-        function tryNextFunction() {
-            if (attemptCount >= functionNames.length) {
-                console.error('❌ All server functions failed');
-                handleAssignmentsDataFailure({ 
-                    message: 'No working server function found. Available functions: ' + 
-                    Object.keys(google.script.run).join(', ')
-                });
-                return;
-            }
-            
-            const functionName = functionNames[attemptCount];
-            console.log(`🔄 Trying function ${attemptCount + 1}/${functionNames.length}: ${functionName}`);
-            
-            try {
-                // Check if function exists
-                if (typeof google.script.run[functionName] !== 'function') {
-                    console.warn(`⚠️ Function ${functionName} not found`);
-                    attemptCount++;
-                    tryNextFunction();
-                    return;
-                }
-                
-                console.log('ADP_LOG: loadAllData - Calling google.script.run.' + functionName + ' with requestIdToLoad:', requestIdToLoad);
-                google.script.run
-                    .withSuccessHandler(function(result) {
-                        console.log(`✅ Success with ${functionName}:`, result); // Existing log
-                        
-                        // Validate the result
-                        if (!result) {
-                            console.error('❌ Server returned null/undefined'); // Existing log
-                            handleAssignmentsDataFailure({ message: 'Server returned no data' });
-                            return;
-                        }
-                        
-                        if (result.success === false) {
-                            console.error('❌ Server returned success:false:', result.error); // Existing log
-                            handleAssignmentsDataFailure({ message: result.error || 'Server error' });
-                            return;
-                        }
-                        
-                        if (!result.success && !result.user) {
-                            console.error('❌ Server returned invalid data structure:', result); // Existing log
-                            handleAssignmentsDataFailure({ message: 'Invalid server response' });
-                            return;
-                        }
-                        
-                        // Success!
-                        console.log('📊 Valid data received, calling success handler'); // Existing log
-                        handleAssignmentsDataSuccess(result);
-                    })
-                    .withFailureHandler(function(error) {
-                        console.error(`❌ ${functionName} failed:`, error); // Existing log
-                        
-                        // Try next function
-                        attemptCount++;
-                        if (attemptCount < functionNames.length) {
-                            console.log('🔄 Trying next function...'); // Existing log
-                            setTimeout(tryNextFunction, 1000);
-                        } else {
-                            handleAssignmentsDataFailure(error);
-                        }
-                    })
-                    [functionName](requestIdToLoad);
-                    
-            } catch (error) {
-                console.error(`❌ Error calling ${functionName}:`, error); // Existing log
-                attemptCount++;
-                tryNextFunction();
-            }
-        }
-        
-        // Start trying functions
-        tryNextFunction();
-        
-    } else {
-        console.log('⚠️ Google Apps Script not available for assignments page.');
-        handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
-    }
-}
-
-// REPLACE the handleAssignmentsDataSuccess function in your assignments.html with this fixed version:
-
-function handleAssignmentsDataSuccess(data) {
-    console.log('ADP_LOG: handleAssignmentsDataSuccess() called with raw data:', JSON.stringify(data));
-    console.log('📊 handleAssignmentsDataSuccess called with:', data); // Existing log
-    
-    // More flexible data validation
-    if (!data) {
-        console.error('❌ No data provided to success handler'); // Existing log
-        handleAssignmentsDataFailure({ message: 'No data returned from server' });
-        return;
-    }
-    
-    // Don't fail if success property is missing - just check for actual data
-    if (data.success === false) {
-        console.error('❌ Server explicitly returned success:false'); // Existing log
-        handleAssignmentsDataFailure({ message: data.error || 'Server returned failure' });
-        return;
-    }
-    
-    // Check if we have the minimum required data
-    const hasUser = data.user && typeof data.user === 'object';
-    const hasRequests = data.requests && Array.isArray(data.requests);
-    const hasRiders = data.riders && Array.isArray(data.riders);
-    
-    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.user:', JSON.stringify(data.user));
-    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.requests: Length=' + (hasRequests ? data.requests.length : 'N/A') + (hasRequests && data.requests.length > 0 ? ', First: ' + JSON.stringify(data.requests[0]) : ''));
-    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.riders: Length=' + (hasRiders ? data.riders.length : 'N/A') + (hasRiders && data.riders.length > 0 ? ', First: ' + JSON.stringify(data.riders[0]) : ''));
-    console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.initialRequestDetails:', JSON.stringify(data.initialRequestDetails));
-    if (data.initialRequestDetails) {
-        console.log('ADP_LOG: handleAssignmentsDataSuccess - InitialRequestDetails ID: ' + data.initialRequestDetails.id + ', Requester: ' + data.initialRequestDetails.requesterName);
-    }
-    if (data.requestNotFound !== undefined) {
-        console.log('ADP_LOG: handleAssignmentsDataSuccess - Data.requestNotFound:', data.requestNotFound, ', Data.requestedId:', data.requestedId);
-    }
-
-    console.log('📋 Data validation:'); // Existing log
-    console.log('  - Has user:', hasUser, data.user ? data.user.name : 'Missing'); // Existing log
-    console.log('  - Has requests:', hasRequests, hasRequests ? data.requests.length : 'Missing'); // Existing log
-    console.log('  - Has riders:', hasRiders, hasRiders ? data.riders.length : 'Missing'); // Existing log
-    console.log('  - Has initial request:', !!data.initialRequestDetails); // Existing log
-    
-    // Don't fail the whole page if some data is missing - use defaults
-    if (!hasUser && !hasRequests && !hasRiders) {
-        console.error('❌ No valid data in response'); // Existing log
-        handleAssignmentsDataFailure({ message: 'Server response contains no valid data' });
-        return;
-    }
-    
-    console.log('✅ Processing assignments data (with defaults for missing parts)'); // Existing log
-    
-    // Set defaults for missing data
-    const processedData = {
-        user: data.user || { 
-            name: 'System User', 
-            role: 'admin', 
-            permissions: ['view_all', 'assign_riders'],
-            email: 'system@example.com'
-        },
-        requests: data.requests || [],
-        riders: data.riders || [],
-        initialRequestDetails: data.initialRequestDetails || null
-    };
-    
-    console.log('📊 Final processed data:'); // Existing log
-    console.log('  - User:', processedData.user.name); // Existing log
-    console.log('  - Requests:', processedData.requests.length); // Existing log
-    console.log('  - Riders:', processedData.riders.length); // Existing log
-    console.log('  - Initial request:', processedData.initialRequestDetails ? processedData.initialRequestDetails.id : 'None'); // Existing log
-    console.log('ADP_LOG: handleAssignmentsDataSuccess - ProcessedData before further handling: User: ' + processedData.user.name + ', Requests: ' + processedData.requests.length + ', Riders: ' + processedData.riders.length + ', InitialRequest ID: ' + (processedData.initialRequestDetails ? processedData.initialRequestDetails.id : 'None'));
-    
-    try {
-        // Process user data
-        console.log('👤 Processing user data...'); // Existing log
-        if (typeof handleUserData === 'function') {
-            handleUserData(processedData.user);
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handleAssignmentsDataSuccess)
+                .withFailureHandler(handleAssignmentsDataFailure)
+                .getPageDataForAssignments(requestIdToLoad);
         } else {
-            console.warn('⚠️ handleUserData function not found'); // Existing log
-        }
-        
-        // Process requests data
-        console.log('📋 Processing requests data...'); // Existing log
-        if (typeof handleRequestsLoaded === 'function') {
-            handleRequestsLoaded(processedData.requests);
-        } else {
-            console.warn('⚠️ handleRequestsLoaded function not found'); // Existing log
-            // Direct fallback
-            currentRequests = processedData.requests;
-            if (typeof renderRequestsList === 'function') {
-                renderRequestsList();
-            }
-        }
-        
-        // Process riders data
-        console.log('👥 Processing riders data...'); // Existing log
-        if (typeof handleRidersLoaded === 'function') {
-            handleRidersLoaded(processedData.riders);
-        } else {
-            console.warn('⚠️ handleRidersLoaded function not found'); // Existing log
-            // Direct fallback
-            activeRiders = processedData.riders;
-        }
-        
-        // Handle pre-selection
-        if (preselectedRequestId && !preselectAttempted && processedData.requests.length > 0) {
-            console.log('🎯 Attempting pre-selection for:', preselectedRequestId); // Existing log
-            
-            let requestToSelect = null;
-            
-            // Check initialRequestDetails first
-            if (processedData.initialRequestDetails && 
-                (processedData.initialRequestDetails.id === preselectedRequestId || 
-                 processedData.initialRequestDetails.requestId === preselectedRequestId)) {
-                requestToSelect = processedData.initialRequestDetails;
-                console.log('📦 Using initialRequestDetails for pre-selection');
-            } 
-            // Check currentRequests as fallback
-            else {
-                requestToSelect = processedData.requests.find(req => 
-                    req.id === preselectedRequestId || req.requestId === preselectedRequestId
-                );
-                console.log('📋 Using requests list for pre-selection');
-            }
-            
-            if (requestToSelect) {
-                console.log('✅ Found request for pre-selection:', requestToSelect.id || requestToSelect.requestId);
-                setTimeout(() => {
-                    try {
-                        if (typeof selectAndRenderRequestObject === 'function') {
-                            if (selectAndRenderRequestObject(requestToSelect)) {
-                                preselectAttempted = true;
-                                console.log('✅ Pre-selection completed successfully');
-                            } else {
-                                console.warn('⚠️ Pre-selection function returned false');
-                            }
-                        } else {
-                            console.warn('⚠️ selectAndRenderRequestObject function not found');
-                        }
-                    } catch (preselectError) {
-                        console.error('❌ Pre-selection error:', preselectError);
-                    }
-                }, 500);
-            } else {
-                console.warn('⚠️ Could not find request for pre-selection:', preselectedRequestId);
-                if (typeof showError === 'function') {
-                    showError(`Request ${preselectedRequestId} not found or not available for assignment`);
-                }
-            }
-        }
-        
-        console.log('✅ handleAssignmentsDataSuccess completed successfully');
-        
-    } catch (processingError) {
-        console.error('❌ Error processing assignments data:', processingError);
-        // Don't fail completely, just log the error
-        if (typeof showError === 'function') {
-            showError('Some data could not be processed, but page should still work');
+            console.log('⚠️ Google Apps Script not available for assignments page.');
+            handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
         }
     }
-}
-
-// ALSO ADD this enhanced error handler:
-
-function handleAssignmentsDataFailure(error) {
-    console.log('ADP_LOG: handleAssignmentsDataFailure() called with error:', JSON.stringify(error));
-    console.error('❌ handleAssignmentsDataFailure called with:', error); // Existing log
-    
-    const errorMessage = error?.message || error?.error || error || 'Unknown error loading assignments data';
-    console.error('Error details:', errorMessage); // Existing log
-    
-    // Show user-friendly error
-    if (typeof showError === 'function') {
-        showError('Failed to load assignments data: ' + errorMessage);
-    }
-    
-    // Update UI to show error state
-    const requestsList = document.getElementById('requestsList');
-    if (requestsList) {
-        requestsList.innerHTML = `
-            <div class="empty-state" style="padding: 2rem; text-align: center; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 5px;">
-                <h3>❌ Loading Error</h3>
-                <p><strong>Error:</strong> ${errorMessage}</p>
-                <button onclick="location.reload()" style="padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; margin-top: 1rem;">
-                    🔄 Refresh Page
-                </button>
-            </div>
-        `;
-    }
-    
-    const assignmentContent = document.getElementById('assignmentContent');
-    if (assignmentContent) {
-        assignmentContent.innerHTML = `
-            <div class="empty-state" style="padding: 2rem; text-align: center;">
-                <h3>Unable to Load Assignment Data</h3>
-                <p>Please refresh the page and try again.</p>
-                <p><em>Error: ${errorMessage}</em></p>
-            </div>
-        `;
-    }
-    
-    // Set fallback user data if no user data handler exists
-    if (typeof handleUserData === 'function') {
-        try {
-            handleUserData({
-                name: 'System User',
-                role: 'admin',
-                permissions: [],
-                email: 'system@example.com'
-            });
-        } catch (userError) {
-            console.warn('⚠️ Could not set fallback user data:', userError);
-        }
-    }
-}
-
-// ADD this debug function to test the data flow:
-
-function debugDataFlow() {
-    console.log('🔍 Debugging assignments data flow...');
-    
-    // Check if all required functions exist
-    const requiredFunctions = [
-        'handleUserData',
-        'handleRequestsLoaded', 
-        'handleRidersLoaded',
-        'selectAndRenderRequestObject',
-        'renderRequestsList',
-        'showError'
-    ];
-    
-    requiredFunctions.forEach(funcName => {
-        const exists = typeof window[funcName] === 'function';
-        console.log(`${funcName}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
-    });
-    
-    // Check if global variables exist
-    const requiredVars = [
-        'currentRequests',
-        'activeRiders', 
-        'preselectedRequestId',
-        'preselectAttempted'
-    ];
-    
-    requiredVars.forEach(varName => {
-        const exists = window[varName] !== undefined;
-        console.log(`${varName}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
-    });
-}
-
-// Call this on page load to check everything is set up correctly
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => {
-        debugDataFlow();
-    }, 1000);
-});
-
-// ADD this debugging function to check what server functions are available:
-
-function debugAvailableServerFunctions() {
-    console.log('🔍 Available server functions:');
-    
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        const availableFunctions = Object.keys(google.script.run).filter(key => 
-            typeof google.script.run[key] === 'function'
-        );
-        
-        console.log('Available functions:', availableFunctions);
-        
-        // Check for assignments-related functions
-        const assignmentsFunctions = availableFunctions.filter(name => 
-            name.toLowerCase().includes('assignment') || 
-            name.toLowerCase().includes('page')
-        );
-        
-        console.log('Assignments-related functions:', assignmentsFunctions);
-        
-        return availableFunctions;
-    } else {
-        console.log('❌ Google Apps Script not available');
-        return [];
-    }
-}
-
-// Call this function on page load to see what's available
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Assignments page loading...');
-    
-    // Debug available functions
-    setTimeout(() => {
-        debugAvailableServerFunctions();
-    }, 1000);
-    
-    // Continue with normal initialization...
-    const params = new URLSearchParams(window.location.search);
-    const dateParam = params.get('date');
-    if (dateParam) {
-        app.dateFilter = dateParam.toLowerCase();
-    }
-    preselectedRequestId = params.get('requestId');
-    
-    setTimeout(function() {
-        if (currentRequests.length === 0 && activeRiders.length === 0) {
-            console.log('⚠️ Loading timeout - showing fallback data');
-            handleLoadingTimeout();
-        }
-    }, app.loadingTimeout);
-
-    loadAllData();
-    setupEventListeners();
-});
 <!-- Add this to your assignments.html <script> section for debugging -->
 
 // Debug function to test riders loading
@@ -1512,121 +844,7 @@ function displayNoRiders(message) {
     `;
   }
 }
-// Add this to the assignments.html page initialization
 
-/**
- * Extract URL parameters and set up pre-selection
- */
-function initializeAssignmentsPage() {
-    console.log('🚀 Initializing assignments page...');
-    
-    // Extract requestId from URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    let requestIdFromUrl = urlParams.get('requestId'); // Changed to let
-    
-    if (requestIdFromUrl) {
-        requestIdFromUrl = String(requestIdFromUrl).trim(); // Sanitize
-        console.log('🎯 Found and sanitized requestId in URL:', requestIdFromUrl);
-        preselectedRequestId = requestIdFromUrl;
-        preselectAttempted = false; // Reset the flag
-    }
-    
-    // Set up loading timeout
-    var timeout = setTimeout(function() {
-        if (currentRequests.length === 0) {
-            showLoadingError('Failed to load assignments data within timeout period. Please refresh the page.');
-        }
-    }, app.loadingTimeout);
-
-    // Load assignments data with pre-selection support
-    console.log('📊 Loading assignments data...');
-    google.script.run
-        .withSuccessHandler(function(data) {
-            clearTimeout(timeout);
-            handleAssignmentsDataSuccess(data);
-        })
-        .withFailureHandler(function(error) {
-            clearTimeout(timeout);
-            handleAssignmentsDataFailure(error);
-        })
-        .getAssignmentsData(requestIdFromUrl); // Pass the requestId to server
-}
-
-/**
- * Enhanced selectAndRenderRequestObject function with better error handling
- */
-function selectAndRenderRequestObject(requestObject) {
-    if (!requestObject || !requestObject.id) {
-        console.warn('❌ selectAndRenderRequestObject: Invalid request object provided');
-        return false;
-    }
-    // Sanitize requestObject.id
-    requestObject.id = String(requestObject.id).trim();
-    console.log('✨ Selecting and rendering request object (ID sanitized):', requestObject.id);
-    
-    // console.log('🎯 Attempting to select and render request:', requestObject.id); // Original log
-    
-    // Find the request in the current list
-    const foundRequest = currentRequests.find(req => req.id === requestObject.id);
-    
-    if (!foundRequest) {
-        console.warn('⚠️ Request not found in current requests list:', requestObject.id);
-        
-        // Try to add it to the list if it's not there
-        if (requestObject) {
-            console.log('➕ Adding request to current requests list');
-            currentRequests.unshift(requestObject);
-            filterRequests(); // Re-render the list
-        }
-    }
-    
-    // Set as selected request
-    selectedRequest = requestObject;
-    console.log('ADP_LOG: selectedRequest object after assignment in selectAndRenderRequestObject (enhanced version):');
-    console.log('ADP_LOG: selectedRequest.id:', selectedRequest ? selectedRequest.id : 'selectedRequest is null');
-    
-    // Update the UI to show selection
-    updateRequestItemSelection(requestObject.id);
-    
-    // Render the assignment panel
-    renderAssignmentPanel();
-    
-    console.log('✅ Successfully selected and rendered request:', requestObject.id);
-    return true;
-}
-
-/**
- * Update the visual selection in the requests list
- */
-function updateRequestItemSelection(requestId) {
-    // Remove previous selections
-    const allRequestItems = document.querySelectorAll('.request-item');
-    allRequestItems.forEach(item => item.classList.remove('selected'));
-    
-    // Add selection to the current item
-    const targetItem = document.querySelector(`.request-item[data-request-id="${requestId}"]`);
-    if (targetItem) {
-        targetItem.classList.add('selected');
-        
-        // Scroll into view if needed
-        targetItem.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest' 
-        });
-        
-        console.log('✅ Updated visual selection for request:', requestId);
-    } else {
-        console.warn('⚠️ Could not find request item in DOM:', requestId);
-    }
-}
-
-
-
-// Update your DOMContentLoaded event listener to use the new initialization
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 Assignments page DOM loaded');
-    initializeAssignmentsPage();
-});
 // Better success/error notifications
 function showSuccess(message) {
   console.log('✅', message);
@@ -1720,7 +938,74 @@ if (!document.getElementById('debug-styles')) {
   styleDiv.innerHTML = debugStyles;
   document.head.appendChild(styleDiv);
 }
- 
+    /**
+     * Handles the successful response from fetching consolidated assignments page data.
+     * Updates UI with user info, requests, riders, and potentially pre-selects a request.
+     * @param {object} data - The consolidated data object from the server.
+     * @param {boolean} data.success - Indicates if the server call was successful.
+     * @param {UserProfile} [data.user] - User information.
+     * @param {Array<RequestItemAssignmentsPage>} [data.requests] - Assignable requests.
+     * @param {Array<RiderItemAssignmentsPage>} [data.riders] - Active riders.
+     * @param {RequestItemAssignmentsPage} [data.initialRequestDetails] - Details if a specific request was pre-loaded.
+     * @param {string} [data.error] - Error message if success is false.
+     * @return {void}
+     */
+    function handleAssignmentsDataSuccess(data) {
+        if (data && data.success) {
+            console.log('✅ Assignments page data loaded successfully:', data);
+            handleUserData(data.user);
+            handleRequestsLoaded(data.requests); // This populates currentRequests and calls filterRequests
+            handleRidersLoaded(data.riders);
+
+            var requestObjectForSelection = null;
+
+            if (data.initialRequestDetails && data.initialRequestDetails.id) {
+                requestObjectForSelection = data.initialRequestDetails;
+                console.log('📦 Using initialRequestDetails:', requestObjectForSelection);
+
+                // Check if this request is already in currentRequests
+                var existsInCurrentList = currentRequests.some(function(req) {
+                    return req.id === requestObjectForSelection.id;
+                });
+
+                if (!existsInCurrentList) {
+                    console.log('➕ Adding initialRequestDetails to currentRequests and re-filtering.');
+                    currentRequests.unshift(requestObjectForSelection); // Add to the beginning
+                    filterRequests(); // Re-render the list which might show it if filters match
+                }
+            } else if (preselectedRequestId) { // Fallback if initialRequestDetails is not provided
+                console.log('🆔 Trying to find preselectedRequestId in currentRequests:', preselectedRequestId);
+                requestObjectForSelection = currentRequests.find(function(r) { return r.id === preselectedRequestId; });
+            }
+
+            if (requestObjectForSelection && !preselectAttempted) {
+                console.log('🎯 Attempting pre-selection with object:', requestObjectForSelection);
+                setTimeout(function() {
+                    if (selectAndRenderRequestObject(requestObjectForSelection)) {
+                        preselectAttempted = true;
+                        console.log('👍 Pre-selection successful with object.');
+                    } else {
+                        console.warn('⚠️ Pre-selection with object failed.');
+                    }
+                }, 100); // 100ms delay
+            } else if (preselectedRequestId && !requestObjectForSelection && !preselectAttempted) {
+                // Further fallback: if only an ID was available and object not found (e.g. from old URL param logic)
+                console.log('🆔 Attempting pre-selection with ID (fallback):', preselectedRequestId);
+                 setTimeout(function() {
+                    if (selectRequest(preselectedRequestId)) { // Original function that finds by ID
+                        preselectAttempted = true;
+                        console.log('👍 Pre-selection successful with ID (fallback).');
+                    } else {
+                        console.warn('⚠️ Pre-selection with ID (fallback) failed.');
+                    }
+                }, 100);
+            }
+
+        } else {
+            console.error('❌ Failed to load assignments page data:', data ? data.error : 'No data returned');
+            handleAssignmentsDataFailure(data || { message: "Received success:false or no data." });
+        }
+    }
 
     /**
      * New/Modified function to select a request using its object and render the panel.
@@ -1732,13 +1017,9 @@ if (!document.getElementById('debug-styles')) {
             console.error('❌ Invalid request object passed to selectAndRenderRequestObject');
             return false;
         }
-        // Sanitize requestObj.id
-        requestObj.id = String(requestObj.id).trim();
-        console.log('✨ Selecting and rendering request object (ID sanitized):', requestObj.id);
+        console.log('✨ Selecting and rendering request object:', requestObj.id);
 
         selectedRequest = requestObj; // Set the global selectedRequest
-        console.log('ADP_LOG: selectedRequest object after assignment in selectAndRenderRequestObject (second version):');
-        console.log('ADP_LOG: selectedRequest.id:', selectedRequest ? selectedRequest.id : 'selectedRequest is null');
 
         // Visually select in the list
         var requestItems = document.querySelectorAll('.request-item');
@@ -1764,7 +1045,24 @@ if (!document.getElementById('debug-styles')) {
     }
 
 
-    /
+    /**
+     * Handles failures in fetching consolidated assignments page data.
+     * Logs the error and attempts to set fallback UI states.
+     * @param {object|string} error - The error object or message.
+     * @param {UserProfile} [error.user] - User data if available.
+     * @return {void}
+     */
+    function handleAssignmentsDataFailure(error) {
+        console.error('❌ Error loading assignments page data:', error.message || error);
+        const fallbackUser = (error && error.user) ? error.user : {
+            name: 'System User',
+            email: 'user@system.com',
+            roles: ['admin'],
+            permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+        };
+        handleUserData(fallbackUser);
+        handleLoadingTimeout();
+    }
 
     /**
      * Updates the user interface with the provided user data (name, role, avatar).
@@ -2070,9 +1368,6 @@ function selectRequestById(requestId) {
             container.innerHTML = '<div class="empty-state"><h3>Select a Request</h3><p>Choose a request from the left panel to begin assigning riders</p></div>';
             return;
         }
-        console.log('ADP_LOG: selectedRequest object at the start of renderAssignmentPanel:');
-        console.log('ADP_LOG: selectedRequest.id:', selectedRequest.id);
-        console.log('ADP_LOG: selectedRequest.requesterName:', selectedRequest.requesterName);
 
         var assignedRidersArray = selectedRequest.ridersAssigned ?
             selectedRequest.ridersAssigned.split(/[,\n]/).map(function(name) { return name.trim(); }).filter(function(name) { return name.length > 0; }) : [];
@@ -2446,7 +1741,6 @@ function updateAssignmentOrder() {
         });
 
         showLoading('Saving assignment...');
-        console.log('ADP_LOG: Saving assignment for request ID (already sanitized):', selectedRequest ? selectedRequest.id : 'selectedRequest is null');
 
         try {
             google.script.run
