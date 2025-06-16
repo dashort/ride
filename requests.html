@@ -1362,23 +1362,24 @@ function navigateTo(page, params = {}) {
     search.set('page', page);
     Object.keys(params).forEach(key => search.set(key, params[key]));
 
-    let base;
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        base = window.location.origin + window.location.pathname;
-    } else {
-        base = page === 'dashboard' ? 'index.html' : page + '.html';
+    function openUrl(base) {
+        const url = base + '?' + search.toString();
+        try {
+            window.location.href = url;
+        } catch (error) {
+            try {
+                window.top.location.href = url;
+            } catch (topError) {
+                window.open(url, '_blank');
+            }
+        }
     }
 
-    const url = base + (search.toString() ? '?' + search.toString() : '');
-
-    try {
-        window.location.href = url;
-    } catch (error) {
-        try {
-            window.top.location.href = url;
-        } catch (topError) {
-            window.open(url, '_blank');
-        }
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(openUrl).getWebAppUrl();
+    } else {
+        const base = page === 'dashboard' ? 'index.html' : page + '.html';
+        openUrl(base);
     }
 }
 
