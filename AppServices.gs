@@ -2250,15 +2250,16 @@ function getPageDataForAssignments(requestIdToLoad) {
     if (requestIdToLoad) {
       const cleanedRequestIdToLoad = String(requestIdToLoad).trim();
       try {
-        const specificRequest = result.requests.find(r => String(r.id).trim() === cleanedRequestIdToLoad);
-        if (specificRequest) {
-          result.initialRequestDetails = specificRequest;
-          console.log(`✅ Found initial request details for ID: "${cleanedRequestIdToLoad}"`);
+        // Attempt to fetch the specific request directly
+        const directlyFetchedRequest = getRequestDetails(cleanedRequestIdToLoad); // Assuming getRequestDetails is available
+        if (directlyFetchedRequest) {
+          result.initialRequestDetails = directlyFetchedRequest;
+          console.log(`✅ Successfully fetched initial request details directly for ID: "${cleanedRequestIdToLoad}"`);
         } else {
-          console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection not found among ${result.requests.length} assignable requests. This is not an error if the ID is invalid or not currently assignable.`);
+          console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection was not found through direct fetch.`);
         }
-      } catch (detailsError) {
-        console.error(`⚠️ Error while trying to find initial request details for ID "${cleanedRequestIdToLoad}":`, detailsError);
+      } catch (fetchError) {
+        console.error(`⚠️ Error during direct fetch for initial request details (ID "${cleanedRequestIdToLoad}"):`, fetchError);
       }
     }
     

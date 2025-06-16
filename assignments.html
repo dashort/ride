@@ -954,30 +954,96 @@ if (!document.getElementById('debug-styles')) {
         if (data && data.success) {
             console.log('✅ Assignments page data loaded successfully:', data);
             handleUserData(data.user);
-            handleRequestsLoaded(data.requests); // This calls filterRequests internally
+            handleRequestsLoaded(data.requests); // This populates currentRequests and calls filterRequests
             handleRidersLoaded(data.riders);
 
-            // filterRequests(); // filterRequests is called within handleRequestsLoaded now.
+            var requestObjectForSelection = null;
 
-            var requestIdToSelect = null;
             if (data.initialRequestDetails && data.initialRequestDetails.id) {
-                requestIdToSelect = data.initialRequestDetails.id;
-            } else if (preselectedRequestId) { // preselectedRequestId is from URL params, set in DOMContentLoaded
-                requestIdToSelect = preselectedRequestId;
+                requestObjectForSelection = data.initialRequestDetails;
+                console.log('📦 Using initialRequestDetails:', requestObjectForSelection);
+
+                // Check if this request is already in currentRequests
+                var existsInCurrentList = currentRequests.some(function(req) {
+                    return req.id === requestObjectForSelection.id;
+                });
+
+                if (!existsInCurrentList) {
+                    console.log('➕ Adding initialRequestDetails to currentRequests and re-filtering.');
+                    currentRequests.unshift(requestObjectForSelection); // Add to the beginning
+                    filterRequests(); // Re-render the list which might show it if filters match
+                }
+            } else if (preselectedRequestId) { // Fallback if initialRequestDetails is not provided
+                console.log('🆔 Trying to find preselectedRequestId in currentRequests:', preselectedRequestId);
+                requestObjectForSelection = currentRequests.find(function(r) { return r.id === preselectedRequestId; });
             }
 
-            if (requestIdToSelect && !preselectAttempted) {
+            if (requestObjectForSelection && !preselectAttempted) {
+                console.log('🎯 Attempting pre-selection with object:', requestObjectForSelection);
                 setTimeout(function() {
-                    if (selectRequest(requestIdToSelect)) {
+                    if (selectAndRenderRequestObject(requestObjectForSelection)) {
                         preselectAttempted = true;
+                        console.log('👍 Pre-selection successful with object.');
+                    } else {
+                        console.warn('⚠️ Pre-selection with object failed.');
                     }
                 }, 100); // 100ms delay
+            } else if (preselectedRequestId && !requestObjectForSelection && !preselectAttempted) {
+                // Further fallback: if only an ID was available and object not found (e.g. from old URL param logic)
+                console.log('🆔 Attempting pre-selection with ID (fallback):', preselectedRequestId);
+                 setTimeout(function() {
+                    if (selectRequest(preselectedRequestId)) { // Original function that finds by ID
+                        preselectAttempted = true;
+                        console.log('👍 Pre-selection successful with ID (fallback).');
+                    } else {
+                        console.warn('⚠️ Pre-selection with ID (fallback) failed.');
+                    }
+                }, 100);
             }
+
         } else {
             console.error('❌ Failed to load assignments page data:', data ? data.error : 'No data returned');
             handleAssignmentsDataFailure(data || { message: "Received success:false or no data." });
         }
     }
+
+    /**
+     * New/Modified function to select a request using its object and render the panel.
+     * @param {RequestItemAssignmentsPage} requestObj - The request object to select.
+     * @return {boolean} True if selection and rendering were successful.
+     */
+    function selectAndRenderRequestObject(requestObj) {
+        if (!requestObj || !requestObj.id) {
+            console.error('❌ Invalid request object passed to selectAndRenderRequestObject');
+            return false;
+        }
+        console.log('✨ Selecting and rendering request object:', requestObj.id);
+
+        selectedRequest = requestObj; // Set the global selectedRequest
+
+        // Visually select in the list
+        var requestItems = document.querySelectorAll('.request-item');
+        var requestElement = null;
+        requestItems.forEach(function(item) {
+            if (item.dataset.requestId === requestObj.id) {
+                item.classList.add('selected');
+                requestElement = item;
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+
+        if (requestElement) {
+            requestElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            console.warn('⚠️ Request element with ID [' + requestObj.id + '] not found in DOM for visual selection. May not match current filters.');
+        }
+
+        selectedRiders.clear(); // Clear riders from any previously selected request
+        renderAssignmentPanel(); // This uses the global selectedRequest
+        return true;
+    }
+
 
     /**
      * Handles failures in fetching consolidated assignments page data.
@@ -1228,41 +1294,22 @@ if (!document.getElementById('debug-styles')) {
     }
 
     /**
-     * Handles the selection of a request from the list.
-     * Updates the UI to show details for the selected request and renders the rider assignment panel.
+     * Handles the selection of a request from the list by its ID.
+     * Finds the request in `currentRequests` and then calls `selectAndRenderRequestObject`.
      * @param {string} requestId - The ID of the request to select.
      * @return {boolean} True if the request was found and selected, false otherwise.
      */
     function selectRequest(requestId) {
-        console.log('🎯 Selecting request:', requestId);
-        var requestElement = null;
-        var requestItems = document.querySelectorAll('.request-item');
+        console.log('🎯 Selecting request by ID:', requestId);
 
-        requestItems.forEach(function(item) {
-            if (item.dataset.requestId === requestId) {
-                item.classList.add('selected');
-                requestElement = item;
-            } else {
-                item.classList.remove('selected');
-            }
-        });
+        var requestToSelect = currentRequests.find(function(r) { return r.id === requestId; });
 
-        // Find the request object from currentRequests
-        selectedRequest = currentRequests.find(function(r) { return r.id === requestId; });
-
-        selectedRiders.clear(); // Clear riders from any previously selected request
-
-        if (selectedRequest) {
-            console.log('✅ Selected request object:', selectedRequest);
-            if (requestElement) {
-                requestElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            } else {
-                console.warn('⚠️ Request element with ID [' + requestId + '] not found in DOM. Might not be in current view/filter.');
-            }
-            renderAssignmentPanel();
-            return true;
+        if (requestToSelect) {
+            return selectAndRenderRequestObject(requestToSelect);
         } else {
             console.error('❌ Request object with ID [' + requestId + '] not found in currentRequests array.');
+            // Clear selection and panel if request not found
+            selectedRequest = null;
             var assignmentContent = document.getElementById('assignmentContent');
             if (assignmentContent) {
                 assignmentContent.innerHTML =
@@ -1272,6 +1319,11 @@ if (!document.getElementById('debug-styles')) {
                     'It might have been removed or is not currently available in the list.</p>' +
                     '</div>';
             }
+            // Also de-select any visually selected item in the list
+            var requestItems = document.querySelectorAll('.request-item');
+            requestItems.forEach(function(item) {
+                item.classList.remove('selected');
+            });
             return false;
         }
     }
