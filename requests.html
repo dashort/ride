@@ -1365,13 +1365,9 @@ function navigateTo(page, params = {}) {
     function openUrl(base) {
         const url = base + '?' + search.toString();
         try {
-            window.location.href = url;
+            window.top.location.assign(url);
         } catch (error) {
-            try {
-                window.top.location.href = url;
-            } catch (topError) {
-                window.open(url, '_blank');
-            }
+            window.location.assign(url);
         }
     }
 
