@@ -3993,7 +3993,9 @@ function createSignInPage() {
         
         // Handle back button to retry
         window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
+            var entries = performance.getEntriesByType('navigation');
+            var navType = entries.length > 0 ? entries[0].type : undefined;
+            if (event.persisted || navType === 'back_forward') {
                 location.reload();
             }
         });

@@ -49,8 +49,11 @@
   }
 
   // Reload the page when navigating back/forward to avoid blank screens
+  // Some browsers do not set evt.persisted so also check the navigation type
   window.addEventListener('pageshow', function(evt) {
-    if (evt.persisted) {
+    var entries = performance.getEntriesByType('navigation');
+    var navType = entries.length > 0 ? entries[0].type : undefined;
+    if (evt.persisted || navType === 'back_forward') {
       window.location.reload();
     }
   });
