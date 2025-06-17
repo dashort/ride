@@ -355,13 +355,19 @@ function clearDashboardCache() {
  */
 function getCurrentUser() {
   try {
+    // Delegate to the centralized authentication service
+    if (typeof authenticateAndAuthorizeUser === 'function') {
+      const auth = authenticateAndAuthorizeUser();
+      if (auth && auth.success && auth.user) {
+        logActivity(`User ${auth.user.email} logged in with roles: ${auth.user.roles.join(', ')}`);
+        return auth.user;
+      }
+    }
+
+    // Fallback to session information if the auth service fails
     const userEmail = Session.getActiveUser().getEmail();
-    const userRoles = getUserRoles(userEmail);
-    const userPermissions = calculatePermissions(userRoles);
-    const userDisplayName = getUserDisplayName(userEmail);
-    const user = { email: userEmail, name: userDisplayName, roles: userRoles, permissions: userPermissions };
-    logActivity(`User ${user.email} logged in with roles: ${user.roles.join(', ')}`);
-    return user;
+    const displayName = getUserDisplayName(userEmail);
+    return { email: userEmail, name: displayName, roles: ['guest'], permissions: ['view'] };
   } catch (error) {
     logError('Error getting current user:', error);
     return { email: 'anonymous@example.com', name: 'Guest User', roles: ['guest'], permissions: ['view'] };
