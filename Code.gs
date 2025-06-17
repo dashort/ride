@@ -3993,8 +3993,19 @@ function createSignInPage() {
         
         // Handle back button to retry
         window.addEventListener('pageshow', function(event) {
-            var entries = performance.getEntriesByType('navigation');
-            var navType = entries.length > 0 ? entries[0].type : undefined;
+            var navType;
+            try {
+                if (performance.getEntriesByType) {
+                    var entries = performance.getEntriesByType('navigation');
+                    navType = entries.length > 0 ? entries[0].type : undefined;
+                } else if (performance.navigation) {
+                    if (performance.navigation.type === 2) navType = 'back_forward';
+                    else if (performance.navigation.type === 1) navType = 'reload';
+                    else navType = 'navigate';
+                }
+            } catch (e) {
+                navType = undefined;
+            }
             if (event.persisted || navType === 'back_forward') {
                 location.reload();
             }
