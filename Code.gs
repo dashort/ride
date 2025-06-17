@@ -2283,20 +2283,27 @@ function getPageDataForRiders() {
  */
 function getCurrentUser() {
   try {
+    if (typeof authenticateAndAuthorizeUser === 'function') {
+      const auth = authenticateAndAuthorizeUser();
+      if (auth && auth.success && auth.user) {
+        return auth.user;
+      }
+    }
+
     const session = Session.getActiveUser();
     return {
       name: session.getEmail().split('@')[0] || 'User',
       email: session.getEmail(),
-      roles: ['admin'], // Default role
-      permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+      roles: ['guest'],
+      permissions: ['view']
     };
   } catch (error) {
     console.error('Error getting current user:', error);
     return {
-      name: 'System User',
-      email: 'user@system.com',
-      roles: ['admin'],
-      permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+      name: 'Guest User',
+      email: 'anonymous@example.com',
+      roles: ['guest'],
+      permissions: ['view']
     };
   }
 }
