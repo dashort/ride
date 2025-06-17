@@ -2755,6 +2755,27 @@ function doGet(e) {
     const pageName = e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
     
     console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
+
+        if (pageName === 'auth-setup') {
+      console.log('🔐 Handling auth-setup page specifically');
+      
+      if (authenticatedUser.role !== 'admin') {
+        return createAccessDeniedPage('Only administrators can access authentication setup', authenticatedUser);
+      }
+      
+      return createAuthMappingPage();
+    }
+    
+    // Handle user-management page separately
+    if (pageName === 'user-management') {
+      console.log('👥 Handling user-management page specifically');
+      
+      if (authenticatedUser.role !== 'admin') {
+        return createAccessDeniedPage('Only administrators can access user management', authenticatedUser);
+      }
+      
+      return handleUserManagementPage(e);
+    }
     
     // Load page content (your existing logic)
     const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
@@ -4469,7 +4490,7 @@ function injectUserInfo(content, user, rider) {
 
 // 📊 User-specific Data Injection
 // ENHANCED UX IMPROVEMENTS - Add to your addUserDataInjection function
-// ENHANCED UX IMPROVEMENTS - Add to your addUserDataInjection function
+
 function addUserDataInjection(htmlOutput, user, rider) {
   try {
     function escapeJsString(str) {
@@ -4489,6 +4510,9 @@ window.currentUser = {
   isRider: ${rider ? 'true' : 'false'}
 };
 
+console.log('👤 User context loaded:', window.currentUser);
+
+// Enhanced UX improvements
 console.log('🎨 Enhanced UX improvements loading...');
 
 // 1. ENHANCED LOADING STATES
@@ -4604,150 +4628,29 @@ function enhanceButtons() {
   });
 }
 
-// 4. FORM ENHANCEMENT
-function enhanceFormInputs() {
-  document.querySelectorAll('input, select, textarea').forEach(input => {
-    if (input.dataset.enhanced) return;
-    input.dataset.enhanced = 'true';
-    
-    // Add focus effects
-    input.addEventListener('focus', function() {
-      this.style.borderColor = '#667eea';
-      this.style.boxShadow = '0 0 0 2px rgba(102, 126, 234, 0.2)';
-      this.style.transition = 'all 0.2s ease';
-    });
-    
-    input.addEventListener('blur', function() {
-      this.style.borderColor = '';
-      this.style.boxShadow = '';
-    });
-    
-    // Add validation styling
-    input.addEventListener('invalid', function() {
-      this.style.borderColor = '#e74c3c';
-      this.style.boxShadow = '0 0 0 2px rgba(231, 76, 60, 0.2)';
-    });
-    
-    input.addEventListener('input', function() {
-      if (this.validity.valid) {
-        this.style.borderColor = '#27ae60';
-        this.style.boxShadow = '0 0 0 2px rgba(39, 174, 96, 0.2)';
-      }
-    });
-  });
-}
-
-// 5. ENHANCED TABLE INTERACTIONS
-function enhanceTableRows() {
-  document.querySelectorAll('table tr').forEach(row => {
-    if (row.dataset.enhanced) return;
-    row.dataset.enhanced = 'true';
-    
-    row.addEventListener('mouseenter', function() {
-      this.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
-      this.style.transition = 'background-color 0.2s ease';
-    });
-    
-    row.addEventListener('mouseleave', function() {
-      this.style.backgroundColor = '';
-    });
-  });
-}
-
-// 6. SMOOTH SCROLL ENHANCEMENTS
-function enhanceSmoothScrolling() {
-  // Add smooth scrolling to anchor links
-  document.querySelectorAll('a[href^="#"]').forEach(link => {
-    link.addEventListener('click', function(e) {
-      const target = document.querySelector(this.getAttribute('href'));
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
-  });
-}
-
-// 7. LOADING STATE FOR DATA OPERATIONS
-function showDataLoading(element, message = 'Loading data...') {
-  if (!element) return;
-  
-  const originalContent = element.innerHTML;
-  element.dataset.originalContent = originalContent;
-  
-  element.innerHTML = \`
-    <div style="text-align: center; padding: 2rem; color: #666;">
-      <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #f3f3f3; 
-                  border-top: 2px solid #667eea; border-radius: 50%; 
-                  animation: spin 1s linear infinite; margin-right: 10px;"></div>
-      \${message}
-    </div>
-  \`;
-}
-
-function hideDataLoading(element) {
-  if (!element || !element.dataset.originalContent) return;
-  element.innerHTML = element.dataset.originalContent;
-  delete element.dataset.originalContent;
-}
-
-// 8. NAVIGATION FEEDBACK (Enhanced)
-document.addEventListener('click', function(e) {
-  const navLink = e.target.closest('nav.navigation a');
-  if (navLink) {
-    console.log('🔗 Enhanced navigation click:', navLink.textContent.trim());
-    
-    // Enhanced visual feedback
-    navLink.style.cssText += \`
-      background: linear-gradient(135deg, #2980b9, #1f4e79) !important;
-      transform: scale(0.95) !important;
-      transition: all 0.15s ease !important;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
-    \`;
-    
-    // Show navigation motorcycle
-    setTimeout(() => {
-      const motorcycle = document.createElement('div');
-      motorcycle.style.cssText = \`
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(102, 126, 234, 0.95); z-index: 999999;
-        display: flex; justify-content: center; align-items: center;
-        color: white; font-family: Arial, sans-serif; flex-direction: column;
-      \`;
-      motorcycle.innerHTML = \`
-        <div style="font-size: 4rem; margin-bottom: 1rem; animation: bounce 1s ease-in-out infinite; transform;">🏍️</div>
-        <div style="font-size: 1.8rem; font-weight: bold;">Navigating...</div>
-        <div style="font-size: 1rem; margin-top: 0.5rem; opacity: 0.8;">Taking you to \${navLink.textContent.trim()}</div>
-      \`;
-      document.body.appendChild(motorcycle);
-      
-      showToast('Navigating to ' + navLink.textContent.trim(), 'info', 2000);
-    }, 100);
-  }
-});
-
-// 9. AUTO-ENHANCEMENT ON CONTENT CHANGES
+// 4. AUTO-ENHANCEMENT ON CONTENT CHANGES
 function autoEnhance() {
   enhanceButtons();
-  enhanceFormInputs();
-  enhanceTableRows();
-  enhanceSmoothScrolling();
 }
 
-// 10. CSS ANIMATIONS
+// Initialize enhancements
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🎨 Initializing UX enhancements...');
+  
+  autoEnhance();
+  
+  // Show welcome message
+  setTimeout(() => {
+    showToast(\`Welcome back, \${window.currentUser.name}!\`, 'success', 3000);
+  }, 1000);
+});
+
+// Add CSS animations
 const enhancedCSS = \`
   <style>
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
-    }
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
     }
     
     /* Enhanced hover effects */
@@ -4770,68 +4673,18 @@ const enhancedCSS = \`
 
 document.head.insertAdjacentHTML('beforeend', enhancedCSS);
 
-// Initialize enhancements
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('🎨 Initializing UX enhancements...');
-  
-  autoEnhance();
-  
-  // Show welcome message
-  setTimeout(() => {
-    showToast(\`Welcome back, \${window.currentUser.name}! 🏍️\`, 'success', 3000);
-  }, 1000);
-  
-  // Re-enhance on any dynamic content changes
-  const observer = new MutationObserver(() => {
-    setTimeout(autoEnhance, 100);
-  });
-  
-  observer.observe(document.body, { 
-    childList: true, 
-    subtree: true 
-  });
-  
-  console.log('✅ UX enhancements ready!');
-});
-
-// Global functions for use in your other code
+// Expose utilities globally
 window.UX = {
   showToast: showToast,
-  showLoading: showDataLoading,
-  hideLoading: hideDataLoading,
-  createSpinner: createLoadingSpinner
+  createLoadingSpinner: createLoadingSpinner,
+  enhanceButtons: enhanceButtons
 };
 
 console.log('✅ Enhanced UX package loaded');
-
-// Your existing role-based initialization
-const roleElements = document.querySelectorAll('[data-role]');
-roleElements.forEach(function(element) {
-  const allowedRoles = element.getAttribute('data-role').split(',');
-  if (!allowedRoles.includes(window.currentUser.role)) {
-    element.style.display = 'none';
-  }
-});
-
-const permissionElements = document.querySelectorAll('[data-permission]');
-permissionElements.forEach(function(element) {
-  const requiredPermission = element.getAttribute('data-permission');
-  if (!window.currentUser.permissions.includes(requiredPermission)) {
-    element.style.display = 'none';
-  }
-});
-
-document.body.classList.add('role-' + window.currentUser.role);
-
-console.log('=== CLIENT-SIDE NAVIGATION DEBUG ===');
-const nav = document.querySelector('nav.navigation');
-console.log('Navigation element found:', !!nav);
-if (nav) {
-  console.log('Navigation buttons:', nav.querySelectorAll('.nav-button').length);
-}
 </script>`;
     
-    htmlOutput.append(userScript);
+    // CORRECT METHOD: Use appendUntrusted instead of append
+    htmlOutput.appendUntrusted(userScript);
     return htmlOutput;
     
   } catch (error) {
@@ -4840,6 +4693,100 @@ if (nav) {
   }
 }
 
+// Also fix the addMobileOptimizations function:
+
+function addMobileOptimizations(htmlOutput, user, rider) {
+  try {
+    const mobileScript = `
+<script>
+(function() {
+  'use strict';
+  
+  // Mobile device detection
+  const device = {
+    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+    isTablet: /iPad|Android/i.test(navigator.userAgent) && window.innerWidth > 768,
+    isTouchDevice: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+    orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+  };
+  
+  console.log('📱 Mobile optimization loaded for:', device);
+  
+  // Add device classes to body
+  document.addEventListener('DOMContentLoaded', function() {
+    document.body.classList.add(
+      device.isMobile ? 'mobile' : 'desktop',
+      device.isTablet ? 'tablet' : '',
+      device.isTouchDevice ? 'touch-device' : 'mouse-device',
+      device.orientation
+    );
+    
+    console.log('✅ Mobile optimizations ready!');
+  });
+  
+  // Expose mobile utilities
+  window.MobileUX = {
+    device: device,
+    isMobile: device.isMobile,
+    isTouchDevice: device.isTouchDevice
+  };
+  
+})();
+</script>`;
+    
+    // CORRECT METHOD: Use appendUntrusted instead of append
+    htmlOutput.appendUntrusted(mobileScript);
+    return htmlOutput;
+    
+  } catch (error) {
+    console.error('Error adding mobile optimizations:', error);
+    return htmlOutput;
+  }
+}
+
+/**
+ * TEST FUNCTION: Verify the fix works
+ */
+function testHtmlOutputMethods() {
+  try {
+    console.log('=== TESTING HTML OUTPUT METHODS ===');
+    
+    const testOutput = HtmlService.createHtmlOutput('<h1>Test</h1>');
+    
+    // Test what methods are available
+    console.log('Available methods on HtmlOutput:');
+    console.log('- append:', typeof testOutput.append);
+    console.log('- appendUntrusted:', typeof testOutput.appendUntrusted);
+    console.log('- setContent:', typeof testOutput.setContent);
+    console.log('- getContent:', typeof testOutput.getContent);
+    
+    // Test appendUntrusted
+    try {
+      testOutput.appendUntrusted('<script>console.log("appendUntrusted works!");</script>');
+      console.log('✅ appendUntrusted method works');
+    } catch (error) {
+      console.log('❌ appendUntrusted failed:', error.message);
+    }
+    
+    // Test append (should fail)
+    try {
+      testOutput.append('<script>console.log("append test");</script>');
+      console.log('⚠️ append method worked (unexpected)');
+    } catch (error) {
+      console.log('✅ append method correctly fails:', error.message);
+    }
+    
+    return {
+      success: true,
+      hasAppendUntrusted: typeof testOutput.appendUntrusted === 'function',
+      hasAppend: typeof testOutput.append === 'function'
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 
 
@@ -5379,7 +5326,330 @@ function updateRiderLastLogin(riderId) {
     console.error('Error updating last login:', error);
   }
 }
+function createAuthMappingPage() {
+  console.log('🔐 Creating auth mapping page...');
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Setup - Motorcycle Escort Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
 
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .auth-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; transform: translateY(-2px); }
+
+        .btn-success { background: #27ae60; color: white; }
+        .btn-success:hover { background: #219a52; transform: translateY(-2px); }
+
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-warning:hover { background: #d68910; transform: translateY(-2px); }
+
+        .mapping-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        .mapping-table th, .mapping-table td {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .mapping-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-mapped { background: #d4edda; color: #155724; }
+        .status-unmapped { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔐 Authentication Setup</h1>
+        <a href="javascript:history.back()" class="btn btn-primary">← Back to Dashboard</a>
+    </div>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Gmail Account Authentication Setup</h2>
+            <p>Manage the connection between rider accounts and their Gmail addresses for system access.</p>
+        </div>
+
+        <div class="auth-section">
+            <h3>📧 Gmail Account Mapping</h3>
+            <p>Connect rider accounts to their Gmail addresses to enable system login.</p>
+            
+            <div style="margin: 1rem 0;">
+                <button class="btn btn-success" onclick="autoMapGmailUsers()">
+                    🚀 Auto-Map Gmail Users
+                </button>
+                <button class="btn btn-primary" onclick="viewUnmappedRiders()">
+                    👥 View Unmapped Riders
+                </button>
+                <button class="btn btn-warning" onclick="testGmailAuth()">
+                    🧪 Test Authentication
+                </button>
+            </div>
+
+            <div id="mappingResults" style="margin-top: 2rem;"></div>
+        </div>
+
+        <div class="auth-section">
+            <h3>⚙️ Authentication Settings</h3>
+            <p>Configure system-wide authentication and security settings.</p>
+            
+            <div style="margin: 1rem 0;">
+                <button class="btn btn-primary" onclick="manageAdminUsers()">
+                    👨‍💼 Manage Admin Users
+                </button>
+                <button class="btn btn-primary" onclick="manageDispatcherUsers()">
+                    👨‍💻 Manage Dispatcher Users
+                </button>
+                <button class="btn btn-warning" onclick="viewAuthLogs()">
+                    📋 View Auth Logs
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-map Gmail users
+        function autoMapGmailUsers() {
+            showMessage('Auto-mapping Gmail users...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        if (result.success) {
+                            showMessage('Successfully mapped ' + result.count + ' Gmail users', 'success');
+                            displayMappingResults(result.mappings);
+                        } else {
+                            showMessage('Auto-mapping failed: ' + result.error, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        showMessage('Error: ' + error, 'error');
+                    })
+                    .autoMapExistingGmailUsers();
+            }
+        }
+
+        // View unmapped riders
+        function viewUnmappedRiders() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(displayUnmappedRiders)
+                    .withFailureHandler(function(error) {
+                        showMessage('Error: ' + error, 'error');
+                    })
+                    .getUnmappedRiders();
+            }
+        }
+
+        // Test Gmail authentication
+        function testGmailAuth() {
+            showMessage('Testing Gmail authentication...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        showMessage('Authentication test: ' + (result.success ? 'PASSED' : 'FAILED'), 
+                                  result.success ? 'success' : 'error');
+                    })
+                    .withFailureHandler(function(error) {
+                        showMessage('Test failed: ' + error, 'error');
+                    })
+                    .testAuthentication();
+            }
+        }
+
+        // Display mapping results
+        function displayMappingResults(mappings) {
+            const container = document.getElementById('mappingResults');
+            
+            let html = '<h4>Gmail Mapping Results</h4>';
+            html += '<table class="mapping-table">';
+            html += '<tr><th>Rider Name</th><th>Gmail Address</th><th>Status</th></tr>';
+            
+            mappings.forEach(mapping => {
+                const statusClass = mapping.mapped ? 'status-mapped' : 'status-unmapped';
+                const statusText = mapping.mapped ? 'Mapped' : 'Unmapped';
+                
+                html += '<tr>';
+                html += '<td>' + mapping.name + '</td>';
+                html += '<td>' + (mapping.gmail || 'Not set') + '</td>';
+                html += '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>';
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            container.innerHTML = html;
+        }
+
+        // Display unmapped riders
+        function displayUnmappedRiders(riders) {
+            const container = document.getElementById('mappingResults');
+            
+            let html = '<h4>Unmapped Riders</h4>';
+            if (riders.length === 0) {
+                html += '<p>All riders are mapped to Gmail accounts! 🎉</p>';
+            } else {
+                html += '<p>The following riders need Gmail account mapping:</p>';
+                html += '<ul>';
+                riders.forEach(rider => {
+                    html += '<li>' + rider.name + ' (ID: ' + rider.id + ')</li>';
+                });
+                html += '</ul>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Utility functions
+        function manageAdminUsers() {
+            showMessage('Opening admin user management...', 'info');
+            // Redirect to user management with admin filter
+            window.location.href = '${getWebAppUrl()}?page=user-management&filter=admin';
+        }
+
+        function manageDispatcherUsers() {
+            showMessage('Opening dispatcher user management...', 'info');
+            // Redirect to user management with dispatcher filter
+            window.location.href = '${getWebAppUrl()}?page=user-management&filter=dispatcher';
+        }
+
+        function viewAuthLogs() {
+            showMessage('Feature coming soon...', 'info');
+        }
+
+        function showMessage(message, type) {
+            // Simple message display - you can enhance this
+            alert(message);
+        }
+    </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Authentication Setup - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// 3. Check your dashboard navigation/buttons to ensure they link to the correct page:
+
+// Dashboard should have buttons like this:
+// <a href="?page=auth-setup" class="btn btn-primary">🔐 Auth Setup</a>
+// <a href="?page=user-management" class="btn btn-primary">👥 User Management</a>
+
+// 4. Testing function to verify the routing:
+
+function testAuthSetupRouting() {
+  try {
+    console.log('=== TESTING AUTH SETUP ROUTING ===');
+    
+    // Test auth-setup page
+    const authSetupEvent = { parameter: { page: 'auth-setup' } };
+    const authResult = doGet(authSetupEvent);
+    const authContent = authResult.getContent();
+    
+    console.log('Auth setup page test:');
+    console.log(`- Content length: ${authContent.length}`);
+    console.log(`- Contains "Authentication Setup": ${authContent.includes('Authentication Setup') ? '✅' : '❌'}`);
+    console.log(`- Contains "Gmail Account Mapping": ${authContent.includes('Gmail Account Mapping') ? '✅' : '❌'}`);
+    
+    // Test user-management page
+    const userMgmtEvent = { parameter: { page: 'user-management' } };
+    const userResult = doGet(userMgmtEvent);
+    const userContent = userResult.getContent();
+    
+    console.log('User management page test:');
+    console.log(`- Content length: ${userContent.length}`);
+    console.log(`- Contains "User Management": ${userContent.includes('User Management') ? '✅' : '❌'}`);
+    
+    return {
+      authSetup: {
+        hasAuthSetupTitle: authContent.includes('Authentication Setup'),
+        hasGmailMapping: authContent.includes('Gmail Account Mapping')
+      },
+      userManagement: {
+        hasUserMgmtTitle: userContent.includes('User Management')
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return { error: error.message };
+  }
+}
 // 🚫 Error Pages
 function createAuthErrorPage(errorType) {
   const signInUrl = getWebAppUrl();
