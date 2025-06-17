@@ -47,5 +47,12 @@
       window.location.assign(url);
     }
   }
+
+  // Reload the page when navigating back/forward to avoid blank screens
+  window.addEventListener('pageshow', function(evt) {
+    if (evt.persisted) {
+      window.location.reload();
+    }
+  });
 </script>
 // 617
