@@ -26,16 +26,6 @@ function onOpen() {
 }
 
 /**
- * Installable trigger entry point to ensure the menu is created even when
- * the script is newly added to a spreadsheet or reauthorized.
- * @param {Event} e The install event.
- * @return {void}
- */
-function onInstall(e) {
-  onOpen(e);
-}
-
-/**
  * Creates the custom menu in the Google Sheet UI.
  * Provides access to various system functionalities like opening sidebars, refreshing data,
  * and triggering bulk notifications.

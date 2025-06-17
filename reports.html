@@ -1,919 +1,487 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports - Motorcycle Escort Management</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1rem 2rem;
-            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            font-weight: 600;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #27ae60, #2ecc71);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-
-        .logout-btn {
-            background: none;
-            border: none;
-            color: #3498db;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .logout-btn:hover {
-            text-decoration: underline;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .navigation {
-            display: flex !important;
-            gap: 1rem !important;
-            margin: 1rem auto 2rem auto !important;
-            max-width: 1400px !important;
-            padding: 0 2rem !important;
-            flex-wrap: wrap !important;
-            justify-content: center !important;
-            position: relative !important;
-            z-index: 10 !important;
-        }
-
-        .nav-button {
-            padding: 0.75rem 1.5rem !important;
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: none !important;
-            border-radius: 25px !important;
-            color: #2c3e50 !important;
-            text-decoration: none !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease !important;
-            cursor: pointer !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        .nav-button:hover, .nav-button.active {
-            background: #3498db !important;
-            color: white !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-        }
-
-        .reports-header {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .page-title {
-            font-size: 2rem;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-        }
-
-        .date-controls {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
-        .date-input {
-            padding: 0.75rem;
-            border: 2px solid #ecf0f1;
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.3s ease;
-        }
-
-        .date-input:focus {
-            border-color: #3498db;
-        }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 25px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(45deg, #3498db, #2980b9);
-            color: white;
-        }
-
-        .btn-success {
-            background: linear-gradient(45deg, #27ae60, #229954);
-            color: white;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        .reports-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .report-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .report-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .report-title {
-            font-size: 1.3rem;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 300px;
-            margin-bottom: 1rem;
-            position: relative;
-        }
-
-        .chart-placeholder {
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #6c757d;
-            font-style: italic;
-        }
-
-        .stats-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 1rem;
-        }
-
-        .stats-table th,
-        .stats-table td {
-            padding: 0.75rem;
-            text-align: left;
-            border-bottom: 1px solid #ecf0f1;
-        }
-
-        .stats-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #495057;
-        }
-
-        .stats-table tr:hover {
-            background: rgba(52, 152, 219, 0.05);
-        }
-
-        .metric-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #3498db;
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .metric-label {
-            text-align: center;
-            color: #7f8c8d;
-            font-size: 0.9rem;
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .summary-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #3498db;
-        }
-
-        .summary-card.success {
-            border-left-color: #27ae60;
-        }
-
-        .summary-card.warning {
-            border-left-color: #f39c12;
-        }
-
-        .summary-card.danger {
-            border-left-color: #e74c3c;
-        }
-
-        .filter-section {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .filter-row {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: 1rem;
-        }
-
-        .filter-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .filter-label {
-            font-weight: 600;
-            color: #495057;
-            min-width: 100px;
-        }
-
-        .filter-select {
-            padding: 0.5rem;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            background: white;
-        }
-
-        .export-section {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: #7f8c8d;
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 3rem;
-            color: #7f8c8d;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            .reports-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .date-controls {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .export-section {
-                justify-content: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <header class="header">
-        <h1>🏍️ Motorcycle Escort Management</h1>
-        
-        <!-- SIMPLIFIED USER INFO -->
-        <div class="user-info">
-            <div class="user-avatar" id="userAvatar">?</div>
-            <div class="user-details">
-                <div class="user-name" id="userName">Loading...</div>
-                <div class="user-role" id="userRole">User</div>
-            </div>
-            <button class="logout-btn" onclick="logout()">Logout</button>
-        </div>
-    </header>
-
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
-
-    <div class="container">
-        <div class="reports-header">
-            <h2 class="page-title">📊 Reports & Analytics</h2>
-            
-            <div class="date-controls">
-                <label style="font-weight: 600;">Report Period:</label>
-                <input type="date" class="date-input" id="startDate" value="">
-                <span>to</span>
-                <input type="date" class="date-input" id="endDate" value="">
-                
-                <select class="date-input" id="quickPeriod">
-                    <option value="">Custom Range</option>
-                    <option value="today">Today</option>
-                    <option value="week">This Week</option>
-                    <option value="month">This Month</option>
-                    <option value="quarter">This Quarter</option>
-                    <option value="year">This Year</option>
-                </select>
-                
-                <button class="btn btn-primary" onclick="generateReports()">
-                    📊 Generate Reports
-                </button>
-            </div>
-
-            <div class="filter-section">
-                <div class="filter-row">
-                    <span class="filter-label">Request Type:</span>
-                    <select class="filter-select" id="requestTypeFilter">
-                        <option value="">All Types</option>
-                        <option value="Wedding">Wedding</option>
-                        <option value="Funeral">Funeral</option>
-                        <option value="Float Movement">Float Movement</option>
-                        <option value="VIP">VIP</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    
-                    <span class="filter-label">Status:</span>
-                    <select class="filter-select" id="statusFilter">
-                        <option value="">All Statuses</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="In Progress">In Progress</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <!-- Summary Statistics -->
-        <div class="summary-grid" id="summaryStats">
-            <div class="summary-card">
-                <div class="metric-value" id="totalRequests">-</div>
-                <div class="metric-label">Total Requests</div>
-            </div>
-            <div class="summary-card success">
-                <div class="metric-value" id="completedRequests">-</div>
-                <div class="metric-label">Completed</div>
-            </div>
-            <div class="summary-card warning">
-                <div class="metric-value" id="activeRiders">-</div>
-                <div class="metric-label">Active Riders</div>
-            </div>
-        </div>
-
-        <!-- Charts and Reports Grid -->
-        <div class="reports-grid">
-            <!-- Request Volume Chart -->
-            <div class="report-card">
-                <h3 class="report-title">📈 Request Volume Over Time</h3>
-                <div class="chart-container">
-                    <div class="chart-placeholder" id="requestVolumeChart">
-                    </div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportChart('requestVolume')">
-                        📥 Export Chart
-                    </button>
-                </div>
-            </div>
-
-            <!-- Request Types Distribution -->
-            <div class="report-card">
-                <h3 class="report-title">🥧 Request Types Distribution</h3>
-                <div class="chart-container">
-                    <div class="chart-placeholder" id="requestTypesChart">
-                    </div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportChart('requestTypes')">
-                        📥 Export Chart
-                    </button>
-                </div>
-            </div>
-
-
-            <!-- Monthly Escort Hours -->
-            <div class="report-card">
-                <h3 class="report-title">⏰ Monthly Escort Hours</h3>
-                <div id="riderHoursTable">
-                    <div class="loading">Loading hours...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('riderHours')">
-                        📥 Export Data
-                    </button>
-                </div>
-            </div>
-
-            <!-- Location Hotspots -->
-            <div class="report-card">
-                <h3 class="report-title">📍 Popular Locations</h3>
-                <div id="locationHotspots">
-                    <div class="loading">Loading location data...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('locations')">
-                        📥 Export Data
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Comprehensive Export Section -->
-        <div class="report-card" style="grid-column: 1 / -1;">
-            <h3 class="report-title">📋 Comprehensive Reports</h3>
-            <div class="export-section">
-                <button class="btn btn-primary" onclick="generateComprehensiveReport('summary')">
-                    📊 Executive Summary
-                </button>
-                <button class="btn btn-primary" onclick="generateComprehensiveReport('detailed')">
-                    📋 Detailed Report
-                </button>
-                <button class="btn btn-primary" onclick="generateComprehensiveReport('rider')">
-                    🏍️ Rider Activity Report
-                </button>
-                <button class="btn btn-success" onclick="exportRiderActivityCSV()">
-                    📥 Rider CSV
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        let reportData = {};
-        let currentPeriod = { start: null, end: null };
-        const DEFAULT_REPORT_RANGE_DAYS = 30;
-
-        document.addEventListener('DOMContentLoaded', function() {
-            setDefaultDates();
-            setupEventListeners();
-            loadInitialReportData();
-        });
-        
-        function loadInitialReportData() {
-            generateReports();
-        }
-
-        function setDefaultDates() {
-            var today = new Date();
-            var startDate = new Date(today);
-            startDate.setDate(today.getDate() - DEFAULT_REPORT_RANGE_DAYS);
-
-            document.getElementById('startDate').value = formatDateForInput(startDate);
-            document.getElementById('endDate').value = formatDateForInput(today);
-        }
-
-        function setupEventListeners() {
-            document.getElementById('quickPeriod').addEventListener('change', function(e) {
-                if (e.target.value) {
-                    setQuickPeriod(e.target.value);
-                }
-            });
-
-            document.getElementById('startDate').addEventListener('change', updatePeriod);
-            document.getElementById('endDate').addEventListener('change', updatePeriod);
-        }
-
-        function setQuickPeriod(period) {
-            var today = new Date();
-            var startDate, endDate = new Date(today);
-
-            switch (period) {
-                case 'today':
-                    startDate = new Date(today);
-                    break;
-                case 'week':
-                    startDate = new Date(today);
-                    startDate.setDate(today.getDate() - 7);
-                    break;
-                case 'month':
-                    startDate = new Date(today);
-                    startDate.setMonth(today.getMonth() - 1);
-                    break;
-                case 'quarter':
-                    startDate = new Date(today);
-                    startDate.setMonth(today.getMonth() - 3);
-                    break;
-                case 'year':
-                    startDate = new Date(today);
-                    startDate.setFullYear(today.getFullYear() - 1);
-                    break;
-            }
-
-            document.getElementById('startDate').value = formatDateForInput(startDate);
-            document.getElementById('endDate').value = formatDateForInput(endDate);
-            updatePeriod();
-        }
-
-        function updatePeriod() {
-            var startDate = document.getElementById('startDate').value;
-            var endDate = document.getElementById('endDate').value;
-            
-            if (startDate && endDate) {
-                currentPeriod = { start: startDate, end: endDate };
-            }
-        }
-
-        function generateReports() {
-            var startDate = document.getElementById('startDate').value;
-            var endDate = document.getElementById('endDate').value;
-            var requestType = document.getElementById('requestTypeFilter').value;
-            var status = document.getElementById('statusFilter').value;
-
-            if (!startDate || !endDate) {
-                showError('Please select both start and end dates');
-                return;
-            }
-
-            showLoading('Generating reports...');
-
-            var filters = {
-                startDate: startDate,
-                endDate: endDate,
-                requestType: requestType,
-                status: status
-            };
-
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(handlePageDataSuccess)
-                    .withFailureHandler(handlePageDataFailure)
-                    .getPageDataForReports(filters);
-            } else {
-                console.log('Google Apps Script not available for reports page.');
-                handlePageDataFailure({ message: 'Google Apps Script not available.' });
-            }
-        }
-
-        function handlePageDataSuccess(data) {
-            hideLoading();
-
-            if (data && data.success) {
-                updateUserInfoSafely(data.user);
-                handleReportData(data.reportData);
-            } else {
-                console.error('Failed to load reports data:', data ? data.error : 'No data');
-                handlePageDataFailure(data || { message: 'Received success:false or no data.' });
-            }
-        }
-
-        function handlePageDataFailure(error) {
-            hideLoading();
-            console.error('Error loading reports data:', error && error.message ? error.message : error);
-
-            var fallbackUser = (error && error.user) ? error.user : {
-                name: 'System User',
-                email: 'user@system.com',
-                roles: ['admin'],
-                permissions: ['view_reports']
-            };
-
-            updateUserInfoSafely(fallbackUser);
-            setFallbackReportData();
-        }
-
-        function updateUserInfoSafely(user) {
-            try {
-                var safeUpdate = function(id, value, property) {
-                    property = property || 'textContent';
-                    try {
-                        var element = document.getElementById(id);
-                        if (element && element[property] !== undefined) {
-                            element[property] = value;
-                        }
-                    } catch (e) {
-                        console.log('Error updating ' + id + ':', e.message);
-                    }
-                };
-
-                safeUpdate('userName', user.name || 'User');
-                safeUpdate('userRole', (user.roles || ['user']).join(', '));
-                safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
-            } catch (error) {
-                console.log('Error in updateUserInfoSafely:', error);
-            }
-        }
-
-        function handleReportData(data) {
-            hideLoading();
-            reportData = data;
-            
-            updateSummaryStats(data.summary);
-            updateCharts(data.charts);
-            updateTables(data.tables);
-        }
-
-        function updateSummaryStats(summary) {
-            document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
-            document.getElementById('completedRequests').textContent = summary.completedRequests || 0;
-            document.getElementById('activeRiders').textContent = summary.activeRiders || 0;
-        }
-
-        function updateCharts(charts) {
-            if (charts.requestVolume) {
-                document.getElementById('requestVolumeChart').innerHTML = 
-                    '<div style="padding: 2rem; text-align: center;">' +
-                    '<h4>Request Volume Data</h4>' +
-                    '<p>Total: ' + charts.requestVolume.total + '</p>' +
-                    '<p>Peak Day: ' + charts.requestVolume.peakDay + '</p>' +
-                    '<p>Trend: ' + charts.requestVolume.trend + '</p>' +
-                    '</div>';
-            }
-
-            if (charts.requestTypes) {
-                var totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
-                var typesHtml = '<div style="padding: 2rem;"><h4>Request Types</h4>';
-                for (var type in charts.requestTypes) {
-                    var count = charts.requestTypes[type];
-                    var percentage = totalRequests > 0 ? Math.round(count/totalRequests*100) : 0;
-                    typesHtml += '<p>' + type + ': ' + count + ' (' + percentage + '%)</p>';
-                }
-                typesHtml += '</div>';
-                document.getElementById('requestTypesChart').innerHTML = typesHtml;
-            }
-
-        }
-
-        function updateTables(tables) {
-
-            if (tables.riderHours) {
-                var hoursRows = '';
-                for (var i = 0; i < tables.riderHours.length; i++) {
-                    var r = tables.riderHours[i];
-                    hoursRows += '<tr><td>' + r.name + '</td><td>' + r.hours + '</td></tr>';
-                }
-                var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
-                document.getElementById('riderHoursTable').innerHTML = hoursTable;
-            }
-
-
-            if (tables.locations) {
-                var locRows = '';
-                for (var i = 0; i < tables.locations.length; i++) {
-                    var loc = tables.locations[i];
-                    locRows += '<tr><td>' + loc.name + '</td><td>' + loc.count + '</td></tr>';
-                }
-                var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
-                document.getElementById('locationHotspots').innerHTML = locationsTable;
-            }
-        }
-
-        function formatDateForInput(date) {
-            if (!date) return '';
-            try {
-                if (isNaN(date.getTime())) return '';
-                return date.toISOString().split('T')[0];
-            } catch (e) {
-                console.error('Error formatting date for input:', date, e);
-                return '';
-            }
-        }
-
-        function setFallbackReportData() {
-            hideLoading();
-            console.log('Using fallback data for reports');
-            var data = {
-                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
-                charts: {},
-                tables: {}
-            };
-            updateSummaryStats(data.summary);
-            updateCharts(data.charts);
-            updateTables(data.tables);
-            showNotification('Some report features are unavailable.', '#f39c12');
-        }
-
-        function escapeHtml(text) {
-            return String(text)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function generateComprehensiveReport(type) {
-            if (type === 'rider') {
-                var start = document.getElementById('startDate').value;
-                var end = document.getElementById('endDate').value;
-                if (!start || !end) {
-                    showError('Please select a date range');
-                    return;
-                }
-
-                showLoading('Generating rider activity...');
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler(displayRiderActivityReport)
-                        .withFailureHandler(handleError)
-                        .generateRiderActivityReport(start, end);
-                } else {
-                    hideLoading();
-                    showError('Google Apps Script not available.');
-                }
-            } else if (type === 'summary') {
-                var start = document.getElementById('startDate').value;
-                var end = document.getElementById('endDate').value;
-                if (!start || !end) {
-                    showError('Please select a date range');
-                    return;
-                }
-
-                showLoading('Generating executive summary...');
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler(displayExecutiveSummary)
-                        .withFailureHandler(handleError)
-                        .generateExecutiveSummary(start, end);
-                } else {
-                    hideLoading();
-                    showError('Google Apps Script not available.');
-                }
-            } else {
-                alert('Generate ' + type + ' report not implemented');
-            }
-        }
-
-function displayRiderActivityReport(result) {
-            hideLoading();
-            if (!result || !result.success) {
-                showError(result && result.error ? result.error : 'Failed to generate report');
-                return;
-            }
-
-            var rows = '';
-            for (var i = 0; i < result.data.length; i++) {
-                var r = result.data[i];
-                rows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' + escapeHtml(r.hours) + '</td></tr>';
-            }
-
-            var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
-                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
-                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
-                '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
-                '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
-
-            var reportWindow = window.open('', '_blank');
-            if (reportWindow) {
-                reportWindow.document.write(html);
-                reportWindow.document.close();
-            } else {
-                showError('Unable to open report window.');
-            }
-
-        }
-
-        function displayExecutiveSummary(result) {
-            hideLoading();
-            if (!result || !result.success) {
-                showError(result && result.error ? result.error : 'Failed to generate report');
-                return;
-            }
-
-            var rows = '';
-            var types = result.data.requestTypes || {};
-            for (var t in types) {
-                rows += '<tr><td>' + escapeHtml(t) + '</td><td>' + escapeHtml(types[t]) + '</td></tr>';
-            }
-
-            var html = '<!DOCTYPE html><html><head><title>Executive Summary</title>' +
-                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
-                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
-                '</head><body><h2>Executive Summary</h2>' +
-                '<p>Period: ' + escapeHtml(result.data.start) + ' to ' + escapeHtml(result.data.end) + '</p>' +
-                '<p>Total Completed Escorts: ' + escapeHtml(result.data.completedEscorts) + '</p>' +
-                '<p>Total Hours: ' + escapeHtml(result.data.totalHours) + '</p>' +
-                '<h3>Request Type Distribution</h3>' +
-                '<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-                '</body></html>';
-
-            var reportWindow = window.open('', '_blank');
-            if (reportWindow) {
-                reportWindow.document.write(html);
-                reportWindow.document.close();
-            } else {
-                showError('Unable to open report window.');
-            }
-        }
-
-        function showLoading(message) {
-            console.log('Loading:', message);
-        }
-
-        function hideLoading() {
-            console.log('Loading complete');
-        }
-
-        function showNotification(message, color) {
-            var notification = document.createElement('div');
-            notification.style.position = 'fixed';
-            notification.style.top = '20px';
-            notification.style.right = '20px';
-            notification.style.background = color;
-            notification.style.color = 'white';
-            notification.style.padding = '1rem';
-            notification.style.borderRadius = '5px';
-            notification.style.zIndex = '9999';
-            notification.style.maxWidth = '300px';
-            notification.textContent = message;
-            document.body.appendChild(notification);
-            setTimeout(function () {
-                notification.remove();
-            }, 3000);
-        }
-
-        function showError(message) {
-            showNotification('Error: ' + message, '#e74c3c');
-        }
-
-        function handleError(error) {
-            hideLoading();
-            showError(error && error.message ? error.message : error);
-        }
-
-        function logout() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(url => { window.location.href = url; })
-                    .logout();
-            } else {
-                window.location.href = 'https://accounts.google.com/Logout';
-            }
-        }
-    </script>
-</body>
-</html>
+/**
+ * @fileoverview
+ * This file consolidates core utility services for the application,
+ * including formatting, logging, cache management, user authentication,
+ * and other general helper functions.
+ */
+
+// --- Content from Formatting.js ---
+/**
+ * Formats a time value for display (e.g., "HH:MM AM/PM").
+ * Handles Date objects, ISO strings, Excel time serial numbers (fraction of a day),
+ * and time strings like "HH:MM:SS" or "HH:MM".
+ * If the input is already formatted with AM/PM, it's returned as is.
+ *
+ * @param {Date|string|number|null|undefined} timeValue The time value to format.
+ * @return {string} The formatted time string (e.g., "10:30 AM"), or the original value if formatting fails, or an empty string for null/undefined input.
+ */
+function formatTimeForDisplay(timeValue) {
+  if (!timeValue) return '';
+  try {
+    let date;
+    if (typeof timeValue === 'string' && (timeValue.includes('AM') || timeValue.includes('PM'))) {
+        return timeValue; // Already formatted
+    } else if (typeof timeValue === 'string' && (timeValue.includes('T') || timeValue.includes('Z'))) {
+        date = new Date(timeValue);
+    } else if (timeValue instanceof Date) {
+        date = timeValue;
+    } else if (typeof timeValue === 'number' && timeValue >= 0 && timeValue < 1) {
+        date = new Date(1899, 11, 30, 0, 0, 0, Math.round(timeValue * 24 * 60 * 60 * 1000));
+    } else if (typeof timeValue === 'string' && /^\d{1,2}:\d{2}(:\d{2})?(\s(AM|PM))?$/i.test(timeValue.trim())) {
+        const parts = timeValue.trim().split(/[:\s]/);
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        date = new Date();
+        date.setHours(hours, minutes, parts[2] ? parseInt(parts[2], 10) : 0, 0);
+    } else {
+        date = new Date(timeValue);
+    }
+    if (isNaN(date.getTime())) {
+        return String(timeValue);
+    }
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  } catch (error) {
+    logError('Error formatting time for display.', error, `Input: ${timeValue}`);
+    return String(timeValue);
+  }
+}
+/**
+ * Safely format a date value for display
+ * @param {any} dateValue - The date value from the sheet
+ * @return {string} Formatted date string or original value
+ */
+function formatDateSafe(dateValue) {
+  try {
+    if (!dateValue) return '';
+    
+    // If it's already a properly formatted string, return it
+    if (typeof dateValue === 'string' && dateValue.length > 0 && dateValue !== 'TBD') {
+      // Check if it looks like a valid date string
+      const testDate = new Date(dateValue);
+      if (!isNaN(testDate.getTime())) {
+        return dateValue; // Return as-is if it's already a good date string
+      }
+      return dateValue; // Return original string even if not a date
+    }
+    
+    // If it's a Date object
+    if (dateValue instanceof Date) {
+      if (isNaN(dateValue.getTime())) return '';
+      return dateValue.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+    
+    // Try to convert to date
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    }
+    
+    // Return original value if we can't format it
+    return String(dateValue);
+    
+  } catch (error) {
+    console.log('Error formatting date:', dateValue, error);
+    return String(dateValue || '');
+  }
+}
+
+/**
+ * Safely format a time value for display
+ * @param {any} timeValue - The time value from the sheet
+ * @return {string} Formatted time string or original value
+ */
+function formatTimeSafe(timeValue) {
+  try {
+    if (!timeValue) return '';
+    
+    // If it's already a good string, return it
+    if (typeof timeValue === 'string' && timeValue.length > 0 && timeValue !== 'TBD') {
+      return timeValue;
+    }
+    
+    // If it's a Date object (common for time cells in Sheets)
+    if (timeValue instanceof Date) {
+      if (isNaN(timeValue.getTime())) return '';
+      return timeValue.toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    }
+    
+    // Try to parse as time
+    if (typeof timeValue === 'number') {
+      // Might be a decimal representing time (e.g., 0.5 = 12:00 PM)
+      const totalMinutes = Math.round(timeValue * 24 * 60);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    }
+    
+    // Return original value
+    return String(timeValue);
+    
+  } catch (error) {
+    console.log('Error formatting time:', timeValue, error);
+    return String(timeValue || '');
+  }
+}
+/**
+ * Formats a date for display manually in "MM/DD/YYYY" format.
+ * @param {Date} date The date object to format.
+ * @return {string} The formatted date string "MM/DD/YYYY" or an empty string.
+ */
+function formatDate(date) {
+  if (!date || !(date instanceof Date)) return '';
+  const inputYear = date.getFullYear();
+  const inputMonth = date.getMonth();
+  const inputDay = date.getDate();
+  const inputHours = date.getHours();
+  const inputMinutes = date.getMinutes();
+  const inputSeconds = date.getSeconds();
+  const isEpoch1970Zero = (inputYear === 1970 && inputMonth === 0 && inputDay === 1 && inputHours === 0 && inputMinutes === 0 && inputSeconds === 0);
+  const isEpoch1899 = (inputYear === 1899 && inputMonth === 11 && inputDay === 30 && inputHours === 0 && inputMinutes === 0 && inputSeconds === 0);
+  if (isEpoch1970Zero || isEpoch1899) return '';
+  let month = date.getMonth() + 1;
+  let day = date.getDate();
+  let year = date.getFullYear();
+  if (isNaN(month) || isNaN(day) || isNaN(year)) return '';
+  month = month < 10 ? '0' + month : month;
+  day = day < 10 ? '0' + day : day;
+  return `${month}/${day}/${year}`;
+}
+
+/**
+ * Formats a time for display manually in "h:mm A" format (e.g., "3:30 PM").
+ * @param {Date} time The date object representing a time.
+ * @return {string} The formatted time string "h:mm A" or an empty string.
+ */
+function formatTime(time) {
+  if (!time || !(time instanceof Date)) return '';
+  const inputYear = time.getFullYear();
+  const inputMonth = time.getMonth();
+  const inputDay = time.getDate();
+  const isEpoch1899Midnight = (inputYear === 1899 && inputMonth === 11 && inputDay === 30 && time.getHours() === 0 && time.getMinutes() === 0 && time.getSeconds() === 0);
+  const isEpoch1970Midnight = (inputYear === 1970 && inputMonth === 0 && inputDay === 1 && time.getHours() === 0 && time.getMinutes() === 0 && time.getSeconds() === 0);
+  if (isEpoch1899Midnight || isEpoch1970Midnight) return '';
+  let hours = time.getHours();
+  let minutes = time.getMinutes();
+  if (isNaN(hours) || isNaN(minutes)) return '';
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  return `${hours}:${minutes} ${ampm}`;
+}
+
+/**
+ * Formats a date value for display (e.g., "Jan 1, 2024").
+ * @param {Date|string|number|null|undefined} dateValue The date value to format.
+ * @return {string} The formatted date string (e.g., "Jan 1, 2024"), or the original value if formatting fails, or an empty string for null/undefined input.
+ */
+function formatDateForDisplay(dateValue) {
+  if (!dateValue) return '';
+  try {
+    let date;
+    if (typeof dateValue === 'string' && (dateValue.includes('T') || dateValue.includes('Z'))) {
+      date = new Date(dateValue);
+    } else if (dateValue instanceof Date) {
+      date = dateValue;
+    } else if (typeof dateValue === 'number') {
+      date = new Date((dateValue - 25569) * 86400 * 1000);
+    } else {
+      date = new Date(dateValue);
+    }
+    if (isNaN(date.getTime())) return String(dateValue);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch (error) {
+    logError('Error formatting date for display.', error, `Input: ${dateValue}`);
+    return String(dateValue);
+  }
+}
+
+/**
+ * Formats a date-time value for display (e.g., "Jan 1, 2024, 10:30 AM").
+ * @param {Date|string|number|null|undefined} dateTimeValue The date-time value to format.
+ * @return {string} The formatted date-time string, or the original value if formatting fails, or an empty string for null/undefined input.
+ */
+function formatDateTimeForDisplay(dateTimeValue) {
+  if (!dateTimeValue) return '';
+  try {
+    let date;
+    if (typeof dateTimeValue === 'string' && (dateTimeValue.includes('T') || dateTimeValue.includes('Z'))) {
+      date = new Date(dateTimeValue);
+    } else if (dateTimeValue instanceof Date) {
+      date = dateTimeValue;
+    } else if (typeof dateTimeValue === 'number') {
+      date = new Date((dateTimeValue - 25569) * 86400 * 1000);
+    } else {
+      date = new Date(dateTimeValue);
+    }
+    if (isNaN(date.getTime())) return String(dateTimeValue);
+    return date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  } catch (error) {
+    logError('Error formatting datetime.', error, `Input: ${dateTimeValue}`);
+    return String(dateTimeValue);
+  }
+}
+
+// --- Content from Logger.js ---
+/**
+ * Logs a debug message to both the console and a designated "Log" sheet.
+ * @param {string} message The primary debug message.
+ * @param {string} [details=''] Additional details or stringified objects to include in the log.
+ * @return {void}
+ */
+function debugLogToSheet(message, details = '') {
+  if (isDebugLoggingInProgress) {
+    console.warn(`[WARNING] Recursive call to debugLogToSheet prevented. Message: ${message}`);
+    return;
+  }
+  isDebugLoggingInProgress = true;
+  try {
+    const debugLogSheet = getOrCreateSheet(CONFIG.sheets.log, ['Timestamp', 'Type', 'Message', 'Details']); // getOrCreateSheet from SheetServices.gs
+    if (debugLogSheet) {
+      const rowData = [new Date(), 'DEBUG', message, details];
+      console.log(`[DEBUG] Attempting to append to ${CONFIG.sheets.log} sheet. Data: ${JSON.stringify(rowData)}`);
+      debugLogSheet.appendRow(rowData);
+    } else {
+      console.error(`ERROR: Log sheet '${CONFIG.sheets.log}' is null, cannot write debug log. Fallback DEBUG LOG: ${message} - ${details}`);
+    }
+  } catch (e) {
+    console.error(`ERROR WRITING TO DEBUG_LOG SHEET (caught within itself): ${message} - ${details}. Actual error: ${e.message}`);
+  } finally {
+    isDebugLoggingInProgress = false;
+  }
+}
+
+/**
+ * Log activity to system log sheet and console.
+ * @param {string} message The log message.
+ * @param {string} [details=''] Additional details.
+ * @return {void}
+ */
+function logActivity(message, details = '') {
+  console.log(`[ACTIVITY] ${message}`, details);
+  try {
+    const logSheet = getOrCreateSheet(CONFIG.sheets.log, ['Timestamp', 'Type', 'Message', 'Details']);
+    logSheet.appendRow([new Date(), 'INFO', message, details]);
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+}
+
+/**
+ * Log error to system log sheet and console.
+ * @param {string} message The error message.
+ * @param {Error|object|null} [error=null] The error object or additional error information.
+ * @return {void}
+ */
+function logError(message, error = null) {
+  const errorDetails = error ? error.toString() + (error.stack ? '\n' + error.stack : '') : '';
+  console.error(`[ERROR] ${message}`, errorDetails);
+  try {
+    const logSheet = getOrCreateSheet(CONFIG.sheets.log, ['Timestamp', 'Type', 'Message', 'Details']);
+    logSheet.appendRow([new Date(), 'ERROR', message, errorDetails]);
+  } catch (logErrorEx) { // Renamed to avoid conflict with outer 'error'
+    console.error('Failed to log error to sheet:', logErrorEx);
+  }
+}
+
+// --- Content from CacheManager.js ---
+/**
+ * Clears the entire custom `dataCache` instance.
+ * @return {void}
+ */
+function clearDataCache() {
+  dataCache.clear();
+  logActivity('Custom dataCache completely cleared');
+}
+
+/**
+ * Clears cached data related to the "Requests" sheet from the custom `dataCache`.
+ * Also clears specific filtered request keys from `CacheService.getScriptCache()`.
+ * @return {void}
+ */
+function clearRequestsCache() {
+  dataCache.clear('sheet_Requests');
+  logActivity('Custom dataCache cleared for sheet_Requests');
+  const scriptCache = CacheService.getScriptCache();
+  const statusFilters = ['All', 'New', 'Pending', 'Assigned', 'Unassigned', 'In Progress', 'Completed', 'Cancelled'];
+  const keysToRemoveFromScriptCache = statusFilters.map(status => `filteredRequests_${status}`);
+  if (keysToRemoveFromScriptCache.length > 0) {
+    scriptCache.removeAll(keysToRemoveFromScriptCache);
+    logActivity(`Cleared from ScriptCache: ${keysToRemoveFromScriptCache.join(', ')}`);
+  }
+  logActivity('Requests cache clearing process completed');
+}
+
+/**
+ * Clears caches relevant to the dashboard.
+ * This includes clearing the *entire* custom `dataCache` and specific dashboard-related keys from `CacheService.getScriptCache()`.
+ * @return {void}
+ */
+function clearDashboardCache() {
+  dataCache.clear();
+  logActivity('Custom dataCache completely cleared (for dashboard refresh)');
+  const scriptCache = CacheService.getScriptCache();
+  const dashboardScriptCacheKeys = ['dashboardData', 'cached_Dashboard'];
+  if (dashboardScriptCacheKeys.length > 0) {
+    scriptCache.removeAll(dashboardScriptCacheKeys);
+    logActivity(`Cleared from ScriptCache for dashboard: ${dashboardScriptCacheKeys.join(', ')}`);
+  }
+  logActivity('Dashboard cache clearing process completed');
+}
+
+// --- Content from AuthService.js ---
+/**
+ * Retrieves the current active user's information.
+ * @warning This function should not be the primary source for user role determination
+ *          in the application's authentication/authorization flow.
+ *          User roles and permissions should be established via the main authentication
+ *          process (e.g., involving AccessControl.gs or a dedicated auth module) and
+ *          the resulting user object (with roles/permissions) should be passed to functions.
+ * @return {object} An object representing the current user.
+ */
+function getCurrentUser() {
+  try {
+    const userEmail = Session.getActiveUser().getEmail();
+    const userRoles = getUserRoles(userEmail);
+    const userPermissions = calculatePermissions(userRoles);
+    const userDisplayName = getUserDisplayName(userEmail);
+    const user = { email: userEmail, name: userDisplayName, roles: userRoles, permissions: userPermissions };
+    logActivity(`User ${user.email} logged in with roles: ${user.roles.join(', ')}`);
+    return user;
+  } catch (error) {
+    logError('Error getting current user:', error);
+    return { email: 'anonymous@example.com', name: 'Guest User', roles: ['guest'], permissions: ['view'] };
+  }
+}
+
+/**
+ * Determines the roles for a given user email.
+ * @param {string} email The email address of the user.
+ * @return {Array<string>} An array of role strings.
+ * @deprecated This function is deprecated for primary role assignment.
+ *             Roles should be determined by the main authentication flow (e.g., AccessControl.gs)
+ *             and included in the user object.
+ */
+function getUserRoles(email) {
+  // const roleMapping = { 'jpsotraffic@gmail.com': ['admin', 'dispatcher', 'rider'] };
+  // return roleMapping[email] || ['admin'];
+  return ['deprecated_role_from_CoreUtils']; // Return a specific value to indicate if this is still being called.
+}
+
+/**
+ * Calculates a list of unique permissions based on user roles.
+ * @param {Array<string>} roles An array of user role strings.
+ * @return {Array<string>} An array of unique permission strings.
+ */
+function calculatePermissions(roles) {
+  const permissionMap = {
+    admin: ['view', 'create_request', 'assign_riders', 'send_notifications', 'update_status', 'manage_users', 'view_reports', 'system_config', 'export_data'],
+    dispatcher: ['view', 'create_request', 'assign_riders', 'send_notifications', 'update_status', 'view_reports'],
+    rider: ['view', 'view_own_assignments', 'update_own_status'],
+    guest: ['view']
+  };
+  const permissions = new Set();
+  roles.forEach(role => {
+    if (permissionMap[role]) permissionMap[role].forEach(permission => permissions.add(permission));
+  });
+  return Array.from(permissions);
+}
+
+/**
+ * Gets a displayable name for the user.
+ * @param {string} email The user's email address.
+ * @return {string} A formatted display name.
+ */
+function getUserDisplayName(email) {
+  try {
+    const ridersData = getRidersData(); // From SheetServices.gs (originally DataService.js)
+    const riderEmailIdx = ridersData.columnMap[CONFIG.columns.riders.email];
+    const riderNameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
+    if (riderEmailIdx !== undefined && riderNameIdx !== undefined) {
+        const riderRow = ridersData.data.find(row => String(row[riderEmailIdx] || '').toLowerCase() === String(email || '').toLowerCase());
+        if (riderRow) return String(riderRow[riderNameIdx] || '').trim();
+    }
+    const namePart = email.split('@')[0];
+    return namePart.replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  } catch (error) {
+    logError('Error getting user display name:', error);
+    return 'User';
+  }
+}
+
+// --- Content from Utility.js ---
+/**
+ * Normalizes a Request ID to a standard format (e.g., M-DD-YY).
+ * @param {string} requestId The raw request ID string.
+ * @return {string} The normalized request ID or the original input if not matched.
+ */
+function normalizeRequestId(requestId) {
+  if (!requestId || typeof requestId !== 'string') return requestId;
+  const match = requestId.match(/^([A-L])-(\d+)-(\d{2})$/i);
+  if (match) {
+    const monthLetter = match[1].toUpperCase();
+    const sequence = parseInt(match[2], 10);
+    const year = match[3];
+    return `${monthLetter}-${sequence.toString().padStart(2, '0')}-${year}`;
+  }
+  return requestId;
+}
+
+/**
+ * Cleans a phone number string by removing all non-digit characters.
+ * @param {string|number} phone The phone number to clean.
+ * @return {string} The cleaned phone number containing only digits, or an empty string if input is falsy.
+ */
+function cleanPhoneNumber(phone) {
+  if (!phone) return '';
+  return String(phone).replace(/\D/g, '');
+}
+
+/**
+ * Constructs an SMS gateway email address from a phone number and carrier.
+ * @param {string|number} phone The phone number.
+ * @param {string} carrier The carrier name.
+ * @return {string} The constructed SMS gateway email address.
+ * @throws {Error} If the carrier is unknown.
+ */
+function getSmsGatewayEmail(phone, carrier) {
+  const cleanPhone = cleanPhoneNumber(phone);
+  const gateway = CONFIG.smsGateways[String(carrier).toLowerCase()];
+  if (!gateway) throw new Error(`Unknown carrier: ${carrier}`);
+  return `${cleanPhone}@${gateway}`;
+}
+
+/**
+ * Tests basic server-side connectivity and script functionality.
+ * @return {object} An object containing a timestamp, active spreadsheet name, sheet count, and server status.
+ */
+function testServerConnection() {
+  try {
+    console.log('🔧 Testing server connection...');
+    const testData = {
+      timestamp: new Date().toISOString(),
+      activeSpreadsheet: SpreadsheetApp.getActiveSpreadsheet().getName(),
+      sheetsCount: SpreadsheetApp.getActiveSpreadsheet().getSheets().length,
+      serverStatus: 'OK'
+    };
+    console.log('✅ Server connection test successful:', testData);
+    return testData;
+  } catch (error) {
+    console.error('❌ Server connection test failed:', error);
+    return { timestamp: new Date().toISOString(), serverStatus: 'ERROR', error: error.message };
+  }
+}
