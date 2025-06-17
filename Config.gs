@@ -81,7 +81,7 @@ const CONFIG = {
       phone: 'Phone Number',
       email: 'Email',
       status: 'Status',
-      partTime: 'Part Time',
+      partTime: 'Part-Time Rider',  
       certification: 'Certification',
       totalAssignments: 'Total Assignments',
       lastAssignmentDate: 'Last Assignment Date'  // Fixed: was 'LastAssignmentDate'

@@ -4715,7 +4715,7 @@ document.addEventListener('click', function(e) {
         color: white; font-family: Arial, sans-serif; flex-direction: column;
       \`;
       motorcycle.innerHTML = \`
-        <div style="font-size: 4rem; margin-bottom: 1rem; animation: bounce 1s ease-in-out infinite; transform: scaleX(-1);">🏍️</div>
+        <div style="font-size: 4rem; margin-bottom: 1rem; animation: bounce 1s ease-in-out infinite; transform;">🏍️</div>
         <div style="font-size: 1.8rem; font-weight: bold;">Navigating...</div>
         <div style="font-size: 1rem; margin-top: 0.5rem; opacity: 0.8;">Taking you to \${navLink.textContent.trim()}</div>
       \`;
@@ -5209,8 +5209,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
         font-size: \${device.isMobile ? '3rem' : '4rem'};
         margin-bottom: 1.5rem;
         animation: mobileMotorcycleBounce 1.5s ease-in-out infinite;
-        transform: scaleX(-1);
-      ">🏍️</div>
+        ">🏍️</div>
       <div style="
         font-size: \${device.isMobile ? '1.25rem' : '1.8rem'};
         font-weight: bold; text-align: center; padding: 0 1rem;

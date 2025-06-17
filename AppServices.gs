@@ -17,6 +17,56 @@
  * @return {object} An object containing the `request` details and an array of `riders`.
  * @throws {Error} If the request ID is not found or if there's a configuration error.
  */
+function diagnosePartTimeColumn() {
+  try {
+    console.log('=== PART-TIME COLUMN DIAGNOSTIC ===');
+    
+    // Get raw sheet data
+    const ridersData = getRidersData();
+    console.log('Available headers:', ridersData.headers);
+    console.log('Column mapping:', ridersData.columnMap);
+    
+    // Check what CONFIG expects
+    console.log('CONFIG expects part-time column:', CONFIG.columns.riders.partTime);
+    
+    // Check all possible part-time columns
+    const partTimeColumns = [
+      CONFIG.columns.riders.partTime,
+      'Part Time',
+      'Part-Time',
+      'Part Time Rider',
+      'PartTime'
+    ];
+    
+    console.log('Looking for these part-time columns:', partTimeColumns);
+    
+    partTimeColumns.forEach(colName => {
+      const index = ridersData.columnMap[colName];
+      console.log(`  "${colName}" -> index ${index} ${index !== undefined ? '✅' : '❌'}`);
+    });
+    
+    // Get first few riders and show their part-time values
+    console.log('\nFirst 5 riders part-time detection:');
+    for (let i = 0; i < Math.min(5, ridersData.data.length); i++) {
+      const row = ridersData.data[i];
+      const rider = mapRowToRiderObject(row, ridersData.columnMap, ridersData.headers);
+      console.log(`  ${rider.name}: partTime="${rider.partTime}" (from row: [${row.join(', ')}])`);
+    }
+    
+    return {
+      headers: ridersData.headers,
+      configExpected: CONFIG.columns.riders.partTime,
+      columnMapping: ridersData.columnMap,
+      sampleRiders: ridersData.data.slice(0, 5).map(row => 
+        mapRowToRiderObject(row, ridersData.columnMap, ridersData.headers)
+      )
+    };
+    
+  } catch (error) {
+    console.error('Error in diagnosePartTimeColumn:', error);
+    return { error: error.message };
+  }
+}
 function getEscortDetailsForAssignment(requestIdInput) {
   const cleanedInputId = String(requestIdInput || '').replace(/^"|"$/g, '').trim();
   const originalRequestId = cleanedInputId;
@@ -1718,13 +1768,14 @@ function getActiveRidersForAssignments() {
       'Email Address'
     ];
 
-    const partTimeColumns = [
-      CONFIG.columns.riders.partTime,
-      'Part Time',
-      'Part-Time',
-      'Part Time Rider',
-      'PartTime'
-    ];
+   const partTimeColumns = [
+  CONFIG.columns.riders.partTime,
+  'Part Time',
+  'Part-Time',
+  'Part Time Rider',
+  'Part-Time Rider',  // ← ADD THIS LINE (your actual column name)
+  'PartTime'
+];
     
     // Find the best column matches
     const getColumnIndex = (possibleNames) => {
@@ -4174,17 +4225,120 @@ function getSystemLogs(limit) {
  */
 function getAssignmentRotation() {
   try {
+    let order = [];
+    
+    // Get stored order
     const prop = PropertiesService.getScriptProperties().getProperty('ASSIGNMENT_ORDER');
     if (prop) {
-      return prop.split('\n').map(n => n.trim()).filter(n => n);
+      order = prop.split('\n').map(n => n.trim()).filter(n => n);
     }
-    const riders = getActiveRidersForAssignments().filter(r => String(r.partTime || 'No').toLowerCase() !== 'yes');
-    const order = riders.sort((a, b) => a.name.localeCompare(b.name)).map(r => r.name);
+    
+    // Get current active riders data to check part-time status
+    const activeRiders = getActiveRidersForAssignments();
+    const riderLookup = {};
+    activeRiders.forEach(rider => {
+      riderLookup[rider.name] = rider;
+    });
+    
+    // Filter out part-time riders from the stored order
+    order = order.filter(name => {
+      const rider = riderLookup[name];
+      if (!rider) {
+        // Rider no longer exists, remove from rotation
+        return false;
+      }
+      // Exclude part-time riders
+      const isPartTime = String(rider.partTime || 'No').toLowerCase() === 'yes';
+      return !isPartTime;
+    });
+    
+    // If no stored order exists or it's empty after filtering, create a new one
+    if (order.length === 0) {
+      const riders = activeRiders.filter(r => String(r.partTime || 'No').toLowerCase() !== 'yes');
+      order = riders.sort((a, b) => a.name.localeCompare(b.name)).map(r => r.name);
+    }
+    
+    // Save the cleaned order back to properties
     PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', order.join('\n'));
+    
     return order;
+    
   } catch (error) {
     logError('Error in getAssignmentRotation', error);
     return [];
+  }
+}
+function checkRotationStatus() {
+  try {
+    const currentOrder = getAssignmentRotation();
+    const activeRiders = getActiveRidersForAssignments();
+    
+    console.log('=== ROTATION STATUS CHECK ===');
+    console.log(`Current rotation has ${currentOrder.length} riders`);
+    console.log('Riders in rotation:', currentOrder);
+    
+    // Check each rider in rotation
+    currentOrder.forEach(name => {
+      const rider = activeRiders.find(r => r.name === name);
+      if (!rider) {
+        console.log(`⚠️  ${name} - NOT FOUND in active riders`);
+      } else {
+        const isPartTime = String(rider.partTime || 'No').toLowerCase() === 'yes';
+        console.log(`${isPartTime ? '❌' : '✅'} ${name} - Part-time: ${rider.partTime || 'No'}`);
+      }
+    });
+    
+    return {
+      rotationCount: currentOrder.length,
+      rotation: currentOrder,
+      activeRidersCount: activeRiders.length
+    };
+    
+  } catch (error) {
+    console.error('Error checking rotation status:', error);
+    return { error: error.message };
+  }
+}
+/**
+ * ADDITIONAL FIX: Add a function to manually clean the rotation
+ * This can be called once to clean up any existing bad data
+ */
+function cleanAssignmentRotation() {
+  try {
+    console.log('🧹 Cleaning assignment rotation to remove part-time riders...');
+    
+    // Get current active riders
+    const activeRiders = getActiveRidersForAssignments();
+    
+    // Filter to only full-time riders
+    const fullTimeRiders = activeRiders.filter(r => 
+      String(r.partTime || 'No').toLowerCase() !== 'yes'
+    );
+    
+    // Create clean rotation order
+    const cleanOrder = fullTimeRiders
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(r => r.name);
+    
+    // Save the clean order
+    PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', cleanOrder.join('\n'));
+    
+    console.log(`✅ Assignment rotation cleaned. ${cleanOrder.length} full-time riders in rotation.`);
+    console.log('Full-time riders in rotation:', cleanOrder);
+    
+    return {
+      success: true,
+      message: `Assignment rotation cleaned. ${cleanOrder.length} full-time riders in rotation.`,
+      riders: cleanOrder
+    };
+    
+  } catch (error) {
+    console.error('❌ Error cleaning assignment rotation:', error);
+    logError('Error in cleanAssignmentRotation', error);
+    return {
+      success: false,
+      message: `Error cleaning rotation: ${error.message}`
+    };
   }
 }
 
