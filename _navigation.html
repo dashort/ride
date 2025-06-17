@@ -65,10 +65,8 @@
       navType = undefined;
     }
     if (evt.persisted || navType === 'back_forward') {
-      window.location.reload();
+      window.location.replace(window.location.href);
     }
   });
-  // Prevent Safari back/forward cache from causing blank pages
-  window.addEventListener('unload', function() {});
 </script>
 // 617
