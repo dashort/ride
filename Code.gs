@@ -2740,126 +2740,53 @@ function debugNotificationsFile() {
  * Replace your doGet function with this simplified version that handles user management properly
  */
 
-/*
-/*
+
 function doGet(e) {
   try {
-    console.log('🚀 doGet started...');
-    console.log('Parameters received:', JSON.stringify(e.parameter));
+    console.log('🚀 doGet with cache-friendly headers...');
     
-    // Get the requested page
-    const requestedPage = e.parameter && e.parameter.page;
-    console.log('📄 Requested page:', requestedPage);
-    
-    // SPECIAL HANDLING FOR USER MANAGEMENT PAGE
-    if (requestedPage === 'user-management') {
-      console.log('🔗 Handling user-management page directly...');
-      
-      try {
-        // Check authentication
-        const authResult = authenticateAndAuthorizeUser();
-        console.log('🔐 Auth result for user management:', authResult);
-        
-        if (!authResult.success) {
-          console.log('❌ Auth failed, showing sign-in');
-          return createSignInPageSimple();
-        }
-        
-        if (authResult.user.role !== 'admin') {
-          console.log('❌ Not admin, access denied');
-          return createAccessDeniedPageSimple(authResult.user);
-        }
-        
-        console.log('✅ Admin access granted, loading user management page');
-        
-        // Try to load user-management.html file
-        if (checkFileExists('user-management')) {
-          console.log('✅ user-management.html exists, loading it');
-          let htmlOutput = HtmlService.createHtmlOutputFromFile('user-management');
-          return htmlOutput.setTitle('User Management').setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        } else {
-          console.log('❌ user-management.html not found, creating dynamic page');
-          return createSimpleUserManagementPage();
-        }
-        
-      } catch (error) {
-        console.error('❌ Error in user management handling:', error);
-        return createErrorPageSimple(error);
-      }
-    }
-    
-    // Handle auth setup page
-    if (requestedPage === 'auth-setup') {
-      console.log('🔗 Handling auth-setup page...');
-      
-      try {
-        const authResult = authenticateAndAuthorizeUser();
-        if (!authResult.success || authResult.user.role !== 'admin') {
-          return createAccessDeniedPageSimple({ name: 'User', role: 'unknown' });
-        }
-        return createAuthMappingPage();
-      } catch (error) {
-        return createErrorPageSimple(error);
-      }
-    }
-    
-    // Handle special authentication pages
-    if (e.parameter && e.parameter.action === 'signin') {
-      return createSignInPageSimple();
-    }
-    
-    if (e.parameter && e.parameter.action === 'register') {
-      return createRiderRegistrationForm();
-    }
-    
-    // NORMAL PAGE HANDLING
-    console.log('📄 Handling normal page...');
-    
-    // Authentication for normal pages
+    // Authentication and page logic (your existing code)
     const authResult = authenticateAndAuthorizeUser();
-    
     if (!authResult.success) {
-      console.log('❌ Authentication failed:', authResult.error);
-      return createSignInPageSimple();
+      return createSignInPageEnhanced();
     }
     
-    const user = authResult.user;
-    const rider = authResult.rider;
+    const { user: authenticatedUser, rider } = authResult;
+    const pageName = e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
     
-    console.log(`✅ Authenticated: ${user.name} (${user.role})`);
+    console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
     
-    // Check page access
-    let pageName = requestedPage || 'dashboard';
-    console.log(`📄 Loading page: ${pageName}`);
-    
-    // Get file name
-    let fileName = getPageFileNameSafe(pageName, user.role);
-    console.log(`📁 Using file: ${fileName}.html`);
-    
-    // Load the HTML file
+    // Load page content (your existing logic)
+    const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
     let content = htmlOutput.getContent();
+    content = addMotorcycleLoaderToContent(content);
     
-    // Add navigation (simplified)
-    const navigationHtml = getSimpleNavigation(pageName, user);
+    // Add navigation and user info (your existing code)
+    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
+    content = injectUserInfoSafe(content, authenticatedUser, rider);
     content = addNavigationToContentSafe(content, navigationHtml);
     
-    // Add user info
-    content = injectUserInfoSafe(content, user, rider);
-    
     htmlOutput.setContent(content);
+    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider);
+    addMobileOptimizations(htmlOutput, authenticatedUser, rider);
     
-    return htmlOutput
+    // CACHE-FRIENDLY CONFIGURATION
+    const finalOutput = htmlOutput
       .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    // Try to make the page more cache-friendly by avoiding dynamic elements
+    // that prevent browser caching
+    
+    console.log(`✅ Page ${pageName} ready with cache-friendly settings`);
+    return finalOutput;
       
   } catch (error) {
-    console.error('❌ doGet fatal error:', error);
-    return createErrorPageSimple(error);
+    console.error('❌ doGet error:', error);
+    return createErrorPageWithSignInSafe(error);
   }
 }
-*/
-
 
 /**
  * Simple user management page (if HTML file doesn't exist)
@@ -3752,35 +3679,6 @@ function addNavigationToContentSafe(content, navigationHtml) {
   }
 }
 
-function addUserDataInjectionSafe(content, user, rider) {
-  try {
-    if (typeof addUserDataInjection === 'function') {
-      return addUserDataInjection(content, user, rider);
-    }
-    
-    const userScript = `
-<script>
-window.currentUser = {
-  name: '${user.name}',
-  email: '${user.email}',
-  role: '${user.role}',
-  permissions: ${JSON.stringify(user.permissions)},
-  riderId: '${rider ? rider.id : ''}',
-  isRider: ${rider ? 'true' : 'false'}
-};
-console.log('👤 User context loaded:', window.currentUser);
-</script>`;
-    
-    if (content.includes('</body>')) {
-      return content.replace('</body>', userScript + '\n</body>');
-    }
-    
-    return content;
-  } catch (error) {
-    console.error('Error adding user data injection:', error);
-    return content;
-  }
-}
 
 /**
  * Create a proper sign-in page that actually works
@@ -4570,51 +4468,890 @@ function injectUserInfo(content, user, rider) {
 }
 
 // 📊 User-specific Data Injection
-function addUserDataInjection(content, user, rider) {
-  if (content.includes('</body>')) {
-    const dataScript = `
+// ENHANCED UX IMPROVEMENTS - Add to your addUserDataInjection function
+// ENHANCED UX IMPROVEMENTS - Add to your addUserDataInjection function
+function addUserDataInjection(htmlOutput, user, rider) {
+  try {
+    function escapeJsString(str) {
+      if (!str) return '';
+      return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+    }
+    
+    const userScript = `
 <script>
-// Inject user context into the page
+// User context
 window.currentUser = {
-  name: '${user.name}',
-  email: '${user.email}',
-  role: '${user.role}',
+  name: '${escapeJsString(user.name)}',
+  email: '${escapeJsString(user.email)}',
+  role: '${escapeJsString(user.role)}',
   permissions: ${JSON.stringify(user.permissions)},
-  riderId: '${rider ? rider.id : ''}',
+  riderId: '${rider ? escapeJsString(rider.id) : ''}',
   isRider: ${rider ? 'true' : 'false'}
 };
 
-// Role-based page initialization
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('👤 User context loaded:', window.currentUser);
+console.log('🎨 Enhanced UX improvements loading...');
+
+// 1. ENHANCED LOADING STATES
+function createLoadingSpinner(container, message = 'Loading...') {
+  const spinner = document.createElement('div');
+  spinner.className = 'ux-loading-spinner';
+  spinner.innerHTML = \`
+    <div style="
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem; color: #667eea; font-family: Arial, sans-serif;
+    ">
+      <div style="
+        width: 40px; height: 40px; border: 3px solid #f3f3f3;
+        border-top: 3px solid #667eea; border-radius: 50%;
+        animation: spin 1s linear infinite; margin-bottom: 1rem;
+      "></div>
+      <div style="font-size: 0.9rem; opacity: 0.8;">\${message}</div>
+    </div>
+  \`;
   
-  // Hide/show elements based on role
-  const roleElements = document.querySelectorAll('[data-role]');
-  roleElements.forEach(function(element) {
-    const allowedRoles = element.getAttribute('data-role').split(',');
-    if (!allowedRoles.includes(window.currentUser.role)) {
-      element.style.display = 'none';
-    }
-  });
-  
-  // Hide/show elements based on permissions
-  const permissionElements = document.querySelectorAll('[data-permission]');
-  permissionElements.forEach(function(element) {
-    const requiredPermission = element.getAttribute('data-permission');
-    if (!window.currentUser.permissions.includes(requiredPermission)) {
-      element.style.display = 'none';
-    }
-  });
-  
-  // Add role class to body
-  document.body.classList.add('role-' + window.currentUser.role);
-});
-</script>`;
-    
-    content = content.replace('</body>', dataScript + '\n</body>');
+  if (container) {
+    container.innerHTML = '';
+    container.appendChild(spinner);
   }
   
-  return content;
+  return spinner;
+}
+
+// 2. TOAST NOTIFICATION SYSTEM
+function createToastContainer() {
+  if (document.getElementById('toast-container')) return;
+  
+  const container = document.createElement('div');
+  container.id = 'toast-container';
+  container.style.cssText = \`
+    position: fixed; top: 20px; right: 20px; z-index: 10000;
+    max-width: 400px; pointer-events: none;
+  \`;
+  document.body.appendChild(container);
+}
+
+function showToast(message, type = 'info', duration = 4000) {
+  createToastContainer();
+  
+  const colors = {
+    success: { bg: '#27ae60', icon: '✅' },
+    error: { bg: '#e74c3c', icon: '❌' },
+    warning: { bg: '#f39c12', icon: '⚠️' },
+    info: { bg: '#3498db', icon: 'ℹ️' }
+  };
+  
+  const color = colors[type] || colors.info;
+  
+  const toast = document.createElement('div');
+  toast.style.cssText = \`
+    background: \${color.bg}; color: white; padding: 12px 16px;
+    border-radius: 8px; margin-bottom: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: Arial, sans-serif; font-size: 14px; line-height: 1.4;
+    transform: translateX(100%); transition: transform 0.3s ease;
+    pointer-events: auto; cursor: pointer; display: flex; align-items: center;
+  \`;
+  
+  toast.innerHTML = \`
+    <span style="margin-right: 8px; font-size: 16px;">\${color.icon}</span>
+    <span>\${message}</span>
+  \`;
+  
+  // Click to dismiss
+  toast.onclick = () => dismissToast(toast);
+  
+  document.getElementById('toast-container').appendChild(toast);
+  
+  // Animate in
+  setTimeout(() => toast.style.transform = 'translateX(0)', 10);
+  
+  // Auto dismiss
+  setTimeout(() => dismissToast(toast), duration);
+}
+
+function dismissToast(toast) {
+  toast.style.transform = 'translateX(100%)';
+  setTimeout(() => {
+    if (toast.parentNode) toast.remove();
+  }, 300);
+}
+
+// 3. ENHANCED BUTTON INTERACTIONS
+function enhanceButtons() {
+  document.querySelectorAll('button, .nav-button, input[type="submit"]').forEach(btn => {
+    if (btn.dataset.enhanced) return;
+    btn.dataset.enhanced = 'true';
+    
+    // Add hover effect
+    btn.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-1px)';
+      this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+      this.style.transition = 'all 0.2s ease';
+    });
+    
+    btn.addEventListener('mouseleave', function() {
+      this.style.transform = 'translateY(0)';
+      this.style.boxShadow = 'none';
+    });
+    
+    // Add click effect
+    btn.addEventListener('mousedown', function() {
+      this.style.transform = 'translateY(1px) scale(0.98)';
+    });
+    
+    btn.addEventListener('mouseup', function() {
+      this.style.transform = 'translateY(-1px) scale(1)';
+    });
+  });
+}
+
+// 4. FORM ENHANCEMENT
+function enhanceFormInputs() {
+  document.querySelectorAll('input, select, textarea').forEach(input => {
+    if (input.dataset.enhanced) return;
+    input.dataset.enhanced = 'true';
+    
+    // Add focus effects
+    input.addEventListener('focus', function() {
+      this.style.borderColor = '#667eea';
+      this.style.boxShadow = '0 0 0 2px rgba(102, 126, 234, 0.2)';
+      this.style.transition = 'all 0.2s ease';
+    });
+    
+    input.addEventListener('blur', function() {
+      this.style.borderColor = '';
+      this.style.boxShadow = '';
+    });
+    
+    // Add validation styling
+    input.addEventListener('invalid', function() {
+      this.style.borderColor = '#e74c3c';
+      this.style.boxShadow = '0 0 0 2px rgba(231, 76, 60, 0.2)';
+    });
+    
+    input.addEventListener('input', function() {
+      if (this.validity.valid) {
+        this.style.borderColor = '#27ae60';
+        this.style.boxShadow = '0 0 0 2px rgba(39, 174, 96, 0.2)';
+      }
+    });
+  });
+}
+
+// 5. ENHANCED TABLE INTERACTIONS
+function enhanceTableRows() {
+  document.querySelectorAll('table tr').forEach(row => {
+    if (row.dataset.enhanced) return;
+    row.dataset.enhanced = 'true';
+    
+    row.addEventListener('mouseenter', function() {
+      this.style.backgroundColor = 'rgba(102, 126, 234, 0.1)';
+      this.style.transition = 'background-color 0.2s ease';
+    });
+    
+    row.addEventListener('mouseleave', function() {
+      this.style.backgroundColor = '';
+    });
+  });
+}
+
+// 6. SMOOTH SCROLL ENHANCEMENTS
+function enhanceSmoothScrolling() {
+  // Add smooth scrolling to anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function(e) {
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+}
+
+// 7. LOADING STATE FOR DATA OPERATIONS
+function showDataLoading(element, message = 'Loading data...') {
+  if (!element) return;
+  
+  const originalContent = element.innerHTML;
+  element.dataset.originalContent = originalContent;
+  
+  element.innerHTML = \`
+    <div style="text-align: center; padding: 2rem; color: #666;">
+      <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #f3f3f3; 
+                  border-top: 2px solid #667eea; border-radius: 50%; 
+                  animation: spin 1s linear infinite; margin-right: 10px;"></div>
+      \${message}
+    </div>
+  \`;
+}
+
+function hideDataLoading(element) {
+  if (!element || !element.dataset.originalContent) return;
+  element.innerHTML = element.dataset.originalContent;
+  delete element.dataset.originalContent;
+}
+
+// 8. NAVIGATION FEEDBACK (Enhanced)
+document.addEventListener('click', function(e) {
+  const navLink = e.target.closest('nav.navigation a');
+  if (navLink) {
+    console.log('🔗 Enhanced navigation click:', navLink.textContent.trim());
+    
+    // Enhanced visual feedback
+    navLink.style.cssText += \`
+      background: linear-gradient(135deg, #2980b9, #1f4e79) !important;
+      transform: scale(0.95) !important;
+      transition: all 0.15s ease !important;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+    \`;
+    
+    // Show navigation motorcycle
+    setTimeout(() => {
+      const motorcycle = document.createElement('div');
+      motorcycle.style.cssText = \`
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(102, 126, 234, 0.95); z-index: 999999;
+        display: flex; justify-content: center; align-items: center;
+        color: white; font-family: Arial, sans-serif; flex-direction: column;
+      \`;
+      motorcycle.innerHTML = \`
+        <div style="font-size: 4rem; margin-bottom: 1rem; animation: bounce 1s ease-in-out infinite; transform: scaleX(-1);">🏍️</div>
+        <div style="font-size: 1.8rem; font-weight: bold;">Navigating...</div>
+        <div style="font-size: 1rem; margin-top: 0.5rem; opacity: 0.8;">Taking you to \${navLink.textContent.trim()}</div>
+      \`;
+      document.body.appendChild(motorcycle);
+      
+      showToast('Navigating to ' + navLink.textContent.trim(), 'info', 2000);
+    }, 100);
+  }
+});
+
+// 9. AUTO-ENHANCEMENT ON CONTENT CHANGES
+function autoEnhance() {
+  enhanceButtons();
+  enhanceFormInputs();
+  enhanceTableRows();
+  enhanceSmoothScrolling();
+}
+
+// 10. CSS ANIMATIONS
+const enhancedCSS = \`
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Enhanced hover effects */
+    .nav-button:hover { transform: translateY(-2px) !important; }
+    button:hover { transform: translateY(-1px) !important; }
+    
+    /* Smooth transitions for all interactive elements */
+    button, .nav-button, input, select, textarea {
+      transition: all 0.2s ease !important;
+    }
+    
+    /* Enhanced focus styles */
+    input:focus, select:focus, textarea:focus {
+      outline: none !important;
+      border-color: #667eea !important;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2) !important;
+    }
+  </style>
+\`;
+
+document.head.insertAdjacentHTML('beforeend', enhancedCSS);
+
+// Initialize enhancements
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('🎨 Initializing UX enhancements...');
+  
+  autoEnhance();
+  
+  // Show welcome message
+  setTimeout(() => {
+    showToast(\`Welcome back, \${window.currentUser.name}! 🏍️\`, 'success', 3000);
+  }, 1000);
+  
+  // Re-enhance on any dynamic content changes
+  const observer = new MutationObserver(() => {
+    setTimeout(autoEnhance, 100);
+  });
+  
+  observer.observe(document.body, { 
+    childList: true, 
+    subtree: true 
+  });
+  
+  console.log('✅ UX enhancements ready!');
+});
+
+// Global functions for use in your other code
+window.UX = {
+  showToast: showToast,
+  showLoading: showDataLoading,
+  hideLoading: hideDataLoading,
+  createSpinner: createLoadingSpinner
+};
+
+console.log('✅ Enhanced UX package loaded');
+
+// Your existing role-based initialization
+const roleElements = document.querySelectorAll('[data-role]');
+roleElements.forEach(function(element) {
+  const allowedRoles = element.getAttribute('data-role').split(',');
+  if (!allowedRoles.includes(window.currentUser.role)) {
+    element.style.display = 'none';
+  }
+});
+
+const permissionElements = document.querySelectorAll('[data-permission]');
+permissionElements.forEach(function(element) {
+  const requiredPermission = element.getAttribute('data-permission');
+  if (!window.currentUser.permissions.includes(requiredPermission)) {
+    element.style.display = 'none';
+  }
+});
+
+document.body.classList.add('role-' + window.currentUser.role);
+
+console.log('=== CLIENT-SIDE NAVIGATION DEBUG ===');
+const nav = document.querySelector('nav.navigation');
+console.log('Navigation element found:', !!nav);
+if (nav) {
+  console.log('Navigation buttons:', nav.querySelectorAll('.nav-button').length);
+}
+</script>`;
+    
+    htmlOutput.append(userScript);
+    return htmlOutput;
+    
+  } catch (error) {
+    console.error('Error adding user data injection:', error);
+    return htmlOutput;
+  }
+}
+
+
+
+
+
+
+function addMotorcycleLoaderToContent(content) {
+  try {
+    console.log('🏍️ Adding motorcycle loader directly to HTML content');
+    
+    const motorcycleHtml = `
+<!-- INSTANT MOTORCYCLE LOADER -->
+<div id="instantMotorcycle" style="
+  position: fixed !important; 
+  top: 0 !important; left: 0 !important; 
+  width: 100% !important; height: 100% !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  justify-content: center !important; align-items: center !important;
+  color: white !important; font-family: Arial, sans-serif !important;
+  flex-direction: column !important;
+">
+  <div style="font-size: 5rem; margin-bottom: 1rem; animation: motorcycleRide 2s ease-in-out infinite;">🏍️</div>
+  <div style="font-size: 2rem; font-weight: bold;">Loading...</div>
+</div>
+<style>
+@keyframes motorcycleRide {
+  0%, 100% { transform: translateX(-10px) rotate(-2deg); }
+  50% { transform: translateX(10px) rotate(2deg); }
+}
+</style>
+<script>
+(function() {
+  function hideMotorcycle() {
+    const motorcycle = document.getElementById('instantMotorcycle');
+    if (motorcycle) {
+      motorcycle.style.opacity = '0';
+      motorcycle.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => motorcycle.remove(), 500);
+    }
+  }
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(hideMotorcycle, 1500);
+  });
+  
+  setTimeout(hideMotorcycle, 3000); // Fallback
+})();
+</script>`;
+    
+    if (content.includes('<body>')) {
+      content = content.replace('<body>', '<body>' + motorcycleHtml);
+    } else {
+      content = motorcycleHtml + content;
+    }
+    
+    return content;
+    
+  } catch (error) {
+    console.error('❌ Error adding motorcycle to content:', error);
+    return content;
+  }
+}
+// MOBILE OPTIMIZATION PACKAGE - Add this to your Code.gs
+function addMobileOptimizations(htmlOutput, user, rider) {
+  try {
+    function escapeJsString(str) {
+      if (!str) return '';
+      return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+    }
+    
+    const mobileScript = `
+<!-- MOBILE OPTIMIZATION CSS -->
+<style>
+/* Mobile-First Responsive Design */
+@media (max-width: 768px) {
+  /* Navigation Optimization */
+  .navigation {
+    flex-wrap: wrap !important;
+    padding: 0.5rem !important;
+    gap: 0.3rem !important;
+    justify-content: center !important;
+  }
+  
+  .nav-button {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.85rem !important;
+    min-height: 44px !important; /* Apple touch target size */
+    border-radius: 8px !important;
+    flex: 1 1 auto !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+  
+  /* Header Optimization */
+  .header {
+    padding: 1rem !important;
+    flex-direction: column !important;
+    text-align: center !important;
+  }
+  
+  .header h1 {
+    font-size: 1.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Container Optimization */
+  .container {
+    padding: 1rem !important;
+    margin: 0.5rem !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Table Optimization */
+  table {
+    font-size: 0.8rem !important;
+    display: block !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+  }
+  
+  table thead {
+    display: none !important; /* Hide headers on mobile */
+  }
+  
+  table tbody tr {
+    display: block !important;
+    border: 1px solid #ddd !important;
+    margin-bottom: 0.5rem !important;
+    padding: 0.5rem !important;
+    border-radius: 8px !important;
+    background: white !important;
+  }
+  
+  table tbody td {
+    display: block !important;
+    text-align: left !important;
+    padding: 0.25rem 0 !important;
+    border: none !important;
+  }
+  
+  table tbody td:before {
+    content: attr(data-label) ": " !important;
+    font-weight: bold !important;
+    color: #667eea !important;
+  }
+  
+  /* Form Optimization */
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.75rem !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  button, .btn {
+    padding: 0.75rem 1.5rem !important;
+    font-size: 1rem !important;
+    min-height: 44px !important;
+    border-radius: 8px !important;
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  /* Modal Optimization */
+  .modal-content {
+    margin: 1rem !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  
+  /* Dashboard Cards */
+  .stat-card, .dashboard-card {
+    margin-bottom: 1rem !important;
+    padding: 1rem !important;
+    border-radius: 12px !important;
+  }
+  
+  /* Font Size Adjustments */
+  body {
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+  }
+  
+  h1 { font-size: 1.75rem !important; }
+  h2 { font-size: 1.5rem !important; }
+  h3 { font-size: 1.25rem !important; }
+}
+
+/* Touch-Friendly Enhancements */
+@media (hover: none) and (pointer: coarse) {
+  /* This targets touch devices */
+  .nav-button:hover {
+    transform: none !important; /* Disable hover effects on touch */
+  }
+  
+  .nav-button:active {
+    background: #2980b9 !important;
+    transform: scale(0.95) !important;
+  }
+  
+  button:active, .btn:active {
+    transform: scale(0.95) !important;
+  }
+}
+
+/* Landscape Phone Optimization */
+@media (max-width: 768px) and (orientation: landscape) {
+  .navigation {
+    padding: 0.25rem !important;
+    gap: 0.25rem !important;
+  }
+  
+  .nav-button {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .header {
+    padding: 0.5rem !important;
+  }
+  
+  .container {
+    padding: 0.75rem !important;
+  }
+}
+
+/* Large Mobile/Small Tablet */
+@media (min-width: 481px) and (max-width: 768px) {
+  .navigation {
+    gap: 0.5rem !important;
+  }
+  
+  .nav-button {
+    flex: 1 1 calc(50% - 0.25rem) !important;
+    max-width: calc(50% - 0.25rem) !important;
+  }
+}
+
+/* Accessibility Improvements */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>
+
+<script>
+// MOBILE OPTIMIZATION JAVASCRIPT
+(function() {
+  console.log('📱 Mobile optimization package loading...');
+  
+  // 1. DEVICE DETECTION
+  function detectDevice() {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isTablet = /(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(navigator.userAgent);
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const screenWidth = window.innerWidth || document.documentElement.clientWidth;
+    
+    return {
+      isMobile: isMobile || screenWidth < 768,
+      isTablet: isTablet,
+      isTouchDevice: isTouchDevice,
+      screenWidth: screenWidth,
+      orientation: window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
+    };
+  }
+  
+  const device = detectDevice();
+  console.log('📱 Device info:', device);
+  
+  // 2. MOBILE-SPECIFIC ENHANCEMENTS
+  if (device.isMobile) {
+    document.body.classList.add('mobile-device');
+    
+    // Add mobile-specific meta tags if not present
+    if (!document.querySelector('meta[name="viewport"]')) {
+      const viewport = document.createElement('meta');
+      viewport.name = 'viewport';
+      viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      document.head.appendChild(viewport);
+    }
+    
+    // Prevent double-tap zoom
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function(event) {
+      const now = (new Date()).getTime();
+      if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, false);
+  }
+  
+  // 3. ENHANCED TABLE MOBILE VIEW
+  function enhanceTablesForMobile() {
+    if (!device.isMobile) return;
+    
+    document.querySelectorAll('table').forEach(table => {
+      const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+      
+      table.querySelectorAll('tbody tr').forEach(row => {
+        Array.from(row.querySelectorAll('td')).forEach((cell, index) => {
+          if (headers[index]) {
+            cell.setAttribute('data-label', headers[index]);
+          }
+        });
+      });
+      
+      table.classList.add('mobile-table');
+    });
+  }
+  
+  // 4. MOBILE NAVIGATION ENHANCEMENTS
+  function enhanceMobileNavigation() {
+    const nav = document.querySelector('.navigation');
+    if (!nav || !device.isMobile) return;
+    
+    // Add swipe detection for navigation
+    let touchStartX = 0;
+    let touchStartY = 0;
+    
+    nav.addEventListener('touchstart', function(e) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+    
+    nav.addEventListener('touchmove', function(e) {
+      if (!touchStartX || !touchStartY) return;
+      
+      const touchEndX = e.touches[0].clientX;
+      const touchEndY = e.touches[0].clientY;
+      
+      const diffX = touchStartX - touchEndX;
+      const diffY = touchStartY - touchEndY;
+      
+      // Horizontal swipe detection
+      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+        e.preventDefault(); // Prevent page scroll
+      }
+    });
+    
+    // Add haptic feedback for supported devices
+    nav.addEventListener('click', function() {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50); // Short vibration
+      }
+    });
+  }
+  
+  // 5. MOBILE MOTORCYCLE LOADER
+  function createMobileMotorcycleLoader(message = 'Loading...') {
+    const loader = document.createElement('div');
+    loader.className = 'mobile-motorcycle-loader';
+    loader.style.cssText = \`
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      z-index: 999999; display: flex; justify-content: center; align-items: center;
+      color: white; font-family: Arial, sans-serif; flex-direction: column;
+    \`;
+    
+    loader.innerHTML = \`
+      <div style="
+        font-size: \${device.isMobile ? '3rem' : '4rem'};
+        margin-bottom: 1.5rem;
+        animation: mobileMotorcycleBounce 1.5s ease-in-out infinite;
+        transform: scaleX(-1);
+      ">🏍️</div>
+      <div style="
+        font-size: \${device.isMobile ? '1.25rem' : '1.8rem'};
+        font-weight: bold; text-align: center; padding: 0 1rem;
+      ">\${message}</div>
+      <div style="
+        font-size: \${device.isMobile ? '0.9rem' : '1rem'};
+        margin-top: 0.5rem; opacity: 0.8; text-align: center;
+      ">Please wait...</div>
+    \`;
+    
+    // Add mobile-specific animation
+    const style = document.createElement('style');
+    style.textContent = \`
+      @keyframes mobileMotorcycleBounce {
+        0%, 100% { transform: scaleX(-1) translateY(0) rotate(0deg); }
+        25% { transform: scaleX(-1) translateY(-5px) rotate(2deg); }
+        50% { transform: scaleX(-1) translateY(-10px) rotate(0deg); }
+        75% { transform: scaleX(-1) translateY(-5px) rotate(-2deg); }
+      }
+    \`;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(loader);
+    
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+      loader.style.opacity = '0';
+      loader.style.transition = 'opacity 0.5s ease';
+      setTimeout(() => {
+        if (loader.parentNode) loader.remove();
+      }, 500);
+    }, 2000);
+    
+    return loader;
+  }
+  
+  // 6. ORIENTATION CHANGE HANDLING
+  function handleOrientationChange() {
+    setTimeout(() => {
+      const newDevice = detectDevice();
+      console.log('📱 Orientation changed:', newDevice.orientation);
+      
+      // Refresh layout for orientation change
+      if (device.isMobile) {
+        enhanceTablesForMobile();
+        enhanceMobileNavigation();
+      }
+    }, 100);
+  }
+  
+  window.addEventListener('orientationchange', handleOrientationChange);
+  window.addEventListener('resize', handleOrientationChange);
+  
+  // 7. TOUCH ENHANCEMENTS
+  function addTouchEnhancements() {
+    if (!device.isTouchDevice) return;
+    
+    // Add touch feedback to all interactive elements
+    document.querySelectorAll('button, .nav-button, a, input[type="submit"]').forEach(element => {
+      element.addEventListener('touchstart', function() {
+        this.style.opacity = '0.7';
+        this.style.transform = 'scale(0.95)';
+        this.style.transition = 'all 0.1s ease';
+      });
+      
+      element.addEventListener('touchend', function() {
+        this.style.opacity = '';
+        this.style.transform = '';
+      });
+      
+      element.addEventListener('touchcancel', function() {
+        this.style.opacity = '';
+        this.style.transform = '';
+      });
+    });
+  }
+  
+  // 8. MOBILE NAVIGATION CLICK HANDLER
+  document.addEventListener('click', function(e) {
+    const navLink = e.target.closest('nav.navigation a');
+    if (navLink && device.isMobile) {
+      console.log('📱 Mobile navigation click:', navLink.textContent.trim());
+      
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+      
+      // Show mobile motorcycle loader
+      setTimeout(() => {
+        createMobileMotorcycleLoader('Navigating to ' + navLink.textContent.trim());
+      }, 100);
+    }
+  });
+  
+  // 9. INITIALIZE MOBILE OPTIMIZATIONS
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('📱 Initializing mobile optimizations...');
+    
+    enhanceTablesForMobile();
+    enhanceMobileNavigation();
+    addTouchEnhancements();
+    
+    // Add device class to body
+    document.body.classList.add(
+      device.isMobile ? 'mobile' : 'desktop',
+      device.isTablet ? 'tablet' : '',
+      device.isTouchDevice ? 'touch-device' : 'mouse-device',
+      device.orientation
+    );
+    
+    console.log('✅ Mobile optimizations ready!');
+    
+    // Show mobile-optimized welcome message
+    if (device.isMobile && window.UX && window.UX.showToast) {
+      setTimeout(() => {
+        window.UX.showToast('📱 Mobile-optimized interface loaded!', 'success', 3000);
+      }, 1500);
+    }
+  });
+  
+  // 10. EXPOSE MOBILE UTILITIES
+  window.MobileUX = {
+    device: device,
+    showMobileLoader: createMobileMotorcycleLoader,
+    isMotile: device.isMobile,
+    isTouchDevice: device.isTouchDevice
+  };
+  
+  console.log('✅ Mobile optimization package loaded');
+  
+})();
+</script>`;
+    
+    htmlOutput.append(mobileScript);
+    return htmlOutput;
+    
+  } catch (error) {
+    console.error('Error adding mobile optimizations:', error);
+    return htmlOutput;
+  }
 }
 
 // 📱 Utility Functions

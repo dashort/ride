@@ -879,6 +879,91 @@
             document.body.appendChild(debugBtn);
         }, 1000);
     }
+
+   window.addEventListener('pageshow', function(evt) {
+     var navType;
+     try {
+       if (performance && performance.getEntriesByType) { // Check if performance and getEntriesByType exist
+         var entries = performance.getEntriesByType('navigation');
+         if (entries && entries.length > 0) { // Check if entries exist and is not empty
+            navType = entries[0].type;
+         } else {
+            navType = 'unknown'; // Fallback if no navigation entries
+         }
+       } else if (performance && performance.navigation) { // Fallback for older browsers
+         if (performance.navigation.type === 2) navType = 'back_forward';
+         else if (performance.navigation.type === 1) navType = 'reload';
+         else navType = 'navigate';
+       } else {
+         navType = 'unknown'; // Fallback if performance.navigation is not available
+       }
+     } catch (e) {
+       console.error('Error determining navType:', e);
+       navType = 'error';
+     }
+     
+     console.log('[Embedded in index.html] pageshow event. persisted:', evt.persisted, 'navType:', navType);
+     
+     if (evt.persisted || navType === 'back_forward') {
+       console.log('[Embedded in index.html] Back/forward navigation detected, reloading page.');
+       window.location.reload();
+     }
+   });
+   
+   // Also add the unload listener as it can help prevent bfcache
+    window.addEventListener('unload', function() {
+        // This function can remain empty. Its presence helps prevent bfcache in some browsers.
+    });
+    // Add this to your main pages to debug navigation issues
+(function() {
+    console.log('=== NAVIGATION DEBUG ===');
+    console.log('Page loaded at:', new Date().toISOString());
+    console.log('Current URL:', window.location.href);
+    console.log('Document ready state:', document.readyState);
+    console.log('Body content length:', document.body ? document.body.innerHTML.length : 'No body');
+    
+    // Track navigation events
+    window.addEventListener('beforeunload', function() {
+        console.log('Page unloading...');
+    });
+    
+    window.addEventListener('pageshow', function(evt) {
+        console.log('Page show event:', {
+            persisted: evt.persisted,
+            timeStamp: evt.timeStamp,
+            target: evt.target.location?.href
+        });
+    });
+    
+    window.addEventListener('pagehide', function(evt) {
+        console.log('Page hide event:', {
+            persisted: evt.persisted,
+            timeStamp: evt.timeStamp
+        });
+    });
+    
+    window.addEventListener('popstate', function(evt) {
+        console.log('Popstate event (back/forward):', {
+            state: evt.state,
+            url: window.location.href
+        });
+    });
+    
+    // Check navigation type
+    if (performance.getEntriesByType) {
+        const nav = performance.getEntriesByType('navigation')[0];
+        if (nav) {
+            console.log('Navigation type:', nav.type);
+            console.log('Navigation timing:', {
+                loadStart: nav.loadEventStart,
+                domContentLoaded: nav.domContentLoadedEventEnd,
+                loadComplete: nav.loadEventEnd
+            });
+        }
+    }
+    
+    console.log('=== END DEBUG ===');
+})();
 </script>
 </body>
 </html>

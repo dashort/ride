@@ -1,72 +1,74 @@
 <nav class="navigation">
-    <!-- Default to local HTML files so navigation works without JavaScript -->
-    <a href="index.html" class="nav-button" id="nav-dashboard" data-page="dashboard" target="_top" onclick="return handleNavigation(this);">📊 Dashboard</a>
-    <a href="requests.html" class="nav-button" id="nav-requests" data-page="requests" target="_top" onclick="return handleNavigation(this);">📋 Requests</a>
-    <a href="assignments.html" class="nav-button" id="nav-assignments" data-page="assignments" target="_top" onclick="return handleNavigation(this);">🏍️ Assignments</a>
-    <a href="riders.html" class="nav-button" id="nav-riders" data-page="riders" target="_top" onclick="return handleNavigation(this);">👥 Riders</a>
-    <a href="notifications.html" class="nav-button" id="nav-notifications" data-page="notifications" target="_top" onclick="return handleNavigation(this);">📱 Notifications</a>
-    <a href="reports.html" class="nav-button" id="nav-reports" data-page="reports" target="_top" onclick="return handleNavigation(this);">📊 Reports</a>
+    <a href="index.html" class="nav-button" id="nav-dashboard" data-page="dashboard" target="_top">📊 Dashboard</a>
+    <a href="requests.html" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
+    <a href="assignments.html" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
+    <a href="riders.html" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
+    <a href="notifications.html" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
+    <a href="reports.html" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
 </nav>
+
 <script>
-  (function() {
+(function() {
+    // Set up navigation links
     function setLinks(base) {
-      document.querySelectorAll('nav.navigation a').forEach(function(a) {
-        var page = a.getAttribute('data-page');
-        var href = page === 'dashboard' ? base : base + '?page=' + page;
-        a.href = href;
-        a.dataset.url = href;
-      });
+        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+            var page = a.getAttribute('data-page');
+            var href = page === 'dashboard' ? base : base + '?page=' + page;
+            a.href = href;
+            a.dataset.url = href;
+        });
     }
 
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-      google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
+        google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
     } else {
-      // When running locally, link directly to HTML files
-      document.querySelectorAll('nav.navigation a').forEach(function(a) {
-        var page = a.getAttribute('data-page');
-        var href = page === 'dashboard' ? 'index.html' : page + '.html';
-        a.href = href;
-        a.dataset.url = href;
-      });
+        // Fallback for local testing
+        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+            var page = a.getAttribute('data-page');
+            var href = page === 'dashboard' ? 'index.html' : page + '.html';
+            a.href = href;
+            a.dataset.url = href;
+        });
     }
-  })();
 
-  function handleNavigation(link) {
-    var url = link.dataset.url || link.getAttribute('href');
-    if (!url || url === '#') return false;
-    try {
-      window.top.location.assign(url);
-    } catch (e) {
-      window.location.assign(url);
+    // Navigation click handler
+    function handleNavigation(link) {
+        var url = link.dataset.url || link.getAttribute('href');
+        if (!url || url === '#') return false;
+        
+        try {
+            if (window.top !== window) {
+                window.top.location.href = url;
+            } else {
+                window.location.href = url;
+            }
+        } catch (e) {
+            window.location.href = url;
+        }
+        return false;
     }
-    return false;
-  }
 
-  function navigateToPage(url) {
+    // Add click handlers to navigation links
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('nav.navigation a').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                handleNavigation(this);
+            });
+        });
+        
+        console.log('🧭 Navigation initialized - NO AUTO RELOAD');
+    });
+
+    // CRITICAL: NO PAGESHOW RELOAD - Let browser handle back/forward naturally
+    console.log('📄 Navigation script loaded - back button will work normally');
+
+})();
+
+// Global navigation function (if needed by other scripts)
+function navigateToPage(url) {
     if (url && url !== '#') {
-      window.location.assign(url);
+        window.location.href = url;
     }
-  }
-
-  // Reload the page when navigating back/forward to avoid blank screens
-  // Some browsers do not set evt.persisted so also check the navigation type
-  window.addEventListener('pageshow', function(evt) {
-    var navType;
-    try {
-      if (performance.getEntriesByType) {
-        var entries = performance.getEntriesByType('navigation');
-        navType = entries.length > 0 ? entries[0].type : undefined;
-      } else if (performance.navigation) {
-        if (performance.navigation.type === 2) navType = 'back_forward';
-        else if (performance.navigation.type === 1) navType = 'reload';
-        else navType = 'navigate';
-      }
-    } catch (e) {
-      navType = undefined;
-    }
-    if (evt.persisted || navType === 'back_forward') {
-      window.location.replace(window.location.href);
-    }
-  });
+}
 </script>
-// 617
