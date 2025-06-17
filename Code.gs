@@ -4007,9 +4007,10 @@ function createSignInPage() {
                 navType = undefined;
             }
             if (event.persisted || navType === 'back_forward') {
-                location.replace(location.href);
+                location.reload();
             }
         });
+        window.addEventListener('unload', function() {});
     </script>
 </body>
 </html>`;
