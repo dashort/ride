@@ -65,7 +65,7 @@
       navType = undefined;
     }
     if (evt.persisted || navType === 'back_forward') {
-      window.location.reload();
+      window.location.replace(window.location.href);
     }
   });
 </script>
