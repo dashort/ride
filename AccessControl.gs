@@ -1961,11 +1961,20 @@ function getUserNavigationMenu(user) {
       'settings': '⚙️ Settings'
     };
     
-    return rolePermissions.pages.map(page => ({
-      page: page,
-      label: pageLabels[page] || page,
-      url: `${getWebAppUrlSafe()}${page === 'dashboard' ? '' : '?page=' + page}` // Changed to getWebAppUrlSafe()
-    }));
+    const baseUrl = getWebAppUrlSafe();
+    const usingLocal = !baseUrl || baseUrl === '#';
+
+    return rolePermissions.pages.map(page => {
+      const url = usingLocal
+        ? (page === 'dashboard' ? 'index.html' : page + '.html')
+        : `${baseUrl}${page === 'dashboard' ? '' : '?page=' + page}`;
+
+      return {
+        page: page,
+        label: pageLabels[page] || page,
+        url: url
+      };
+    });
     
   } catch (error) {
     console.error('❌ Error getting navigation menu:', error);
