@@ -3188,6 +3188,7 @@ function getSimpleNavigation(currentPage, user) {
     { page: 'dashboard', label: '📊 Dashboard', url: navUrl('dashboard') },
     { page: 'requests', label: '📋 Requests', url: navUrl('requests') },
     { page: 'assignments', label: '🏍️ Assignments', url: navUrl('assignments') },
+    { page: 'notifications', label: '📱 Notifications', url: navUrl('notifications') },
     { page: 'riders', label: '👥 Riders', url: navUrl('riders') },
     { page: 'user-management', label: '👥 User Management', url: navUrl('user-management') },
     { page: 'reports', label: '📊 Reports', url: navUrl('reports') }
@@ -3196,7 +3197,8 @@ function getSimpleNavigation(currentPage, user) {
   const dispatcherNav = [
     { page: 'dashboard', label: '📊 Dashboard', url: navUrl('dashboard') },
     { page: 'requests', label: '📋 Requests', url: navUrl('requests') },
-    { page: 'assignments', label: '🏍️ Assignments', url: navUrl('assignments') }
+    { page: 'assignments', label: '🏍️ Assignments', url: navUrl('assignments') },
+    { page: 'notifications', label: '📱 Notifications', url: navUrl('notifications') }
   ];
   
   const menuItems = user.role === 'admin' ? adminNav : dispatcherNav;
@@ -3205,7 +3207,8 @@ function getSimpleNavigation(currentPage, user) {
 
   menuItems.forEach(item => {
     const activeClass = item.page === currentPage ? ' active' : '';
-    navHtml += `<a href="${item.url}" class="nav-button${activeClass}" data-page="${item.page}">${item.label}</a>`;
+    const idAttr = item.page === 'notifications' ? 'notificationsLink' : `nav-${item.page}`;
+    navHtml += `<a href="${item.url}" class="nav-button${activeClass}" id="${idAttr}" data-page="${item.page}">${item.label}</a>`;
   });
 
   navHtml += '</nav>';
