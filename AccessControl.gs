@@ -203,31 +203,6 @@ const RESOURCE_ACCESS = {
   }
 };
 
-function getRoleBasedNavigation(currentPage, user, rider) {
-  console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
-  if (!user) {
-    console.error('getRoleBasedNavigation: User object is null/undefined.');
-    return '<nav class="navigation"><!-- User object missing --></nav>';
-  }
-
-  const menuItems = getUserNavigationMenu(user); // This function is already in AccessControl.gs
-  if (!menuItems || menuItems.length === 0) {
-    console.warn('getRoleBasedNavigation: No menu items returned by getUserNavigationMenu for role: ' + user.role);
-    return '<nav class="navigation"><!-- No menu items for role --></nav>';
-  }
-
-  let navHtml = '<nav class="navigation">';
-  menuItems.forEach(item => {
-    const isActive = item.page === currentPage ? ' active' : '';
-    // item.url should already be correctly formed by getUserNavigationMenu using getWebAppUrl()
-    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}" target="_top">${item.label}</a>`;
-  });
-  navHtml += '</nav>';
-
-  console.log('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
-  return navHtml;
-}
-
 // 🔧 FIXED USER OBJECT HANDLING - Replace your authentication functions
 
 /**
