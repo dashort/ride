@@ -21,7 +21,7 @@
     "https://www.googleapis.com/auth/script.webapp.deploy"
   ],
   "webapp": {
-    "executeAs": "USER_ACCESSING",
+    "executeAs": "USER_DEPLOYING",
     "access": "ANYONE"
   },
   "urlFetchWhitelist": [

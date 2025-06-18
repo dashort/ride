@@ -868,6 +868,7 @@ function getAdminUsersFallback() {
   // Default admin emails - UPDATE THESE WITH YOUR ACTUAL ADMIN EMAILS!
   return [
     'admin@yourdomain.com',
+    'jpsotraffic@gmail.com',
     'manager@yourdomain.com',
     // Add your actual admin email here:
     // 'your-email@gmail.com'

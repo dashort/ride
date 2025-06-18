@@ -4316,7 +4316,7 @@ function getAdminUsers() {
   // Fallback to hardcoded admin emails
   return [
     'admin@yourdomain.com',
-    'jpsotraffic@gmail.com',
+      'jpsotraffic@gmail.com',
     'manager@yourdomain.com'
     // Add your admin emails here
   ];
@@ -4334,7 +4334,8 @@ function getDispatcherUsers() {
   }
   
   return [
-    'dispatcher@yourdomain.com'
+    'dispatcher@yourdomain.com',
+    'jpdispatcher100@gmail.com'
     // Add dispatcher emails here
   ];
 }
