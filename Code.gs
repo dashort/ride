@@ -4316,7 +4316,6 @@ function getAdminUsers() {
   // Fallback to hardcoded admin emails
   return [
     'admin@yourdomain.com',
-    'jpsotraffic@gmail.com',
     'manager@yourdomain.com'
     // Add your admin emails here
   ];
