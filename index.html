@@ -492,8 +492,8 @@
         const fallbackUser = (error && error.user) ? error.user : {
             name: 'System User',
             email: 'user@system.com',
-            roles: ['admin'],
-            permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
+            roles: ['guest'],
+            permissions: []
         };
         handleUserDataSafely(fallbackUser);
         setFallbackValues();
