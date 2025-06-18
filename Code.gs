@@ -8210,10 +8210,9 @@ function handleUserManagementPage(e) {
       const navigationHtml = getRoleBasedNavigationSafe('user-management', authResult.user, authResult.rider);
       content = injectUserInfoSafe(content, authResult.user, authResult.rider);
       content = addNavigationToContentSafe(content, navigationHtml);
-      content = addUserDataInjectionSafe(content, authResult.user, authResult.rider);
-      
       htmlOutput.setContent(content);
-      
+      addUserDataInjectionSafe(htmlOutput, authResult.user, authResult.rider);
+
       return htmlOutput
         .setTitle('User Management - Escort Management')
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);

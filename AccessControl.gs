@@ -1618,7 +1618,7 @@ window.currentUser = {
 console.log('👤 User context loaded via addUserDataInjectionSafe (appended).');
 </script>`;
     
-    htmlOutput.append(userScript); // Append directly to htmlOutput
+    htmlOutput.appendUntrusted(userScript); // Use appendUntrusted to inject raw HTML/JS
     // No return needed, or return htmlOutput if preferred by other parts of the system
     
   } catch (error) {
