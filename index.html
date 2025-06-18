@@ -856,29 +856,7 @@
         window.app = app;
         console.log('🐛 Debug mode enabled. Access app state via window.app');
 
-        setTimeout(() => {
-            const debugBtn = document.createElement('button');
-            debugBtn.textContent = '🐛 Debug Dashboard';
-            debugBtn.style.position = 'fixed';
-            debugBtn.style.bottom = '20px';
-            debugBtn.style.right = '20px';
-            debugBtn.style.zIndex = '9999';
-            debugBtn.onclick = () => {
-                console.log('=== DEBUG INFO ===');
-                console.log('App state:', app);
-                console.log('User:', app.user);
-                console.log('Online:', app.isOnline);
 
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    google.script.run
-                        .withSuccessHandler(result => console.log('Server test success:', result))
-                        .withFailureHandler(error => console.log('Server test failed:', error))
-                        .getCurrentUser();
-                }
-            };
-            document.body.appendChild(debugBtn);
-        }, 1000);
-    }
 
    window.addEventListener('pageshow', function(evt) {
      var navType;
@@ -915,55 +893,7 @@
         // This function can remain empty. Its presence helps prevent bfcache in some browsers.
     });
     // Add this to your main pages to debug navigation issues
-(function() {
-    console.log('=== NAVIGATION DEBUG ===');
-    console.log('Page loaded at:', new Date().toISOString());
-    console.log('Current URL:', window.location.href);
-    console.log('Document ready state:', document.readyState);
-    console.log('Body content length:', document.body ? document.body.innerHTML.length : 'No body');
-    
-    // Track navigation events
-    window.addEventListener('beforeunload', function() {
-        console.log('Page unloading...');
-    });
-    
-    window.addEventListener('pageshow', function(evt) {
-        console.log('Page show event:', {
-            persisted: evt.persisted,
-            timeStamp: evt.timeStamp,
-            target: evt.target.location?.href
-        });
-    });
-    
-    window.addEventListener('pagehide', function(evt) {
-        console.log('Page hide event:', {
-            persisted: evt.persisted,
-            timeStamp: evt.timeStamp
-        });
-    });
-    
-    window.addEventListener('popstate', function(evt) {
-        console.log('Popstate event (back/forward):', {
-            state: evt.state,
-            url: window.location.href
-        });
-    });
-    
-    // Check navigation type
-    if (performance.getEntriesByType) {
-        const nav = performance.getEntriesByType('navigation')[0];
-        if (nav) {
-            console.log('Navigation type:', nav.type);
-            console.log('Navigation timing:', {
-                loadStart: nav.loadEventStart,
-                domContentLoaded: nav.domContentLoadedEventEnd,
-                loadComplete: nav.loadEventEnd
-            });
-        }
-    }
-    
-    console.log('=== END DEBUG ===');
-})();
+()();
 </script>
 </body>
 </html>

@@ -3,6 +3,897 @@
  * functions were extracted into Config.gs and Menu.gs.
  */
 
+/**
+ * Comprehensive authentication diagnostic function
+ * Add this to your Code.gs file and run it to diagnose the authentication issue
+ */
+var AUTH_TRACE = [];
+/**
+ * Trace function calls to see which authentication functions are being used
+ */
+function traceAuthFunction(functionName, email, source) {
+  const timestamp = new Date().toISOString();
+  AUTH_TRACE.push({
+    timestamp: timestamp,
+    function: functionName,
+    email: email || 'NO_EMAIL',
+    source: source || 'unknown'
+  });
+  
+  console.log(`🔍 AUTH TRACE: ${functionName} -> ${email} (${source})`);
+  
+  // If we see jpsotraffic@gmail.com, log it prominently
+  if (email === 'jpsotraffic@gmail.com') {
+    console.log(`🚨 JPSOTRAFFIC DETECTED in ${functionName}!`);
+  }
+}
+
+/**
+ * Enhanced getCurrentUser with tracing
+ * REPLACE your getCurrentUser function in CoreUtils.gs with this version
+ */
+function getCurrentUser() {
+  try {
+    console.log('🔍 getCurrentUser called from CoreUtils.gs');
+    
+    // Delegate to the centralized authentication service
+    if (typeof authenticateAndAuthorizeUser === 'function') {
+      const auth = authenticateAndAuthorizeUser();
+      if (auth && auth.success && auth.user) {
+        traceAuthFunction('getCurrentUser->authenticateAndAuthorizeUser', auth.user.email, 'success');
+        logActivity(`User ${auth.user.email} logged in with roles: ${auth.user.roles.join(', ')}`);
+        return auth.user;
+      } else {
+        traceAuthFunction('getCurrentUser->authenticateAndAuthorizeUser', 'FAILED', 'auth_failed');
+      }
+    } else {
+      traceAuthFunction('getCurrentUser', 'NO_AUTH_FUNCTION', 'missing_function');
+    }
+
+    // Fallback to session information if the auth service fails
+    console.log('⚠️ getCurrentUser falling back to direct session...');
+    const userEmail = Session.getActiveUser().getEmail();
+    const displayName = getUserDisplayName(userEmail);
+    
+    traceAuthFunction('getCurrentUser->fallback', userEmail, 'session_fallback');
+    
+    return { email: userEmail, name: displayName, roles: ['guest'], permissions: ['view'] };
+  } catch (error) {
+    console.log('❌ getCurrentUser error:', error);
+    traceAuthFunction('getCurrentUser->error', 'anonymous@example.com', 'error');
+    logError('Error getting current user:', error);
+    return { email: 'anonymous@example.com', name: 'Guest User', roles: ['guest'], permissions: ['view'] };
+  }
+}
+/**
+ * Comprehensive Settings sheet diagnostic
+ * Add this to your Code.gs and run it to see what's in your Settings sheet
+ */
+function diagnoseSettingsSheet() {
+  console.log('🔍 === SETTINGS SHEET DIAGNOSTIC ===');
+  
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Check all sheet names
+    const allSheets = spreadsheet.getSheets().map(sheet => sheet.getName());
+    console.log('📋 All sheet names:', allSheets);
+    
+    // Check for different possible Settings sheet names
+    const possibleNames = ['Settings', 'settings', 'SETTINGS', 'Config', 'Configuration'];
+    let settingsSheet = null;
+    let actualName = '';
+    
+    for (const name of possibleNames) {
+      try {
+        const sheet = spreadsheet.getSheetByName(name);
+        if (sheet) {
+          settingsSheet = sheet;
+          actualName = name;
+          console.log(`✅ Found Settings sheet with name: "${actualName}"`);
+          break;
+        }
+      } catch (e) {
+        // Continue checking
+      }
+    }
+    
+    if (!settingsSheet) {
+      console.log('❌ No Settings sheet found with any expected name');
+      console.log('📋 Available sheets:', allSheets);
+      return {
+        success: false,
+        error: 'Settings sheet not found',
+        availableSheets: allSheets,
+        suggestion: 'Create a sheet named "Settings" or update CONFIG.sheets.settings'
+      };
+    }
+    
+    // Check what's in the Settings sheet
+    console.log(`\n📊 Reading data from "${actualName}" sheet...`);
+    
+    const dataRange = settingsSheet.getDataRange();
+    const allData = dataRange.getValues();
+    
+    console.log(`📐 Sheet dimensions: ${allData.length} rows x ${allData[0]?.length || 0} columns`);
+    
+    // Show the raw data
+    console.log('\n📋 Raw sheet data:');
+    allData.forEach((row, index) => {
+      console.log(`Row ${index + 1}:`, row);
+    });
+    
+    // Test specific ranges that the system tries to read
+    console.log('\n🔍 Testing admin email range (B2:B10):');
+    try {
+      const adminRange = settingsSheet.getRange('B2:B10').getValues();
+      const adminEmails = adminRange.flat().filter(email => email && email.trim());
+      console.log('Admin emails found:', adminEmails);
+      
+      if (adminEmails.includes('jpsotraffic@gmail.com')) {
+        console.log('✅ jpsotraffic@gmail.com is in the admin list (B2:B10)');
+      } else {
+        console.log('⚠️ jpsotraffic@gmail.com NOT found in admin range B2:B10');
+      }
+    } catch (e) {
+      console.log('❌ Error reading B2:B10:', e.message);
+    }
+    
+    console.log('\n🔍 Testing dispatcher email range (C2:C10):');
+    try {
+      const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
+      const dispatcherEmails = dispatcherRange.flat().filter(email => email && email.trim());
+      console.log('Dispatcher emails found:', dispatcherEmails);
+    } catch (e) {
+      console.log('❌ Error reading C2:C10:', e.message);
+    }
+    
+    // Check CONFIG reference
+    console.log('\n🔍 Checking CONFIG.sheets.settings:');
+    try {
+      if (typeof CONFIG !== 'undefined' && CONFIG.sheets && CONFIG.sheets.settings) {
+        console.log('CONFIG.sheets.settings =', CONFIG.sheets.settings);
+        
+        if (CONFIG.sheets.settings !== actualName) {
+          console.log(`⚠️ MISMATCH: CONFIG expects "${CONFIG.sheets.settings}" but sheet is named "${actualName}"`);
+        } else {
+          console.log('✅ CONFIG matches actual sheet name');
+        }
+      } else {
+        console.log('⚠️ CONFIG.sheets.settings not defined');
+      }
+    } catch (e) {
+      console.log('❌ Error checking CONFIG:', e.message);
+    }
+    
+    return {
+      success: true,
+      sheetName: actualName,
+      dimensions: { rows: allData.length, cols: allData[0]?.length || 0 },
+      adminEmailsInB2B10: settingsSheet.getRange('B2:B10').getValues().flat().filter(email => email && email.trim()),
+      dispatcherEmailsInC2C10: settingsSheet.getRange('C2:C10').getValues().flat().filter(email => email && email.trim()),
+      allSheetNames: allSheets
+    };
+    
+  } catch (error) {
+    console.error('❌ Diagnostic failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Fixed getAdminUsers function that works regardless of CONFIG
+ * REPLACE your getAdminUsers function in Code.gs with this version
+ */
+function getAdminUsers() {
+  console.log('🔍 getAdminUsers called...');
+  
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // Try multiple possible Settings sheet names
+    const possibleNames = ['Settings', 'settings', 'SETTINGS'];
+    let settingsSheet = null;
+    
+    for (const name of possibleNames) {
+      try {
+        settingsSheet = spreadsheet.getSheetByName(name);
+        if (settingsSheet) {
+          console.log(`✅ Found Settings sheet: "${name}"`);
+          break;
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    if (settingsSheet) {
+      try {
+        console.log('📖 Reading admin emails from Settings sheet...');
+        const adminRange = settingsSheet.getRange('B2:B10').getValues();
+        const adminEmails = adminRange.flat().filter(email => email && email.trim());
+        
+        console.log('📧 Admin emails from sheet:', adminEmails);
+        
+        if (adminEmails.length > 0) {
+          return adminEmails;
+        } else {
+          console.log('⚠️ No admin emails found in Settings sheet, using fallback');
+        }
+      } catch (error) {
+        console.log('❌ Error reading Settings sheet:', error.message);
+      }
+    } else {
+      console.log('⚠️ Settings sheet not found, using fallback');
+    }
+  } catch (error) {
+    console.log('❌ Error accessing spreadsheet:', error.message);
+  }
+  
+  // Fallback to hardcoded admin emails
+  console.log('📧 Using hardcoded admin fallback');
+  return [
+    'admin@yourdomain.com',
+    'jpsotraffic@gmail.com',
+    'manager@yourdomain.com'
+    // Add your admin emails here
+  ];
+}
+/**
+ * Fix the Settings sheet structure to have clean email data
+ * Run this function to restructure your Settings sheet properly
+ */
+function fixSettingsSheetStructure() {
+  console.log('🛠️ Fixing Settings sheet structure...');
+  
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const settingsSheet = spreadsheet.getSheetByName('Settings');
+    
+    if (!settingsSheet) {
+      console.log('❌ Settings sheet not found');
+      return { success: false, error: 'Settings sheet not found' };
+    }
+    
+    // Clear the existing problematic structure
+    console.log('🧹 Clearing existing data...');
+    settingsSheet.clear();
+    
+    // Set up clean structure with proper email separation
+    const newStructure = [
+      // Row 1: Headers
+      ['Setting Type', 'Admin Emails', 'Dispatcher Emails', 'System Config', 'Value', 'Notes', 'Month Codes', 'Code'],
+      
+      // Rows 2-11: Admin and Dispatcher emails (clean email-only data)
+      ['User Access', 'dashort@gmail.com', 'dispatcher@example.com', '', '', 'Primary accounts', 'January', 'A'],
+      ['User Access', 'jpsotraffic@gmail.com', 'jpdispatcher100@gmail.com', '', '', 'JP accounts', 'February', 'B'],
+      ['User Access', 'manager@example.com', 'operator@example.com', '', '', 'Management', 'March', 'C'],
+      ['User Access', '', '', '', '', '', 'April', 'D'],
+      ['User Access', '', '', '', '', '', 'May', 'E'],
+      ['User Access', '', '', '', '', '', 'June', 'F'],
+      ['User Access', '', '', '', '', '', 'July', 'G'],
+      ['User Access', '', '', '', '', '', 'August', 'H'],
+      ['User Access', '', '', '', '', '', 'September', 'I'],
+      ['User Access', '', '', '', '', '', 'October', 'J'],
+      
+      // Additional system config rows
+      ['Auth Config', 'require_2fa', 'false', '', '', 'Two-factor auth', 'November', 'K'],
+      ['Auth Config', 'session_timeout', '24', '', 'hours', 'Session duration', 'December', 'L']
+    ];
+    
+    // Write the new structure
+    console.log('📝 Writing new structure...');
+    settingsSheet.getRange(1, 1, newStructure.length, newStructure[0].length).setValues(newStructure);
+    
+    // Format headers
+    console.log('🎨 Formatting headers...');
+    settingsSheet.getRange(1, 1, 1, newStructure[0].length)
+      .setFontWeight('bold')
+      .setBackground('#4285f4')
+      .setFontColor('white');
+    
+    // Auto-resize columns
+    settingsSheet.autoResizeColumns(1, newStructure[0].length);
+    
+    console.log('✅ Settings sheet structure fixed!');
+    
+    // Test the fix
+    console.log('\n🧪 Testing the fix...');
+    const testResult = testAdminEmailReading();
+    
+    return {
+      success: true,
+      message: 'Settings sheet structure fixed successfully',
+      testResult: testResult
+    };
+    
+  } catch (error) {
+    console.error('❌ Error fixing Settings sheet:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Robust admin email reading function that handles mixed data types
+ * REPLACE your getAdminUsers function with this version
+ */
+function getAdminUsers() {
+  console.log('🔍 getAdminUsers called (robust version)...');
+  
+  try {
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    if (settingsSheet) {
+      console.log('📖 Reading admin emails from Settings sheet...');
+      
+      // Read the range
+      const adminRange = settingsSheet.getRange('B2:B11').getValues(); // Extended range
+      console.log('📊 Raw admin range data:', adminRange);
+      
+      // Robust filtering to handle mixed data types
+      const adminEmails = adminRange
+        .flat() // Flatten the 2D array
+        .filter(cell => {
+          // Only include cells that are strings and look like emails
+          if (typeof cell !== 'string') return false;
+          if (!cell || !cell.trim()) return false;
+          
+          const trimmed = cell.trim();
+          
+          // Skip instructional text
+          if (trimmed.includes('(') || trimmed.includes(')')) return false;
+          if (trimmed.toLowerCase().includes('add more')) return false;
+          if (trimmed.toLowerCase().includes('users with')) return false;
+          if (trimmed.toLowerCase().includes('access')) return false;
+          
+          // Must contain @ symbol to be an email
+          if (!trimmed.includes('@')) return false;
+          
+          return true;
+        })
+        .map(email => email.trim()); // Clean up the emails
+      
+      console.log('📧 Filtered admin emails:', adminEmails);
+      
+      if (adminEmails.length > 0) {
+        return adminEmails;
+      } else {
+        console.log('⚠️ No valid admin emails found in Settings sheet');
+      }
+    } else {
+      console.log('⚠️ Settings sheet not found');
+    }
+  } catch (error) {
+    console.log('❌ Error reading Settings sheet:', error.message);
+  }
+  
+  // Fallback to hardcoded admin emails
+  console.log('📧 Using hardcoded admin fallback');
+  return [
+    'dashort@gmail.com',
+    'jpsotraffic@gmail.com',
+    'manager@example.com'
+  ];
+}
+
+/**
+ * Robust dispatcher email reading function
+ */
+function getDispatcherUsers() {
+  console.log('🔍 getDispatcherUsers called (robust version)...');
+  
+  try {
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    if (settingsSheet) {
+      console.log('📖 Reading dispatcher emails from Settings sheet...');
+      
+      const dispatcherRange = settingsSheet.getRange('C2:C11').getValues();
+      console.log('📊 Raw dispatcher range data:', dispatcherRange);
+      
+      // Robust filtering
+      const dispatcherEmails = dispatcherRange
+        .flat()
+        .filter(cell => {
+          if (typeof cell !== 'string') return false;
+          if (!cell || !cell.trim()) return false;
+          
+          const trimmed = cell.trim();
+          
+          // Skip instructional text
+          if (trimmed.includes('(') || trimmed.includes(')')) return false;
+          if (trimmed.toLowerCase().includes('add more')) return false;
+          if (trimmed.toLowerCase().includes('users with')) return false;
+          if (trimmed.toLowerCase().includes('access')) return false;
+          
+          // Must contain @ symbol
+          if (!trimmed.includes('@')) return false;
+          
+          return true;
+        })
+        .map(email => email.trim());
+      
+      console.log('📧 Filtered dispatcher emails:', dispatcherEmails);
+      
+      if (dispatcherEmails.length > 0) {
+        return dispatcherEmails;
+      }
+    }
+  } catch (error) {
+    console.log('❌ Error reading dispatcher emails:', error.message);
+  }
+  
+  // Fallback
+  return [
+    'dispatcher@example.com',
+    'jpdispatcher100@gmail.com'
+  ];
+}
+
+/**
+ * Test admin email reading after fix
+ */
+function testAdminEmailReading() {
+  console.log('🧪 === TESTING ADMIN EMAIL READING ===');
+  
+  try {
+    // Test admin emails
+    console.log('\n1. Testing getAdminUsers():');
+    const admins = getAdminUsers();
+    console.log('✅ Admin emails:', admins);
+    
+    // Test dispatcher emails  
+    console.log('\n2. Testing getDispatcherUsers():');
+    const dispatchers = getDispatcherUsers();
+    console.log('✅ Dispatcher emails:', dispatchers);
+    
+    // Test if jpsotraffic is in admin list
+    console.log('\n3. Checking jpsotraffic@gmail.com:');
+    const isJpsotrafficAdmin = admins.includes('jpsotraffic@gmail.com');
+    console.log(`jpsotraffic@gmail.com is admin: ${isJpsotrafficAdmin ? '✅ YES' : '❌ NO'}`);
+    
+    // Test authentication
+    console.log('\n4. Testing full authentication:');
+    const authResult = authenticateAndAuthorizeUser();
+    console.log('Auth success:', authResult.success);
+    console.log('Auth user email:', authResult.user?.email);
+    console.log('Auth user role:', authResult.user?.role);
+    
+    return {
+      success: true,
+      adminEmails: admins,
+      dispatcherEmails: dispatchers,
+      jpsotrafficIsAdmin: isJpsotrafficAdmin,
+      authResult: authResult
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Quick fix - just clean the existing data without restructuring
+ */
+function quickFixSettingsSheetEmails() {
+  console.log('🚀 Quick fix for Settings sheet emails...');
+  
+  try {
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    
+    // Just clean up the admin email column (B2:B11)
+    const cleanAdminEmails = [
+      ['dashort@gmail.com'],
+      ['jpsotraffic@gmail.com'], 
+      ['manager@example.com'],
+      [''], // Empty cells for additional emails
+      [''],
+      [''],
+      [''],
+      [''],
+      [''],
+      ['']
+    ];
+    
+    console.log('📝 Writing clean admin emails to B2:B11...');
+    settingsSheet.getRange('B2:B11').setValues(cleanAdminEmails);
+    
+    // Clean up dispatcher emails too
+    const cleanDispatcherEmails = [
+      ['dispatcher@example.com'],
+      ['jpdispatcher100@gmail.com'],
+      ['operator@example.com'],
+      [''],
+      [''],
+      [''],
+      [''],
+      [''],
+      [''],
+      ['']
+    ];
+    
+    console.log('📝 Writing clean dispatcher emails to C2:C11...');
+    settingsSheet.getRange('C2:C11').setValues(cleanDispatcherEmails);
+    
+    console.log('✅ Quick fix completed!');
+    
+    // Test the fix
+    const testResult = testAdminEmailReading();
+    return {
+      success: true,
+      message: 'Quick fix completed successfully',
+      testResult: testResult
+    };
+    
+  } catch (error) {
+    console.error('❌ Quick fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+/**
+ * Fixed getAdminUsersSafe function 
+ * REPLACE your getAdminUsersSafe function in AccessControl.gs with this version
+ * */
+ 
+function getAdminUsersSafe() {
+  try {
+    // First try the main getAdminUsers function
+    if (typeof getAdminUsers === 'function') {
+      const admins = getAdminUsers();
+      if (admins && admins.length > 0) {
+        return admins;
+      }
+    }
+    
+    // Fallback method
+    return getAdminUsersFallback();
+    
+  } catch (error) {
+    console.error('❌ Error getting admin users:', error);
+    return ['jpsotraffic@gmail.com']; // At least include your account as fallback
+  }
+}
+
+/**
+ * Test the fixed admin user functions
+ */
+function testFixedAdminFunctions() {
+  console.log('🧪 === TESTING FIXED ADMIN FUNCTIONS ===');
+  
+  console.log('\n1. Testing getAdminUsers():');
+  try {
+    const admins1 = getAdminUsers();
+    console.log('Result:', admins1);
+  } catch (e) {
+    console.log('Error:', e.message);
+  }
+  
+  console.log('\n2. Testing getAdminUsersSafe():');
+  try {
+    const admins2 = getAdminUsersSafe();
+    console.log('Result:', admins2);
+  } catch (e) {
+    console.log('Error:', e.message);
+  }
+  
+  console.log('\n3. Testing authentication with fixed functions:');
+  try {
+    const authResult = authenticateAndAuthorizeUser();
+    console.log('Auth result:', JSON.stringify(authResult, null, 2));
+  } catch (e) {
+    console.log('Auth error:', e.message);
+  }
+}
+
+/**
+ * Create or update Settings sheet with proper structure
+ */
+function createOrUpdateSettingsSheet() {
+  console.log('🛠️ Creating/updating Settings sheet...');
+  
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let settingsSheet = spreadsheet.getSheetByName('Settings');
+    
+    if (!settingsSheet) {
+      console.log('📄 Creating new Settings sheet...');
+      settingsSheet = spreadsheet.insertSheet('Settings');
+    } else {
+      console.log('📄 Updating existing Settings sheet...');
+    }
+    
+    // Create the proper structure
+    const headers = ['Setting Type', 'Admin Emails', 'Dispatcher Emails', 'Notes'];
+    settingsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Add sample data if sheet is empty
+    const existingData = settingsSheet.getDataRange().getValues();
+    if (existingData.length === 1) { // Only headers
+      const sampleData = [
+        ['User Management', 'jpsotraffic@gmail.com', 'dispatcher@example.com', 'Main admin account'],
+        ['', 'admin@yourdomain.com', 'operator@example.com', 'Secondary admin'],
+        ['', 'manager@yourdomain.com', '', 'Manager access'],
+        ['', '', '', ''],
+        ['', '(Add more emails below)', '(Add more emails below)', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', ''],
+        ['', '', '', '']
+      ];
+      
+      settingsSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
+    }
+    
+    // Format the sheet
+    settingsSheet.getRange(1, 1, 1, headers.length)
+      .setFontWeight('bold')
+      .setBackground('#4285f4')
+      .setFontColor('white');
+    
+    settingsSheet.autoResizeColumns(1, headers.length);
+    
+    console.log('✅ Settings sheet created/updated successfully');
+    
+    // Test reading from the updated sheet
+    console.log('\n🧪 Testing updated sheet:');
+    const testAdmins = getAdminUsers();
+    console.log('Admin emails now:', testAdmins);
+    
+    return {
+      success: true,
+      message: 'Settings sheet created/updated successfully',
+      adminEmails: testAdmins
+    };
+    
+  } catch (error) {
+    console.error('❌ Error creating/updating Settings sheet:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+function diagnoseAuthenticationIssue() {
+  console.log('🔍 === AUTHENTICATION DIAGNOSTIC REPORT ===');
+  
+  try {
+    // 1. Test raw Session methods
+    console.log('\n1. RAW SESSION TESTING:');
+    
+    let activeUser = null;
+    let activeUserEmail = '';
+    let effectiveUser = null;
+    let effectiveUserEmail = '';
+    
+    try {
+      activeUser = Session.getActiveUser();
+      console.log('✅ Session.getActiveUser() succeeded');
+      console.log('   Type:', typeof activeUser);
+      
+      if (activeUser) {
+        try {
+          activeUserEmail = activeUser.getEmail();
+          console.log('✅ getEmail() succeeded:', activeUserEmail);
+        } catch (e) {
+          console.log('❌ getEmail() failed:', e.message);
+          activeUserEmail = activeUser.email || 'NO_EMAIL_PROPERTY';
+          console.log('   Fallback email property:', activeUserEmail);
+        }
+      }
+    } catch (e) {
+      console.log('❌ Session.getActiveUser() failed:', e.message);
+    }
+    
+    try {
+      effectiveUser = Session.getEffectiveUser();
+      console.log('✅ Session.getEffectiveUser() succeeded');
+      
+      if (effectiveUser) {
+        try {
+          effectiveUserEmail = effectiveUser.getEmail();
+          console.log('✅ getEmail() succeeded:', effectiveUserEmail);
+        } catch (e) {
+          console.log('❌ getEmail() failed:', e.message);
+          effectiveUserEmail = effectiveUser.email || 'NO_EMAIL_PROPERTY';
+          console.log('   Fallback email property:', effectiveUserEmail);
+        }
+      }
+    } catch (e) {
+      console.log('❌ Session.getEffectiveUser() failed:', e.message);
+    }
+    
+    // 2. Test cached data
+    console.log('\n2. CACHED DATA TESTING:');
+    try {
+      const properties = PropertiesService.getScriptProperties();
+      const cachedEmail = properties.getProperty('CACHED_USER_EMAIL');
+      const cachedName = properties.getProperty('CACHED_USER_NAME');
+      
+      console.log('Cached Email:', cachedEmail || 'NONE');
+      console.log('Cached Name:', cachedName || 'NONE');
+      
+      if (cachedEmail && cachedEmail !== activeUserEmail && cachedEmail !== effectiveUserEmail) {
+        console.log('⚠️  WARNING: Cached email differs from session emails!');
+        console.log('   This might be causing the jpsotraffic@gmail.com issue');
+      }
+    } catch (e) {
+      console.log('❌ Error reading cached data:', e.message);
+    }
+    
+    // 3. Test enhanced user session
+    console.log('\n3. ENHANCED USER SESSION TESTING:');
+    try {
+      const enhancedSession = getEnhancedUserSession();
+      console.log('Enhanced session result:', JSON.stringify(enhancedSession, null, 2));
+      
+      if (enhancedSession.email === 'jpsotraffic@gmail.com') {
+        console.log('🚨 FOUND THE PROBLEM: Enhanced session returning jpsotraffic@gmail.com');
+        console.log('   Source:', enhancedSession.source);
+      }
+    } catch (e) {
+      console.log('❌ Enhanced session failed:', e.message);
+    }
+    
+    // 4. Test full authentication
+    console.log('\n4. FULL AUTHENTICATION TESTING:');
+    try {
+      const authResult = authenticateAndAuthorizeUser();
+      console.log('Auth result:', JSON.stringify(authResult, null, 2));
+      
+      if (authResult.success && authResult.user.email === 'jpsotraffic@gmail.com') {
+        console.log('🚨 FOUND THE PROBLEM: Full auth returning jpsotraffic@gmail.com');
+      }
+    } catch (e) {
+      console.log('❌ Full authentication failed:', e.message);
+    }
+    
+    // 5. Test admin users list
+    console.log('\n5. ADMIN USERS TESTING:');
+    try {
+      const adminUsers = getAdminUsersSafe();
+      console.log('Admin users list:', adminUsers);
+      
+      if (adminUsers.includes('jpsotraffic@gmail.com')) {
+        console.log('✅ jpsotraffic@gmail.com is legitimately in admin list');
+      }
+    } catch (e) {
+      console.log('❌ Error getting admin users:', e.message);
+    }
+    
+    // 6. Summary and recommendations
+    console.log('\n6. SUMMARY:');
+    console.log('Active user email:', activeUserEmail || 'NONE');
+    console.log('Effective user email:', effectiveUserEmail || 'NONE');
+    
+    if (!activeUserEmail && !effectiveUserEmail) {
+      console.log('🚨 PROBLEM: No user session detected at all');
+      console.log('📋 SOLUTION: User needs to sign in to Google first');
+    } else if (activeUserEmail && activeUserEmail !== 'jpsotraffic@gmail.com') {
+      console.log('✅ Good: Session shows correct user');
+      console.log('🔍 Need to check why enhanced session or auth is overriding this');
+    }
+    
+    return {
+      activeUserEmail: activeUserEmail,
+      effectiveUserEmail: effectiveUserEmail,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Diagnostic failed:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Clear all authentication cache and force fresh session detection
+ */
+function clearAllAuthenticationCache() {
+  console.log('🧹 Clearing all authentication cache...');
+  
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    
+    // Clear known cache keys
+    const cacheKeys = [
+      'CACHED_USER_EMAIL',
+      'CACHED_USER_NAME',
+      'USER_SESSION_CACHE',
+      'AUTH_RESULT_CACHE',
+      'LAST_AUTH_CHECK'
+    ];
+    
+    cacheKeys.forEach(key => {
+      try {
+        properties.deleteProperty(key);
+        console.log('✅ Cleared:', key);
+      } catch (e) {
+        console.log('⚠️  Could not clear:', key);
+      }
+    });
+    
+    console.log('✅ Authentication cache cleared');
+    return { success: true, message: 'Cache cleared successfully' };
+    
+  } catch (error) {
+    console.error('❌ Error clearing cache:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Force fresh user session detection (bypasses all caching)
+ */
+function getFreshUserSession() {
+  console.log('🔄 Getting fresh user session (no cache)...');
+  
+  try {
+    let userEmail = '';
+    let userName = '';
+    
+    // Method 1: Direct Session.getActiveUser()
+    try {
+      const user = Session.getActiveUser();
+      if (user && user.getEmail) {
+        userEmail = user.getEmail();
+        userName = user.getName ? user.getName() : '';
+        console.log('✅ Got user from Session.getActiveUser():', userEmail);
+      }
+    } catch (e) {
+      console.log('⚠️  Session.getActiveUser() failed:', e.message);
+    }
+    
+    // Method 2: Try Session.getEffectiveUser() if needed
+    if (!userEmail) {
+      try {
+        const effectiveUser = Session.getEffectiveUser();
+        if (effectiveUser && effectiveUser.getEmail) {
+          userEmail = effectiveUser.getEmail();
+          userName = effectiveUser.getName ? effectiveUser.getName() : '';
+          console.log('✅ Got user from Session.getEffectiveUser():', userEmail);
+        }
+      } catch (e) {
+        console.log('⚠️  Session.getEffectiveUser() failed:', e.message);
+      }
+    }
+    
+    const result = {
+      email: userEmail.trim(),
+      name: userName.trim() || extractNameFromEmail(userEmail),
+      hasEmail: !!userEmail.trim(),
+      hasName: !!userName.trim(),
+      source: 'fresh_session',
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('Fresh session result:', JSON.stringify(result, null, 2));
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Fresh session detection failed:', error);
+    return {
+      email: '',
+      name: '',
+      hasEmail: false,
+      hasName: false,
+      source: 'error',
+      error: error.message
+    };
+  }
+}
+
 function debugPlaceholderIssues() {
   const filesToCheck = ['index', 'requests', 'assignments', 'notifications', 'reports'];
   
@@ -4131,17 +5022,6 @@ function getRiderByGoogleEmailSafe(email) {
   }
 }
 
-function getAdminUsersSafe() {
-  try {
-    if (typeof getAdminUsers === 'function') {
-      return getAdminUsers();
-    }
-    return ['admin@example.com']; // Default fallback
-  } catch (error) {
-    console.error('Error in getAdminUsersSafe:', error);
-    return [];
-  }
-}
 
 function getDispatcherUsersSafe() {
   try {
@@ -4301,26 +5181,7 @@ function getRiderByGoogleEmail(email) {
   }
 }
 
-function getAdminUsers() {
-  // You can store these in a Settings sheet or hardcode initially
-  try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
-    if (settingsSheet) {
-      const adminRange = settingsSheet.getRange('B2:B10').getValues(); // Adjust range as needed
-      return adminRange.flat().filter(email => email && email.trim());
-    }
-  } catch (error) {
-    console.log('Settings sheet not found, using default admins');
-  }
-  
-  // Fallback to hardcoded admin emails
-  return [
-    'admin@yourdomain.com',
-      'jpsotraffic@gmail.com',
-    'manager@yourdomain.com'
-    // Add your admin emails here
-  ];
-}
+
 
 function getDispatcherUsers() {
   try {

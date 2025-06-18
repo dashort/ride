@@ -202,7 +202,34 @@ const RESOURCE_ACCESS = {
     }
   }
 };
-
+function immediateSessionTest() {
+  console.log('=== IMMEDIATE SESSION TEST ===');
+  
+  // Test 1: Raw session
+  try {
+    const user = Session.getActiveUser();
+    const email = user.getEmail();
+    console.log('1. Raw Session.getActiveUser().getEmail():', email);
+  } catch (e) {
+    console.log('1. Raw session failed:', e.message);
+  }
+  
+  // Test 2: Cached data
+  try {
+    const cached = PropertiesService.getScriptProperties().getProperty('CACHED_USER_EMAIL');
+    console.log('2. Cached email:', cached);
+  } catch (e) {
+    console.log('2. Cache check failed:', e.message);
+  }
+  
+  // Test 3: Admin list
+  try {
+    const admins = getAdminUsersSafe();
+    console.log('3. Admin list:', admins);
+  } catch (e) {
+    console.log('3. Admin list failed:', e.message);
+  }
+}
 function getRoleBasedNavigation(currentPage, user, rider) {
   console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
   if (!user) {
@@ -231,16 +258,17 @@ function getRoleBasedNavigation(currentPage, user, rider) {
 // 🔧 FIXED USER OBJECT HANDLING - Replace your authentication functions
 
 /**
- * Enhanced user session handling that works reliably
+ * IMMEDIATE FIX: Replace your getEnhancedUserSession function with this version
+ * This version prioritizes fresh session data over cached data
  */
 function getEnhancedUserSession() {
   try {
-    console.log('🔍 Getting enhanced user session...');
+    console.log('🔍 getEnhancedUserSession called from AccessControl.gs');
     
-    // Method 1: Try Session.getActiveUser()
     let user = null;
     let userEmail = '';
     let userName = '';
+    let sessionSource = 'none';
     
     try {
       user = Session.getActiveUser();
@@ -250,9 +278,11 @@ function getEnhancedUserSession() {
         // Safe way to get email
         try {
           userEmail = user.getEmail ? user.getEmail() : (user.email || '');
+          sessionSource = 'active_user_getEmail';
         } catch (e) {
           console.log('⚠️ getEmail() failed, trying alternatives...');
           userEmail = user.email || '';
+          sessionSource = 'active_user_property';
         }
         
         // Safe way to get name
@@ -265,6 +295,7 @@ function getEnhancedUserSession() {
       }
     } catch (error) {
       console.log('⚠️ Session.getActiveUser() failed:', error.message);
+      sessionSource = 'getActiveUser_failed';
     }
     
     // Method 2: Try Session.getEffectiveUser() as fallback
@@ -275,9 +306,11 @@ function getEnhancedUserSession() {
         if (effectiveUser) {
           userEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
           userName = effectiveUser.getName ? effectiveUser.getName() : (effectiveUser.name || '');
+          sessionSource = 'effective_user';
         }
       } catch (error) {
         console.log('⚠️ Session.getEffectiveUser() failed:', error.message);
+        sessionSource = 'getEffectiveUser_failed';
       }
     }
     
@@ -290,11 +323,16 @@ function getEnhancedUserSession() {
         if (cachedEmail) {
           userEmail = cachedEmail;
           userName = cachedName || '';
+          sessionSource = 'cached_properties';
         }
       } catch (error) {
         console.log('⚠️ Cached user info failed:', error.message);
+        sessionSource = 'cache_failed';
       }
     }
+    
+    // Trace the result
+    traceAuthFunction('getEnhancedUserSession', userEmail, sessionSource);
     
     // Return enhanced user object
     const enhancedUser = {
@@ -302,13 +340,13 @@ function getEnhancedUserSession() {
       name: userName.trim() || extractNameFromEmail(userEmail),
       hasEmail: !!userEmail.trim(),
       hasName: !!userName.trim(),
-      source: userEmail ? 'session' : 'none'
+      source: sessionSource
     };
     
     console.log(`✅ Enhanced user session: ${enhancedUser.email} (${enhancedUser.name})`);
     
-    // Cache successful user info
-    if (enhancedUser.hasEmail) {
+    // Cache successful user info (but don't cache jpsotraffic unless it's really the active user)
+    if (enhancedUser.hasEmail && sessionSource.includes('active_user')) {
       try {
         PropertiesService.getScriptProperties().setProperties({
           'CACHED_USER_EMAIL': enhancedUser.email,
@@ -323,6 +361,7 @@ function getEnhancedUserSession() {
     
   } catch (error) {
     console.error('❌ Enhanced user session failed:', error);
+    traceAuthFunction('getEnhancedUserSession->error', '', 'error: ' + error.message);
     return {
       email: '',
       name: '',
@@ -332,6 +371,81 @@ function getEnhancedUserSession() {
       error: error.message
     };
   }
+}
+
+/**
+ * EMERGENCY FIX: Force clear jpsotraffic cache and refresh session
+ * Run this function if users are stuck with jpsotraffic@gmail.com
+ */
+function emergencyFixJpsotrafficIssue() {
+  console.log('🚨 EMERGENCY FIX: Clearing jpsotraffic@gmail.com cache...');
+  
+  try {
+    // Clear all cached data
+    const properties = PropertiesService.getScriptProperties();
+    properties.deleteProperty('CACHED_USER_EMAIL');
+    properties.deleteProperty('CACHED_USER_NAME');
+    
+    console.log('✅ Cleared cached user data');
+    
+    // Get fresh session
+    const freshSession = getFreshUserSession();
+    console.log('Fresh session:', freshSession);
+    
+    // Test authentication with fresh session
+    const authResult = authenticateAndAuthorizeUser();
+    console.log('Auth result after cache clear:', authResult);
+    
+    return {
+      success: true,
+      message: 'Emergency fix applied',
+      freshSession: freshSession,
+      authResult: authResult
+    };
+    
+  } catch (error) {
+    console.error('❌ Emergency fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * USER INSTRUCTION: Add this to your web interface
+ * This creates a "Force Refresh Authentication" button for users
+ */
+function createAuthRefreshButton() {
+  return `
+<div style="margin: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 5px;">
+  <h4>🔄 Authentication Issue?</h4>
+  <p>If you're seeing the wrong user account, click this button to refresh your authentication:</p>
+  <button onclick="forceAuthRefresh()" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer;">
+    🔄 Refresh Authentication
+  </button>
+</div>
+
+<script>
+function forceAuthRefresh() {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        alert('Authentication refreshed! Reloading page...');
+        window.location.reload();
+      })
+      .withFailureHandler(function(error) {
+        alert('Refresh failed: ' + error.message);
+      })
+      .emergencyFixJpsotrafficIssue();
+  } else {
+    // Fallback: just reload the page
+    alert('Reloading page to refresh authentication...');
+    window.location.reload();
+  }
+}
+</script>
+  `;
 }
 /**
  * Fixed admin dashboard data function
@@ -573,12 +687,14 @@ function extractNameFromEmail(email) {
  */
 function authenticateAndAuthorizeUser() {
   try {
-    console.log('🔐 Authenticating and authorizing user...');
+    console.log('🔐 authenticateAndAuthorizeUser called');
     
     // Get user session
     const userSession = getEnhancedUserSession();
+    traceAuthFunction('authenticateAndAuthorizeUser->session', userSession.email, userSession.source);
     
     if (!userSession.hasEmail) {
+      traceAuthFunction('authenticateAndAuthorizeUser', 'NO_EMAIL', 'no_session');
       return {
         success: false,
         error: 'NO_EMAIL',
@@ -594,16 +710,22 @@ function authenticateAndAuthorizeUser() {
     let userRole = 'unauthorized';
     let permissions = [];
     
+    // Trace admin check
+    console.log('🔍 Checking admin users:', adminUsers);
     if (adminUsers.includes(userSession.email)) {
       userRole = 'admin';
       permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'admin');
     } else if (dispatcherUsers.includes(userSession.email)) {
       userRole = 'dispatcher';
       permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'dispatcher');
     } else if (rider && rider.status === 'Active') {
       userRole = 'rider';
       permissions = ['view_own_assignments', 'update_own_status'];
+      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'rider');
     } else {
+      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'unauthorized');
       return {
         success: false,
         error: 'UNAUTHORIZED',
@@ -629,6 +751,8 @@ function authenticateAndAuthorizeUser() {
       avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
     };
     
+    traceAuthFunction('authenticateAndAuthorizeUser->final', authenticatedUser.email, `role:${userRole}`);
+    
     return {
       success: true,
       user: authenticatedUser,
@@ -637,6 +761,7 @@ function authenticateAndAuthorizeUser() {
     
   } catch (error) {
     console.error('❌ Authentication error:', error);
+    traceAuthFunction('authenticateAndAuthorizeUser->error', '', 'error: ' + error.message);
     return {
       success: false,
       error: 'AUTH_ERROR',
@@ -644,109 +769,68 @@ function authenticateAndAuthorizeUser() {
     };
   }
 }
+function clearAuthTrace() {
+  AUTH_TRACE = [];
+  console.log('✅ Authentication trace cleared');
+}
 
 /**
- * Enhanced user session handling
- */
-function getEnhancedUserSession() {
+ * Run a complete trace test
+ 
+function runCompleteAuthTrace() {
+  console.log('🔍 === RUNNING COMPLETE AUTH TRACE ===');
+  
+  // Clear previous trace
+  clearAuthTrace();
+  
+  // Test the main authentication flow
+  console.log('1. Testing doGet authentication flow...');
   try {
-    console.log('🔍 Getting enhanced user session...');
-    
-    let user = null;
-    let userEmail = '';
-    let userName = '';
-    
-    try {
-      user = Session.getActiveUser();
-      console.log('👤 Session user object:', typeof user);
-      
-      if (user) {
-        // Safe way to get email
-        try {
-          userEmail = user.getEmail ? user.getEmail() : (user.email || '');
-        } catch (e) {
-          console.log('⚠️ getEmail() failed, trying alternatives...');
-          userEmail = user.email || '';
-        }
-        
-        // Safe way to get name
-        try {
-          userName = user.getName ? user.getName() : (user.name || '');
-        } catch (e) {
-          console.log('⚠️ getName() failed, trying alternatives...');
-          userName = user.name || user.displayName || '';
-        }
-      }
-    } catch (error) {
-      console.log('⚠️ Session.getActiveUser() failed:', error.message);
-    }
-    
-    // Method 2: Try Session.getEffectiveUser() as fallback
-    if (!userEmail) {
-      try {
-        console.log('🔄 Trying Session.getEffectiveUser()...');
-        const effectiveUser = Session.getEffectiveUser();
-        if (effectiveUser) {
-          userEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
-          userName = effectiveUser.getName ? effectiveUser.getName() : (effectiveUser.name || '');
-        }
-      } catch (error) {
-        console.log('⚠️ Session.getEffectiveUser() failed:', error.message);
-      }
-    }
-    
-    // Method 3: Try PropertiesService for cached user info
-    if (!userEmail) {
-      try {
-        console.log('🔄 Trying cached user info...');
-        const cachedEmail = PropertiesService.getScriptProperties().getProperty('CACHED_USER_EMAIL');
-        const cachedName = PropertiesService.getScriptProperties().getProperty('CACHED_USER_NAME');
-        if (cachedEmail) {
-          userEmail = cachedEmail;
-          userName = cachedName || '';
-        }
-      } catch (error) {
-        console.log('⚠️ Cached user info failed:', error.message);
-      }
-    }
-    
-    // Return enhanced user object
-    const enhancedUser = {
-      email: userEmail.trim(),
-      name: userName.trim() || extractNameFromEmail(userEmail),
-      hasEmail: !!userEmail.trim(),
-      hasName: !!userName.trim(),
-      source: userEmail ? 'session' : 'none'
-    };
-    
-    console.log(`✅ Enhanced user session: ${enhancedUser.email} (${enhancedUser.name})`);
-    
-    // Cache successful user info
-    if (enhancedUser.hasEmail) {
-      try {
-        PropertiesService.getScriptProperties().setProperties({
-          'CACHED_USER_EMAIL': enhancedUser.email,
-          'CACHED_USER_NAME': enhancedUser.name
-        });
-      } catch (e) {
-        console.log('⚠️ Failed to cache user info');
-      }
-    }
-    
-    return enhancedUser;
-    
+    const mockEvent = { parameter: { page: 'dashboard' } };
+    const result = doGet(mockEvent);
+    console.log('✅ doGet completed');
   } catch (error) {
-    console.error('❌ Enhanced user session failed:', error);
-    return {
-      email: '',
-      name: '',
-      hasEmail: false,
-      hasName: false,
-      source: 'error',
-      error: error.message
-    };
+    console.log('❌ doGet failed:', error.message);
   }
+  
+  // Test getCurrentUser directly
+  console.log('\n2. Testing getCurrentUser directly...');
+  try {
+    const currentUser = getCurrentUser();
+    console.log('✅ getCurrentUser completed:', currentUser.email);
+  } catch (error) {
+    console.log('❌ getCurrentUser failed:', error.message);
+  }
+  
+  // Show the trace
+  console.log('\n3. Authentication trace results:');
+  viewAuthTrace();
+  
+  return AUTH_TRACE;
 }
+*/
+/**
+ * Function to view the authentication trace
+ */
+function viewAuthTrace() {
+  console.log('🔍 === AUTHENTICATION TRACE ===');
+  AUTH_TRACE.forEach((entry, index) => {
+    console.log(`${index + 1}. ${entry.timestamp} | ${entry.function} -> ${entry.email} (${entry.source})`);
+  });
+  
+  // Show jpsotraffic entries specifically
+  const jpsotrafficEntries = AUTH_TRACE.filter(entry => entry.email === 'jpsotraffic@gmail.com');
+  if (jpsotrafficEntries.length > 0) {
+    console.log('\n🚨 JPSOTRAFFIC@GMAIL.COM ENTRIES:');
+    jpsotrafficEntries.forEach((entry, index) => {
+      console.log(`${index + 1}. ${entry.function} -> ${entry.source}`);
+    });
+  }
+  
+  return AUTH_TRACE;
+}
+
+
 
 /**
  * Extract name from email address as fallback
@@ -1163,98 +1247,59 @@ function testAuthenticationSimple() {
  */
 function doGet(e) {
   try {
-    console.log('🚀 doGet with fixed user handling...');
-    console.log('Parameters:', JSON.stringify(e.parameter));
+    // Authentication
+    if (e.parameter?.action === 'signin') return createSignInPage();
     
-    // 🔐 STEP 1: Check if this is a sign-in request
-    if (e.parameter && e.parameter.action === 'signin') {
-      return createSignInPage();
-    }
-    
-    // 🔐 STEP 2: Enhanced user session check
     const userSession = getEnhancedUserSession();
+    if (!userSession.hasEmail) return createSignInPage();
     
-    console.log('👤 User session result:', userSession);
-    
-    // If no email, show sign-in page
-    if (!userSession.hasEmail) {
-      console.log('❌ No user email found, redirecting to sign-in');
-      return createSignInPage();
-    }
-    
-    // 🔐 STEP 3: Check if user is authorized
+    // Authorization
     const rider = getRiderByGoogleEmailSafe(userSession.email);
     const adminUsers = getAdminUsersSafe();
     const dispatcherUsers = getDispatcherUsersSafe();
     
     let userRole = 'unauthorized';
-    let permissions = [];
+    if (adminUsers.includes(userSession.email)) userRole = 'admin';
+    else if (dispatcherUsers.includes(userSession.email)) userRole = 'dispatcher';
+    else if (rider?.status === 'Active') userRole = 'rider';
+    else return createUnauthorizedPage(userSession.email, userSession.name);
     
-    if (adminUsers.includes(userSession.email)) {
-      userRole = 'admin';
-      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
-    } else if (dispatcherUsers.includes(userSession.email)) {
-      userRole = 'dispatcher';
-      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
-    } else if (rider && rider.status === 'Active') {
-      userRole = 'rider';
-      permissions = ['view_own_assignments', 'update_own_status'];
-    } else {
-      console.log('❌ User not authorized:', userSession.email);
-      return createUnauthorizedPage(userSession.email, userSession.name);
-    }
-    
-    const authenticatedUser = {
+    const user = {
       name: userSession.name || rider?.name || 'User',
       email: userSession.email,
       role: userRole,
-      permissions: permissions,
       avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
     };
     
-    console.log(`✅ Authenticated user: ${authenticatedUser.name} (${authenticatedUser.role})`);
+    // Page loading
+    let pageName = e.parameter?.page || 'dashboard';
+    let pageFile = pageName;
     
-    // 🔒 STEP 4: Continue with normal page loading
-    let pageName = (e && e.parameter && e.parameter.page) ? e.parameter.page : 'dashboard';
+    if (userRole === 'admin' && pageName === 'dashboard') pageFile = 'admin-dashboard';
+    else if (userRole === 'rider' && pageName === 'dashboard') pageFile = 'rider-dashboard';
     
-    const authCheck = checkPageAccessSafe(pageName, authenticatedUser, rider);
-    if (!authCheck.allowed) {
-      return createAccessDeniedPage(authCheck.reason, authenticatedUser);
-    }
-
-    console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
-
-    // special handling for the authentication setup page
-    if (pageName === 'auth-setup') {
-      return createAuthMappingPage();
-    }
-
-    // Continue with your existing page loading logic...
-    const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
-    let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
-    // htmlOutput.append("<script>console.log('Direct append test. If page is clean, string replacement was the issue.');</script>"); // Removed this test line
-    let content = htmlOutput.getContent();
+    if (!checkFileExists(pageFile)) pageFile = 'index';
     
-    // Add navigation and user info
-    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider); // UNCOMMENTED
-    content = injectUserInfoSafe(content, authenticatedUser, rider); // UNCOMMENTED
-    content = addNavigationToContentSafe(content, navigationHtml); // UNCOMMENTED
+    let content = HtmlService.createHtmlOutputFromFile(pageFile).getContent();
     
-    htmlOutput.setContent(content); // Set main content first
-    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider); // Append user data script
+    // Add navigation
+    const navigation = getRoleBasedNavigationSafe(pageName, user, rider);
+    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
     
-    // Update last login
-    if (rider) {
-      updateRiderLastLoginSafe(rider.id);
+    // CLEAN: Add only essential user context
+    const userScript = `<script>window.currentUser = ${JSON.stringify(user)};</script>`;
+    
+    if (content.includes('</body>')) {
+      content = content.replace('</body>', userScript + '</body>');
+    } else {
+      content += userScript;
     }
     
-    return htmlOutput
-      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-      
+    return HtmlService.createHtmlOutput(content).setTitle('Motorcycle Escort Management');
+    
   } catch (error) {
-    console.error('❌ doGet error:', error);
-    return createErrorPageWithSignInSafe(error);
+    console.error('doGet error:', error);
+    return createErrorPage(error.message);
   }
 }
 
@@ -2000,4 +2045,4 @@ if (typeof module !== 'undefined' && module.exports) {
     getUserNavigationMenu
   };
 }
-// 617
+
