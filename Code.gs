@@ -5431,13 +5431,13 @@ function addMotorcycleLoaderToContent(content) {
   color: white !important; font-family: Arial, sans-serif !important;
   flex-direction: column !important;
 ">
-  <div style="font-size: 5rem; margin-bottom: 1rem; animation: motorcycleRide 2s ease-in-out infinite;">🏍️</div>
+  <div style="font-size: 5rem; margin-bottom: 1rem; transform: scaleX(-1); animation: motorcycleRide 2s ease-in-out infinite;">🏍️</div>
   <div style="font-size: 2rem; font-weight: bold;">Loading...</div>
 </div>
 <style>
 @keyframes motorcycleRide {
-  0%, 100% { transform: translateX(-10px) rotate(-2deg); }
-  50% { transform: translateX(10px) rotate(2deg); }
+  0%, 100% { transform: scaleX(-1) translateX(-10px) rotate(-2deg); }
+  50% { transform: scaleX(-1) translateX(10px) rotate(2deg); }
 }
 </style>
 <script>
