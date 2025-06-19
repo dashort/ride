@@ -5364,54 +5364,7 @@ function addUserDataInjection(htmlOutput, user, rider) {
 
 // Also fix the addMobileOptimizations function:
 
-function addMobileOptimizations(htmlOutput, user, rider) {
-  try {
-    const mobileScript = `
-<script>
-(function() {
-  'use strict';
-  
-  // Mobile device detection
-  const device = {
-    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
-    isTablet: /iPad|Android/i.test(navigator.userAgent) && window.innerWidth > 768,
-    isTouchDevice: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
-    orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
-  };
-  
-  console.log('📱 Mobile optimization loaded for:', device);
-  
-  // Add device classes to body
-  document.addEventListener('DOMContentLoaded', function() {
-    document.body.classList.add(
-      device.isMobile ? 'mobile' : 'desktop',
-      device.isTablet ? 'tablet' : '',
-      device.isTouchDevice ? 'touch-device' : 'mouse-device',
-      device.orientation
-    );
-    
-    console.log('✅ Mobile optimizations ready!');
-  });
-  
-  // Expose mobile utilities
-  window.MobileUX = {
-    device: device,
-    isMobile: device.isMobile,
-    isTouchDevice: device.isTouchDevice
-  };
-  
-})();
-</script>`;
-    
-    // CORRECT METHOD: Use appendUntrusted instead of append
-    htmlOutput.appendUntrusted(mobileScript);
-    return htmlOutput;
-    
-  } catch (error) {
-    console.error('Error adding mobile optimizations:', error);
-    return htmlOutput;
-  }
-}
+
 
 /**
  * TEST FUNCTION: Verify the fix works
@@ -5520,13 +5473,9 @@ function addMotorcycleLoaderToContent(content) {
   }
 }
 // MOBILE OPTIMIZATION PACKAGE - Add this to your Code.gs
+
 function addMobileOptimizations(htmlOutput, user, rider) {
   try {
-    function escapeJsString(str) {
-      if (!str) return '';
-      return str.replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
-    }
-    
     const mobileScript = `
 <!-- MOBILE OPTIMIZATION CSS -->
 <style>
@@ -5777,30 +5726,6 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     const nav = document.querySelector('.navigation');
     if (!nav || !device.isMobile) return;
     
-    // Add swipe detection for navigation
-    let touchStartX = 0;
-    let touchStartY = 0;
-    
-    nav.addEventListener('touchstart', function(e) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    });
-    
-    nav.addEventListener('touchmove', function(e) {
-      if (!touchStartX || !touchStartY) return;
-      
-      const touchEndX = e.touches[0].clientX;
-      const touchEndY = e.touches[0].clientY;
-      
-      const diffX = touchStartX - touchEndX;
-      const diffY = touchStartY - touchEndY;
-      
-      // Horizontal swipe detection
-      if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
-        e.preventDefault(); // Prevent page scroll
-      }
-    });
-    
     // Add haptic feedback for supported devices
     nav.addEventListener('click', function() {
       if ('vibrate' in navigator) {
@@ -5809,77 +5734,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     });
   }
   
-  // 5. MOBILE MOTORCYCLE LOADER
-  function createMobileMotorcycleLoader(message = 'Loading...') {
-    const loader = document.createElement('div');
-    loader.className = 'mobile-motorcycle-loader';
-    loader.style.cssText = \`
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      z-index: 999999; display: flex; justify-content: center; align-items: center;
-      color: white; font-family: Arial, sans-serif; flex-direction: column;
-    \`;
-    
-    loader.innerHTML = \`
-      <div style="
-        font-size: \${device.isMobile ? '3rem' : '4rem'};
-        margin-bottom: 1.5rem;
-        animation: mobileMotorcycleBounce 1.5s ease-in-out infinite;
-        ">🏍️</div>
-      <div style="
-        font-size: \${device.isMobile ? '1.25rem' : '1.8rem'};
-        font-weight: bold; text-align: center; padding: 0 1rem;
-      ">\${message}</div>
-      <div style="
-        font-size: \${device.isMobile ? '0.9rem' : '1rem'};
-        margin-top: 0.5rem; opacity: 0.8; text-align: center;
-      ">Please wait...</div>
-    \`;
-    
-    // Add mobile-specific animation
-    const style = document.createElement('style');
-    style.textContent = \`
-      @keyframes mobileMotorcycleBounce {
-        0%, 100% { transform: scaleX(-1) translateY(0) rotate(0deg); }
-        25% { transform: scaleX(-1) translateY(-5px) rotate(2deg); }
-        50% { transform: scaleX(-1) translateY(-10px) rotate(0deg); }
-        75% { transform: scaleX(-1) translateY(-5px) rotate(-2deg); }
-      }
-    \`;
-    document.head.appendChild(style);
-    
-    document.body.appendChild(loader);
-    
-    // Auto-hide after 2 seconds
-    setTimeout(() => {
-      loader.style.opacity = '0';
-      loader.style.transition = 'opacity 0.5s ease';
-      setTimeout(() => {
-        if (loader.parentNode) loader.remove();
-      }, 500);
-    }, 2000);
-    
-    return loader;
-  }
-  
-  // 6. ORIENTATION CHANGE HANDLING
-  function handleOrientationChange() {
-    setTimeout(() => {
-      const newDevice = detectDevice();
-      console.log('📱 Orientation changed:', newDevice.orientation);
-      
-      // Refresh layout for orientation change
-      if (device.isMobile) {
-        enhanceTablesForMobile();
-        enhanceMobileNavigation();
-      }
-    }, 100);
-  }
-  
-  window.addEventListener('orientationchange', handleOrientationChange);
-  window.addEventListener('resize', handleOrientationChange);
-  
-  // 7. TOUCH ENHANCEMENTS
+  // 5. TOUCH ENHANCEMENTS
   function addTouchEnhancements() {
     if (!device.isTouchDevice) return;
     
@@ -5903,25 +5758,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     });
   }
   
-  // 8. MOBILE NAVIGATION CLICK HANDLER
-  document.addEventListener('click', function(e) {
-    const navLink = e.target.closest('nav.navigation a');
-    if (navLink && device.isMobile) {
-      console.log('📱 Mobile navigation click:', navLink.textContent.trim());
-      
-      // Haptic feedback
-      if ('vibrate' in navigator) {
-        navigator.vibrate(30);
-      }
-      
-      // Show mobile motorcycle loader
-      setTimeout(() => {
-        createMobileMotorcycleLoader('Navigating to ' + navLink.textContent.trim());
-      }, 100);
-    }
-  });
-  
-  // 9. INITIALIZE MOBILE OPTIMIZATIONS
+  // 6. INITIALIZE MOBILE OPTIMIZATIONS
   document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 Initializing mobile optimizations...');
     
@@ -5938,20 +5775,12 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     );
     
     console.log('✅ Mobile optimizations ready!');
-    
-    // Show mobile-optimized welcome message
-    if (device.isMobile && window.UX && window.UX.showToast) {
-      setTimeout(() => {
-        window.UX.showToast('📱 Mobile-optimized interface loaded!', 'success', 3000);
-      }, 1500);
-    }
   });
   
-  // 10. EXPOSE MOBILE UTILITIES
+  // 7. EXPOSE MOBILE UTILITIES
   window.MobileUX = {
     device: device,
-    showMobileLoader: createMobileMotorcycleLoader,
-    isMotile: device.isMobile,
+    isMobile: device.isMobile,
     isTouchDevice: device.isTouchDevice
   };
   
@@ -5960,8 +5789,8 @@ function addMobileOptimizations(htmlOutput, user, rider) {
 })();
 </script>`;
     
-    // Use appendUntrusted so the script renders without escaping
-    htmlOutput.appendUntrusted(mobileScript);
+const currentContent = htmlOutput.getContent();
+htmlOutput.setContent(currentContent + mobileScript);
     return htmlOutput;
     
   } catch (error) {
