@@ -5544,9 +5544,18 @@ window.UX = {
 
 console.log('✅ Enhanced UX package loaded');
 </script>`;
-    
-    // CORRECT METHOD: Use appendUntrusted instead of append
-    htmlOutput.appendUntrusted(userScript);
+
+    // Insert script before closing </body> or </html>
+    let content = htmlOutput.getContent();
+    if (content.includes('</body>')) {
+      content = content.replace('</body>', userScript + '\n</body>');
+    } else if (content.includes('</html>')) {
+      content = content.replace('</html>', userScript + '\n</html>');
+    } else {
+      content += userScript;
+    }
+
+    htmlOutput.setContent(content);
     return htmlOutput;
     
   } catch (error) {
