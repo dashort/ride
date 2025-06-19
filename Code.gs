@@ -6153,7 +6153,8 @@ function addMobileOptimizations(htmlOutput, user, rider) {
 })();
 </script>`;
     
-    htmlOutput.append(mobileScript);
+    // Use appendUntrusted so the script renders without escaping
+    htmlOutput.appendUntrusted(mobileScript);
     return htmlOutput;
     
   } catch (error) {
