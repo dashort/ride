@@ -1617,10 +1617,19 @@ window.currentUser = {
 };
 console.log('👤 User context loaded via addUserDataInjectionSafe (appended).');
 </script>`;
-    
-    htmlOutput.appendUntrusted(userScript); // Use appendUntrusted to inject raw HTML/JS
+
+    let content = htmlOutput.getContent();
+    if (content.includes('</body>')) {
+      content = content.replace('</body>', userScript + '\n</body>');
+    } else if (content.includes('</html>')) {
+      content = content.replace('</html>', userScript + '\n</html>');
+    } else {
+      content += userScript;
+    }
+
+    htmlOutput.setContent(content);
     // No return needed, or return htmlOutput if preferred by other parts of the system
-    
+
   } catch (error) {
     console.error('Error adding user data injection:', error);
     // Potentially return htmlOutput or throw, depending on error handling strategy
