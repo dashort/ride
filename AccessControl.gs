@@ -518,32 +518,39 @@ function getAdminDashboardData() {
     const dispatchers = getDispatcherUsersSafe();
     
     const today = new Date();
-    const todayStr = today.toDateString();
-    
-    // Calculate today's requests
-    let todayRequests = 0;
+    today.setHours(0, 0, 0, 0);
+    const threeDays = new Date(today);
+    threeDays.setDate(today.getDate() + 3);
+
+    // Escorts scheduled for today
+    let escortsToday = 0;
     try {
-      todayRequests = requests.filter(r => {
-        const reqDate = r.dateCreated || r['Date Created'] || r.date || '';
-        if (reqDate) {
-          return new Date(reqDate).toDateString() === todayStr;
-        }
-        return false;
+      escortsToday = requests.filter(r => {
+        const ev = r.eventDate || r['Event Date'] || r.date || r['Date'];
+        if (!ev) return false;
+        const d = new Date(ev);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime() === today.getTime();
       }).length;
     } catch (e) {
-      console.log('⚠️ Error calculating today requests:', e.message);
+      console.log('⚠️ Error calculating escorts today:', e.message);
     }
-    
-    // Calculate active escorts
-    let activeEscorts = 0;
+
+    // Unassigned escorts in next 3 days
+    let unassignedEscorts3d = 0;
     try {
-      activeEscorts = assignments.filter(a => 
-        a.status === 'In Progress' || a.status === 'Active' || a.status === 'Pending'
-      ).length;
+      unassignedEscorts3d = requests.filter(r => {
+        const ev = r.eventDate || r['Event Date'] || r.date || r['Date'];
+        const status = (r.status || r['Status'] || '').toString();
+        if (!ev) return false;
+        const d = new Date(ev);
+        d.setHours(0, 0, 0, 0);
+        return d >= today && d <= threeDays && status !== 'Assigned';
+      }).length;
     } catch (e) {
-      console.log('⚠️ Error calculating active escorts:', e.message);
+      console.log('⚠️ Error calculating unassigned escorts:', e.message);
     }
-    
+
     // Calculate active riders
     const activeRiders = riders.filter(r => r.status === 'Active').length;
     
@@ -551,11 +558,8 @@ function getAdminDashboardData() {
       totalRequests: requests.length,
       totalRiders: activeRiders,
       totalAssignments: assignments.length,
-      systemUsers: riders.length + admins.length + dispatchers.length,
-      todayRequests: todayRequests,
-      activeEscorts: activeEscorts,
-      onlineRiders: activeRiders, // Simplified for now
-      systemHealth: 98
+      unassignedEscorts3d: unassignedEscorts3d,
+      escortsToday: escortsToday
     };
     
     console.log('✅ Admin dashboard data:', result);
@@ -569,11 +573,8 @@ function getAdminDashboardData() {
       totalRequests: 0,
       totalRiders: 0,
       totalAssignments: 0,
-      systemUsers: 0,
-      todayRequests: 0,
-      activeEscorts: 0,
-      onlineRiders: 0,
-      systemHealth: 100
+      unassignedEscorts3d: 0,
+      escortsToday: 0
     };
   }
 }

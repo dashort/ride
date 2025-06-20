@@ -347,20 +347,12 @@
         <!-- Quick Stats -->
         <div class="quick-stats">
             <div class="quick-stat">
-                <div class="quick-stat-number" id="todayRequests">-</div>
-                <div class="quick-stat-label">Today's Requests</div>
+                <div class="quick-stat-number" id="unassignedEscorts">-</div>
+                <div class="quick-stat-label">Unassigned Escorts (3-Day)</div>
             </div>
             <div class="quick-stat">
-                <div class="quick-stat-number" id="activeEscorts">-</div>
-                <div class="quick-stat-label">Active Escorts</div>
-            </div>
-            <div class="quick-stat">
-                <div class="quick-stat-number" id="onlineRiders">-</div>
-                <div class="quick-stat-label">Online Riders</div>
-            </div>
-            <div class="quick-stat">
-                <div class="quick-stat-number" id="systemHealth">100%</div>
-                <div class="quick-stat-label">System Health</div>
+                <div class="quick-stat-number" id="escortsToday">-</div>
+                <div class="quick-stat-label">Escorts Today</div>
             </div>
         </div>
 
@@ -377,10 +369,6 @@
             <div class="stat-card assignments" style="cursor:pointer" onclick="navigateStat('assignments')">
                 <div class="stat-number" id="totalAssignments">-</div>
                 <div class="stat-label">Assignments</div>
-            </div>
-            <div class="stat-card system" style="cursor:pointer" onclick="navigateStat('user-management')">
-                <div class="stat-number" id="systemUsers">-</div>
-                <div class="stat-label">System Users</div>
             </div>
         </div>
 
@@ -517,13 +505,10 @@
                 document.getElementById('totalRequests').textContent = data.totalRequests || 0;
                 document.getElementById('totalRiders').textContent = data.totalRiders || 0;
                 document.getElementById('totalAssignments').textContent = data.totalAssignments || 0;
-                document.getElementById('systemUsers').textContent = data.systemUsers || 0;
 
                 // Update quick stats
-                document.getElementById('todayRequests').textContent = data.todayRequests || 0;
-                document.getElementById('activeEscorts').textContent = data.activeEscorts || 0;
-                document.getElementById('onlineRiders').textContent = data.onlineRiders || 0;
-                document.getElementById('systemHealth').textContent = (data.systemHealth || 100) + '%';
+                document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts3d || 0;
+                document.getElementById('escortsToday').textContent = data.escortsToday || 0;
 
                 console.log('✅ Dashboard stats updated');
             } catch (error) {
@@ -787,11 +772,8 @@ function displaySystemLogs(logs) {
                 totalRequests: 156,
                 totalRiders: 23,
                 totalAssignments: 89,
-                systemUsers: 45,
-                todayRequests: 12,
-                activeEscorts: 3,
-                onlineRiders: 8,
-                systemHealth: 97
+                unassignedEscorts3d: 7,
+                escortsToday: 2
             };
         }
 
