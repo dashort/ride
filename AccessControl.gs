@@ -706,20 +706,23 @@ function authenticateAndAuthorizeUser() {
     const rider = getRiderByGoogleEmailSafe(userSession.email);
     const adminUsers = getAdminUsersSafe();
     const dispatcherUsers = getDispatcherUsersSafe();
-    
+
     let userRole = 'unauthorized';
     let permissions = [];
-    
-    // Trace admin check
+
+    const isAdmin = adminUsers.includes(userSession.email);
+    const isDispatcher = dispatcherUsers.includes(userSession.email);
+
+    // Prefer dispatcher role if user appears in both lists
     console.log('🔍 Checking admin users:', adminUsers);
-    if (adminUsers.includes(userSession.email)) {
-      userRole = 'admin';
-      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
-      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'admin');
-    } else if (dispatcherUsers.includes(userSession.email)) {
+    if (isDispatcher) {
       userRole = 'dispatcher';
       permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
       traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'dispatcher');
+    } else if (isAdmin) {
+      userRole = 'admin';
+      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'admin');
     } else if (rider && rider.status === 'Active') {
       userRole = 'rider';
       permissions = ['view_own_assignments', 'update_own_status'];
