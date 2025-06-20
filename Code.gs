@@ -233,14 +233,9 @@ function getAdminUsers() {
     console.log('❌ Error accessing spreadsheet:', error.message);
   }
   
-  // Fallback to hardcoded admin emails
-  console.log('📧 Using hardcoded admin fallback');
-  return [
-    'admin@yourdomain.com',
-    'jpsotraffic@gmail.com',
-    'manager@yourdomain.com'
-    // Add your admin emails here
-  ];
+  // Fallback removed
+  console.log('INFO in getAdminUsers (Code.gs - simple version): Failed to retrieve admins from Settings sheet or no admins found. Returning empty list.');
+  return [];
 }
 /**
  * Fix the Settings sheet structure to have clean email data
@@ -323,17 +318,17 @@ function fixSettingsSheetStructure() {
  * Robust admin email reading function that handles mixed data types
  * REPLACE your getAdminUsers function with this version
  */
-function getAdminUsers() {
+function getAdminUsers() { // This is the second (robust) definition
   console.log('🔍 getAdminUsers called (robust version)...');
   
   try {
     const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
     if (settingsSheet) {
-      console.log('📖 Reading admin emails from Settings sheet...');
+      console.log('📖 Reading admin emails from Settings sheet (robust version)...');
       
       // Read the range
       const adminRange = settingsSheet.getRange('B2:B11').getValues(); // Extended range
-      console.log('📊 Raw admin range data:', adminRange);
+      // console.log('📊 Raw admin range data (robust):', adminRange); // Keep original log for verbosity if needed, or remove for cleaner prod logs
       
       // Robust filtering to handle mixed data types
       const adminEmails = adminRange
@@ -358,27 +353,31 @@ function getAdminUsers() {
         })
         .map(email => email.trim()); // Clean up the emails
       
-      console.log('📧 Filtered admin emails:', adminEmails);
+      // console.log('📧 Filtered admin emails (robust):', adminEmails); // Keep original log for verbosity if needed
       
       if (adminEmails.length > 0) {
+        console.log('✅ INFO in getAdminUsers (Code.gs - robust version): Successfully retrieved ' + adminEmails.length + ' admin(s) from Settings sheet.');
         return adminEmails;
       } else {
-        console.log('⚠️ No valid admin emails found in Settings sheet');
+        console.log('INFO in getAdminUsers (Code.gs - robust version): No valid admin emails found in Settings sheet. Returning empty list.');
+        return [];
       }
     } else {
-      console.log('⚠️ Settings sheet not found');
+      console.log('INFO in getAdminUsers (Code.gs - robust version): Settings sheet not found. Returning empty list.');
+      return [];
     }
-  } catch (error) {
-    console.log('❌ Error reading Settings sheet:', error.message);
+  } catch (e) { // Changed error variable to 'e' to match logging style
+    console.log('ERROR in getAdminUsers (Code.gs - robust version): Failed to retrieve admins from Settings sheet. Returning empty list. Error: ' + e.message);
+    return [];
   }
   
-  // Fallback to hardcoded admin emails
-  console.log('📧 Using hardcoded admin fallback');
-  return [
-    'dashort@gmail.com',
-    'jpsotraffic@gmail.com',
-    'manager@example.com'
-  ];
+  // Fallback removed - The above logic should return [] if sheet/data is not found or on error.
+  // console.log('📧 Using hardcoded admin fallback');
+  // return [
+  //   'dashort@gmail.com',
+  //   'jpsotraffic@gmail.com',
+  //   'manager@example.com'
+  // ];
 }
 
 /**
@@ -3633,6 +3632,38 @@ function debugNotificationsFile() {
 
 
 function doGet(e) {
+  // Inside doGet(e) in Code.gs, at the very beginning
+  console.log('INVESTIGATION: doGet (Code.gs) invoked.');
+  try {
+    const activeUser = Session.getActiveUser();
+    if (activeUser) {
+      const activeUserEmail = activeUser.getEmail();
+      console.log('INVESTIGATION: doGet (Code.gs) - Session.getActiveUser().getEmail():', activeUserEmail);
+      if (activeUserEmail === 'jpsotraffic@gmail.com') {
+        console.log("⚠️ INVESTIGATION: doGet (Code.gs) - Session.getActiveUser().getEmail() IS 'jpsotraffic@gmail.com'.");
+      }
+    } else {
+      console.log('INVESTIGATION: doGet (Code.gs) - Session.getActiveUser() is null.');
+    }
+  } catch (e) {
+    console.log('⚠️ INVESTIGATION: doGet (Code.gs) - Error calling Session.getActiveUser().getEmail():', e.message);
+  }
+
+  try {
+    const effectiveUser = Session.getEffectiveUser();
+    if (effectiveUser) {
+      const effectiveUserEmail = effectiveUser.getEmail();
+      console.log('INVESTIGATION: doGet (Code.gs) - Session.getEffectiveUser().getEmail():', effectiveUserEmail);
+      if (effectiveUserEmail === 'jpsotraffic@gmail.com') {
+        console.log("⚠️ INVESTIGATION: doGet (Code.gs) - Session.getEffectiveUser().getEmail() IS 'jpsotraffic@gmail.com'.");
+      }
+    } else {
+      console.log('INVESTIGATION: doGet (Code.gs) - Session.getEffectiveUser() is null.');
+    }
+  } catch (e) {
+    console.log('⚠️ INVESTIGATION: doGet (Code.gs) - Error calling Session.getEffectiveUser().getEmail():', e.message);
+  }
+
   try {
     console.log('🚀 doGet with cache-friendly headers...');
     
