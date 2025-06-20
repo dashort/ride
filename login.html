@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {font-family: Arial, sans-serif;background:#f2f2f2;padding:2rem;}
+    #box {max-width:400px;margin:0 auto;background:#fff;border-radius:8px;padding:2rem;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+    input{width:100%;padding:8px;margin:6px 0;box-sizing:border-box;}
+    button{padding:10px 20px;margin-top:10px;cursor:pointer;}
+    #msg{color:red;margin-top:10px;}
+  </style>
+</head>
+<body>
+<div id="box">
+  <h2>Login</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <button id="loginBtn">Log In</button>
+  <div style="text-align:center;margin:10px 0;">or</div>
+  <button id="googleBtn">Log in with Google</button>
+  <div id="msg"></div>
+</div>
+<script>
+  document.getElementById('loginBtn').addEventListener('click', function(){
+    const email=document.getElementById('email').value.trim();
+    const pw=document.getElementById('password').value;
+    google.script.run.withSuccessHandler(handle).loginWithCredentials(email,pw);
+  });
+  document.getElementById('googleBtn').addEventListener('click', function(){
+    google.script.run.withSuccessHandler(handle).loginWithGoogle();
+  });
+  function handle(res){
+    if(res && res.success){
+      window.location.href=res.url;
+    }else{
+      document.getElementById('msg').textContent=res.message||'Login failed';
+    }
+  }
+</script>
+</body>
+</html>

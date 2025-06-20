@@ -2373,8 +2373,12 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           continue;
         }
         
-        // Apply status filter
-        if (filter !== 'All' && status !== filter) {
+        // Apply status filter with special handling for "Unassigned"
+        if (filter === 'Unassigned') {
+          if (['Assigned', 'Completed', 'Cancelled'].includes(status)) {
+            continue; // Skip requests that are assigned or closed
+          }
+        } else if (filter !== 'All' && status !== filter) {
           continue;
         }
         
@@ -3085,7 +3089,18 @@ function calculateStatsFromAssignmentsData(assignments) {
  */
 function getMobileAssignmentsForRider(user) { // Added user parameter
   try {
-    const userEmail = user.email; // Use user.email from parameter
+    // Allow calling without a user parameter by falling back to getCurrentUser
+    if (!user || !user.email) {
+      if (typeof getCurrentUser === 'function') {
+        try {
+          user = getCurrentUser();
+        } catch (e) {
+          user = null;
+        }
+      }
+    }
+
+    const userEmail = user && user.email;
     if (!userEmail) {
       // console.warn('No active user email found for getMobileAssignmentsForRider.');
       return [];
