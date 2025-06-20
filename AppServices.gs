@@ -3085,7 +3085,18 @@ function calculateStatsFromAssignmentsData(assignments) {
  */
 function getMobileAssignmentsForRider(user) { // Added user parameter
   try {
-    const userEmail = user.email; // Use user.email from parameter
+    // Allow calling without a user parameter by falling back to getCurrentUser
+    if (!user || !user.email) {
+      if (typeof getCurrentUser === 'function') {
+        try {
+          user = getCurrentUser();
+        } catch (e) {
+          user = null;
+        }
+      }
+    }
+
+    const userEmail = user && user.email;
     if (!userEmail) {
       // console.warn('No active user email found for getMobileAssignmentsForRider.');
       return [];

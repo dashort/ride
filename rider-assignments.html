@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Escorts - Motorcycle Escort Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 2rem auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .assignment-item {
+            padding: 1rem;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .assignment-item:last-child {
+            border-bottom: none;
+        }
+        .view-schedule {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #3498db;
+            color: #fff;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+    </header>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <div class="container">
+        <h2>🏍️ My Escorts</h2>
+        <div id="assignmentsList">Loading assignments...</div>
+        <a class="view-schedule" href="rider-schedule.html">📅 View My Availability</a>
+    </div>
+
+    <script>
+        function loadAssignments() {
+            if (google && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(displayAssignments)
+                                   .getMobileAssignmentsForRider();
+            } else {
+                displayAssignments([]);
+            }
+        }
+
+        function displayAssignments(assignments) {
+            var container = document.getElementById('assignmentsList');
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = '<p>No upcoming escorts.</p>';
+                return;
+            }
+            container.innerHTML = assignments.map(function(a) {
+                return (
+                    '<div class="assignment-item">' +
+                    '<strong>' + (a.eventDate || '') + ' ' + (a.startTime || '') + '</strong><br>' +
+                    (a.startLocation || '') + '<br>' +
+                    '<span>' + (a.status || '') + '</span>' +
+                    '</div>'
+                );
+            }).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadAssignments);
+    </script>
+</body>
+</html>
