@@ -7964,6 +7964,8 @@ function logout() {
   try {
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
+    // Also remove the custom user session stored in user properties
+    logoutUser();
   } catch (error) {
     console.error('Error clearing cached user info during logout:', error);
   }
