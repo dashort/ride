@@ -1,4 +1,4 @@
-// 🔒 ACCESS CONTROL MATRIX - Place this in a new file: AccessControl.js
+
 
 // Helper function to escape strings for JavaScript injection
 function escapeJsString(str) {
@@ -202,6 +202,1124 @@ const RESOURCE_ACCESS = {
     }
   }
 };
+
+// 🔧 SYSTEM LOGIN FIX - Add these functions to your Code.gs or AccessControl.gs
+
+/**
+ * Handle credential-based authentication
+ */
+function handleCredentialsAuth(e) {
+  try {
+    console.log('🔐 Starting credential authentication...');
+    
+    // If credentials were submitted, process them
+    if (e.parameter?.email && e.parameter?.password) {
+      console.log('📝 Processing login credentials for:', e.parameter.email);
+      
+      const loginResult = loginWithCredentials(e.parameter.email, e.parameter.password);
+      
+      if (loginResult.success) {
+        console.log('✅ Credential login successful');
+        return createRedirectPage(loginResult.url, 'Login successful');
+      } else {
+        console.log('❌ Credential login failed:', loginResult.message);
+        return createCredentialsLoginFormWithError(loginResult.message);
+      }
+    }
+    
+    // No credentials submitted - show login form
+    console.log('📋 Showing credentials login form');
+    return createCredentialsLoginForm();
+    
+  } catch (error) {
+    console.error('❌ Credential auth error:', error);
+    return createErrorPage('Login Error', error.message);
+  }
+}
+
+/**
+ * Create credentials login form
+ */
+function createCredentialsLoginForm() {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>System Login - Escort Management</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+    }
+    .logo {
+      text-align: center;
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    .title {
+      text-align: center;
+      color: #333;
+      margin-bottom: 2rem;
+    }
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #555;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #4285f4;
+      box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: #34a853;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn:hover {
+      background: #137333;
+    }
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .message {
+      margin-top: 1rem;
+      padding: 12px;
+      border-radius: 6px;
+      text-align: center;
+      display: none;
+    }
+    .message.error {
+      background: #ffeaea;
+      color: #d93025;
+      border: 1px solid #fce8e6;
+    }
+    .message.loading {
+      background: #e3f2fd;
+      color: #1976d2;
+      border: 1px solid #bbdefb;
+    }
+    .back-link {
+      text-align: center;
+      margin-top: 2rem;
+    }
+    .back-link a {
+      color: #4285f4;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .back-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">🏍️</div>
+    <h1 class="title">System Login</h1>
+    
+    <form id="loginForm" action="${webAppUrl}" method="GET">
+      <input type="hidden" name="auth" value="credentials">
+      
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" required autocomplete="username">
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
+      </div>
+      
+      <button type="submit" class="btn" id="loginBtn">
+        Sign In
+      </button>
+    </form>
+    
+    <div id="message" class="message"></div>
+    
+    <div class="back-link">
+      <a href="${webAppUrl}">← Back to login options</a>
+    </div>
+  </div>
+  
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('loginBtn');
+      
+      if (!email || !password) {
+        showMessage('Please enter both email and password', 'error');
+        return;
+      }
+      
+      // Show loading state
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing In...';
+      showMessage('Verifying credentials...', 'loading');
+      
+      // Submit form with credentials as URL parameters
+      const url = '${webAppUrl}?auth=credentials&email=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password);
+      window.location.href = url;
+    });
+    
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = 'message ' + type;
+      message.style.display = 'block';
+    }
+    
+    // Auto-focus first input
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('email').focus();
+    });
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('System Login - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+
+
+
+/**
+ * Handle Google OAuth authentication
+ */
+function handleGoogleAuth(e) {
+  try {
+    console.log('🔐 Starting Google authentication...');
+    
+    // Get fresh Google session
+    const googleSession = getGoogleUserSession();
+    
+    if (!googleSession.hasEmail) {
+      console.log('❌ No Google session found');
+      return createErrorPage('Google Sign-In Failed', 'Could not get your Google account information. Please try again.');
+    }
+    
+    console.log('✅ Google session found:', googleSession.email);
+    
+    // Check if user is authorized
+    const authResult = authorizeValidUser({
+      email: googleSession.email,
+      name: googleSession.name,
+      type: 'google'
+    });
+    
+    if (!authResult.success) {
+      if (authResult.error === 'UNAUTHORIZED') {
+        return createUnauthorizedPage(googleSession.email, googleSession.name);
+      }
+      return createErrorPage('Authorization Failed', authResult.message);
+    }
+    
+    console.log('✅ Google auth successful, redirecting to dashboard');
+    
+    // Success - redirect to dashboard
+    const url = getWebAppUrl() + '?page=dashboard';
+    return createRedirectPage(url, 'Google sign-in successful');
+    
+  } catch (error) {
+    console.error('❌ Google auth error:', error);
+    return createErrorPage('Google Authentication Error', error.message);
+  }
+}
+
+/**
+ * Process credential login
+ */
+function processCredentialLogin(email, password) {
+  try {
+    console.log('🔐 Processing credential login for:', email);
+    
+    // Use your existing loginWithCredentials function
+    const result = loginWithCredentials(email, password);
+    
+    if (result.success) {
+      console.log('✅ Credential login successful');
+      // The session is already created by loginWithCredentials
+      return HtmlService.createHtmlOutput(`
+        <script>
+          window.location.href = '${result.url}';
+        </script>
+        <p>Login successful. Redirecting...</p>
+      `);
+    } else {
+      console.log('❌ Credential login failed:', result.message);
+      return createCredentialsLoginFormWithError(result.message);
+    }
+    
+  } catch (error) {
+    console.error('❌ Credential login error:', error);
+    return createCredentialsLoginFormWithError('Login system error');
+  }
+}
+
+/**
+ * Create credentials login form with error message
+ */
+function createCredentialsLoginFormWithError(errorMessage) {
+  const form = createCredentialsLoginForm();
+  let content = form.getContent();
+  
+  // Inject error message
+  const errorScript = `
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        showMessage('${errorMessage.replace(/'/g, "\\'")}', 'error');
+      });
+    </script>
+  `;
+  
+  content = content.replace('</body>', errorScript + '</body>');
+  form.setContent(content);
+  
+  return form;
+}
+
+// 🔧 FIXED SESSION MANAGEMENT - Complete authentication flow
+
+/**
+ * MAIN doGet function with proper session handling
+ */
+function doGet(e) {
+  try {
+    console.log('🚀 Main doGet called with:', JSON.stringify(e.parameter || {}));
+    
+    const params = e.parameter || {};
+    
+    // FIXED: Handle logout properly
+    if (params.action === 'logout' || params.auth === 'logout') {
+      console.log('🚪 Logout requested - clearing session');
+      clearUserSession();
+      
+      // Return login page immediately after logout
+      return createLoginPage();
+    }
+    
+    // Check for existing session
+    const session = getAuthenticatedSession();
+    
+    if (session.isValid) {
+      console.log('✅ Valid session found:', session.user.email, 'role:', session.user.role);
+      
+      // User is authenticated - load the app
+      const pageName = params.page || 'dashboard';
+      return loadAppPage(pageName, session.user, session.rider);
+    }
+    
+    console.log('❌ No valid session - showing login page');
+    return createLoginPage();
+    
+  } catch (error) {
+    console.error('❌ doGet error:', error);
+    return createErrorPage('System Error', error.message);
+  }
+}
+
+/**
+ * Get authenticated session (checks both Google and custom sessions)
+ */
+function getAuthenticatedSession() {
+  try {
+    console.log('🔍 Checking for authenticated session...');
+    
+    // Method 1: Check stored session from successful login
+    const storedSession = getStoredSession();
+    if (storedSession.isValid) {
+      console.log('✅ Found stored session:', storedSession.user.email);
+      return storedSession;
+    }
+    
+    // Method 2: Check Google session (for direct Google OAuth)
+    const googleSession = checkGoogleSession();
+    if (googleSession.isValid) {
+      console.log('✅ Found Google session:', googleSession.user.email);
+      return googleSession;
+    }
+    
+    console.log('❌ No valid session found');
+    return { isValid: false };
+    
+  } catch (error) {
+    console.error('❌ Session check error:', error);
+    return { isValid: false, error: error.message };
+  }
+}
+
+/**
+ * Get stored session from PropertiesService
+ */
+function getStoredSession() {
+  try {
+    const userProperties = PropertiesService.getUserProperties();
+    const sessionData = userProperties.getProperty('AUTHENTICATED_USER');
+    
+    if (!sessionData) {
+      console.log('No stored session found');
+      return { isValid: false };
+    }
+    
+    const session = JSON.parse(sessionData);
+    console.log('📋 Stored session data:', session);
+    
+    // Check if session is expired (24 hours)
+    const sessionAge = Date.now() - (session.timestamp || 0);
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    
+    if (sessionAge > maxAge) {
+      console.log('⏰ Session expired, clearing...');
+      userProperties.deleteProperty('AUTHENTICATED_USER');
+      return { isValid: false };
+    }
+    
+    // FIXED: Ensure name property exists
+    if (!session.name || session.name === 'undefined') {
+      console.log('🔧 Fixing missing name in session...');
+      session.name = extractNameFromEmail(session.email);
+      
+      // Update the stored session with the fixed name
+      userProperties.setProperty('AUTHENTICATED_USER', JSON.stringify(session));
+      console.log('✅ Updated session with name:', session.name);
+    }
+    
+    // Session is valid
+    return {
+      isValid: true,
+      user: {
+        email: session.email,
+        name: session.name, // Now guaranteed to exist
+        role: session.role,
+        method: session.method
+      },
+      rider: null // You can enhance this to load rider data
+    };
+    
+  } catch (error) {
+    console.log('⚠️ Error reading stored session:', error.message);
+    return { isValid: false };
+  }
+}
+
+/**
+ * Check Google session for direct OAuth access
+ */
+function checkGoogleSession() {
+  try {
+    const user = Session.getActiveUser();
+    const email = user.getEmail();
+    
+    if (!email) {
+      return { isValid: false };
+    }
+    
+    // Check if Google user is authorized
+    const adminUsers = getAdminUsersSafe ? getAdminUsersSafe() : [];
+    const dispatcherUsers = getDispatcherUsersSafe ? getDispatcherUsersSafe() : [];
+    const rider = getRiderByGoogleEmailSafe ? getRiderByGoogleEmailSafe(email) : null;
+    
+    let userRole = 'unauthorized';
+    if (adminUsers.includes(email)) {
+      userRole = 'admin';
+    } else if (dispatcherUsers.includes(email)) {
+      userRole = 'dispatcher';
+    } else if (rider && rider.status === 'Active') {
+      userRole = 'rider';
+    }
+    
+    if (userRole === 'unauthorized') {
+      return { isValid: false };
+    }
+    
+    return {
+      isValid: true,
+      user: {
+        email: email,
+        name: user.getName() || extractNameFromEmail(email),
+        role: userRole,
+        method: 'google'
+      },
+      rider: rider
+    };
+    
+  } catch (error) {
+    console.log('⚠️ Google session check failed:', error.message);
+    return { isValid: false };
+  }
+}
+
+/**
+ * FIXED: Clear user session function
+ */
+function clearUserSession() {
+  try {
+    console.log('🧹 Clearing user session...');
+    
+    const userProperties = PropertiesService.getUserProperties();
+    
+    // Clear all session-related properties
+    userProperties.deleteProperty('AUTHENTICATED_USER');
+    userProperties.deleteProperty('CUSTOM_SESSION');
+    userProperties.deleteProperty('USER_SESSION_CACHE');
+    
+    console.log('✅ User session cleared successfully');
+    
+    return { success: true, message: 'Session cleared' };
+    
+  } catch (error) {
+    console.error('❌ Error clearing session:', error);
+    return { success: false, error: error.message };
+  }
+}
+/**
+ * Create login page (Google Apps Script method)
+ */
+function createLoginPage() {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login - Escort Management</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0; 
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { font-size: 3rem; margin-bottom: 1rem; }
+    .title { color: #333; margin-bottom: 2rem; }
+    .auth-option {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+      color: white;
+    }
+    .btn-google { background: #4285f4; }
+    .btn-google:hover { background: #3367d6; }
+    .btn-credentials { background: #34a853; }
+    .btn-credentials:hover { background: #137333; }
+    .btn:disabled { background: #ccc; cursor: not-allowed; }
+    .message {
+      margin-top: 1rem;
+      padding: 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .message.error { background: #ffeaea; color: #d93025; }
+    .message.loading { background: #e3f2fd; color: #1976d2; }
+    .message.success { background: #e8f5e8; color: #2e7d32; }
+    .divider {
+      text-align: center;
+      margin: 1.5rem 0;
+      color: #666;
+      position: relative;
+    }
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #ddd;
+    }
+    .divider span {
+      background: white;
+      padding: 0 1rem;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">🏍️</div>
+    <h1 class="title">Escort Management System</h1>
+    
+    <div class="auth-option">
+      <h3>🔐 Google Account</h3>
+      <p>Sign in with your authorized Google account</p>
+      <button id="googleBtn" class="btn btn-google" onclick="handleGoogleAuth()">
+        Sign In with Google
+      </button>
+    </div>
+    
+    <div class="divider"><span>or</span></div>
+    
+    <div class="auth-option">
+      <h3>👤 System Login</h3>
+      <p>Use your system username and password</p>
+      <button id="credentialsBtn" class="btn btn-credentials" onclick="showCredentialsForm()">
+        System Login
+      </button>
+    </div>
+    
+    <!-- Credentials Form -->
+    <div id="credentialsForm" style="display: none; margin-top: 2rem;">
+      <div class="auth-option">
+        <h3>Enter Credentials</h3>
+        <input type="email" id="email" placeholder="Email Address">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="handleCredentialsAuth()" class="btn btn-credentials" style="margin-top: 10px;">
+          Sign In
+        </button>
+        <button onclick="hideCredentialsForm()" class="btn" style="background: #666; margin-top: 5px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+    
+    <div id="message" class="message"></div>
+  </div>
+  
+  <script>
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = 'message ' + type;
+      message.style.display = 'block';
+    }
+    
+    function showCredentialsForm() {
+      document.getElementById('credentialsForm').style.display = 'block';
+      document.getElementById('credentialsBtn').style.display = 'none';
+    }
+    
+    function hideCredentialsForm() {
+      document.getElementById('credentialsForm').style.display = 'none';
+      document.getElementById('credentialsBtn').style.display = 'block';
+    }
+    
+    function handleGoogleAuth() {
+      const btn = document.getElementById('googleBtn');
+      btn.disabled = true;
+      btn.textContent = 'Authenticating...';
+      showMessage('Connecting to Google...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Google auth result:', result);
+          if (result.success) {
+            showMessage('✅ Google authentication successful!', 'success');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          } else {
+            showMessage('❌ ' + result.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Sign In with Google';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Google auth error:', error);
+          showMessage('❌ Google authentication error: ' + error.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Sign In with Google';
+        })
+        .processGoogleAuthentication();
+    }
+    
+    function handleCredentialsAuth() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!email || !password) {
+        showMessage('Please enter both email and password', 'error');
+        return;
+      }
+      
+      showMessage('Verifying credentials...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Credentials auth result:', result);
+          if (result.success) {
+            showMessage('✅ Login successful!', 'success');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          } else {
+            showMessage('❌ ' + result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Credentials auth error:', error);
+          showMessage('❌ Login error: ' + error.message, 'error');
+        })
+        .processCredentialsAuthentication(email, password);
+    }
+    
+    console.log('🔧 Login page loaded');
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Login - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * FIXED: Process Google authentication with proper session storage
+ */
+function processGoogleAuthentication() {
+  try {
+    console.log('🔐 Processing Google authentication...');
+    
+    const user = Session.getActiveUser();
+    const email = user.getEmail();
+    
+    if (!email) {
+      return { success: false, message: 'Could not get your Google account information' };
+    }
+    
+    // Get name safely from Google user
+    let userName = '';
+    try {
+      userName = user.getName() || '';
+    } catch (error) {
+      console.log('⚠️ Could not get name from Google user:', error.message);
+    }
+    
+    // Fallback to extracting name from email if Google name is not available
+    if (!userName || userName.trim() === '') {
+      userName = extractNameFromEmail(email);
+    }
+    
+    console.log('👤 Google user name:', userName);
+    
+    // Check authorization
+    const adminUsers = getAdminUsersSafe ? getAdminUsersSafe() : [];
+    const dispatcherUsers = getDispatcherUsersSafe ? getDispatcherUsersSafe() : [];
+    const rider = getRiderByGoogleEmailSafe ? getRiderByGoogleEmailSafe(email) : null;
+    
+    let userRole = 'unauthorized';
+    if (adminUsers.includes(email)) {
+      userRole = 'admin';
+    } else if (dispatcherUsers.includes(email)) {
+      userRole = 'dispatcher';
+    } else if (rider && rider.status === 'Active') {
+      userRole = 'rider';
+      // Use rider name if available
+      if (rider.name && rider.name.trim() !== '') {
+        userName = rider.name;
+      }
+    }
+    
+    if (userRole === 'unauthorized') {
+      return {
+        success: false,
+        message: `Your Google account (${email}) is not authorized. Please contact your administrator.`
+      };
+    }
+    
+    // FIXED: Store session with proper name
+    const sessionData = {
+      email: email,
+      name: userName, // Properly set name
+      role: userRole,
+      method: 'google',
+      timestamp: Date.now()
+    };
+    
+    console.log('💾 Storing Google session data:', sessionData);
+    
+    PropertiesService.getUserProperties().setProperty('AUTHENTICATED_USER', JSON.stringify(sessionData));
+    
+    console.log('✅ Google authentication successful:', email, 'as', userRole);
+    
+    return {
+      success: true,
+      message: 'Google authentication successful',
+      user: sessionData
+    };
+    
+  } catch (error) {
+    console.error('❌ Google authentication error:', error);
+    return { success: false, message: 'Google authentication failed: ' + error.message };
+  }
+}
+
+/**
+ * FIXED: Process credentials authentication with proper session storage
+ */
+function processCredentialsAuthentication(email, password) {
+  try {
+    console.log('🔐 Processing credentials authentication for:', email);
+    
+    // Use existing login function if available
+    if (typeof loginWithCredentials === 'function') {
+      const result = loginWithCredentials(email, password);
+      
+      if (result.success) {
+        // FIXED: Store session properly
+        const sessionData = {
+          email: email,
+          name: extractNameFromEmail(email),
+          role: 'admin', // You could enhance this to get role from Users sheet
+          method: 'credentials',
+          timestamp: Date.now()
+        };
+        
+        PropertiesService.getUserProperties().setProperty('AUTHENTICATED_USER', JSON.stringify(sessionData));
+        
+        console.log('✅ Credentials authentication successful:', email);
+        
+        return {
+          success: true,
+          message: 'Credentials authentication successful',
+          user: sessionData
+        };
+      } else {
+        return { success: false, message: result.message || 'Invalid credentials' };
+      }
+    } else {
+      return { success: false, message: 'Credential authentication not available' };
+    }
+    
+  } catch (error) {
+    console.error('❌ Credentials authentication error:', error);
+    return { success: false, message: 'Authentication error: ' + error.message };
+  }
+}
+
+
+
+function createErrorPage(title, message) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><title>${title}</title></head>
+<body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+  <h1>❌ ${title}</h1>
+  <p>${message}</p>
+  <a href="?" style="padding: 10px 20px; background: #4285f4; color: white; text-decoration: none; border-radius: 4px;">Try Again</a>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html).setTitle(title);
+}
+
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  try {
+    const localPart = email.split('@')[0];
+    return localPart.charAt(0).toUpperCase() + localPart.slice(1);
+  } catch (error) {
+    return 'User';
+  }
+}
+
+function createGoogleAuthSuccessPage() {
+  const webAppUrl = ScriptApp.getService().getUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><title>Google Auth Success</title></head>
+<body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+  <div style="max-width: 500px; margin: 0 auto; background: #c8e6c9; padding: 30px; border-radius: 10px;">
+    <h1 style="color: #2e7d32;">✅ GOOGLE AUTH SUCCESS!</h1>
+    <p style="font-size: 18px;">The Google authentication parameter was received correctly!</p>
+    <p style="color: #666;">This proves that:</p>
+    <ul style="text-align: left; display: inline-block;">
+      <li>✅ Button click worked</li>
+      <li>✅ doGet function received the parameter</li>
+      <li>✅ URL parameter passing is working</li>
+      <li>✅ Basic authentication flow is functional</li>
+    </ul>
+    <a href="${webAppUrl}" style="display: inline-block; padding: 10px 20px; background: #4285f4; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px;">
+      🔄 Back to Test Page
+    </a>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Google Auth Success')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function createCredentialsAuthSuccessPage() {
+  const webAppUrl = ScriptApp.getService().getUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><title>Credentials Auth Success</title></head>
+<body style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+  <div style="max-width: 500px; margin: 0 auto; background: #c8e6c9; padding: 30px; border-radius: 10px;">
+    <h1 style="color: #2e7d32;">✅ CREDENTIALS AUTH SUCCESS!</h1>
+    <p style="font-size: 18px;">The credentials authentication parameter was received correctly!</p>
+    <p style="color: #666;">This proves that:</p>
+    <ul style="text-align: left; display: inline-block;">
+      <li>✅ Button click worked</li>
+      <li>✅ doGet function received the parameter</li>
+      <li>✅ URL parameter passing is working</li>
+      <li>✅ Basic authentication flow is functional</li>
+    </ul>
+    <a href="${webAppUrl}" style="display: inline-block; padding: 10px 20px; background: #34a853; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px;">
+      🔄 Back to Test Page
+    </a>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Credentials Auth Success')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Alternative simple test function if the above still has issues
+function createSimpleTestPage() {
+  const webAppUrl = ScriptApp.getService().getUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>SIMPLE TEST</title>
+</head>
+<body style="font-family: Arial, sans-serif; padding: 20px;">
+  <h1>🧪 SIMPLE TEST PAGE</h1>
+  
+  <p><strong>Click these links and see if they work:</strong></p>
+  
+  <p><a href="${webAppUrl}?auth=google" target="_top" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none;">Google Test</a></p>
+  
+  <p><a href="${webAppUrl}?auth=credentials" target="_top" style="background: #34a853; color: white; padding: 10px 20px; text-decoration: none;">Credentials Test</a></p>
+  
+  <script>
+    // Force top-level navigation for all links
+    document.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.top.location.href = this.href;
+      });
+    });
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('SIMPLE TEST')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Test function to check frame options
+function testFrameOptions() {
+  console.log('🔍 Testing frame options...');
+  
+  try {
+    const output = HtmlService.createHtmlOutput('<h1>Test</h1>');
+    
+    // Try different frame options
+    const allowAll = output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    console.log('✅ ALLOWALL frame option available');
+    
+    return {
+      success: true,
+      frameOptionsAvailable: true
+    };
+    
+  } catch (error) {
+    console.log('❌ Frame options error:', error.message);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Setup Users sheet for credential authentication
+ */
+function setupUsersSheet() {
+  try {
+    console.log('🛠️ Setting up Users sheet...');
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let usersSheet = spreadsheet.getSheetByName('Users');
+    
+    if (!usersSheet) {
+      usersSheet = spreadsheet.insertSheet('Users');
+      
+      const headers = ['email', 'hashedPassword', 'role', 'status', 'name', 'created', 'lastLogin'];
+      usersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      usersSheet.getRange(1, 1, 1, headers.length)
+        .setFontWeight('bold')
+        .setBackground('#4285f4')
+        .setFontColor('white');
+      
+      console.log('✅ Users sheet created with headers');
+    }
+    
+    // Check if we need to add a sample admin user
+    const data = usersSheet.getDataRange().getValues();
+    if (data.length === 1) { // Only headers, no data
+      const adminEmail = 'admin@escort.local';
+      const adminPassword = 'TempPass123!'; // User must change this
+      const hashedPassword = hashPassword(adminPassword);
+      
+      const adminData = [
+        adminEmail,
+        hashedPassword,
+        'admin',
+        'active',
+        'System Administrator',
+        new Date(),
+        ''
+      ];
+      
+      usersSheet.getRange(2, 1, 1, adminData.length).setValues([adminData]);
+      
+      console.log('✅ Sample admin user created:');
+      console.log('   Email:', adminEmail);
+      console.log('   Password:', adminPassword);
+      console.log('   ⚠️  CHANGE THIS PASSWORD IMMEDIATELY!');
+    }
+    
+    return { 
+      success: true, 
+      message: 'Users sheet setup complete' 
+    };
+    
+  } catch (error) {
+    console.error('❌ Users sheet setup failed:', error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+}
+
+/**
+ * Test the complete authentication flow
+ */
+function testCredentialAuth() {
+  console.log('🧪 Testing credential authentication...');
+  
+  try {
+    // Test 1: Setup Users sheet
+    console.log('1. Setting up Users sheet...');
+    const setupResult = setupUsersSheet();
+    console.log('   Result:', setupResult);
+    
+    // Test 2: Test password hashing
+    console.log('2. Testing password hashing...');
+    const testPassword = 'TestPassword123';
+    const hashed = hashPassword(testPassword);
+    console.log('   Hashed length:', hashed.length);
+    
+    // Test 3: Test user lookup
+    console.log('3. Testing user lookup...');
+    const user = findUserRecord('admin@escort.local');
+    console.log('   User found:', !!user);
+    
+    // Test 4: Test login function
+    console.log('4. Testing login function...');
+    const loginResult = loginWithCredentials('admin@escort.local', 'TempPass123!');
+    console.log('   Login result:', loginResult);
+    
+    return {
+      success: true,
+      message: 'All tests completed',
+      results: {
+        setup: setupResult,
+        hashTest: hashed.length === 64,
+        userFound: !!user,
+        login: loginResult
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+
+
 function immediateSessionTest() {
   console.log('=== IMMEDIATE SESSION TEST ===');
   
@@ -254,13 +1372,19 @@ function getRoleBasedNavigation(currentPage, user, rider) {
   console.log('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
   return navHtml;
 }
+function emergencyAuthFix() {
+  console.log('🚨 Running emergency authentication fix...');
+  
+  // Clear all cached user data
+  const properties = PropertiesService.getScriptProperties();
+  properties.deleteProperty('CACHED_USER_EMAIL');
+  properties.deleteProperty('CACHED_USER_NAME');
+  
+  console.log('✅ Cleared problematic cache');
+  return 'Cache cleared - users should see login screen now';
+}
 
-// 🔧 FIXED USER OBJECT HANDLING - Replace your authentication functions
 
-/**
- * IMMEDIATE FIX: Replace your getEnhancedUserSession function with this version
- * This version prioritizes fresh session data over cached data
- */
 function getEnhancedUserSession() {
   console.log('INVESTIGATION: getEnhancedUserSession invoked.');
   try {
@@ -1313,48 +2437,178 @@ function createErrorPageWithSignIn(error) {
 }
 
 /**
- * Create access denied page
+ * Create unauthorized access page
  */
-function createAccessDeniedPage(reason, user) {
-  return HtmlService.createHtmlOutput(`
+function createUnauthorizedPage(email, name) {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Access Denied - Escort Management</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; text-align: center; padding: 50px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; min-height: 100vh; margin: 0;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.95); color: #333;
-            padding: 40px; border-radius: 15px; max-width: 600px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        }
-        .btn {
-            background: #3498db; color: white; padding: 15px 30px;
-            border: none; border-radius: 25px; font-size: 16px;
-            cursor: pointer; text-decoration: none; display: inline-block;
-            margin: 10px; transition: all 0.3s ease;
-        }
-        .btn:hover { background: #2980b9; transform: translateY(-2px); }
-    </style>
+  <title>Access Denied - Escort Management</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    .title {
+      color: #d63031;
+      margin-bottom: 1rem;
+    }
+    .message {
+      color: #636e72;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+    .user-info {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      background: #0984e3;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      transition: all 0.3s;
+      margin: 0 10px;
+    }
+    .btn:hover {
+      background: #74b9ff;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🏍️ Motorcycle Escort Management</h1>
-        <h2>🚫 Access Denied</h2>
-        <p>Hello ${user.name},</p>
-        <p>${reason}</p>
-        <p>Your role: <strong>${user.role}</strong></p>
-        <a href="${getWebAppUrlSafe()}" class="btn">← Back to Dashboard</a>
+  <div class="container">
+    <div class="icon">🚫</div>
+    <h1 class="title">Access Denied</h1>
+    <p class="message">Your account is not authorized to access this system. Please contact your administrator to request access.</p>
+    
+    <div class="user-info">
+      <strong>Account Details:</strong><br>
+      Email: ${email || 'Unknown'}<br>
+      Name: ${name || 'Not provided'}
     </div>
+    
+    <a href="${webAppUrl}?auth=logout" class="btn">Try Different Account</a>
+    <a href="mailto:admin@yourdomain.com" class="btn">Contact Admin</a>
+  </div>
 </body>
-</html>
-  `).setTitle('Access Denied');
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Denied - Escort Management');
 }
+
+/**
+ * Create access denied page for insufficient permissions
+ */
+function createAccessDeniedPage(reason, user) {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Access Denied - Escort Management</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #fd79a8 0%, #fdcb6e 100%);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    .title {
+      color: #e17055;
+      margin-bottom: 1rem;
+    }
+    .message {
+      color: #636e72;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+    .user-info {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      background: #00b894;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn:hover {
+      background: #00a085;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⛔</div>
+    <h1 class="title">Insufficient Permissions</h1>
+    <p class="message">${reason || 'You do not have permission to access this resource.'}</p>
+    
+    <div class="user-info">
+      <strong>Current User:</strong> ${user ? user.email : 'Unknown'}<br>
+      <strong>Role:</strong> ${user ? user.role : 'None'}
+    </div>
+    
+    <a href="${webAppUrl}" class="btn">Return to Dashboard</a>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Denied - Escort Management');
+}
+
 
 /**
  * Simple test authentication function
@@ -1391,66 +2645,7 @@ function testAuthenticationSimple() {
     };
   }
 }
-/**
- * UPDATED doGet function with fixed user handling
- */
-function doGet(e) {
-  try {
-    // Authentication
-    if (e.parameter?.action === 'signin') return createSignInPage();
-    
-    const userSession = getEnhancedUserSession();
-    if (!userSession.hasEmail) return createSignInPage();
-    
-    // Authorization
-    const rider = getRiderByGoogleEmailSafe(userSession.email);
-    const adminUsers = getAdminUsersSafe();
-    const dispatcherUsers = getDispatcherUsersSafe();
-    
-    let userRole = 'unauthorized';
-    if (adminUsers.includes(userSession.email)) userRole = 'admin';
-    else if (dispatcherUsers.includes(userSession.email)) userRole = 'dispatcher';
-    else if (rider?.status === 'Active') userRole = 'rider';
-    else return createUnauthorizedPage(userSession.email, userSession.name);
-    
-    const user = {
-      name: userSession.name || rider?.name || 'User',
-      email: userSession.email,
-      role: userRole,
-      avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
-    };
-    
-    // Page loading
-    let pageName = e.parameter?.page || 'dashboard';
-    let pageFile = pageName;
-    
-    if (userRole === 'admin' && pageName === 'dashboard') pageFile = 'admin-dashboard';
-    else if (userRole === 'rider' && pageName === 'dashboard') pageFile = 'rider-dashboard';
-    
-    if (!checkFileExists(pageFile)) pageFile = 'index';
-    
-    let content = HtmlService.createHtmlOutputFromFile(pageFile).getContent();
-    
-    // Add navigation
-    const navigation = getRoleBasedNavigationSafe(pageName, user, rider);
-    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
-    
-    // CLEAN: Add only essential user context
-    const userScript = `<script>window.currentUser = ${JSON.stringify(user)};</script>`;
-    
-    if (content.includes('</body>')) {
-      content = content.replace('</body>', userScript + '</body>');
-    } else {
-      content += userScript;
-    }
-    
-    return HtmlService.createHtmlOutput(content).setTitle('Motorcycle Escort Management');
-    
-  } catch (error) {
-    console.error('doGet error:', error);
-    return createErrorPage(error.message);
-  }
-}
+
 
 /**
  * Enhanced sign-in page that handles user detection better
@@ -1660,11 +2855,158 @@ function createSignInPageEnhanced() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+/**
+ * Create the hybrid login page with both Google and credential options
+ */
 function createHybridLoginPage() {
-  return HtmlService.createHtmlOutputFromFile('login')
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Login - Escort Management</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0; 
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { 
+      font-size: 3rem; 
+      margin-bottom: 1rem; 
+    }
+    .title { 
+      color: #333; 
+      margin-bottom: 2rem; 
+    }
+    .auth-option {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .auth-option h3 {
+      margin: 0 0 0.5rem 0;
+      color: #333;
+    }
+    .auth-option p {
+      margin: 0 0 1rem 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+      text-decoration: none;
+      display: inline-block;
+      color: white;
+    }
+    .btn-google {
+      background: #4285f4;
+    }
+    .btn-google:hover {
+      background: #3367d6;
+    }
+    .btn-credentials {
+      background: #34a853;
+    }
+    .btn-credentials:hover {
+      background: #137333;
+    }
+    .divider {
+      text-align: center;
+      margin: 1.5rem 0;
+      color: #666;
+      position: relative;
+    }
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #ddd;
+    }
+    .divider span {
+      background: white;
+      padding: 0 1rem;
+    }
+    .debug-info {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">🏍️</div>
+    <h1 class="title">Escort Management System</h1>
+    
+    <div class="auth-option">
+      <h3>🔐 Google Account</h3>
+      <p>Sign in with your authorized Google account</p>
+      <a href="${webAppUrl}?auth=google" class="btn btn-google">
+        Sign In with Google
+      </a>
+    </div>
+    
+    <div class="divider">
+      <span>or</span>
+    </div>
+    
+    <div class="auth-option">
+      <h3>👤 System Login</h3>
+      <p>Use your system username and password</p>
+      <a href="${webAppUrl}?auth=credentials" class="btn btn-credentials">
+        System Login
+      </a>
+    </div>
+    
+    <div class="debug-info">
+      <strong>Debug Info:</strong><br>
+      Current URL: ${webAppUrl}<br>
+      Timestamp: ${new Date().toISOString()}
+    </div>
+  </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
     .setTitle('Login - Escort Management')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
+
+
+
 
 // 🛡️ ADDITIONAL SAFE WRAPPER FUNCTIONS
 
@@ -2197,4 +3539,3258 @@ if (typeof module !== 'undefined' && module.exports) {
     getUserNavigationMenu
   };
 }
+// 🔧 SESSION VALIDATION FUNCTIONS - Add these to your AccessControl.gs
 
+/**
+ * Check for valid user session (either custom or Google)
+ */
+function getValidUserSession() {
+  try {
+    console.log('🔍 Checking for valid user session...');
+    
+    // Method 1: Check custom session (from credential login)
+    const customSession = getCustomSession();
+    if (customSession && customSession.expires > Date.now()) {
+      console.log('✅ Found valid custom session:', customSession.email);
+      return {
+        isValid: true,
+        type: 'custom',
+        email: customSession.email,
+        name: customSession.name,
+        source: 'credential_login'
+      };
+    }
+    
+    // Method 2: Check Google OAuth session
+    const googleUser = getGoogleUserSession();
+    if (googleUser.hasEmail) {
+      console.log('✅ Found valid Google session:', googleUser.email);
+      return {
+        isValid: true,
+        type: 'google',
+        email: googleUser.email,
+        name: googleUser.name,
+        source: 'google_oauth'
+      };
+    }
+    
+    console.log('❌ No valid session found');
+    return {
+      isValid: false,
+      error: 'No valid session'
+    };
+    
+  } catch (error) {
+    console.error('❌ Session validation error:', error);
+    return {
+      isValid: false,
+      error: error.message
+    };
+  }
+}
+
+function getGoogleUserSession() {
+  try {
+    console.log('🔍 Getting fresh Google session...');
+    
+    const user = Session.getActiveUser();
+    if (!user) {
+      console.log('❌ No Google user session');
+      return { hasEmail: false, error: 'No Google user session' };
+    }
+    
+    console.log('👤 User object type:', typeof user);
+    console.log('👤 User object methods:', Object.getOwnPropertyNames(user));
+    
+    // FIXED: Safely get email
+    let email = '';
+    try {
+      if (typeof user.getEmail === 'function') {
+        email = user.getEmail();
+      } else {
+        email = user.email || '';
+      }
+    } catch (e) {
+      console.log('⚠️ getEmail() failed, trying email property:', e.message);
+      email = user.email || '';
+    }
+    
+    // FIXED: Safely get name  
+    let name = '';
+    try {
+      if (typeof user.getName === 'function') {
+        name = user.getName();
+      } else if (user.name) {
+        name = user.name;
+      } else {
+        // Extract name from email as fallback
+        name = extractNameFromEmail(email);
+      }
+    } catch (e) {
+      console.log('⚠️ getName() failed, using email fallback:', e.message);
+      name = extractNameFromEmail(email);
+    }
+    
+    if (!email || email.trim() === '') {
+      console.log('❌ No email in Google session');
+      return { hasEmail: false, error: 'No email in Google session' };
+    }
+    
+    console.log('📧 Fresh Google session email:', email);
+    console.log('👤 Fresh Google session name:', name);
+    
+    return {
+      hasEmail: true,
+      email: email.trim(),
+      name: name?.trim() || extractNameFromEmail(email),
+      source: 'fresh_google_session'
+    };
+    
+  } catch (error) {
+    console.error('❌ Google session error:', error);
+    return { 
+      hasEmail: false, 
+      error: error.message 
+    };
+  }
+}
+function getSimpleGoogleSession() {
+  try {
+    console.log('🔍 Getting simple Google session...');
+    
+    // Direct approach - just get the email
+    const userEmail = Session.getActiveUser().getEmail();
+    
+    if (!userEmail || userEmail.trim() === '') {
+      console.log('❌ No email found');
+      return { hasEmail: false, error: 'No email found' };
+    }
+    
+    console.log('📧 Simple Google session email:', userEmail);
+    
+    return {
+      hasEmail: true,
+      email: userEmail.trim(),
+      name: extractNameFromEmail(userEmail),
+      source: 'simple_google_session'
+    };
+    
+  } catch (error) {
+    console.error('❌ Simple Google session error:', error);
+    return { 
+      hasEmail: false, 
+      error: error.message 
+    };
+  }
+}
+
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  try {
+    const localPart = email.split('@')[0];
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
+
+
+// === USER AUTHORIZATION ===
+
+/**
+ * Authorize user with valid session
+ */
+function authorizeValidUser(session) {
+  try {
+    console.log('🔐 Authorizing user:', session.email);
+    
+    // Get authorization data (using your existing safe functions)
+    const rider = getRiderByGoogleEmailSafe ? getRiderByGoogleEmailSafe(session.email) : null;
+    const adminUsers = getAdminUsersSafe ? getAdminUsersSafe() : [];
+    const dispatcherUsers = getDispatcherUsersSafe ? getDispatcherUsersSafe() : [];
+    
+    console.log('📋 Auth data - Rider:', !!rider, 'Admins:', adminUsers.length, 'Dispatchers:', dispatcherUsers.length);
+    
+    // Determine user role
+    let userRole = 'unauthorized';
+    let permissions = [];
+    
+    if (adminUsers.includes(session.email)) {
+      userRole = 'admin';
+      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+      console.log('✅ User is admin');
+    } else if (dispatcherUsers.includes(session.email)) {
+      userRole = 'dispatcher';
+      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+      console.log('✅ User is dispatcher');
+    } else if (rider && rider.status === 'Active') {
+      userRole = 'rider';
+      permissions = ['view_own_assignments', 'update_own_status'];
+      console.log('✅ User is active rider');
+    } else {
+      console.log('❌ User is unauthorized');
+    }
+    
+    if (userRole === 'unauthorized') {
+      return {
+        success: false,
+        error: 'UNAUTHORIZED',
+        message: 'Your account is not authorized to access this system'
+      };
+    }
+    
+    const user = {
+      name: session.name || rider?.name || extractNameFromEmail(session.email),
+      email: session.email,
+      role: userRole,
+      permissions: permissions,
+      avatar: (session.name || rider?.name || 'U').charAt(0).toUpperCase()
+    };
+    
+    console.log('✅ User authorized successfully:', user.role);
+    
+    return {
+      success: true,
+      user: user,
+      rider: rider
+    };
+    
+  } catch (error) {
+    console.error('❌ Authorization error:', error);
+    return {
+      success: false,
+      error: 'AUTH_ERROR',
+      message: error.message
+    };
+  }
+}
+
+/**
+ * Load page for authorized user
+ */
+function loadPageForUser(pageName, user, rider) {
+  try {
+    console.log(`📄 Loading page: ${pageName} for role: ${user.role}`);
+    
+    // Handle special admin-only pages
+    if (['auth-setup', 'user-management'].includes(pageName) && user.role !== 'admin') {
+      return createAccessDeniedPage('Only administrators can access this page', user);
+    }
+    
+    // Handle auth-setup page
+    if (pageName === 'auth-setup') {
+      return createAuthMappingPage ? createAuthMappingPage() : createErrorPage('Feature Not Available', 'Authentication setup is not available');
+    }
+    
+    // Handle user-management page
+    if (pageName === 'user-management') {
+      return handleUserManagementPage ? handleUserManagementPage({ parameter: { page: 'user-management' } }) : createErrorPage('Feature Not Available', 'User management is not available');
+    }
+    
+    // Load regular page content using existing functions
+    const fileName = getPageFileNameSafe ? getPageFileNameSafe(pageName, user.role) : pageName;
+    let htmlOutput;
+    
+    try {
+      htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    } catch (error) {
+      // Fallback to default page
+      console.log('⚠️ Page file not found, using default:', fileName);
+      htmlOutput = HtmlService.createHtmlOutputFromFile('index');
+    }
+    
+    let content = htmlOutput.getContent();
+    
+    // Add navigation and user info using existing functions if available
+    if (typeof getRoleBasedNavigationSafe === 'function') {
+      const navigationHtml = getRoleBasedNavigationSafe(pageName, user, rider);
+      content = addNavigationToContentSafe ? addNavigationToContentSafe(content, navigationHtml) : content;
+    }
+    
+    if (typeof injectUserInfoSafe === 'function') {
+      content = injectUserInfoSafe(content, user, rider);
+    }
+    
+    htmlOutput.setContent(content);
+    
+    // Add mobile optimizations if function exists
+    if (typeof addMobileOptimizations === 'function') {
+      htmlOutput = addMobileOptimizations(htmlOutput, user, rider);
+    }
+    
+    console.log('✅ Page loaded successfully');
+    return htmlOutput;
+    
+  } catch (error) {
+    console.error('❌ Page loading error:', error);
+    return createErrorPage('Page Error', 'Failed to load page: ' + error.message);
+  }
+}
+function createRiderDashboard(user, rider) {
+  try {
+    console.log('🏍️ Creating rider dashboard...');
+    console.log('User object:', user);
+    console.log('Rider object:', rider);
+    
+    // Safe property access with fallbacks
+    const userName = (user && user.name) ? user.name : 
+                     (user && user.email) ? extractNameFromEmail(user.email) : 'Rider';
+    const userEmail = (user && user.email) ? user.email : 'Unknown';
+    const userMethod = (user && user.method) ? user.method : 'Unknown';
+    const webAppUrl = getWebAppUrl();
+    
+    console.log('Safe values:', { userName, userEmail, userMethod });
+    
+    const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rider Dashboard - Escort Management</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .main-content {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .welcome-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .rider-info {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #4285f4;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .btn {
+            background: #4285f4;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #3367d6;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-item {
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .stat-label {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.9rem;
+        }
+
+        .debug-info {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+    
+    <div class="main-content">
+        <div class="welcome-card">
+            <h1>🏍️ Welcome, ${userName}!</h1>
+            <p style="font-size: 1.2rem; color: #666; margin-top: 10px;">Rider Dashboard</p>
+        </div>
+
+        <div class="rider-info">
+            <h2 style="margin-bottom: 20px;">👤 Rider Information</h2>
+            <div class="quick-stats">
+                <div class="stat-item">
+                    <div class="stat-number">✅</div>
+                    <div class="stat-label">Status</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Active Assignments</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Completed This Month</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Total Assignments</div>
+                </div>
+            </div>
+            <p><strong>Email:</strong> ${userEmail}</p>
+            <p><strong>Login Method:</strong> ${userMethod}</p>
+            
+            <div class="debug-info">
+                <strong>🔧 Debug Info:</strong><br>
+                User object available: ${user ? 'Yes' : 'No'}<br>
+                Rider object available: ${rider ? 'Yes' : 'No'}<br>
+                Dashboard created dynamically (rider-dashboard.html missing)
+            </div>
+        </div>
+
+        <div class="cards-grid">
+            <div class="card">
+                <h3>🏍️ My Assignments</h3>
+                <p>View your current and upcoming escort assignments.</p>
+                <a href="${webAppUrl}?page=assignments" class="btn">View Assignments</a>
+            </div>
+
+            <div class="card">
+                <h3>📱 Notifications</h3>
+                <p>Check messages and updates from dispatchers.</p>
+                <a href="${webAppUrl}?page=notifications" class="btn">View Messages</a>
+            </div>
+
+            <div class="card">
+                <h3>👤 Profile</h3>
+                <p>Update your contact information and preferences.</p>
+                <a href="#" class="btn" onclick="alert('Profile editing coming soon!')">Edit Profile</a>
+            </div>
+
+            <div class="card">
+                <h3>📋 Quick Actions</h3>
+                <p>Common rider actions and tools.</p>
+                <a href="#" class="btn btn-success" onclick="alert('Availability reporting coming soon!')">Report Availability</a>
+                <a href="#" class="btn" onclick="alert('Status updates coming soon!')">Update Status</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🏍️ Rider dashboard loaded');
+        console.log('User data:', ${JSON.stringify(user || {})});
+        
+        // Add any rider-specific JavaScript here
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('👤 Dashboard ready for user:', '${userEmail}');
+            
+            // Check if user context was properly injected
+            if (window.currentUser) {
+                console.log('✅ Current user context:', window.currentUser);
+            } else {
+                console.log('⚠️ User context not found');
+            }
+        });
+    </script>
+</body>
+</html>`;
+
+    console.log('✅ Rider dashboard HTML created successfully');
+    
+    return HtmlService.createHtmlOutput(html)
+      .setTitle('Rider Dashboard - Escort Management')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      
+  } catch (error) {
+    console.error('❌ Error creating rider dashboard:', error);
+    
+    // Return a simple fallback dashboard
+    return createSimpleRiderDashboard(user, rider);
+  }
+}
+
+/**
+ * Simple fallback rider dashboard if the main one fails
+ */
+function createSimpleRiderDashboard(user, rider) {
+  const webAppUrl = getWebAppUrl();
+  const userEmail = (user && user.email) ? user.email : 'Unknown';
+  const userName = (user && user.name) ? user.name : 'Rider';
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rider Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .btn { background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 5px; display: inline-block; }
+    .header { background: #4285f4; color: white; padding: 20px; border-radius: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <!--NAVIGATION_MENU_PLACEHOLDER-->
+  
+  <div class="container">
+    <div class="header">
+      <h1>🏍️ Rider Dashboard</h1>
+      <p>Welcome, ${userName}!</p>
+    </div>
+    
+    <div class="card">
+      <h3>👤 User Information</h3>
+      <p><strong>Email:</strong> ${userEmail}</p>
+      <p><strong>Role:</strong> Rider</p>
+      <p><strong>Status:</strong> This is a simplified dashboard because rider-dashboard.html is missing.</p>
+    </div>
+    
+    <div class="card">
+      <h3>🔧 Quick Actions</h3>
+      <a href="${webAppUrl}?page=assignments" class="btn">View My Assignments</a>
+      <a href="${webAppUrl}?page=notifications" class="btn">Check Messages</a>
+      <a href="${webAppUrl}?action=logout" class="btn" style="background: #dc3545;">Logout</a>
+    </div>
+    
+    <div class="card">
+      <h3>ℹ️ Note</h3>
+      <p>This is a simplified rider dashboard. To get the full dashboard, create a <code>rider-dashboard.html</code> file in your project.</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Rider Dashboard')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+
+/**
+ * Test logout functionality
+ */
+function testLogout() {
+  console.log('🧪 Testing logout functionality...');
+  
+  try {
+    // Clear session
+    const result = clearUserSession();
+    console.log('Logout result:', result);
+    
+    // Check if session is cleared
+    const session = getAuthenticatedSession();
+    console.log('Session after logout:', session);
+    
+    return {
+      logoutResult: result,
+      sessionAfterLogout: session,
+      success: !session.isValid
+    };
+    
+  } catch (error) {
+    console.error('❌ Logout test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function getWebAppUrl() {
+  try {
+    return ScriptApp.getService().getUrl();
+  } catch (error) {
+    return '#';
+  }
+}
+/**
+ * Create redirect page
+ */
+function createRedirectPage(url, message) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Redirecting...</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+    .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="spinner"></div>
+  <h2>${message}</h2>
+  <p>Redirecting to dashboard...</p>
+  <script>
+    setTimeout(function() {
+      window.location.href = '${url}';
+    }, 1500);
+  </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Redirecting...');
+}
+
+/**
+ * Extract name from email
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  try {
+    const localPart = email.split('@')[0];
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
+
+/**
+ * Get web app URL safely
+ */
+function getWebAppUrl() {
+  try {
+    return ScriptApp.getService().getUrl();
+  } catch (error) {
+    console.error('Error getting web app URL:', error);
+    return '#';
+  }
+}
+
+/**
+ * Create access denied page
+ */
+function createAccessDeniedPage(reason, user) {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Access Denied - Escort Management</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    .title {
+      color: #d63031;
+      margin-bottom: 1rem;
+    }
+    .message {
+      color: #636e72;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+    .user-info {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .btn {
+      background: #0984e3;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .btn:hover {
+      background: #74b9ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🚫</div>
+    <h1 class="title">Access Denied</h1>
+    <p class="message">${reason || 'You do not have permission to access this resource.'}</p>
+    
+    <div class="user-info">
+      <strong>Current User:</strong> ${user ? user.email : 'Unknown'}<br>
+      <strong>Role:</strong> ${user ? user.role : 'None'}
+    </div>
+    
+    <a href="${webAppUrl}" class="btn">Return to Dashboard</a>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Denied - Escort Management');
+}
+
+/**
+ * Create generic error page
+ */
+function createErrorPage(title, message) {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>${title} - Escort Management</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      text-align: center;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    .title {
+      color: #6c5ce7;
+      margin-bottom: 1rem;
+    }
+    .message {
+      color: #636e72;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+    .btn {
+      background: #00b894;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      font-weight: 600;
+      transition: all 0.3s;
+      margin: 0 10px;
+    }
+    .btn:hover {
+      background: #00a085;
+    }
+    .btn-secondary {
+      background: #636e72;
+    }
+    .btn-secondary:hover {
+      background: #2d3436;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⚠️</div>
+    <h1 class="title">${title}</h1>
+    <p class="message">${message}</p>
+    
+    <a href="${webAppUrl}" class="btn">Try Again</a>
+    <a href="${webAppUrl}?auth=logout" class="btn btn-secondary">Sign Out</a>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(title + ' - Escort Management');
+}
+
+/**
+ * Emergency function to clear authentication cache
+ */
+function emergencyAuthFix() {
+  console.log('🚨 Running emergency authentication fix...');
+  
+  try {
+    // Clear script properties cache
+    const scriptProperties = PropertiesService.getScriptProperties();
+    scriptProperties.deleteProperty('CACHED_USER_EMAIL');
+    scriptProperties.deleteProperty('CACHED_USER_NAME');
+    
+    // Clear user properties cache
+    const userProperties = PropertiesService.getUserProperties();
+    userProperties.deleteProperty('CUSTOM_SESSION');
+    
+    console.log('✅ Cleared all authentication cache');
+    
+    return {
+      success: true,
+      message: 'Authentication cache cleared. Users should see login screen now.',
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Emergency fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Emergency function to clear all authentication cache
+ */
+function emergencyAuthFix() {
+  console.log('🚨 Running emergency authentication fix...');
+  
+  try {
+    // Clear script properties cache
+    const scriptProperties = PropertiesService.getScriptProperties();
+    scriptProperties.deleteProperty('CACHED_USER_EMAIL');
+    scriptProperties.deleteProperty('CACHED_USER_NAME');
+    
+    // Clear user properties cache
+    const userProperties = PropertiesService.getUserProperties();
+    userProperties.deleteProperty('CUSTOM_SESSION');
+    
+    console.log('✅ Cleared all authentication cache');
+    
+    return {
+      success: true,
+      message: 'Authentication cache cleared. Users should see login screen now.',
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Emergency fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Safe wrapper for getting web app URL
+ */
+function getWebAppUrl() {
+  try {
+    return ScriptApp.getService().getUrl();
+  } catch (error) {
+    console.error('Error getting web app URL:', error);
+    return '#';
+  }
+}
+
+/**
+ * Extract name from email address
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  
+  try {
+    const localPart = email.split('@')[0];
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
+
+
+
+
+function runCompleteDiagnostic() {
+  console.log('🚨 === COMPLETE AUTHENTICATION DIAGNOSTIC ===');
+  
+  // Test 1: Check if doGet exists and works
+  console.log('1. Testing doGet function...');
+  try {
+    if (typeof doGet !== 'function') {
+      console.log('❌ doGet is not defined');
+      return { error: 'doGet function missing' };
+    }
+    
+    console.log('✅ doGet function exists');
+    
+    // Test with auth parameters
+    const googleTest = doGet({ parameter: { auth: 'google' } });
+    console.log('Google auth test result type:', typeof googleTest);
+    
+    const credTest = doGet({ parameter: { auth: 'credentials' } });
+    console.log('Credentials auth test result type:', typeof credTest);
+    
+  } catch (error) {
+    console.log('❌ doGet test failed:', error.message);
+    return { error: 'doGet function broken: ' + error.message };
+  }
+  
+  // Test 2: Check supporting functions
+  console.log('\n2. Checking supporting functions...');
+  const requiredFunctions = [
+    'createHybridLoginPage',
+    'handleGoogleAuth', 
+    'handleCredentialsAuth',
+    'getValidUserSession'
+  ];
+  
+  const missing = [];
+  requiredFunctions.forEach(name => {
+    try {
+      if (typeof eval(name) !== 'function') {
+        missing.push(name);
+      }
+    } catch (e) {
+      missing.push(name);
+    }
+  });
+  
+  if (missing.length > 0) {
+    console.log('❌ Missing functions:', missing.join(', '));
+    return { error: 'Missing functions: ' + missing.join(', ') };
+  }
+  
+  console.log('✅ All functions exist');
+  
+  // Test 3: Check web app URL
+  console.log('\n3. Checking web app URL...');
+  try {
+    const url = getWebAppUrl();
+    console.log('Web app URL:', url);
+    
+    if (!url || url === '#') {
+      console.log('❌ Invalid web app URL');
+      return { error: 'Web app URL problem' };
+    }
+    
+  } catch (error) {
+    console.log('❌ URL error:', error.message);
+    return { error: 'URL error: ' + error.message };
+  }
+  
+  console.log('✅ Diagnostic complete - no obvious issues found');
+  console.log('\n🔧 If buttons still don\'t work, the issue is likely:');
+  console.log('1. Web app not deployed properly');
+  console.log('2. Browser cache issues');
+  console.log('3. Multiple doGet functions conflicting');
+  
+  return { success: true };
+}
+
+
+
+
+// 🔧 DEBUG BUTTON ISSUES - Run these functions to diagnose the problem
+
+/**
+ * 1. Test what happens when you access the auth URLs directly
+ */
+function testAuthUrls() {
+  console.log('🧪 Testing authentication URLs...');
+  
+  try {
+    const webAppUrl = getWebAppUrl();
+    console.log('Base URL:', webAppUrl);
+    
+    // Test Google auth URL
+    const googleUrl = webAppUrl + '?auth=google';
+    console.log('Google auth URL:', googleUrl);
+    
+    // Test credentials auth URL
+    const credentialsUrl = webAppUrl + '?auth=credentials';
+    console.log('Credentials auth URL:', credentialsUrl);
+    
+    // Test if doGet handles these parameters
+    console.log('\n🔍 Testing doGet parameter handling...');
+    
+    // Mock Google auth request
+    const googleEvent = { parameter: { auth: 'google' } };
+    console.log('Testing Google auth parameter...');
+    try {
+      const googleResult = doGet(googleEvent);
+      console.log('✅ Google auth test successful');
+      console.log('Result type:', typeof googleResult);
+      console.log('Has getContent:', typeof googleResult.getContent);
+    } catch (error) {
+      console.log('❌ Google auth test failed:', error.message);
+    }
+    
+    // Mock credentials auth request
+    const credentialsEvent = { parameter: { auth: 'credentials' } };
+    console.log('Testing credentials auth parameter...');
+    try {
+      const credentialsResult = doGet(credentialsEvent);
+      console.log('✅ Credentials auth test successful');
+      console.log('Result type:', typeof credentialsResult);
+      console.log('Has getContent:', typeof credentialsResult.getContent);
+    } catch (error) {
+      console.log('❌ Credentials auth test failed:', error.message);
+    }
+    
+    return {
+      success: true,
+      webAppUrl: webAppUrl,
+      googleUrl: googleUrl,
+      credentialsUrl: credentialsUrl
+    };
+    
+  } catch (error) {
+    console.error('❌ URL test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * 2. Check if your doGet function is properly defined
+ */
+function checkDoGetFunction() {
+  console.log('🔍 Checking doGet function...');
+  
+  try {
+    // Check if doGet exists
+    if (typeof doGet !== 'function') {
+      console.log('❌ doGet is not defined as a function');
+      return { success: false, error: 'doGet function not found' };
+    }
+    
+    console.log('✅ doGet function exists');
+    
+    // Test with no parameters
+    console.log('Testing doGet with no parameters...');
+    try {
+      const result = doGet({});
+      console.log('✅ doGet works with empty parameters');
+      console.log('Result type:', typeof result);
+      
+      if (result && typeof result.getContent === 'function') {
+        const content = result.getContent();
+        console.log('Content length:', content.length);
+        console.log('Contains "login":', content.toLowerCase().includes('login'));
+        console.log('Contains "auth":', content.toLowerCase().includes('auth'));
+      }
+    } catch (error) {
+      console.log('❌ doGet failed with empty parameters:', error.message);
+    }
+    
+    // Test with page parameter
+    console.log('Testing doGet with page parameter...');
+    try {
+      const result = doGet({ parameter: { page: 'dashboard' } });
+      console.log('✅ doGet works with page parameter');
+    } catch (error) {
+      console.log('❌ doGet failed with page parameter:', error.message);
+    }
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ doGet check failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 3. Check if supporting functions exist
+ */
+function checkSupportingFunctions() {
+  console.log('🔍 Checking supporting functions...');
+  
+  const requiredFunctions = [
+    'createHybridLoginPage',
+    'handleGoogleAuth',
+    'handleCredentialsAuth',
+    'getValidUserSession',
+    'getGoogleUserSession',
+    'authorizeValidUser',
+    'createCredentialsLoginForm',
+    'getCustomSession',
+    'loginWithCredentials'
+  ];
+  
+  const results = {};
+  
+  requiredFunctions.forEach(funcName => {
+    try {
+      const func = eval(funcName);
+      if (typeof func === 'function') {
+        console.log(`✅ ${funcName} exists`);
+        results[funcName] = 'exists';
+      } else {
+        console.log(`❌ ${funcName} is not a function`);
+        results[funcName] = 'not_function';
+      }
+    } catch (error) {
+      console.log(`❌ ${funcName} not found`);
+      results[funcName] = 'missing';
+    }
+  });
+  
+  const missingFunctions = Object.keys(results).filter(key => results[key] !== 'exists');
+  
+  if (missingFunctions.length > 0) {
+    console.log('🚨 Missing functions:', missingFunctions.join(', '));
+  } else {
+    console.log('✅ All required functions exist');
+  }
+  
+  return {
+    success: missingFunctions.length === 0,
+    results: results,
+    missing: missingFunctions
+  };
+}
+
+/**
+ * 4. Test the current authentication flow
+ */
+function testCurrentAuthFlow() {
+  console.log('🔍 Testing current authentication flow...');
+  
+  try {
+    // Test session validation
+    console.log('1. Testing session validation...');
+    if (typeof getValidUserSession === 'function') {
+      const session = getValidUserSession();
+      console.log('Session result:', session);
+    } else {
+      console.log('❌ getValidUserSession function missing');
+    }
+    
+    // Test Google session
+    console.log('2. Testing Google session...');
+    if (typeof getGoogleUserSession === 'function') {
+      const googleSession = getGoogleUserSession();
+      console.log('Google session result:', googleSession);
+    } else {
+      console.log('❌ getGoogleUserSession function missing');
+    }
+    
+    // Test custom session
+    console.log('3. Testing custom session...');
+    if (typeof getCustomSession === 'function') {
+      const customSession = getCustomSession();
+      console.log('Custom session result:', customSession);
+    } else {
+      console.log('❌ getCustomSession function missing');
+    }
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Auth flow test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * 5. Create a minimal working login page for testing
+ */
+function createTestLoginPage() {
+  const webAppUrl = getWebAppUrl();
+  
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TEST LOGIN PAGE</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 2rem; background: #f0f0f0; }
+    .container { max-width: 500px; margin: 0 auto; background: white; padding: 2rem; border-radius: 8px; }
+    .btn { display: block; width: 100%; padding: 15px; margin: 10px 0; background: #4285f4; color: white; text-decoration: none; text-align: center; border-radius: 5px; font-size: 16px; }
+    .btn:hover { background: #3367d6; }
+    .btn.green { background: #34a853; }
+    .btn.green:hover { background: #137333; }
+    .info { background: #e3f2fd; padding: 1rem; border-radius: 5px; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 TEST LOGIN PAGE</h1>
+    <div class="info">
+      <strong>Current URL:</strong> ${webAppUrl}<br>
+      <strong>Timestamp:</strong> ${new Date().toISOString()}
+    </div>
+    
+    <h3>Test Authentication URLs:</h3>
+    
+    <a href="${webAppUrl}?auth=google" class="btn">
+      🔗 Test Google Auth (?auth=google)
+    </a>
+    
+    <a href="${webAppUrl}?auth=credentials" class="btn green">
+      🔗 Test Credentials Auth (?auth=credentials)
+    </a>
+    
+    <a href="${webAppUrl}" class="btn" style="background: #666;">
+      🔗 Back to Main App
+    </a>
+    
+    <div class="info">
+      <strong>Instructions:</strong><br>
+      1. Click each button above<br>
+      2. See what happens<br>
+      3. Check browser console for errors<br>
+      4. Report back what you see
+    </div>
+  </div>
+  
+  <script>
+    console.log('Test login page loaded');
+    console.log('Current URL:', window.location.href);
+    
+    // Log clicks
+    document.querySelectorAll('.btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        console.log('Button clicked:', this.href);
+        console.log('Target URL:', this.href);
+      });
+    });
+  </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('TEST LOGIN PAGE');
+}
+
+
+
+/**
+ * 7. Master diagnostic function - run this first
+ */
+function runCompleteDiagnostic() {
+  console.log('🚨 === COMPLETE AUTHENTICATION DIAGNOSTIC ===');
+  
+  const results = {
+    timestamp: new Date().toISOString(),
+    tests: {}
+  };
+  
+  console.log('1. Testing URLs...');
+  results.tests.urls = testAuthUrls();
+  
+  console.log('\n2. Checking doGet function...');
+  results.tests.doGet = checkDoGetFunction();
+  
+  console.log('\n3. Checking supporting functions...');
+  results.tests.functions = checkSupportingFunctions();
+  
+  console.log('\n4. Testing auth flow...');
+  results.tests.authFlow = testCurrentAuthFlow();
+  
+  console.log('\n=== DIAGNOSTIC SUMMARY ===');
+  console.log('URLs test:', results.tests.urls.success ? '✅ PASS' : '❌ FAIL');
+  console.log('doGet test:', results.tests.doGet.success ? '✅ PASS' : '❌ FAIL');
+  console.log('Functions test:', results.tests.functions.success ? '✅ PASS' : '❌ FAIL');
+  console.log('Auth flow test:', results.tests.authFlow.success ? '✅ PASS' : '❌ FAIL');
+  
+  // Recommendations
+  console.log('\n=== RECOMMENDATIONS ===');
+  
+  if (!results.tests.functions.success) {
+    console.log('🔧 ISSUE: Missing functions');
+    console.log('SOLUTION: Add the missing functions from the artifacts I provided');
+    console.log('Missing:', results.tests.functions.missing.join(', '));
+  }
+  
+  if (!results.tests.doGet.success) {
+    console.log('🔧 ISSUE: doGet function problems');
+    console.log('SOLUTION: Replace your doGet function with the fixed version');
+  }
+  
+  if (!results.tests.urls.success) {
+    console.log('🔧 ISSUE: URL problems');
+    console.log('SOLUTION: Check web app deployment');
+  }
+  
+  console.log('\n🔧 Next step: Run createDebugDoGet() for a simple test');
+  
+  return results;
+}
+
+function createGoogleScriptLoginPage() {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login - Escort Management</title>
+  <style>
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0; 
+      padding: 2rem;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-container {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    .logo { 
+      font-size: 3rem; 
+      margin-bottom: 1rem; 
+    }
+    .title { 
+      color: #333; 
+      margin-bottom: 2rem; 
+    }
+    .auth-option {
+      margin: 1rem 0;
+      padding: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    .auth-option h3 {
+      margin: 0 0 0.5rem 0;
+      color: #333;
+    }
+    .auth-option p {
+      margin: 0 0 1rem 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s;
+      color: white;
+    }
+    .btn-google {
+      background: #4285f4;
+    }
+    .btn-google:hover {
+      background: #3367d6;
+    }
+    .btn-google:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-credentials {
+      background: #34a853;
+    }
+    .btn-credentials:hover {
+      background: #137333;
+    }
+    .btn-credentials:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .divider {
+      text-align: center;
+      margin: 1.5rem 0;
+      color: #666;
+      position: relative;
+    }
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #ddd;
+    }
+    .divider span {
+      background: white;
+      padding: 0 1rem;
+    }
+    .message {
+      margin-top: 1rem;
+      padding: 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    .message.error {
+      background: #ffeaea;
+      color: #d93025;
+      border: 1px solid #fce8e6;
+    }
+    .message.loading {
+      background: #e3f2fd;
+      color: #1976d2;
+      border: 1px solid #bbdefb;
+    }
+    .info {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">🏍️</div>
+    <h1 class="title">Escort Management System</h1>
+    
+    <div class="auth-option">
+      <h3>🔐 Google Account</h3>
+      <p>Sign in with your authorized Google account</p>
+      <button id="googleBtn" class="btn btn-google" onclick="handleGoogleAuth()">
+        Sign In with Google
+      </button>
+    </div>
+    
+    <div class="divider">
+      <span>or</span>
+    </div>
+    
+    <div class="auth-option">
+      <h3>👤 System Login</h3>
+      <p>Use your system username and password</p>
+      <button id="credentialsBtn" class="btn btn-credentials" onclick="showCredentialsForm()">
+        System Login
+      </button>
+    </div>
+    
+    <!-- Credentials Form (initially hidden) -->
+    <div id="credentialsForm" style="display: none; margin-top: 2rem;">
+      <div class="auth-option">
+        <h3>Enter Credentials</h3>
+        <input type="email" id="email" placeholder="Email Address" style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+        <input type="password" id="password" placeholder="Password" style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+        <button onclick="handleCredentialsAuth()" class="btn btn-credentials" style="margin-top: 10px;">
+          Sign In
+        </button>
+        <button onclick="hideCredentialsForm()" class="btn" style="background: #666; margin-top: 5px;">
+          Cancel
+        </button>
+      </div>
+    </div>
+    
+    <div id="message" class="message"></div>
+    
+    <div class="info">
+      <strong>ℹ️ How this works:</strong><br>
+      • Uses Google Apps Script's built-in communication (google.script.run)<br>
+      • No page navigation required<br>
+      • Works within iframe restrictions<br>
+      • Authenticates on the server side
+    </div>
+  </div>
+  
+  <script>
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = 'message ' + type;
+      message.style.display = 'block';
+    }
+    
+    function hideMessage() {
+      document.getElementById('message').style.display = 'none';
+    }
+    
+    function showCredentialsForm() {
+      document.getElementById('credentialsForm').style.display = 'block';
+      document.getElementById('credentialsBtn').style.display = 'none';
+    }
+    
+    function hideCredentialsForm() {
+      document.getElementById('credentialsForm').style.display = 'none';
+      document.getElementById('credentialsBtn').style.display = 'block';
+    }
+    
+    function handleGoogleAuth() {
+      const btn = document.getElementById('googleBtn');
+      btn.disabled = true;
+      btn.textContent = 'Authenticating...';
+      showMessage('Connecting to Google...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Google auth result:', result);
+          if (result.success) {
+            showMessage('Google authentication successful! Redirecting...', 'loading');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            showMessage('Google authentication failed: ' + result.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Sign In with Google';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Google auth error:', error);
+          showMessage('Google authentication error: ' + error.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Sign In with Google';
+        })
+        .processGoogleAuthentication();
+    }
+    
+    function handleCredentialsAuth() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!email || !password) {
+        showMessage('Please enter both email and password', 'error');
+        return;
+      }
+      
+      showMessage('Verifying credentials...', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Credentials auth result:', result);
+          if (result.success) {
+            showMessage('Login successful! Redirecting...', 'loading');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            showMessage('Login failed: ' + result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Credentials auth error:', error);
+          showMessage('Login error: ' + error.message, 'error');
+        })
+        .processCredentialsAuthentication(email, password);
+    }
+    
+    console.log('🔧 Google Apps Script login page loaded');
+    console.log('Environment: iframe =', window !== window.top);
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Login - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Server-side authentication functions that work with google.script.run
+
+
+
+function processCredentialsAuthentication(email, password) {
+  try {
+    console.log('🔐 Processing credentials authentication for:', email);
+    
+    // Use existing login function if available
+    if (typeof loginWithCredentials === 'function') {
+      const result = loginWithCredentials(email, password);
+      
+      if (result.success) {
+        console.log('✅ Credentials authentication successful');
+        
+        // Get user details from Users sheet for proper name
+        let userName = extractNameFromEmail(email);
+        let userRole = 'admin'; // Default
+        
+        try {
+          // Try to get user details from Users sheet
+          const userRecord = findUserRecord(email);
+          if (userRecord && userRecord.name) {
+            userName = userRecord.name;
+            userRole = userRecord.role || 'admin';
+          }
+          console.log('📋 User record found:', userRecord);
+        } catch (error) {
+          console.log('⚠️ Could not get user record:', error.message);
+        }
+        
+        // FIXED: Store session with proper name
+        const sessionData = {
+          email: email,
+          name: userName, // This was missing before!
+          role: userRole,
+          method: 'credentials',
+          timestamp: Date.now()
+        };
+        
+        console.log('💾 Storing session data:', sessionData);
+        
+        PropertiesService.getUserProperties().setProperty('AUTHENTICATED_USER', JSON.stringify(sessionData));
+        
+        return {
+          success: true,
+          message: 'Credentials authentication successful',
+          user: sessionData
+        };
+      } else {
+        return { success: false, message: result.message || 'Invalid credentials' };
+      }
+    } else {
+      return { success: false, message: 'Credential authentication not available' };
+    }
+    
+  } catch (error) {
+    console.error('❌ Credentials authentication error:', error);
+    return { success: false, message: 'Authentication error: ' + error.message };
+  }
+}
+
+function createAuthSuccessPage(method, message) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><title>Authentication Success</title></head>
+<body style="font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #f0f8ff;">
+  <div style="max-width: 500px; margin: 50px auto; background: #c8e6c9; padding: 30px; border-radius: 10px;">
+    <h1 style="color: #2e7d32;">✅ ${method} Authentication Successful!</h1>
+    <p style="font-size: 18px;">${message}</p>
+    <p style="color: #666;">You will be redirected to the dashboard shortly...</p>
+    <button onclick="window.location.reload()" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer;">
+      Continue to Dashboard
+    </button>
+  </div>
+  <script>
+    setTimeout(() => {
+      window.location.reload();
+    }, 3000);
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Authentication Success')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function createAuthErrorPage(method, message) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><title>Authentication Failed</title></head>
+<body style="font-family: Arial, sans-serif; padding: 20px; text-align: center; background: #fff5f5;">
+  <div style="max-width: 500px; margin: 50px auto; background: #ffebee; padding: 30px; border-radius: 10px; border: 1px solid #f44336;">
+    <h1 style="color: #d32f2f;">❌ ${method} Authentication Failed</h1>
+    <p style="font-size: 16px; color: #666;">${message}</p>
+    <button onclick="window.location.reload()" style="padding: 10px 20px; background: #4285f4; color: white; border: none; border-radius: 5px; cursor: pointer;">
+      Try Again
+    </button>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Authentication Failed')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function extractNameFromEmail(email) {
+  try {
+    if (!email || typeof email !== 'string') {
+      return 'User';
+    }
+    
+    const localPart = email.split('@')[0];
+    if (!localPart) {
+      return 'User';
+    }
+    
+    // Handle different email formats
+    let nameParts = [];
+    
+    // Check for common separators
+    if (localPart.includes('.')) {
+      nameParts = localPart.split('.');
+    } else if (localPart.includes('_')) {
+      nameParts = localPart.split('_');
+    } else if (localPart.includes('-')) {
+      nameParts = localPart.split('-');
+    } else {
+      // Try to split camelCase
+      nameParts = localPart.split(/(?=[A-Z])/).filter(part => part.length > 0);
+      
+      // If no camelCase, just use the whole thing
+      if (nameParts.length === 1) {
+        nameParts = [localPart];
+      }
+    }
+    
+    // Capitalize each part
+    const formattedParts = nameParts.map(part => {
+      if (!part || part.length === 0) return '';
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    }).filter(part => part.length > 0);
+    
+    return formattedParts.length > 0 ? formattedParts.join(' ') : 'User';
+    
+  } catch (error) {
+    console.log('Error extracting name from email:', error.message);
+    return 'User';
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+// 🔧 SETUP SYSTEM USERS - Run this to create the backend user database
+
+/**
+ * Main setup function - creates Users sheet with default admin account
+ */
+function setupSystemUsers() {
+  try {
+    console.log('🛠️ Setting up system users...');
+    
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let usersSheet = spreadsheet.getSheetByName('Users');
+    
+    // Create Users sheet if it doesn't exist
+    if (!usersSheet) {
+      console.log('📄 Creating Users sheet...');
+      usersSheet = spreadsheet.insertSheet('Users');
+      
+      // Add headers
+      const headers = ['email', 'hashedPassword', 'role', 'status', 'name', 'created', 'lastLogin'];
+      usersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      usersSheet.getRange(1, 1, 1, headers.length)
+        .setFontWeight('bold')
+        .setBackground('#4285f4')
+        .setFontColor('white');
+      
+      console.log('✅ Users sheet created with headers');
+    }
+    
+    // Check if we already have users
+    const data = usersSheet.getDataRange().getValues();
+    if (data.length > 1) {
+      console.log('ℹ️ Users sheet already has data');
+      
+      // Show existing users
+      console.log('📋 Existing users:');
+      for (let i = 1; i < data.length; i++) {
+        const [email, , role, status, name] = data[i];
+        console.log(`  - ${email} (${role}, ${status})`);
+      }
+      
+      return {
+        success: true,
+        message: 'Users sheet already exists with ' + (data.length - 1) + ' users',
+        users: data.slice(1).map(row => ({
+          email: row[0],
+          role: row[2],
+          status: row[3],
+          name: row[4]
+        }))
+      };
+    }
+    
+    // Create default admin user
+    console.log('👤 Creating default admin user...');
+    
+    const adminEmail = 'admin@escort.local';
+    const adminPassword = 'EscortAdmin123!';
+    const hashedPassword = hashPassword(adminPassword);
+    
+    const adminData = [
+      adminEmail,              // email
+      hashedPassword,          // hashedPassword
+      'admin',                 // role
+      'active',                // status
+      'System Administrator',  // name
+      new Date(),             // created
+      ''                      // lastLogin
+    ];
+    
+    usersSheet.getRange(2, 1, 1, adminData.length).setValues([adminData]);
+    
+    // Format the sheet
+    usersSheet.autoResizeColumns(1, headers.length);
+    
+    console.log('✅ Default admin user created successfully!');
+    console.log('📧 Email:', adminEmail);
+    console.log('🔑 Password:', adminPassword);
+    console.log('⚠️  IMPORTANT: Change this password after first login!');
+    
+    return {
+      success: true,
+      message: 'System users setup complete',
+      defaultCredentials: {
+        email: adminEmail,
+        password: adminPassword,
+        role: 'admin'
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Setup failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Add additional system users
+ */
+function addSystemUser(email, password, role, name) {
+  try {
+    console.log(`👤 Adding system user: ${email} (${role})`);
+    
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (!usersSheet) {
+      return { success: false, error: 'Users sheet not found. Run setupSystemUsers() first.' };
+    }
+    
+    // Check if user already exists
+    const data = usersSheet.getDataRange().getValues();
+    const existingUser = data.find(row => row[0] === email);
+    
+    if (existingUser) {
+      return { success: false, error: 'User already exists: ' + email };
+    }
+    
+    // Validate inputs
+    if (!email || !password || !role || !name) {
+      return { success: false, error: 'All fields are required: email, password, role, name' };
+    }
+    
+    if (!['admin', 'dispatcher', 'rider'].includes(role)) {
+      return { success: false, error: 'Role must be: admin, dispatcher, or rider' };
+    }
+    
+    // Hash password and add user
+    const hashedPassword = hashPassword(password);
+    const userData = [
+      email,
+      hashedPassword,
+      role,
+      'active',
+      name,
+      new Date(),
+      ''
+    ];
+    
+    const lastRow = usersSheet.getLastRow();
+    usersSheet.getRange(lastRow + 1, 1, 1, userData.length).setValues([userData]);
+    
+    console.log(`✅ User added successfully: ${email}`);
+    
+    return {
+      success: true,
+      message: 'User added successfully',
+      user: {
+        email: email,
+        role: role,
+        name: name
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Add user failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * List all system users
+ */
+function listSystemUsers() {
+  try {
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (!usersSheet) {
+      return { success: false, error: 'Users sheet not found. Run setupSystemUsers() first.' };
+    }
+    
+    const data = usersSheet.getDataRange().getValues();
+    const headers = data[0];
+    const users = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      users.push({
+        email: row[0],
+        role: row[2],
+        status: row[3],
+        name: row[4],
+        created: row[5],
+        lastLogin: row[6] || 'Never'
+      });
+    }
+    
+    console.log('📋 System Users:');
+    users.forEach(user => {
+      console.log(`  - ${user.email} (${user.role}, ${user.status}) - ${user.name}`);
+    });
+    
+    return {
+      success: true,
+      users: users
+    };
+    
+  } catch (error) {
+    console.error('❌ List users failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Change a user's password
+ */
+function changeUserPassword(email, newPassword) {
+  try {
+    console.log(`🔑 Changing password for: ${email}`);
+    
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (!usersSheet) {
+      return { success: false, error: 'Users sheet not found' };
+    }
+    
+    const data = usersSheet.getDataRange().getValues();
+    const emailCol = 0;
+    const passwordCol = 1;
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][emailCol] === email) {
+        const hashedPassword = hashPassword(newPassword);
+        usersSheet.getRange(i + 1, passwordCol + 1).setValue(hashedPassword);
+        
+        console.log(`✅ Password changed for: ${email}`);
+        return {
+          success: true,
+          message: 'Password changed successfully'
+        };
+      }
+    }
+    
+    return { success: false, error: 'User not found: ' + email };
+    
+  } catch (error) {
+    console.error('❌ Change password failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Test the login system
+ */
+function testSystemLogin() {
+  try {
+    console.log('🧪 Testing system login...');
+    
+    // First, make sure we have users
+    const setupResult = setupSystemUsers();
+    console.log('Setup result:', setupResult);
+    
+    if (setupResult.defaultCredentials) {
+      const { email, password } = setupResult.defaultCredentials;
+      
+      // Test the login function
+      console.log(`🔐 Testing login with: ${email}`);
+      
+      if (typeof loginWithCredentials === 'function') {
+        const loginResult = loginWithCredentials(email, password);
+        console.log('Login test result:', loginResult);
+        
+        return {
+          success: true,
+          setupResult: setupResult,
+          loginResult: loginResult,
+          testCredentials: {
+            email: email,
+            password: password
+          }
+        };
+      } else {
+        return {
+          success: false,
+          error: 'loginWithCredentials function not found. You need the HybridAuth.gs functions.'
+        };
+      }
+    }
+    
+    return setupResult;
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Quick setup with custom credentials
+ */
+function quickSetupWithCustomAdmin(email, password, name) {
+  try {
+    console.log('⚡ Quick setup with custom admin...');
+    
+    if (!email || !password || !name) {
+      return { 
+        success: false, 
+        error: 'Please provide email, password, and name' 
+      };
+    }
+    
+    // Create Users sheet
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let usersSheet = spreadsheet.getSheetByName('Users');
+    
+    if (!usersSheet) {
+      usersSheet = spreadsheet.insertSheet('Users');
+      const headers = ['email', 'hashedPassword', 'role', 'status', 'name', 'created', 'lastLogin'];
+      usersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      usersSheet.getRange(1, 1, 1, headers.length)
+        .setFontWeight('bold')
+        .setBackground('#4285f4')
+        .setFontColor('white');
+    }
+    
+    // Add your custom admin
+    const hashedPassword = hashPassword(password);
+    const adminData = [email, hashedPassword, 'admin', 'active', name, new Date(), ''];
+    
+    const lastRow = usersSheet.getLastRow();
+    usersSheet.getRange(lastRow + 1, 1, 1, adminData.length).setValues([adminData]);
+    
+    console.log('✅ Custom admin created:', email);
+    
+    return {
+      success: true,
+      message: 'Custom admin created successfully',
+      credentials: { email, password, name }
+    };
+    
+  } catch (error) {
+    console.error('❌ Quick setup failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Make sure hashPassword function exists
+function hashPassword(password) {
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  return raw.map(b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
+}
+// 🔐 PASSWORD MANAGEMENT - Safe ways to change passwords
+
+/**
+ * Method 1: Change password using Apps Script editor (RECOMMENDED)
+ */
+function changePassword(email, newPassword) {
+  try {
+    console.log(`🔑 Changing password for: ${email}`);
+    
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (!usersSheet) {
+      console.log('❌ Users sheet not found');
+      return { success: false, error: 'Users sheet not found' };
+    }
+    
+    const data = usersSheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Find the user
+    let userFound = false;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row[0] === email) { // email column
+        // Hash the new password
+        const hashedPassword = hashPassword(newPassword);
+        
+        // Update the password in the sheet
+        usersSheet.getRange(i + 1, 2).setValue(hashedPassword); // password column
+        
+        console.log(`✅ Password changed successfully for: ${email}`);
+        console.log(`🔑 New password: ${newPassword}`);
+        userFound = true;
+        break;
+      }
+    }
+    
+    if (!userFound) {
+      console.log(`❌ User not found: ${email}`);
+      return { success: false, error: 'User not found: ' + email };
+    }
+    
+    return {
+      success: true,
+      message: `Password changed successfully for ${email}`,
+      newPassword: newPassword
+    };
+    
+  } catch (error) {
+    console.error('❌ Password change failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Quick password change functions for common scenarios
+ */
+
+// Change the default admin password
+function changeDefaultAdminPassword(newPassword) {
+  return changePassword('admin@escort.local', newPassword);
+}
+
+// Change password for a specific user
+function changeUserPassword(email, newPassword) {
+  return changePassword(email, newPassword);
+}
+
+// Reset all passwords (useful for testing)
+function resetAllPasswords() {
+  try {
+    console.log('🔄 Resetting all user passwords...');
+    
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (!usersSheet) {
+      return { success: false, error: 'Users sheet not found' };
+    }
+    
+    const data = usersSheet.getDataRange().getValues();
+    const results = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      const email = data[i][0];
+      const role = data[i][2];
+      
+      // Generate a new password based on role
+      let newPassword;
+      if (role === 'admin') {
+        newPassword = 'AdminPass123!';
+      } else if (role === 'dispatcher') {
+        newPassword = 'DispatchPass123!';
+      } else {
+        newPassword = 'UserPass123!';
+      }
+      
+      const result = changePassword(email, newPassword);
+      results.push({
+        email: email,
+        newPassword: newPassword,
+        success: result.success
+      });
+    }
+    
+    console.log('📋 Password reset results:');
+    results.forEach(r => {
+      console.log(`  ${r.email}: ${r.success ? '✅' : '❌'} New password: ${r.newPassword}`);
+    });
+    
+    return {
+      success: true,
+      message: 'All passwords reset',
+      results: results
+    };
+    
+  } catch (error) {
+    console.error('❌ Reset failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Method 2: Add a password change interface to your web app
+ */
+function createPasswordChangeInterface() {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Change Password</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 400px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 5px; font-weight: bold; color: #333; }
+    input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    button { width: 100%; padding: 12px; background: #4285f4; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+    button:hover { background: #3367d6; }
+    .message { padding: 10px; border-radius: 4px; margin-top: 15px; display: none; }
+    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🔐 Change Password</h2>
+    
+    <div class="form-group">
+      <label for="email">Email Address:</label>
+      <input type="email" id="email" placeholder="Enter email address">
+    </div>
+    
+    <div class="form-group">
+      <label for="currentPassword">Current Password:</label>
+      <input type="password" id="currentPassword" placeholder="Enter current password">
+    </div>
+    
+    <div class="form-group">
+      <label for="newPassword">New Password:</label>
+      <input type="password" id="newPassword" placeholder="Enter new password">
+    </div>
+    
+    <div class="form-group">
+      <label for="confirmPassword">Confirm New Password:</label>
+      <input type="password" id="confirmPassword" placeholder="Confirm new password">
+    </div>
+    
+    <button onclick="changePassword()">Change Password</button>
+    
+    <div id="message" class="message"></div>
+  </div>
+  
+  <script>
+    function changePassword() {
+      const email = document.getElementById('email').value.trim();
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      // Validation
+      if (!email || !currentPassword || !newPassword || !confirmPassword) {
+        showMessage('Please fill in all fields', 'error');
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        showMessage('New passwords do not match', 'error');
+        return;
+      }
+      
+      if (newPassword.length < 8) {
+        showMessage('Password must be at least 8 characters long', 'error');
+        return;
+      }
+      
+      // Call server-side function
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('Password changed successfully!', 'success');
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+          } else {
+            showMessage('Error: ' + result.message, 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+        })
+        .processPasswordChange(email, currentPassword, newPassword);
+    }
+    
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Change Password')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function processPasswordChange(email, currentPassword, newPassword) {
+  try {
+    // First verify current password
+    const loginResult = loginWithCredentials(email, currentPassword);
+    if (!loginResult.success) {
+      return { success: false, message: 'Current password is incorrect' };
+    }
+    
+    // Change to new password
+    return changePassword(email, newPassword);
+    
+  } catch (error) {
+    return { success: false, message: 'Password change failed: ' + error.message };
+  }
+}
+
+/**
+ * Method 3: View current users and their info (passwords are hidden)
+ */
+function viewSystemUsers() {
+  try {
+    const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+    if (!usersSheet) {
+      console.log('❌ Users sheet not found');
+      return;
+    }
+    
+    const data = usersSheet.getDataRange().getValues();
+    console.log('👥 === SYSTEM USERS ===');
+    console.log('Email | Role | Status | Name | Created');
+    console.log('-------|------|--------|------|--------');
+    
+    for (let i = 1; i < data.length; i++) {
+      const [email, , role, status, name, created] = data[i];
+      const createdDate = created ? new Date(created).toLocaleDateString() : 'Unknown';
+      console.log(`${email} | ${role} | ${status} | ${name} | ${createdDate}`);
+    }
+    
+    return data.slice(1).map(row => ({
+      email: row[0],
+      role: row[2],
+      status: row[3],
+      name: row[4],
+      created: row[5]
+    }));
+    
+  } catch (error) {
+    console.error('❌ View users failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Method 4: Quick password changes (for testing)
+ */
+
+// Set simple passwords for testing
+function setSimplePasswords() {
+  console.log('🔧 Setting simple passwords for testing...');
+  
+  const results = [];
+  
+  // Change admin password to simple one
+  const adminResult = changePassword('admin@escort.local', 'admin123');
+  results.push({ user: 'admin@escort.local', password: 'admin123', result: adminResult });
+  
+  console.log('✅ Simple passwords set:');
+  results.forEach(r => {
+    console.log(`  ${r.user}: ${r.password} (${r.result.success ? 'SUCCESS' : 'FAILED'})`);
+  });
+  
+  return results;
+}
+
+// Common password change scenarios
+function changeToSecurePassword(email) {
+  const securePassword = 'SecurePass123!@#';
+  return changePassword(email, securePassword);
+}
+
+function changeToTemporaryPassword(email) {
+  const tempPassword = 'TempPass123!';
+  return changePassword(email, tempPassword);
+}
+
+/**
+ * EXAMPLE USAGE FUNCTIONS - Run these to change passwords
+ */
+
+// Example 1: Change the default admin password
+function example_ChangeAdminPassword() {
+  return changePassword('admin@escort.local', 'MyNewAdminPassword123!');
+}
+
+// Example 2: Set a simple password for testing
+function example_SetSimpleAdminPassword() {
+  return changePassword('admin@escort.local', 'admin');
+}
+
+// Example 3: View all users
+function example_ViewAllUsers() {
+  return viewSystemUsers();
+}
+
+// Don't forget the hash function
+function hashPassword(password) {
+  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  return raw.map(b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
+}
+
+
+/**
+ * Load app page using existing HTML files with proper navigation injection
+ */
+function loadAppPage(pageName, user, rider) {
+  try {
+    console.log(`📄 Loading page: ${pageName} for user: ${user.email} (${user.role})`);
+    
+    // Map page names to your existing HTML files
+    let fileName;
+    
+    switch (pageName.toLowerCase()) {
+      case 'dashboard':
+        if (user.role === 'admin') {
+          fileName = 'admin-dashboard';
+        } else if (user.role === 'rider') {
+          fileName = 'rider-dashboard'; // We'll create this
+        } else {
+          fileName = 'index';
+        }
+        break;
+      case 'requests':
+        fileName = 'requests';
+        break;
+      case 'assignments':
+        fileName = 'assignments';
+        break;
+      case 'riders':
+        fileName = 'riders';
+        break;
+      case 'notifications':
+        fileName = 'notifications';
+        break;
+      case 'reports':
+        fileName = 'reports';
+        break;
+      default:
+        fileName = 'index';
+    }
+    
+    // Try to load the HTML file
+    let htmlOutput;
+    try {
+      console.log(`📂 Loading HTML file: ${fileName}.html`);
+      htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    } catch (fileError) {
+      console.log(`⚠️ File ${fileName}.html not found`);
+      
+      // Special case: if rider-dashboard is missing, create it
+      if (fileName === 'rider-dashboard') {
+        console.log('🔧 Creating rider dashboard dynamically');
+        return createRiderDashboard(user, rider);
+      }
+      
+      // Fallback to index
+      console.log(`⚠️ Falling back to index.html`);
+      try {
+        htmlOutput = HtmlService.createHtmlOutputFromFile('index');
+      } catch (indexError) {
+        return createFallbackPage(pageName, user, rider);
+      }
+    }
+    
+    // Get the content and inject navigation/user info
+    let content = htmlOutput.getContent();
+    
+    // Inject navigation using your existing functions
+    try {
+      if (typeof getRoleBasedNavigationSafe === 'function') {
+        const navigationHtml = getRoleBasedNavigationSafe(pageName, user, rider);
+        if (typeof addNavigationToContentSafe === 'function') {
+          content = addNavigationToContentSafe(content, navigationHtml);
+        } else {
+          content = injectNavigationIntoContent(content, navigationHtml);
+        }
+      } else {
+        // Create simple navigation as fallback
+        const simpleNav = createWorkingNavigation(pageName, user.role);
+        content = injectNavigationIntoContent(content, simpleNav);
+      }
+    } catch (navError) {
+      console.log('⚠️ Navigation injection failed:', navError.message);
+      // Add simple navigation as fallback
+      const simpleNav = createWorkingNavigation(pageName, user.role);
+      content = injectNavigationIntoContent(content, simpleNav);
+    }
+    
+    // Inject user information
+    content = injectUserInfo(content, user, rider);
+    
+    // Set the modified content
+    htmlOutput.setContent(content);
+    
+    console.log(`✅ Successfully loaded ${fileName}.html`);
+    
+    return htmlOutput.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+  } catch (error) {
+    console.error('❌ Page loading error:', error);
+    return createFallbackPage(pageName, user, rider);
+  }
+}
+
+/**
+ * Get page file name based on user role (like your existing logic)
+ */
+function getPageFileName(pageName, userRole) {
+  console.log(`🔍 Getting page file name for: ${pageName}, role: ${userRole}`);
+  
+  // Use your existing logic or adapt it
+  if (typeof getPageFileNameSafe === 'function') {
+    return getPageFileNameSafe(pageName, userRole);
+  }
+  
+  // Fallback logic based on your existing patterns
+  switch (pageName.toLowerCase()) {
+    case 'dashboard':
+      if (userRole === 'admin') return 'admin-dashboard';
+      if (userRole === 'rider') return 'rider-dashboard';
+      return 'index';
+    case 'requests':
+      return 'requests';
+    case 'assignments':
+      return 'assignments';
+    case 'riders':
+      return 'riders';
+    case 'notifications':
+      return 'notifications';
+    case 'reports':
+      return 'reports';
+    default:
+      return 'index';
+  }
+}
+
+/**
+ * Simple navigation injection if your existing functions aren't available
+ */
+function injectNavigationIntoContent(content, navigationHtml) {
+  try {
+    // Look for navigation placeholder first
+    if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
+      console.log('✅ Found navigation placeholder');
+      return content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigationHtml);
+    }
+    
+    // Look for existing nav to replace
+    const navRegex = /<nav[^>]*class="navigation"[^>]*>.*?<\/nav>/s;
+    if (navRegex.test(content)) {
+      console.log('✅ Replacing existing navigation');
+      return content.replace(navRegex, navigationHtml);
+    }
+    
+    // Insert after header
+    if (content.includes('</header>')) {
+      console.log('✅ Injecting after header');
+      return content.replace('</header>', '</header>\n' + navigationHtml);
+    }
+    
+    // Insert after body start
+    if (content.includes('<body>')) {
+      console.log('✅ Injecting after body start');
+      return content.replace('<body>', '<body>\n' + navigationHtml);
+    }
+    
+    // Insert at the very beginning of content
+    console.log('✅ Adding navigation at beginning');
+    return navigationHtml + '\n' + content;
+    
+  } catch (error) {
+    console.log('❌ Navigation injection error:', error.message);
+    return content;
+  }
+}
+
+
+function injectUserInfo(content, user, rider) {
+  try {
+    const webAppUrl = getWebAppUrl();
+    
+    // Create user context script with logout functionality
+    const userScript = `
+<script>
+// User context for existing JavaScript
+window.currentUser = {
+    email: '${user.email}',
+    name: '${user.name}',
+    role: '${user.role}',
+    method: '${user.method}',
+    isAdmin: ${user.role === 'admin'},
+    isDispatcher: ${user.role === 'dispatcher'},
+    isRider: ${user.role === 'rider'},
+    timestamp: ${Date.now()}
+};
+
+// Global logout function that works everywhere
+window.logout = function() {
+    if (confirm('Are you sure you want to logout?')) {
+        console.log('🚪 Logging out user:', window.currentUser.email);
+        
+        // Show loading state if possible
+        const logoutLinks = document.querySelectorAll('a[href*="logout"], .logout-link, .logout-btn');
+        logoutLinks.forEach(link => {
+            link.textContent = 'Logging out...';
+            link.style.opacity = '0.6';
+        });
+        
+        // Redirect to logout
+        window.location.href = '${webAppUrl}?action=logout';
+        return true;
+    }
+    return false;
+};
+
+// Auto-bind logout to existing logout links on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('👤 User context loaded:', window.currentUser);
+    
+    // Find and bind all logout links
+    const logoutSelectors = [
+        'a[href*="logout"]',
+        '.logout-link', 
+        '.logout-btn',
+        '.logout',
+        '[data-action="logout"]'
+    ];
+    
+    logoutSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+            console.log('🔗 Found logout element:', element);
+            
+            // Remove existing click handlers and add new one
+            element.onclick = function(e) {
+                e.preventDefault();
+                window.logout();
+                return false;
+            };
+            
+            // Also update href to ensure it works
+            if (element.tagName === 'A') {
+                element.href = '${webAppUrl}?action=logout';
+            }
+        });
+    });
+    
+    console.log('✅ Logout functionality bound to', document.querySelectorAll(logoutSelectors.join(',')).length, 'elements');
+});
+
+console.log('👤 Enhanced user context and logout system loaded');
+</script>
+
+<style>
+/* Enhanced user info styles */
+.user-info {
+    background: linear-gradient(135deg, #4285f4, #34a853);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin: 10px 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.user-info-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.user-details {
+    flex: 1;
+}
+
+.user-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.user-meta {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.logout-area {
+    margin-left: 20px;
+}
+
+.logout-btn {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.3);
+    font-weight: 500;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.logout-btn:hover {
+    background: rgba(255,255,255,0.3);
+    color: white;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+    .user-info-content {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .logout-area {
+        margin-left: 0;
+        margin-top: 10px;
+    }
+}
+</style>`;
+
+    // Try to inject user info box into content
+    let userInfoHtml = `
+<div class="user-info">
+    <div class="user-info-content">
+        <div class="user-details">
+            <div class="user-name">👤 ${user.name}</div>
+            <div class="user-meta">${user.email} • ${user.role} • ${user.method}</div>
+        </div>
+        <div class="logout-area">
+            <a href="${webAppUrl}?action=logout" class="logout-btn" onclick="return window.logout ? window.logout() : true">
+                🚪 Logout
+            </a>
+        </div>
+    </div>
+</div>`;
+
+    // Try multiple injection strategies
+    let contentModified = false;
+
+    // Strategy 1: Look for existing user info area
+    if (content.includes('user-info') || content.includes('current-user')) {
+        console.log('✅ Found existing user info area, enhancing...');
+        // Add script without replacing existing user info
+        contentModified = true;
+    }
+    
+    // Strategy 2: Look for header area to inject after
+    else if (content.includes('</header>')) {
+        console.log('✅ Injecting user info after header');
+        content = content.replace('</header>', '</header>\n' + userInfoHtml);
+        contentModified = true;
+    }
+    
+    // Strategy 3: Look for navigation area to inject after
+    else if (content.includes('</nav>')) {
+        console.log('✅ Injecting user info after navigation');
+        content = content.replace('</nav>', '</nav>\n' + userInfoHtml);
+        contentModified = true;
+    }
+    
+    // Strategy 4: Look for body start
+    else if (content.includes('<body>')) {
+        console.log('✅ Injecting user info after body start');
+        content = content.replace('<body>', '<body>\n' + userInfoHtml);
+        contentModified = true;
+    }
+    
+    // Strategy 5: Add at the beginning
+    else {
+        console.log('✅ Adding user info at beginning of content');
+        content = userInfoHtml + '\n' + content;
+        contentModified = true;
+    }
+
+    // Always add the script
+    if (content.includes('</body>')) {
+        content = content.replace('</body>', userScript + '\n</body>');
+    } else if (content.includes('</html>')) {
+        content = content.replace('</html>', userScript + '\n</html>');
+    } else {
+        content += userScript;
+    }
+
+    console.log('✅ User info injection completed, content modified:', contentModified);
+    return content;
+    
+  } catch (error) {
+    console.log('❌ User info injection error:', error.message);
+    return content;
+  }
+}
+function createWorkingNavigation(currentPage, userRole) {
+  const webAppUrl = getWebAppUrl();
+  
+  const basePages = [
+    { name: 'dashboard', label: '📊 Dashboard' },
+    { name: 'requests', label: '📋 Requests' },
+    { name: 'assignments', label: '🏍️ Assignments' },
+    { name: 'riders', label: '👥 Riders' },
+    { name: 'notifications', label: '📱 Notifications' },
+    { name: 'reports', label: '📈 Reports' }
+  ];
+  
+  // Filter pages based on role
+  let pages = basePages;
+  if (userRole === 'rider') {
+    pages = [
+      { name: 'dashboard', label: '📊 Dashboard' },
+      { name: 'assignments', label: '🏍️ My Assignments' }
+    ];
+  }
+  
+  const navLinks = pages.map(page => {
+    const isActive = page.name === currentPage.toLowerCase();
+    const activeClass = isActive ? ' active' : '';
+    return `        <a href="${webAppUrl}?page=${page.name}" class="nav-button${activeClass}">${page.label}</a>`;
+  }).join('\n');
+  
+  return `
+<nav class="navigation">
+    <div class="nav-container">
+        ${navLinks}
+        <a href="${webAppUrl}?action=logout" class="nav-button logout" onclick="return confirmLogout()">🚪 Logout</a>
+    </div>
+</nav>
+
+<style>
+.navigation {
+    background: white;
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    border-bottom: 3px solid #4285f4;
+}
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.nav-button {
+    text-decoration: none;
+    padding: 12px 18px;
+    margin: 0 5px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    color: #333;
+    display: inline-block;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.nav-button.active {
+    background: #4285f4;
+    color: white;
+    box-shadow: 0 2px 4px rgba(66, 133, 244, 0.3);
+}
+.nav-button:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+}
+.nav-button.active:hover {
+    background: #3367d6;
+}
+.nav-button.logout {
+    background: #dc3545;
+    color: white;
+    float: right;
+}
+.nav-button.logout:hover {
+    background: #c82333;
+}
+</style>
+
+<script>
+function confirmLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+        console.log('🚪 User confirmed logout');
+        return true;
+    }
+    return false;
+}
+
+// Log navigation clicks for debugging
+document.addEventListener('DOMContentLoaded', function() {
+    const navButtons = document.querySelectorAll('.nav-button');
+    navButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            console.log('🔗 Navigation clicked:', this.href);
+            
+            if (this.href.includes('action=logout')) {
+                console.log('🚪 Logout button clicked');
+            }
+        });
+    });
+});
+</script>`;
+}
+
+/**
+ * Create simple navigation if your existing functions aren't available
+ */
+function createSimpleNavigation(currentPage, userRole) {
+  const webAppUrl = getWebAppUrl();
+  
+  const basePages = [
+    { name: 'dashboard', label: '📊 Dashboard' },
+    { name: 'requests', label: '📋 Requests' },
+    { name: 'assignments', label: '🏍️ Assignments' },
+    { name: 'riders', label: '👥 Riders' },
+    { name: 'notifications', label: '📱 Notifications' },
+    { name: 'reports', label: '📈 Reports' }
+  ];
+  
+  // Filter pages based on role
+  let pages = basePages;
+  if (userRole === 'rider') {
+    pages = [
+      { name: 'dashboard', label: '📊 Dashboard' },
+      { name: 'assignments', label: '🏍️ My Assignments' }
+    ];
+  }
+  
+  const navLinks = pages.map(page => {
+    const isActive = page.name === currentPage.toLowerCase();
+    const activeClass = isActive ? ' active' : '';
+    return `<a href="${webAppUrl}?page=${page.name}" class="nav-button${activeClass}">${page.label}</a>`;
+  }).join('\n    ');
+  
+  return `
+<nav class="navigation">
+    ${navLinks}
+    <a href="${webAppUrl}?action=logout" class="nav-button logout">🚪 Logout</a>
+</nav>
+
+<style>
+.navigation {
+  background: white;
+  padding: 10px 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+.nav-button {
+  text-decoration: none;
+  padding: 10px 15px;
+  margin: 0 5px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  color: #333;
+  display: inline-block;
+}
+.nav-button.active {
+  background: #4285f4;
+  color: white;
+}
+.nav-button:hover {
+  background: #e9ecef;
+}
+.nav-button.active:hover {
+  background: #3367d6;
+}
+.nav-button.logout {
+  background: #dc3545;
+  color: white;
+  float: right;
+}
+.nav-button.logout:hover {
+  background: #c82333;
+}
+</style>`;
+}
+
+/**
+ * Fallback page if HTML files can't be loaded
+ */
+function createFallbackPage(pageName, user, rider) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>${pageName} - Escort Management</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .nav { background: #4285f4; color: white; padding: 15px; border-radius: 4px; margin-bottom: 20px; }
+    .nav a { color: white; text-decoration: none; margin: 0 15px; }
+    .error { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <strong>🏍️ Escort Management</strong>
+      <a href="?page=dashboard">Dashboard</a>
+      <a href="?page=requests">Requests</a>
+      <a href="?page=assignments">Assignments</a>
+      <a href="?action=logout">Logout</a>
+    </div>
+    
+    <h1>📄 ${pageName.charAt(0).toUpperCase() + pageName.slice(1)}</h1>
+    
+    <div class="error">
+      <h3>⚠️ Page Loading Issue</h3>
+      <p>Could not load the HTML file for this page. This might mean:</p>
+      <ul>
+        <li>The HTML file <code>${pageName}.html</code> doesn't exist</li>
+        <li>There's a file access issue</li>
+        <li>The page name mapping needs to be updated</li>
+      </ul>
+      
+      <h4>👤 Current User:</h4>
+      <p><strong>Email:</strong> ${user.email}</p>
+      <p><strong>Role:</strong> ${user.role}</p>
+      <p><strong>Requested Page:</strong> ${pageName}</p>
+    </div>
+    
+    <p><a href="?page=dashboard">← Return to Dashboard</a></p>
+  </div>
+</body>
+</html>`;
+
+  return HtmlService.createHtmlOutput(html)
+    .setTitle(`${pageName} - Escort Management`)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * Safe wrapper to get web app URL
+ */
+function getWebAppUrl() {
+  try {
+    return ScriptApp.getService().getUrl();
+  } catch (error) {
+    console.error('Error getting web app URL:', error);
+    return '#';
+  }
+}
+
+/**
+ * Test function to see what HTML files exist
+ */
+function testExistingPages() {
+  console.log('🔍 Testing which HTML pages exist...');
+  
+  const pagesToTest = [
+    'index',
+    'admin-dashboard', 
+    'rider-dashboard',
+    'requests',
+    'assignments',
+    'riders', 
+    'notifications',
+    'reports'
+  ];
+  
+  const results = [];
+  
+  pagesToTest.forEach(page => {
+    try {
+      HtmlService.createHtmlOutputFromFile(page);
+      console.log(`✅ ${page}.html exists`);
+      results.push({ page: page, exists: true });
+    } catch (error) {
+      console.log(`❌ ${page}.html not found`);
+      results.push({ page: page, exists: false, error: error.message });
+    }
+  });
+  
+  console.log('\n📋 Summary of existing pages:');
+  const existingPages = results.filter(r => r.exists).map(r => r.page);
+  const missingPages = results.filter(r => !r.exists).map(r => r.page);
+  
+  console.log('Existing:', existingPages.join(', '));
+  console.log('Missing:', missingPages.join(', '));
+  
+  return results;
+}
+
+
+function debugAuthenticationFlow() {
+  try {
+    console.log('🔍 === DEBUGGING AUTHENTICATION FLOW ===');
+    
+    // Check session
+    console.log('1. Checking authenticated session...');
+    const session = getAuthenticatedSession();
+    console.log('Session result:', session);
+    
+    if (session.isValid) {
+      console.log('2. Session is valid, testing page load...');
+      console.log('User data in session:', session.user);
+      console.log('Rider data in session:', session.rider);
+      
+      return {
+        session: session,
+        userDataPresent: !!session.user,
+        userEmail: session.user ? session.user.email : 'N/A',
+        userRole: session.user ? session.user.role : 'N/A'
+      };
+    } else {
+      console.log('2. Session is not valid');
+      return { session: session, error: 'Session not valid' };
+    }
+    
+  } catch (error) {
+    console.error('❌ Debug flow error:', error);
+    return { error: error.message };
+  }
+}
+
+function checkCurrentSession() {
+  const session = getAuthenticatedSession();
+  console.log('Current session:', session);
+  
+  if (session.isValid) {
+    console.log('User data:', session.user);
+    console.log('Rider data:', session.rider);
+  }
+  
+  return session;
+}
+
+function refreshSessionWithName() {
+  try {
+    console.log('🔄 Refreshing session with proper name...');
+    
+    const userProperties = PropertiesService.getUserProperties();
+    const sessionData = userProperties.getProperty('AUTHENTICATED_USER');
+    
+    if (!sessionData) {
+      return { success: false, error: 'No session to refresh' };
+    }
+    
+    const session = JSON.parse(sessionData);
+    console.log('Original session:', session);
+    
+    // Fix the name
+    if (!session.name || session.name === 'undefined') {
+      session.name = extractNameFromEmail(session.email);
+      console.log('Fixed name to:', session.name);
+      
+      // Save the updated session
+      userProperties.setProperty('AUTHENTICATED_USER', JSON.stringify(session));
+    }
+    
+    console.log('Updated session:', session);
+    
+    return {
+      success: true,
+      message: 'Session refreshed with proper name',
+      session: session
+    };
+    
+  } catch (error) {
+    console.error('❌ Refresh failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+function verifyFix() {
+  const session = getAuthenticatedSession();
+  console.log('Fixed session:', session);
+  
+  if (session.isValid && session.user && session.user.name) {
+    console.log('✅ Session has proper name:', session.user.name);
+    return { success: true, userName: session.user.name };
+  } else {
+    console.log('❌ Session still has issues');
+    return { success: false, session: session };
+  }
+}
