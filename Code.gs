@@ -3639,6 +3639,18 @@ function doGet(e) {
     // Authentication and page logic (your existing code)
     const authResult = authenticateAndAuthorizeUser();
     if (!authResult.success) {
+      if (authResult.error === 'UNAUTHORIZED') {
+        Logger.log(`User is unauthorized. Email: ${authResult.userEmail}, Name: ${authResult.userName}`);
+        // Assuming createUnauthorizedPage is globally available or defined in this file/AccessControl.gs
+        // It was confirmed to be in AccessControl.gs and a version also exists in Code.gs
+        return createUnauthorizedPage(authResult.userEmail, authResult.userName);
+      }
+      // For other errors like NO_EMAIL, or if getEnhancedUserSession itself returned an error object
+      if (authResult.error === 'NO_EMAIL' || (authResult.source === 'unidentified' && authResult.error)) {
+         Logger.log(`User has no email or session is unidentified. Error: ${authResult.error}`);
+         return createSignInPageEnhanced(); // Or a more specific error page
+      }
+      // Default to sign-in for other unspecified errors
       return createSignInPageEnhanced();
     }
     

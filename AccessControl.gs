@@ -277,7 +277,9 @@ function getEnhancedUserSession() {
       if (user) {
         // Safe way to get email
         try {
-          userEmail = user.getEmail ? user.getEmail() : (user.email || '');
+          const activeUserEmail = user.getEmail ? user.getEmail() : (user.email || '');
+          console.log('🔵 ActiveUser Email:', activeUserEmail);
+          userEmail = activeUserEmail;
           sessionSource = 'active_user_getEmail';
         } catch (e) {
           console.log('⚠️ getEmail() failed, trying alternatives...');
@@ -304,7 +306,9 @@ function getEnhancedUserSession() {
         console.log('🔄 Trying Session.getEffectiveUser()...');
         const effectiveUser = Session.getEffectiveUser();
         if (effectiveUser) {
-          userEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
+          const effectiveUserEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
+          console.log('🔵 EffectiveUser Email:', effectiveUserEmail);
+          userEmail = effectiveUserEmail;
           userName = effectiveUser.getName ? effectiveUser.getName() : (effectiveUser.name || '');
           sessionSource = 'effective_user';
         }
@@ -318,8 +322,10 @@ function getEnhancedUserSession() {
     if (!userEmail) {
       try {
         console.log('🔄 Trying cached user info...');
-        const cachedEmail = PropertiesService.getScriptProperties().getProperty('CACHED_USER_EMAIL');
-        const cachedName = PropertiesService.getScriptProperties().getProperty('CACHED_USER_NAME');
+        const scriptProperties = PropertiesService.getScriptProperties();
+        const cachedEmail = scriptProperties.getProperty('CACHED_USER_EMAIL');
+        const cachedName = scriptProperties.getProperty('CACHED_USER_NAME');
+        console.log('🔵 Cached Email from PropertiesService:', cachedEmail);
         if (cachedEmail) {
           userEmail = cachedEmail;
           userName = cachedName || '';
@@ -333,6 +339,20 @@ function getEnhancedUserSession() {
     
     // Trace the result
     traceAuthFunction('getEnhancedUserSession', userEmail, sessionSource);
+    console.log('🔵 Final userEmail before returning:', userEmail);
+    console.log('🔵 Final sessionSource before returning:', sessionSource);
+
+    if (!userEmail || userEmail.trim() === '') {
+      console.log('🔴 No email identified after all attempts. User is unauthorized.');
+      return {
+        email: '',
+        name: '',
+        hasEmail: false,
+        hasName: false,
+        source: 'unidentified',
+        error: 'No email could be retrieved for the user.'
+      };
+    }
     
     // Return enhanced user object
     const enhancedUser = {
@@ -714,20 +734,26 @@ function authenticateAndAuthorizeUser() {
     const isDispatcher = dispatcherUsers.includes(userSession.email);
 
     // Prefer dispatcher role if user appears in both lists
-    console.log('🔍 Checking admin users:', adminUsers);
+    // console.log('🔍 Checking admin users:', adminUsers); // Original log
+    console.log(`🔐 Authenticating user: ${userSession.email}`);
+
     if (isDispatcher) {
       userRole = 'dispatcher';
-      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+      permissions = PERMISSIONS_MATRIX.dispatcher; // Assign full permissions object
+      console.log(`✅ User ${userSession.email} authorized as: dispatcher`);
       traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'dispatcher');
     } else if (isAdmin) {
       userRole = 'admin';
-      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+      permissions = PERMISSIONS_MATRIX.admin; // Assign full permissions object
+      console.log(`✅ User ${userSession.email} authorized as: admin`);
       traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'admin');
     } else if (rider && rider.status === 'Active') {
       userRole = 'rider';
-      permissions = ['view_own_assignments', 'update_own_status'];
+      permissions = PERMISSIONS_MATRIX.rider; // Assign full permissions object
+      console.log(`✅ User ${userSession.email} authorized as: rider`);
       traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'rider');
     } else {
+      console.log(`🚫 User ${userSession.email} is UNAUTHORIZED.`);
       traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'unauthorized');
       return {
         success: false,
@@ -875,22 +901,57 @@ function getRiderByGoogleEmailSafe(email) {
  * Fallback method to get rider by Google email
  */
 function getRiderByGoogleEmailFallback(email) {
+  console.log(`🔄 Fallback: Attempting to get rider by Google Email: ${email}`);
+  const ridersSheetName = CONFIG.sheets.riders;
+  console.log(`🔄 Fallback: Accessing sheet: ${ridersSheetName}`);
+
   try {
-    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders); // Use CONFIG
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ridersSheetName);
     if (!ridersSheet) {
-      console.log('⚠️ Riders sheet not found: ' + CONFIG.sheets.riders); // Log with CONFIG name
+      console.log(`⚠️ Fallback: Riders sheet "${ridersSheetName}" not found.`);
+      return null;
+    }
+    console.log(`✅ Fallback: Successfully accessed sheet: ${ridersSheetName}`);
+    
+    const data = ridersSheet.getDataRange().getValues();
+    if (data.length < 2) {
+      console.log(`⚠️ Fallback: No data (or only headers) in sheet: ${ridersSheetName}`);
       return null;
     }
     
-    const data = ridersSheet.getDataRange().getValues();
-    if (data.length < 2) return null;
-    
     const headers = data[0];
-    const emailCol = headers.indexOf(CONFIG.columns.riders.email); // Use CONFIG
-    const googleEmailCol = headers.indexOf(CONFIG.columns.riders.googleEmail); // Use CONFIG
-    const nameCol = headers.indexOf(CONFIG.columns.riders.name); // Use CONFIG
-    const statusCol = headers.indexOf(CONFIG.columns.riders.status); // Use CONFIG
-    const idCol = headers.indexOf(CONFIG.columns.riders.jpNumber); // Use CONFIG (jpNumber is 'Rider ID')
+    console.log(`🔄 Fallback: Headers found: ${headers.join(', ')}`);
+
+    const requiredColumns = {
+      email: CONFIG.columns.riders.email,
+      googleEmail: CONFIG.columns.riders.googleEmail,
+      name: CONFIG.columns.riders.name,
+      status: CONFIG.columns.riders.status,
+      jpNumber: CONFIG.columns.riders.jpNumber
+    };
+
+    const columnIndices = {};
+    let allHeadersFound = true;
+
+    for (const key in requiredColumns) {
+      const headerName = requiredColumns[key];
+      console.log(`🔄 Fallback: Searching for header: "${headerName}" for ${key}`);
+      const index = headers.indexOf(headerName);
+      if (index === -1) {
+        console.log(`⚠️ Fallback: Required header "${headerName}" for ${key} not found in sheet: ${ridersSheetName}.`);
+        allHeadersFound = false;
+      }
+      columnIndices[key] = index;
+    }
+
+    if (!allHeadersFound) {
+      console.log(`⚠️ Fallback: Not all required headers found. Cannot reliably map rider data.`);
+      // Depending on strictness, you might return null here or proceed with available columns.
+      // For now, we'll proceed if core email columns are present.
+      if (columnIndices.email === -1 && columnIndices.googleEmail === -1) {
+        return null;
+      }
+    }
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
@@ -912,7 +973,7 @@ function getRiderByGoogleEmailFallback(email) {
     return null;
     
   } catch (error) {
-    console.error('❌ Fallback rider lookup failed:', error);
+    console.error(`❌ Fallback: Error in getRiderByGoogleEmailFallback for sheet ${ridersSheetName}:`, error.message, error.stack);
     return null;
   }
 }
@@ -930,7 +991,7 @@ function getAdminUsersSafe() {
     
   } catch (error) {
     console.error('❌ Error getting admin users:', error);
-    return ['admin@example.com']; // Default fallback
+    return []; // Return empty array on error
   }
 }
 
@@ -938,28 +999,33 @@ function getAdminUsersSafe() {
  * Fallback method to get admin users
  */
 function getAdminUsersFallback() {
+  const settingsSheetName = CONFIG.sheets.settings;
+  const adminRangeA1 = 'B2:B10'; // Example range
+  console.log(`🔄 Fallback: Attempting to get admin users from sheet: "${settingsSheetName}", range: ${adminRangeA1}`);
+
   try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.settings); // Use CONFIG
-    if (settingsSheet) {
-      // Assuming admin emails are in a fixed range B2:B10 as CONFIG doesn't specify a column name.
-      // For more flexibility, consider adding a CONFIG.columns.settings.adminEmailColumn
-      // and then finding that column by header to read all its values.
-      const adminRange = settingsSheet.getRange('B2:B10').getValues();
-      const admins = adminRange.flat().filter(email => email && email.trim());
-      if (admins.length > 0) return admins;
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(settingsSheetName);
+    if (!settingsSheet) {
+      console.log(`⚠️ Fallback: Settings sheet "${settingsSheetName}" not found. Returning empty list.`);
+      return [];
+    }
+    console.log(`✅ Fallback: Accessed settings sheet: "${settingsSheetName}"`);
+
+    console.log(`🔄 Fallback: Reading admin emails from range: ${adminRangeA1}`);
+    const adminRange = settingsSheet.getRange(adminRangeA1).getValues();
+    const admins = adminRange.flat().filter(email => email && email.trim());
+
+    if (admins.length > 0) {
+      console.log(`✅ Fallback: Loaded ${admins.length} admins from settings sheet:`, admins);
+      return admins;
+    } else {
+      console.log(`⚠️ Fallback: No admin emails found in range ${adminRangeA1} of sheet "${settingsSheetName}". Returning empty list.`);
+      return [];
     }
   } catch (error) {
-    console.log('⚠️ Could not read Settings sheet');
+    console.log(`❌ Fallback: Could not read Settings sheet "${settingsSheetName}" for admin users. Error: ${error.message}. Returning empty list.`);
+    return []; // Return empty array on error
   }
-  
-  // Default admin emails - UPDATE THESE WITH YOUR ACTUAL ADMIN EMAILS!
-  return [
-    'admin@yourdomain.com',
-    'jpsotraffic@gmail.com',
-    'manager@yourdomain.com',
-    // Add your actual admin email here:
-    // 'your-email@gmail.com'
-  ];
 }
 
 /**
@@ -983,25 +1049,33 @@ function getDispatcherUsersSafe() {
  * Fallback method to get dispatcher users
  */
 function getDispatcherUsersFallback() {
+  const settingsSheetName = CONFIG.sheets.settings;
+  const dispatcherRangeA1 = 'C2:C10'; // Example range
+  console.log(`🔄 Fallback: Attempting to get dispatcher users from sheet: "${settingsSheetName}", range: ${dispatcherRangeA1}`);
+
   try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.settings); // Use CONFIG
-    if (settingsSheet) {
-      // Assuming dispatcher emails are in a fixed range C2:C10 as CONFIG doesn't specify a column name.
-      // For more flexibility, consider adding a CONFIG.columns.settings.dispatcherEmailColumn
-      // and then finding that column by header to read all its values.
-      const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
-      const dispatchers = dispatcherRange.flat().filter(email => email && email.trim());
-      return dispatchers; // Return even if empty, fallback below will handle if no dispatchers found
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(settingsSheetName);
+    if (!settingsSheet) {
+      console.log(`⚠️ Fallback: Settings sheet "${settingsSheetName}" not found. Returning empty list.`);
+      return [];
+    }
+    console.log(`✅ Fallback: Accessed settings sheet: "${settingsSheetName}"`);
+
+    console.log(`🔄 Fallback: Reading dispatcher emails from range: ${dispatcherRangeA1}`);
+    const dispatcherRange = settingsSheet.getRange(dispatcherRangeA1).getValues();
+    const dispatchers = dispatcherRange.flat().filter(email => email && email.trim());
+
+    if (dispatchers.length > 0) {
+      console.log(`✅ Fallback: Loaded ${dispatchers.length} dispatchers from settings sheet:`, dispatchers);
+      return dispatchers;
+    } else {
+      console.log(`⚠️ Fallback: No dispatcher emails found in range ${dispatcherRangeA1} of sheet "${settingsSheetName}". Returning empty list.`);
+      return [];
     }
   } catch (error) {
-    console.log('⚠️ Could not read Settings sheet for dispatchers');
+    console.log(`❌ Fallback: Could not read Settings sheet "${settingsSheetName}" for dispatcher users. Error: ${error.message}. Returning empty list.`);
+    return []; // Return empty array on error
   }
-  
-  // Default dispatcher emails if sheet/range is empty or fails
-  return [
-    'dispatcher@yourdomain.com'
-    // Add dispatcher emails here
-  ];
 }
 
 /**
