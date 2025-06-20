@@ -262,6 +262,41 @@ function getRoleBasedNavigation(currentPage, user, rider) {
  * This version prioritizes fresh session data over cached data
  */
 function getEnhancedUserSession() {
+  console.log('INVESTIGATION: getEnhancedUserSession invoked.');
+  try {
+    const rawActiveUser = Session.getActiveUser();
+    console.log('INVESTIGATION: Raw Session.getActiveUser() object:', rawActiveUser ? 'Exists' : 'Null');
+    if (rawActiveUser) {
+      // Attempt to get email and catch potential errors
+      try {
+        const activeUserEmail = rawActiveUser.getEmail();
+        console.log('INVESTIGATION: Raw Session.getActiveUser().getEmail() initial value:', activeUserEmail);
+        if (activeUserEmail === 'jpsotraffic@gmail.com') {
+          console.log("⚠️ INVESTIGATION: Session.getActiveUser().getEmail() IS 'jpsotraffic@gmail.com' at initial check.");
+        }
+      } catch (e) {
+        console.log('⚠️ INVESTIGATION: Error calling Session.getActiveUser().getEmail():', e.message);
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ INVESTIGATION: Error accessing Session.getActiveUser():', e.message);
+  }
+
+  try {
+    const rawEffectiveUser = Session.getEffectiveUser();
+    console.log('INVESTIGATION: Raw Session.getEffectiveUser() object:', rawEffectiveUser ? 'Exists' : 'Null');
+    if (rawEffectiveUser) {
+      // Attempt to get email and catch potential errors
+      try {
+        console.log('INVESTIGATION: Raw Session.getEffectiveUser().getEmail() initial value:', rawEffectiveUser.getEmail());
+      } catch (e) {
+        console.log('⚠️ INVESTIGATION: Error calling Session.getEffectiveUser().getEmail():', e.message);
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ INVESTIGATION: Error accessing Session.getEffectiveUser():', e.message);
+  }
+
   try {
     console.log('🔍 getEnhancedUserSession called from AccessControl.gs');
 
@@ -338,11 +373,17 @@ function getEnhancedUserSession() {
     // Method 3: Try PropertiesService for cached user info
     if (!userEmail) {
       try {
-        console.log('🔄 Trying cached user info...');
+        console.log('INVESTIGATION: Trying cached user info...'); // Modified existing log to INVESTIGATION
         const scriptProperties = PropertiesService.getScriptProperties();
         const cachedEmail = scriptProperties.getProperty('CACHED_USER_EMAIL');
         const cachedName = scriptProperties.getProperty('CACHED_USER_NAME');
-        console.log('🔵 Cached Email from PropertiesService:', cachedEmail);
+        console.log('INVESTIGATION: Cached email from PropertiesService:', cachedEmail);
+        console.log('INVESTIGATION: Cached name from PropertiesService:', cachedName);
+
+        if (cachedEmail === 'jpsotraffic@gmail.com') {
+          console.log("⚠️ INVESTIGATION: Cached email IS 'jpsotraffic@gmail.com'.");
+        }
+
         if (cachedEmail) {
           userEmail = cachedEmail;
           userName = cachedName || '';
@@ -1035,13 +1076,26 @@ function getAdminUsersFallback() {
 
     if (admins.length > 0) {
       console.log(`✅ Fallback: Loaded ${admins.length} admins from settings sheet:`, admins);
+      if (admins.includes('jpsotraffic@gmail.com')) {
+        console.log("⚠️ INVESTIGATION: 'jpsotraffic@gmail.com' IS present in the admin list returned by getAdminUsersFallback.");
+      } else {
+        console.log("ℹ️ INVESTIGATION: 'jpsotraffic@gmail.com' IS NOT present in the admin list returned by getAdminUsersFallback.");
+      }
       return admins;
     } else {
       console.log(`⚠️ Fallback: No admin emails found in range ${adminRangeA1} of sheet "${settingsSheetName}". Returning empty list.`);
+      // Even if the list is empty, perform the check (it will be false)
+      if (admins.includes('jpsotraffic@gmail.com')) { // This will be false
+        console.log("⚠️ INVESTIGATION: 'jpsotraffic@gmail.com' IS present in the admin list returned by getAdminUsersFallback (empty list scenario - unexpected).");
+      } else {
+        console.log("ℹ️ INVESTIGATION: 'jpsotraffic@gmail.com' IS NOT present in the admin list returned by getAdminUsersFallback (empty list scenario).");
+      }
       return [];
     }
   } catch (error) {
     console.log(`❌ Fallback: Could not read Settings sheet "${settingsSheetName}" for admin users. Error: ${error.message}. Returning empty list.`);
+    // Log for the error case before returning empty array
+    console.log("ℹ️ INVESTIGATION: 'jpsotraffic@gmail.com' IS NOT present in the admin list due to an error in getAdminUsersFallback.");
     return []; // Return empty array on error
   }
 }
