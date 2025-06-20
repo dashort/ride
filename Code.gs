@@ -3648,10 +3648,10 @@ function doGet(e) {
       // For other errors like NO_EMAIL, or if getEnhancedUserSession itself returned an error object
       if (authResult.error === 'NO_EMAIL' || (authResult.source === 'unidentified' && authResult.error)) {
          Logger.log(`User has no email or session is unidentified. Error: ${authResult.error}`);
-         return createSignInPageEnhanced(); // Or a more specific error page
+         return createHybridLoginPage();
       }
       // Default to sign-in for other unspecified errors
-      return createSignInPageEnhanced();
+      return createHybridLoginPage();
     }
     
     const { user: authenticatedUser, rider } = authResult;

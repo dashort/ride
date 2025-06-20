@@ -264,6 +264,23 @@ function getRoleBasedNavigation(currentPage, user, rider) {
 function getEnhancedUserSession() {
   try {
     console.log('🔍 getEnhancedUserSession called from AccessControl.gs');
+
+    // 0. Check for custom spreadsheet-based session
+    try {
+      const custom = getCustomSession();
+      if (custom) {
+        console.log('🔵 Custom session found for ' + custom.email);
+        return {
+          email: custom.email,
+          name: custom.name || '',
+          hasEmail: true,
+          hasName: !!custom.name,
+          source: 'custom_session'
+        };
+      }
+    } catch (e) {
+      console.log('⚠️ Custom session check failed: ' + e.message);
+    }
     
     let user = null;
     let userEmail = '';
@@ -1586,6 +1603,12 @@ function createSignInPageEnhanced() {
   
   return HtmlService.createHtmlOutput(html)
     .setTitle('Sign In - Escort Management')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function createHybridLoginPage() {
+  return HtmlService.createHtmlOutputFromFile('login')
+    .setTitle('Login - Escort Management')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
