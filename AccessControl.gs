@@ -1430,10 +1430,10 @@ function createSignInPageEnhanced() {
         </div>
         
         <!-- Primary Sign-In Method -->
-        <button class="signin-btn" onclick="handleSignIn()">
+        <a href="${webAppUrl}" class="signin-btn">
             <div class="google-icon">G</div>
             Sign In with Google
-        </button>
+        </a>
         
         <!-- Debug Information -->
         <div class="debug-info">
@@ -1456,19 +1456,7 @@ function createSignInPageEnhanced() {
     
     <script>
         function handleSignIn() {
-            const btn = document.querySelector('.signin-btn');
-            btn.innerHTML = '<div class="google-icon">⏳</div>Signing In...';
-            btn.style.background = '#666';
-            
-            // Strategy 1: Direct reload to trigger auth
-            setTimeout(() => {
-                window.location.href = '${webAppUrl}?auth=true&t=' + Date.now();
-            }, 500);
-            
-            // Strategy 2: Fallback reload
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
+            // OAuth prompt occurs automatically when visiting the web app.
         }
         
         function testUserSession() {
