@@ -2373,8 +2373,12 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           continue;
         }
         
-        // Apply status filter
-        if (filter !== 'All' && status !== filter) {
+        // Apply status filter with special handling for "Unassigned"
+        if (filter === 'Unassigned') {
+          if (['Assigned', 'Completed', 'Cancelled'].includes(status)) {
+            continue; // Skip requests that are assigned or closed
+          }
+        } else if (filter !== 'All' && status !== filter) {
           continue;
         }
         
