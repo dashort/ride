@@ -11,6 +11,17 @@
 (function() {
     // Set up navigation links
     function setLinks(base) {
+        if (!base || base === '#') {
+            // Fallback if the web app URL couldn't be retrieved
+            document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                var page = a.getAttribute('data-page');
+                var href = page === 'dashboard' ? 'index.html' : page + '.html';
+                a.href = href;
+                a.dataset.url = href;
+            });
+            return;
+        }
+
         document.querySelectorAll('nav.navigation a').forEach(function(a) {
             var page = a.getAttribute('data-page');
             var href = page === 'dashboard' ? base : base + '?page=' + page;
