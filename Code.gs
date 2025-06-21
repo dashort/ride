@@ -3199,6 +3199,54 @@ function getCurrentUser() {
 }
 
 /**
+ * Guaranteed wrapper around getTotalRequestsCount
+ */
+function guaranteedGetTotalRequestsCount() {
+  try {
+    return getTotalRequestsCount();
+  } catch (error) {
+    console.error('Error in guaranteedGetTotalRequestsCount:', error);
+    return 0;
+  }
+}
+
+/**
+ * Guaranteed wrapper around getTotalAssignmentsCount
+ */
+function guaranteedGetTotalAssignmentsCount() {
+  try {
+    return getTotalAssignmentsCount();
+  } catch (error) {
+    console.error('Error in guaranteedGetTotalAssignmentsCount:', error);
+    return 0;
+  }
+}
+
+/**
+ * Guaranteed wrapper around getUnassignedRequestsCount
+ */
+function guaranteedGetUnassignedRequestsCount() {
+  try {
+    return getUnassignedRequestsCount();
+  } catch (error) {
+    console.error('Error in guaranteedGetUnassignedRequestsCount:', error);
+    return 0;
+  }
+}
+
+/**
+ * Guaranteed wrapper that returns dashboard stats or defaults on failure
+ */
+function guaranteedGetDashboardStats() {
+  try {
+    return getDashboardStats();
+  } catch (error) {
+    console.error('Error in guaranteedGetDashboardStats:', error);
+    return getDefaultStats();
+  }
+}
+
+/**
  * Get dashboard statistics
  */
 function getDashboardStats() {
