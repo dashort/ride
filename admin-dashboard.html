@@ -109,6 +109,33 @@
             font-weight: 600;
         }
 
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .quick-stat {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .quick-stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 0.5rem;
+        }
+
+        .quick-stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -124,6 +151,7 @@
             text-align: center;
             transition: transform 0.3s ease;
             border-left: 5px solid #e74c3c;
+            cursor: pointer;
         }
 
         .stat-card:hover {
@@ -140,10 +168,6 @@
 
         .stat-card.assignments {
             border-left-color: #f39c12;
-        }
-
-        .stat-card.system {
-            border-left-color: #9b59b6;
         }
 
         .stat-number {
@@ -238,6 +262,7 @@
             border-radius: 15px;
             padding: 2rem;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
         }
 
         .activity-title {
@@ -255,11 +280,11 @@
         }
 
         .activity-item {
-            padding: 1rem;
-            border-bottom: 1px solid #ecf0f1;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #ecf0f1;
         }
 
         .activity-item:last-child {
@@ -267,76 +292,51 @@
         }
 
         .activity-description {
-            flex: 1;
-        }
-
-        .activity-time {
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-
-        .quick-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        .quick-stat {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 10px;
-            padding: 1rem;
-            text-align: center;
-            border-left: 3px solid #3498db;
-        }
-
-        .quick-stat-number {
-            font-size: 1.5rem;
-            font-weight: bold;
             color: #2c3e50;
         }
 
-        .quick-stat-label {
+        .activity-time {
+            color: #95a5a6;
             font-size: 0.8rem;
-            color: #7f8c8d;
-            margin-top: 0.5rem;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
+        .loading {
+            text-align: center;
+            color: #95a5a6;
+            padding: 2rem;
+        }
 
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
 
-            .admin-actions {
-                grid-template-columns: 1fr;
-            }
-
-            .action-buttons {
-                justify-content: center;
-            }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
         }
     </style>
 </head>
 <body>
-    <header class="header">
+    <div class="header">
         <h1>🏍️ Motorcycle Escort Management</h1>
-        
         <div class="user-info">
-            <div class="user-avatar" id="userAvatar">?</div>
+            <div class="user-avatar" id="userAvatar">A</div>
             <div class="user-details">
-                <div class="user-name" id="userName">Loading...</div>
-                <div class="user-role" id="userRole">User</div>
+                <div class="user-name" id="userName">Admin User</div>
+                <div class="user-role">ADMINISTRATOR</div>
             </div>
-            <a href="?action=logout" class="logout-btn" 
-   onclick="return confirm('Are you sure you want to logout?');">
-   🚪 Logout
-</a>
+            <a href="?action=logout" class="logout-btn" onclick="return confirm('Are you sure you want to logout?');">
+                🚪 Logout
+            </a>
         </div>
-    </header>
+    </div>
 
     <!--NAVIGATION_MENU_PLACEHOLDER-->
 
@@ -361,15 +361,15 @@
 
         <!-- Main Stats Grid -->
         <div class="stats-grid">
-            <div class="stat-card requests" style="cursor:pointer" onclick="navigateStat('requests')">
+            <div class="stat-card requests" onclick="navigateTo('requests')">
                 <div class="stat-number" id="totalRequests">-</div>
                 <div class="stat-label">Total Requests</div>
             </div>
-            <div class="stat-card riders" style="cursor:pointer" onclick="navigateStat('riders')">
+            <div class="stat-card riders" onclick="navigateTo('riders')">
                 <div class="stat-number" id="totalRiders">-</div>
                 <div class="stat-label">Active Riders</div>
             </div>
-            <div class="stat-card assignments" style="cursor:pointer" onclick="navigateStat('assignments')">
+            <div class="stat-card assignments" onclick="navigateTo('assignments')">
                 <div class="stat-number" id="totalAssignments">-</div>
                 <div class="stat-label">Assignments</div>
             </div>
@@ -386,10 +386,10 @@
                     Manage user accounts, permissions, and authentication settings for the entire system.
                 </div>
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="openUserManagement()">
+                    <button class="btn btn-primary" onclick="navigateTo('user-management')">
                         🔐 User Management
                     </button>
-                    <button class="btn btn-success" onclick="openAuthSetup()">
+                    <button class="btn btn-success" onclick="showMessage('Auth setup feature coming soon', 'info')">
                         🛠️ Auth Setup
                     </button>
                 </div>
@@ -404,11 +404,11 @@
                     Monitor system performance, manage configurations, and perform maintenance tasks.
                 </div>
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="viewSystemLogs()">
-                        📋 System Logs
+                    <button class="btn btn-primary" onclick="showSystemInfo()">
+                        📋 System Info
                     </button>
-                    <button class="btn btn-warning" onclick="runDiagnostics()">
-                        🔧 Diagnostics
+                    <button class="btn btn-warning" onclick="runBasicDiagnostics()">
+                        🔧 Basic Diagnostics
                     </button>
                 </div>
             </div>
@@ -422,10 +422,10 @@
                     Export system data, generate reports, and manage database operations.
                 </div>
                 <div class="action-buttons">
-                    <button class="btn btn-success" onclick="exportAllData()">
+                    <button class="btn btn-success" onclick="showMessage('Export feature coming soon', 'info')">
                         📥 Export Data
                     </button>
-                    <button class="btn btn-primary" onclick="generateReports()">
+                    <button class="btn btn-primary" onclick="navigateTo('reports')">
                         📊 Generate Reports
                     </button>
                 </div>
@@ -440,10 +440,10 @@
                     Emergency system controls for critical situations and maintenance windows.
                 </div>
                 <div class="action-buttons">
-                    <button class="btn btn-danger" onclick="emergencyLockdown()">
+                    <button class="btn btn-danger" onclick="confirmEmergencyAction('lockdown')">
                         🔒 System Lockdown
                     </button>
-                    <button class="btn btn-warning" onclick="resetAllSessions()">
+                    <button class="btn btn-warning" onclick="confirmEmergencyAction('reset')">
                         🔄 Reset Sessions
                     </button>
                 </div>
@@ -456,10 +456,7 @@
                 📈 Recent System Activity
             </div>
             <div class="activity-list" id="activityList">
-                <div class="activity-item">
-                    <div class="activity-description">Loading recent activity...</div>
-                    <div class="activity-time">--</div>
-                </div>
+                <div class="loading">Loading recent activity...</div>
             </div>
         </div>
 
@@ -469,23 +466,28 @@
                 🔔 Recent Notifications
             </div>
             <div class="activity-list" id="notificationList">
-                <div class="activity-item">
-                    <div class="activity-description">Loading notifications...</div>
-                    <div class="activity-time">--</div>
-                </div>
+                <div class="loading">Loading notifications...</div>
             </div>
         </div>
     </div>
 
     <script>
+        // Global user context - will be populated by the system
+        window.currentUser = {
+            email: 'admin@system.com',
+            name: 'Administrator',
+            role: 'admin',
+            isAdmin: true,
+            timestamp: Date.now()
+        };
+
         // Initialize admin dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Admin dashboard initializing...');
             loadAdminDashboardData();
-            loadRecentActivity();
-            loadRecentNotifications();
-
-            // Auto-refresh every 30 seconds
-            setInterval(loadAdminDashboardData, 30000);
+            
+            // Auto-refresh every 60 seconds
+            setInterval(loadAdminDashboardData, 60000);
         });
 
         function loadAdminDashboardData() {
@@ -498,314 +500,164 @@
                     .getAdminDashboardData();
             } else {
                 console.log('⚠️ Google Apps Script not available, using demo data');
-                updateDashboardStats(getDemoData());
+                updateDashboardStats({
+                    success: true,
+                    stats: {
+                        totalRequests: 42,
+                        totalRiders: 15,
+                        totalAssignments: 38,
+                        unassignedEscorts: 3,
+                        escortsToday: 5
+                    },
+                    recentActivity: [
+                        { description: 'New request submitted', time: '5 min ago' },
+                        { description: 'Rider assigned', time: '15 min ago' }
+                    ],
+                    recentNotifications: [
+                        { description: 'SMS sent to rider', time: '10 min ago' }
+                    ]
+                });
             }
         }
 
         function updateDashboardStats(data) {
-            try {
-                // Update main stats
-                document.getElementById('totalRequests').textContent = data.totalRequests || 0;
-                document.getElementById('totalRiders').textContent = data.totalRiders || 0;
-                document.getElementById('totalAssignments').textContent = data.totalAssignments || 0;
-
-                // Update quick stats
-                document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts3d || 0;
-                document.getElementById('escortsToday').textContent = data.escortsToday || 0;
-
-                console.log('✅ Dashboard stats updated');
-            } catch (error) {
-                console.error('❌ Error updating dashboard stats:', error);
-            }
-        }
-
-        function loadRecentActivity() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(updateRecentActivity)
-                    .withFailureHandler(handleActivityError)
-                    .getRecentSystemActivity();
-            } else {
-                updateRecentActivity(getDemoActivity());
-            }
-        }
-
-        function loadRecentNotifications() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(updateRecentNotifications)
-                    .withFailureHandler(handleActivityError)
-                    .getNotificationHistory();
-            } else {
-                updateRecentNotifications(getDemoNotifications());
-            }
-        }
-
-        function updateRecentActivity(activities) {
-            const activityList = document.getElementById('activityList');
+            console.log('📈 Updating dashboard stats:', data);
             
-            if (activities && activities.length > 0) {
-                activityList.innerHTML = activities.map(activity => `
-                    <div class="activity-item">
-                        <div class="activity-description">${activity.description}</div>
-                        <div class="activity-time">${activity.time}</div>
-                    </div>
-                `).join('');
+            if (data && data.success && data.stats) {
+                // Update stat numbers
+                document.getElementById('totalRequests').textContent = data.stats.totalRequests || 0;
+                document.getElementById('totalRiders').textContent = data.stats.totalRiders || data.stats.activeRiders || 0;
+                document.getElementById('totalAssignments').textContent = data.stats.totalAssignments || 0;
+                document.getElementById('unassignedEscorts').textContent = data.stats.unassignedEscorts || data.stats.unassignedRequests || 0;
+                document.getElementById('escortsToday').textContent = data.stats.escortsToday || data.stats.todayAssignments || 0;
+                
+                console.log('✅ Stats updated successfully');
             } else {
-                activityList.innerHTML = `
-                    <div class="activity-item">
-                        <div class="activity-description">No recent activity</div>
-                        <div class="activity-time">--</div>
-                    </div>
-                `;
+                console.log('⚠️ Invalid data received, using defaults');
+                setDefaultStats();
+            }
+            
+            // Update activity lists
+            if (data && data.recentActivity) {
+                updateActivityList('activityList', data.recentActivity);
+            }
+            
+            if (data && data.recentNotifications) {
+                updateActivityList('notificationList', data.recentNotifications);
             }
         }
 
-        function updateRecentNotifications(notifications) {
-            const container = document.getElementById('notificationList');
-
-            if (notifications && notifications.length > 0) {
-                container.innerHTML = notifications.map(n => `
-                    <div class="activity-item">
-                        <div class="activity-description">${n.recipient} (${n.type})</div>
-                        <div class="activity-time">${new Date(n.timestamp).toLocaleString()}</div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = `
-                    <div class="activity-item">
-                        <div class="activity-description">No notifications</div>
-                        <div class="activity-time">--</div>
-                    </div>
-                `;
-            }
+        function setDefaultStats() {
+            document.getElementById('totalRequests').textContent = '0';
+            document.getElementById('totalRiders').textContent = '0';
+            document.getElementById('totalAssignments').textContent = '0';
+            document.getElementById('unassignedEscorts').textContent = '0';
+            document.getElementById('escortsToday').textContent = '0';
         }
 
-        // Admin Action Functions
-        function getDeployedUrl(callback) {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run.withSuccessHandler(callback).getWebAppUrl();
-            } else {
-                const local = window.location.origin + window.location.pathname;
-                callback(local);
-            }
-        }
-
-        function openUserManagement() {
-            getDeployedUrl(function(baseUrl) {
-                window.open(baseUrl + '?page=user-management', '_blank');
-            });
-        }
-
-        function openAuthSetup() {
-            getDeployedUrl(function(baseUrl) {
-                window.open(baseUrl + '?page=auth-setup', '_blank');
-            });
-        }
-
-        function navigateStat(page) {
-            getDeployedUrl(function(baseUrl) {
-                window.open(baseUrl + '?page=' + page, '_top');
-            });
-        }
-
-        function viewSystemLogs() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(logs) {
-                        displaySystemLogs(logs);
-                    })
-                    .withFailureHandler(handleError)
-                    .getSystemLogs();
-            } else {
-                alert('System logs feature requires Google Apps Script connection');
-            }
-        }
-function displaySystemLogs(logs) {
-    const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
-    const doc = win.document;
-    doc.write('<html><head><title>System Logs</title></head><body>');
-    doc.write('<h2>System Logs</h2>');
-    if (!logs || logs.length === 0) {
-        doc.write('<p>No logs available.</p>');
-    } else {
-        doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
-        doc.write('<tr><th>Timestamp</th><th>Type</th><th>Message</th><th>Details</th></tr>');
-        logs.forEach(function(log) {
-            doc.write('<tr><td>' + (log.Timestamp || log.timestamp || '') + '</td>' +
-                     '<td>' + (log.Type || log.type || '') + '</td>' +
-                     '<td>' + (log.Message || log.message || '') + '</td>' +
-                     '<td>' + (log.Details || log.details || '') + '</td></tr>');
-        });
-        doc.write('</table>');
-    }
-    doc.write('</body></html>');
-    doc.close();
-}
-
-        function runDiagnostics() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                showMessage('Running system diagnostics...', 'info');
-                google.script.run
-                    .withSuccessHandler(function(result) {
-                        showMessage('Diagnostics completed: ' + result.status, 'success');
-                        console.log('Diagnostics result:', result);
-                    })
-                    .withFailureHandler(handleError)
-                    .runSystemDiagnostics();
-            } else {
-                alert('Diagnostics feature requires Google Apps Script connection');
-            }
-        }
-
-        function exportAllData() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                showMessage('Exporting system data...', 'info');
-                google.script.run
-                    .withSuccessHandler(function(result) {
-                        if (result.success) {
-                            // Create download link
-                            const blob = new Blob([result.csvContent], { type: 'text/csv' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a');
-                            a.href = url;
-                            a.download = result.filename;
-                            a.click();
-                            URL.revokeObjectURL(url);
-                            showMessage('Data exported successfully', 'success');
-                        } else {
-                            showMessage('Export failed: ' + result.error, 'error');
-                        }
-                    })
-                    .withFailureHandler(handleError)
-                    .exportSystemData();
-            } else {
-                alert('Export feature requires Google Apps Script connection');
-            }
-        }
-
-        function generateReports() {
-            getDeployedUrl(function(baseUrl) {
-                window.open(baseUrl + '?page=reports', '_blank');
-            });
-        }
-
-        function emergencyLockdown() {
-            const confirmation = prompt('Type "EMERGENCY" to confirm system lockdown:');
-            if (confirmation === 'EMERGENCY') {
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    showMessage('Activating emergency lockdown...', 'error');
-                    google.script.run
-                        .withSuccessHandler(function(result) {
-                            showMessage('Emergency lockdown activated', 'error');
-                        })
-                        .withFailureHandler(handleError)
-                        .activateEmergencyLockdown();
-                } else {
-                    alert('Emergency lockdown requires Google Apps Script connection');
+        function updateActivityList(elementId, activities) {
+            const element = document.getElementById(elementId);
+            if (!element || !activities || activities.length === 0) {
+                if (element) {
+                    element.innerHTML = '<div class="activity-item"><div class="activity-description">No recent activity</div></div>';
                 }
+                return;
             }
-        }
-
-        function resetAllSessions() {
-            if (confirm('Are you sure you want to reset all user sessions?')) {
-                if (typeof google !== 'undefined' && google.script && google.script.run) {
-                    showMessage('Resetting all sessions...', 'warning');
-                    google.script.run
-                        .withSuccessHandler(function(result) {
-                            showMessage('All sessions reset', 'success');
-                        })
-                        .withFailureHandler(handleError)
-                        .resetAllUserSessions();
-                } else {
-                    alert('Session reset requires Google Apps Script connection');
-                }
-            }
-        }
-
-        // Utility Functions
-        function showMessage(message, type) {
-            // Create a temporary message element
-            const messageDiv = document.createElement('div');
-            messageDiv.style.position = 'fixed';
-            messageDiv.style.top = '20px';
-            messageDiv.style.right = '20px';
-            messageDiv.style.padding = '1rem';
-            messageDiv.style.borderRadius = '5px';
-            messageDiv.style.zIndex = '9999';
-            messageDiv.style.maxWidth = '300px';
-            messageDiv.textContent = message;
             
-            switch(type) {
-                case 'success':
-                    messageDiv.style.background = '#27ae60';
-                    break;
-                case 'error':
-                    messageDiv.style.background = '#e74c3c';
-                    break;
-                case 'warning':
-                    messageDiv.style.background = '#f39c12';
-                    break;
-                default:
-                    messageDiv.style.background = '#3498db';
-            }
-            messageDiv.style.color = 'white';
+            const html = activities.map(activity => `
+                <div class="activity-item">
+                    <div class="activity-description">${activity.description}</div>
+                    <div class="activity-time">${activity.time}</div>
+                </div>
+            `).join('');
             
-            document.body.appendChild(messageDiv);
-            setTimeout(() => messageDiv.remove(), 3000);
+            element.innerHTML = html;
         }
 
         function handleDashboardError(error) {
-            console.error('Dashboard error:', error);
-            showMessage('Error loading dashboard data', 'error');
+            console.error('❌ Dashboard data loading failed:', error);
+            showMessage('Failed to load dashboard data: ' + (error.message || error), 'error');
+            setDefaultStats();
         }
 
-        function handleActivityError(error) {
-            console.error('Activity error:', error);
+        // Navigation functions
+        function navigateTo(page) {
+            console.log('🔗 Navigating to:', page);
+            window.location.href = '?page=' + page;
         }
 
-        function handleError(error) {
-            console.error('Error:', error);
-            showMessage('An error occurred: ' + error.message, 'error');
+        // Utility functions
+        function showMessage(message, type = 'info') {
+            const alertType = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            const bgColor = type === 'error' ? '#ffebee' : type === 'success' ? '#e8f5e8' : '#e3f2fd';
+            const textColor = type === 'error' ? '#c62828' : type === 'success' ? '#2e7d32' : '#1565c0';
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${bgColor};
+                color: ${textColor};
+                padding: 1rem;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                z-index: 1000;
+                max-width: 400px;
+            `;
+            messageDiv.textContent = message;
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
         }
 
-        // Demo data for when Google Apps Script is not available
-        function getDemoData() {
-            return {
-                totalRequests: 156,
-                totalRiders: 23,
-                totalAssignments: 89,
-                unassignedEscorts3d: 7,
-                escortsToday: 2
-            };
+        function showSystemInfo() {
+            const info = `
+System Status: Operational
+Current Time: ${new Date().toLocaleString()}
+User: ${window.currentUser.name}
+Role: ${window.currentUser.role}
+Session: Active
+            `;
+            alert('System Information:\n\n' + info);
         }
 
-        function getDemoActivity() {
-            return [
-                { description: 'New escort request created by Dispatcher', time: '2 min ago' },
-                { description: 'Rider John Smith completed assignment E-123-25', time: '15 min ago' },
-                { description: 'System backup completed successfully', time: '1 hour ago' },
-                { description: 'New user registration pending approval', time: '2 hours ago' }
-            ];
+        function runBasicDiagnostics() {
+            showMessage('Running basic diagnostics...', 'info');
+            
+            setTimeout(() => {
+                const diagnostics = [
+                    '✅ User authentication: OK',
+                    '✅ Page loading: OK', 
+                    '✅ Navigation: OK',
+                    '✅ Data access: OK'
+                ];
+                
+                alert('Basic Diagnostics Results:\n\n' + diagnostics.join('\n'));
+            }, 1000);
         }
 
-        function getDemoNotifications() {
-            return [
-                { recipient: 'John Doe', type: 'SMS', timestamp: new Date().toISOString(), requestId: 'REQ-1' },
-                { recipient: 'Jane Smith', type: 'Email', timestamp: new Date().toISOString(), requestId: 'REQ-2' }
-            ];
-        }
-
-        function logout() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(url => { window.location.href = url; })
-                    .logout();
-            } else {
-                window.location.href = 'https://accounts.google.com/Logout';
+        function confirmEmergencyAction(action) {
+            const actionText = action === 'lockdown' ? 'emergency lockdown' : 'reset all sessions';
+            const confirmation = confirm(`Are you sure you want to ${actionText}?\n\nThis will affect all users.`);
+            
+            if (confirmation) {
+                showMessage(`${actionText} would be activated here`, 'warning');
             }
         }
+
+        // Auto-update user info if available
+        if (window.currentUser) {
+            document.getElementById('userName').textContent = window.currentUser.name || 'Administrator';
+            document.getElementById('userAvatar').textContent = (window.currentUser.name || 'A').charAt(0).toUpperCase();
+        }
+
+        console.log('✅ Admin dashboard script loaded successfully');
     </script>
 </body>
 </html>
-

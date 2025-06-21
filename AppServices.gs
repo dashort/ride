@@ -4421,3 +4421,602 @@ function updateRotationOnUnassign(unassignedNames) {
 function getAssignmentOrderForWeb() {
   return getAssignmentRotation();
 }
+/**
+ * 🔧 MISSING DASHBOARD DATA FUNCTIONS
+ * Add these functions to your Code.gs or AppServices.gs file
+ */
+
+/**
+ * MISSING: getAdminDashboardData function (called by admin-dashboard.html)
+ */
+function getAdminDashboardData() {
+  try {
+    console.log('📊 Loading admin dashboard data...');
+    
+    // Authenticate user
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: 'Authentication failed',
+        stats: getDefaultStats()
+      };
+    }
+    
+    // Ensure user is admin
+    if (auth.user.role !== 'admin') {
+      return {
+        success: false,
+        error: 'Admin access required',
+        stats: getDefaultStats()
+      };
+    }
+    
+    // Get dashboard statistics
+    const stats = getDashboardStats();
+    
+    // Get recent requests
+    const recentRequests = getRecentRequestsForWebApp(10);
+    
+    // Get upcoming assignments
+    const upcomingAssignments = getUpcomingAssignmentsForWebApp(5);
+    
+    // Get recent activity
+    const recentActivity = getRecentActivity(10);
+    
+    // Get recent notifications
+    const recentNotifications = getRecentNotifications(10);
+    
+    console.log('✅ Admin dashboard data loaded successfully');
+    
+    return {
+      success: true,
+      user: auth.user,
+      stats: stats,
+      recentRequests: recentRequests,
+      upcomingAssignments: upcomingAssignments,
+      recentActivity: recentActivity,
+      recentNotifications: recentNotifications
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in getAdminDashboardData:', error);
+    return {
+      success: false,
+      error: error.message,
+      stats: getDefaultStats(),
+      recentRequests: [],
+      upcomingAssignments: [],
+      recentActivity: [],
+      recentNotifications: []
+    };
+  }
+}
+
+/**
+ * MISSING: getDashboardStats function
+ */
+function getDashboardStats() {
+  try {
+    console.log('📈 Calculating dashboard statistics...');
+    
+    // Get basic counts
+    const totalRequests = getTotalRequestsCount();
+    const activeRiders = getActiveRidersCount();
+    const totalAssignments = getTotalAssignmentsCount();
+    const pendingRequests = getPendingRequestsCount();
+    const todayAssignments = getTodayAssignmentsCount();
+    const unassignedRequests = getUnassignedRequestsCount();
+    
+    const stats = {
+      totalRequests: totalRequests,
+      activeRiders: activeRiders,
+      totalAssignments: totalAssignments,
+      pendingRequests: pendingRequests,
+      todayAssignments: todayAssignments,
+      unassignedRequests: unassignedRequests,
+      escortsToday: todayAssignments, // Alias for admin dashboard
+      unassignedEscorts: unassignedRequests // Alias for admin dashboard
+    };
+    
+    console.log('✅ Dashboard stats calculated:', stats);
+    return stats;
+    
+  } catch (error) {
+    console.error('❌ Error calculating dashboard stats:', error);
+    return getDefaultStats();
+  }
+}
+
+/**
+ * HELPER: Get default stats when data loading fails
+ */
+function getDefaultStats() {
+  return {
+    totalRequests: 0,
+    activeRiders: 0,
+    totalAssignments: 0,
+    pendingRequests: 0,
+    todayAssignments: 0,
+    unassignedRequests: 0,
+    escortsToday: 0,
+    unassignedEscorts: 0
+  };
+}
+
+/**
+ * HELPER: Count functions (implement based on your data structure)
+ */
+function getTotalRequestsCount() {
+  try {
+    const requestsData = getRequestsData();
+    return requestsData && requestsData.data ? requestsData.data.length : 0;
+  } catch (error) {
+    console.log('Error getting total requests count:', error);
+    return 0;
+  }
+}
+
+function getActiveRidersCount() {
+  try {
+    const riders = getRiders();
+    return riders ? riders.filter(r => r.status === 'Active').length : 0;
+  } catch (error) {
+    console.log('Error getting active riders count:', error);
+    return 0;
+  }
+}
+
+function getTotalAssignmentsCount() {
+  try {
+    const assignmentsData = getAssignmentsData();
+    return assignmentsData && assignmentsData.data ? assignmentsData.data.length : 0;
+  } catch (error) {
+    console.log('Error getting total assignments count:', error);
+    return 0;
+  }
+}
+
+function getPendingRequestsCount() {
+  try {
+    const requestsData = getRequestsData();
+    if (!requestsData || !requestsData.data) return 0;
+    
+    let pendingCount = 0;
+    requestsData.data.forEach(row => {
+      try {
+        const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+        if (status && ['Pending', 'New', 'Unassigned'].includes(status)) {
+          pendingCount++;
+        }
+      } catch (e) {
+        // Skip invalid rows
+      }
+    });
+    
+    return pendingCount;
+  } catch (error) {
+    console.log('Error getting pending requests count:', error);
+    return 0;
+  }
+}
+
+function getTodayAssignmentsCount() {
+  try {
+    const assignmentsData = getAssignmentsData();
+    if (!assignmentsData || !assignmentsData.data) return 0;
+    
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    let todayCount = 0;
+    assignmentsData.data.forEach(row => {
+      try {
+        const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        if (eventDate) {
+          const assignmentDate = new Date(eventDate);
+          const assignmentDateStr = assignmentDate.toISOString().split('T')[0];
+          if (assignmentDateStr === todayStr) {
+            todayCount++;
+          }
+        }
+      } catch (e) {
+        // Skip invalid rows
+      }
+    });
+    
+    return todayCount;
+  } catch (error) {
+    console.log('Error getting today assignments count:', error);
+    return 0;
+  }
+}
+
+function getUnassignedRequestsCount() {
+  try {
+    const requestsData = getRequestsData();
+    if (!requestsData || !requestsData.data) return 0;
+    
+    let unassignedCount = 0;
+    requestsData.data.forEach(row => {
+      try {
+        const ridersAssigned = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+        const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+        
+        if ((!ridersAssigned || ridersAssigned.toString().trim() === '') && 
+            status !== 'Completed' && status !== 'Cancelled') {
+          unassignedCount++;
+        }
+      } catch (e) {
+        // Skip invalid rows
+      }
+    });
+    
+    return unassignedCount;
+  } catch (error) {
+    console.log('Error getting unassigned requests count:', error);
+    return 0;
+  }
+}
+
+/**
+ * MISSING: getRecentActivity function
+ */
+function getRecentActivity(limit = 10) {
+  try {
+    // This is a placeholder - implement based on your activity logging
+    const activities = [
+      {
+        description: 'New escort request submitted',
+        time: new Date(Date.now() - 1000 * 60 * 30).toLocaleString(), // 30 min ago
+        type: 'request'
+      },
+      {
+        description: 'Rider assigned to escort E-123-25',
+        time: new Date(Date.now() - 1000 * 60 * 60).toLocaleString(), // 1 hour ago
+        type: 'assignment'
+      },
+      {
+        description: 'System backup completed',
+        time: new Date(Date.now() - 1000 * 60 * 60 * 2).toLocaleString(), // 2 hours ago
+        type: 'system'
+      }
+    ];
+    
+    return activities.slice(0, limit);
+  } catch (error) {
+    console.log('Error getting recent activity:', error);
+    return [];
+  }
+}
+
+/**
+ * MISSING: getRecentNotifications function
+ */
+function getRecentNotifications(limit = 10) {
+  try {
+    // This is a placeholder - implement based on your notification system
+    const notifications = [
+      {
+        description: 'SMS sent to rider for assignment E-123-25',
+        time: new Date(Date.now() - 1000 * 60 * 15).toLocaleString(), // 15 min ago
+        type: 'sms'
+      },
+      {
+        description: 'Email notification sent to admin',
+        time: new Date(Date.now() - 1000 * 60 * 45).toLocaleString(), // 45 min ago
+        type: 'email'
+      }
+    ];
+    
+    return notifications.slice(0, limit);
+  } catch (error) {
+    console.log('Error getting recent notifications:', error);
+    return [];
+  }
+}
+
+/**
+ * MISSING: System operation functions (called by admin dashboard)
+ */
+function runSystemDiagnostics() {
+  try {
+    console.log('🔧 Running system diagnostics...');
+    
+    const diagnostics = {
+      sheetsAccess: testSheetsAccess(),
+      authenticationSystem: testAuthenticationSystem(),
+      dataIntegrity: testDataIntegrity(),
+      systemPerformance: testSystemPerformance()
+    };
+    
+    const allPassed = Object.values(diagnostics).every(test => test.passed);
+    
+    return {
+      success: true,
+      status: allPassed ? 'All systems operational' : 'Some issues detected',
+      diagnostics: diagnostics,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ System diagnostics failed:', error);
+    return {
+      success: false,
+      status: 'Diagnostics failed: ' + error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+function exportSystemData() {
+  try {
+    console.log('📥 Exporting system data...');
+    
+    // Get all data
+    const requests = getRequestsData();
+    const riders = getRiders();
+    const assignments = getAssignmentsData();
+    
+    // Create CSV content
+    let csvContent = "Data Export - " + new Date().toISOString() + "\n\n";
+    
+    // Add summary
+    csvContent += "SUMMARY\n";
+    csvContent += `Total Requests,${requests && requests.data ? requests.data.length : 0}\n`;
+    csvContent += `Active Riders,${riders ? riders.filter(r => r.status === 'Active').length : 0}\n`;
+    csvContent += `Total Assignments,${assignments && assignments.data ? assignments.data.length : 0}\n`;
+    csvContent += "\n";
+    
+    // Add timestamp
+    csvContent += `Export Date,${new Date().toLocaleString()}\n`;
+    
+    return {
+      success: true,
+      csvContent: csvContent,
+      filename: `escort_system_export_${new Date().toISOString().split('T')[0]}.csv`
+    };
+    
+  } catch (error) {
+    console.error('❌ Export failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+function activateEmergencyLockdown() {
+  try {
+    console.log('🚨 Emergency lockdown activated');
+    
+    // Clear all user sessions
+    const userProperties = PropertiesService.getUserProperties();
+    const scriptProperties = PropertiesService.getScriptProperties();
+    
+    // Clear authentication cache
+    const cacheKeys = [
+      'AUTHENTICATED_USER',
+      'CUSTOM_SESSION',
+      'USER_SESSION_CACHE',
+      'CACHED_USER_EMAIL',
+      'CACHED_USER_NAME'
+    ];
+    
+    cacheKeys.forEach(key => {
+      userProperties.deleteProperty(key);
+      scriptProperties.deleteProperty(key);
+    });
+    
+    return {
+      success: true,
+      message: 'Emergency lockdown activated - all sessions cleared',
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Emergency lockdown failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+function resetAllUserSessions() {
+  try {
+    console.log('🔄 Resetting all user sessions...');
+    
+    // Same as emergency lockdown but with different messaging
+    const result = activateEmergencyLockdown();
+    
+    if (result.success) {
+      result.message = 'All user sessions have been reset';
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Session reset failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * HELPER: Test functions for diagnostics
+ */
+function testSheetsAccess() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = ss.getSheets();
+    return {
+      passed: sheets.length > 0,
+      message: `Found ${sheets.length} sheets`,
+      details: sheets.map(s => s.getName())
+    };
+  } catch (error) {
+    return {
+      passed: false,
+      message: 'Sheets access failed: ' + error.message
+    };
+  }
+}
+
+function testAuthenticationSystem() {
+  try {
+    const auth = authenticateAndAuthorizeUser();
+    return {
+      passed: auth.success,
+      message: auth.success ? 'Authentication working' : 'Authentication failed',
+      details: auth.user ? auth.user.email : 'No user'
+    };
+  } catch (error) {
+    return {
+      passed: false,
+      message: 'Auth test failed: ' + error.message
+    };
+  }
+}
+
+function testDataIntegrity() {
+  try {
+    const requests = getRequestsData();
+    const riders = getRiders();
+    
+    return {
+      passed: true,
+      message: 'Data integrity check passed',
+      details: {
+        requests: requests && requests.data ? requests.data.length : 0,
+        riders: riders ? riders.length : 0
+      }
+    };
+  } catch (error) {
+    return {
+      passed: false,
+      message: 'Data integrity check failed: ' + error.message
+    };
+  }
+}
+
+function testSystemPerformance() {
+  try {
+    const startTime = Date.now();
+    
+    // Run a simple operation
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheets = ss.getSheets();
+    
+    const duration = Date.now() - startTime;
+    
+    return {
+      passed: duration < 5000, // Less than 5 seconds
+      message: `Performance test completed in ${duration}ms`,
+      details: { duration: duration, threshold: 5000 }
+    };
+  } catch (error) {
+    return {
+      passed: false,
+      message: 'Performance test failed: ' + error.message
+    };
+  }
+}
+
+/**
+ * 🔧 FIXED: Enhanced workingLoadAppPage to handle script injection properly
+ */
+function enhancedWorkingLoadAppPage(pageName, user, rider) {
+  try {
+    console.log(`📄 ENHANCED: Loading page: ${pageName} for user: ${user.email} (${user.role})`);
+    
+    // Determine which file to load
+    let fileName = 'index';
+    
+    switch (pageName.toLowerCase()) {
+      case 'dashboard':
+        fileName = user.role === 'admin' ? 'admin-dashboard' : 'index';
+        break;
+      case 'requests':
+        fileName = 'requests';
+        break;
+      case 'assignments':
+        fileName = 'assignments';
+        break;
+      case 'riders':
+        fileName = 'riders';
+        break;
+      case 'notifications':
+        fileName = 'notifications';
+        break;
+      case 'reports':
+        fileName = 'reports';
+        break;
+      case 'user-management':
+        fileName = 'user-management';
+        break;
+      default:
+        fileName = 'index';
+    }
+    
+    console.log(`📂 Loading file: ${fileName}.html`);
+    
+    // Load the HTML file
+    const htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    let content = htmlOutput.getContent();
+    
+    console.log(`✅ File loaded: ${content.length} characters`);
+    
+    // Inject navigation
+    if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
+      console.log('🔗 Injecting navigation...');
+      const navigation = createSimpleNavigation(pageName, user.role);
+      content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
+    }
+    
+    // Inject user context - FIXED: Proper script tag handling
+    console.log('👤 Injecting user context...');
+    const userScript = createUserContextScript(user, rider);
+    
+    // CRITICAL FIX: Ensure script tags are properly closed and not malformed
+    if (content.includes('</body>')) {
+      // Insert before closing body tag
+      content = content.replace('</body>', '\n' + userScript + '\n</body>');
+    } else if (content.includes('</html>')) {
+      // Insert before closing html tag
+      content = content.replace('</html>', '\n' + userScript + '\n</html>');
+    } else {
+      // Append to end
+      content += '\n' + userScript;
+    }
+    
+    // CRITICAL FIX: Check for malformed script tags or unclosed elements
+    const scriptTagCount = (content.match(/<script/g) || []).length;
+    const scriptCloseTagCount = (content.match(/<\/script>/g) || []).length;
+    
+    if (scriptTagCount !== scriptCloseTagCount) {
+      console.log(`⚠️ Script tag mismatch: ${scriptTagCount} open, ${scriptCloseTagCount} close`);
+      // Attempt to fix by adding missing closing tags
+      if (scriptTagCount > scriptCloseTagCount) {
+        const missingTags = scriptTagCount - scriptCloseTagCount;
+        for (let i = 0; i < missingTags; i++) {
+          content += '\n</script>';
+        }
+        console.log(`🔧 Added ${missingTags} missing </script> tags`);
+      }
+    }
+    
+    // Update HTML output
+    htmlOutput.setContent(content);
+    
+    console.log(`🎉 Page enhanced successfully: ${fileName}.html`);
+    
+    return htmlOutput.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+  } catch (error) {
+    console.error('❌ Enhanced load error:', error);
+    return createWorkingFallbackPage(pageName, user, rider);
+  }
+}

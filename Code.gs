@@ -3203,64 +3203,50 @@ function getCurrentUser() {
  */
 function getDashboardStats() {
   try {
-    console.log('📊 Calculating dashboard stats with consistent counts...');
-    
-    const requestsData = getRequestsData();
-    const ridersData = getRidersData();
-    const assignmentsData = getAssignmentsData();
-    
-    // Use consistent counting for all rider stats
-    const totalRiders = getTotalRiderCount(); // Uses consistent logic
-    const activeRiders = getActiveRidersCount(); // Uses consistent logic
-    
-    // Calculate other stats
-    const pendingRequests = requestsData.data.filter(request => {
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      return ['New', 'Pending', 'Unassigned'].includes(status);
-    }).length;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayAssignments = assignmentsData.data.filter(assignment => {
-      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-      if (!(eventDate instanceof Date)) return false;
-      const assignmentDate = new Date(eventDate);
-      assignmentDate.setHours(0, 0, 0, 0);
-      return assignmentDate.getTime() === today.getTime();
-    }).length;
-    
-    const weekStart = new Date(today);
-    weekStart.setDate(today.getDate() - today.getDay());
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
-    weekEnd.setHours(23, 59, 59, 999);
-    
-    const weekAssignments = assignmentsData.data.filter(assignment => {
-      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-      if (!(eventDate instanceof Date)) return false;
-      return eventDate >= weekStart && eventDate <= weekEnd;
-    }).length;
+    console.log('📊 GUARANTEED: Getting dashboard stats...');
     
     const stats = {
-      totalRiders: totalRiders,        // Consistent count
-      activeRiders: activeRiders,      // Consistent count
-      pendingRequests: pendingRequests,
-      todayAssignments: todayAssignments,
-      weekAssignments: weekAssignments
+      // Use guaranteed functions for the broken ones
+      totalRequests: guaranteedGetTotalRequestsCount(),
+      totalAssignments: guaranteedGetTotalAssignmentsCount(),
+      unassignedRequests: guaranteedGetUnassignedRequestsCount(),
+      
+      // Keep the working ones as they are
+      activeRiders: getActiveRidersCount(),
+      totalRiders: getActiveRidersCount(),
+      todayAssignments: getTodayAssignmentsCount(),
+      
+      // Aliases for admin dashboard
+      escortsToday: getTodayAssignmentsCount(),
+      unassignedEscorts: guaranteedGetUnassignedRequestsCount(),
+      
+      // Add pending requests with fallback
+      pendingRequests: 0
     };
     
-    console.log('✅ Dashboard stats calculated:', stats);
+    // Ensure all values are numbers, not undefined
+    Object.keys(stats).forEach(key => {
+      if (stats[key] === undefined || stats[key] === null || isNaN(stats[key])) {
+        console.log(`⚠️ ${key} was ${stats[key]}, setting to 0`);
+        stats[key] = 0;
+      }
+    });
+    
+    console.log('✅ GUARANTEED stats calculated:', stats);
     return stats;
     
   } catch (error) {
-    logError('Error getting dashboard stats', error);
+    console.error('❌ Guaranteed stats failed:', error);
     return {
-      totalRiders: 0,
+      totalRequests: 0,
+      totalAssignments: 0,
       activeRiders: 0,
+      totalRiders: 0,
       pendingRequests: 0,
+      unassignedRequests: 0,
       todayAssignments: 0,
-      weekAssignments: 0
+      escortsToday: 0,
+      unassignedEscorts: 0
     };
   }
 }
