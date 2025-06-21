@@ -2113,12 +2113,8 @@ if (!document.getElementById('rider-link-styles')) {
 }
 
 function logout() {
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    google.script.run
-      .withSuccessHandler(url => { window.location.href = url; })
-      .logout();
-  } else {
-    window.location.href = 'https://accounts.google.com/Logout';
+  if (confirm('Are you sure you want to logout?')) {
+    window.location.href = '?action=logout';
   }
 }
 </script>

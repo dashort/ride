@@ -533,13 +533,10 @@ function doGet(e) {
     const params = e.parameter || {};
     
     // FIXED: Handle logout properly
-    if (params.action === 'logout' || params.auth === 'logout') {
-      console.log('🚪 Logout requested - clearing session');
-      clearUserSession();
-      
-      // Return login page immediately after logout
-      return createLoginPage();
-    }
+if (params.action === 'logout' || params.auth === 'logout') {
+  console.log('🚪 Logout requested - processing complete logout');
+  return handleLogoutRequest();
+}
     
     // Check for existing session
     const session = getAuthenticatedSession();
@@ -560,7 +557,48 @@ function doGet(e) {
     return createErrorPage('System Error', error.message);
   }
 }
-
+function testCompleteLogout() {
+  console.log('🧪 Testing complete logout functionality...');
+  
+  try {
+    // 1. Check current session
+    console.log('1. Checking current session...');
+    const beforeSession = getAuthenticatedSession();
+    console.log('Session before logout:', beforeSession);
+    
+    // 2. Clear all sessions
+    console.log('2. Clearing all sessions...');
+    const clearResult = clearUserSession();
+    console.log('Clear result:', clearResult);
+    
+    // 3. Check if session is completely cleared
+    console.log('3. Checking session after clearing...');
+    const afterSession = getAuthenticatedSession();
+    console.log('Session after logout:', afterSession);
+    
+    // 4. Test custom session
+    console.log('4. Checking custom session...');
+    const customSession = getCustomSession();
+    console.log('Custom session after logout:', customSession);
+    
+    const result = {
+      clearResult: clearResult,
+      sessionBeforeLogout: beforeSession,
+      sessionAfterLogout: afterSession,
+      customSessionAfter: customSession,
+      success: !afterSession.isValid && clearResult.success
+    };
+    
+    console.log('🎯 LOGOUT TEST RESULT:', result.success ? '✅ SUCCESS' : '❌ FAILED');
+    console.log('Complete result:', result);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Complete logout test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
 /**
  * Get authenticated session (checks both Google and custom sessions)
  */
@@ -697,21 +735,34 @@ function checkGoogleSession() {
  */
 function clearUserSession() {
   try {
-    console.log('🧹 Clearing user session...');
+    console.log('🧹 Clearing ALL user sessions...');
     
     const userProperties = PropertiesService.getUserProperties();
+    const scriptProperties = PropertiesService.getScriptProperties();
     
-    // Clear all session-related properties
+    // 1. Clear all USER PROPERTIES sessions
     userProperties.deleteProperty('AUTHENTICATED_USER');
     userProperties.deleteProperty('CUSTOM_SESSION');
     userProperties.deleteProperty('USER_SESSION_CACHE');
+    console.log('✅ Cleared user properties sessions');
     
-    console.log('✅ User session cleared successfully');
+    // 2. Clear all SCRIPT PROPERTIES cache
+    scriptProperties.deleteProperty('CACHED_USER_EMAIL');
+    scriptProperties.deleteProperty('CACHED_USER_NAME');
+    console.log('✅ Cleared script properties cache');
     
-    return { success: true, message: 'Session cleared' };
+    // 3. Clear any additional session properties
+    userProperties.deleteProperty('GOOGLE_SESSION_CACHE');
+    userProperties.deleteProperty('LOGIN_SESSION');
+    userProperties.deleteProperty('AUTH_TOKEN');
+    console.log('✅ Cleared additional session properties');
+    
+    console.log('✅ ALL user sessions cleared successfully');
+    
+    return { success: true, message: 'All sessions cleared' };
     
   } catch (error) {
-    console.error('❌ Error clearing session:', error);
+    console.error('❌ Error clearing sessions:', error);
     return { success: false, error: error.message };
   }
 }
@@ -4111,7 +4162,10 @@ function createSimpleRiderDashboard(user, rider) {
       <h3>🔧 Quick Actions</h3>
       <a href="${webAppUrl}?page=assignments" class="btn">View My Assignments</a>
       <a href="${webAppUrl}?page=notifications" class="btn">Check Messages</a>
-      <a href="${webAppUrl}?action=logout" class="btn" style="background: #dc3545;">Logout</a>
+      <a href="?action=logout" class="btn" style="background: #dc3545;" 
+   onclick="return confirm('Are you sure you want to logout?');">
+   🚪 Logout
+</a>
     </div>
     
     <div class="card">
@@ -6445,7 +6499,10 @@ function createWorkingNavigation(currentPage, userRole) {
 <nav class="navigation">
     <div class="nav-container">
         ${navLinks}
-        <a href="${webAppUrl}?action=logout" class="nav-button logout" onclick="return confirmLogout()">🚪 Logout</a>
+        <a href="?action=logout" class="nav-button logout" 
+   onclick="return confirm('Are you sure you want to logout?');">
+   🚪 Logout
+</a>
     </div>
 </nav>
 
