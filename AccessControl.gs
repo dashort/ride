@@ -573,12 +573,21 @@ function getAdminDashboardData() {
     } catch (e) {
       console.log('⚠️ Error calculating pending assignments:', e.message);
     }
+
+    // Calculate notifications pending (assigned riders not yet notified)
+    let pendingNotifications = 0;
+    try {
+      const toNotify = getAssignmentsNeedingNotification();
+      pendingNotifications = Array.isArray(toNotify) ? toNotify.length : 0;
+    } catch (e) {
+      console.log('⚠️ Error calculating pending notifications:', e.message);
+    }
     
     const result = {
       totalRequests: requests.length,
       totalRiders: activeRiders,
       totalAssignments: assignments.length,
-      systemUsers: riders.length + admins.length + dispatchers.length,
+      pendingNotifications: pendingNotifications,
       todayRequests: todayRequests,
       unassignedEscorts: unassignedEscorts,
       pendingAssignments: pendingAssignments,
@@ -596,7 +605,7 @@ function getAdminDashboardData() {
       totalRequests: 0,
       totalRiders: 0,
       totalAssignments: 0,
-      systemUsers: 0,
+      pendingNotifications: 0,
       todayRequests: 0,
       unassignedEscorts: 0,
       pendingAssignments: 0,

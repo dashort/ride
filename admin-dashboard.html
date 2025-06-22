@@ -374,9 +374,9 @@
                 <div class="stat-number" id="totalAssignments">-</div>
                 <div class="stat-label">Assignments</div>
             </div>
-            <div class="stat-card system" style="cursor:pointer" onclick="navigateStat('user-management')">
-                <div class="stat-number" id="systemUsers">-</div>
-                <div class="stat-label">System Users</div>
+            <div class="stat-card system" style="cursor:pointer" onclick="navigateStat('notifications')">
+                <div class="stat-number" id="pendingNotifications">-</div>
+                <div class="stat-label">Notifications</div>
             </div>
         </div>
 
@@ -513,7 +513,7 @@
                 document.getElementById('totalRequests').textContent = data.totalRequests || 0;
                 document.getElementById('totalRiders').textContent = data.totalRiders || 0;
                 document.getElementById('totalAssignments').textContent = data.totalAssignments || 0;
-                document.getElementById('systemUsers').textContent = data.systemUsers || 0;
+                document.getElementById('pendingNotifications').textContent = data.pendingNotifications || 0;
 
                 // Update quick stats
                 document.getElementById('todayRequests').textContent = data.todayRequests || 0;
@@ -782,7 +782,7 @@ function displaySystemLogs(logs) {
                 totalRequests: 156,
                 totalRiders: 23,
                 totalAssignments: 89,
-                systemUsers: 45,
+                pendingNotifications: 3,
                 todayRequests: 12,
                 threeDayEscorts: 5,
                 unassignedEscorts: 2
