@@ -550,6 +550,19 @@ function getAdminDashboardData() {
       console.log('⚠️ Error calculating unassigned escorts:', e.message);
     }
 
+    // Calculate escorts within the next 3 days
+    let threeDayEscorts = 0;
+    try {
+      const now = new Date();
+      const threeDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+      threeDayEscorts = assignments.filter(a => {
+        const eventDate = new Date(a.eventDate || a['Event Date']);
+        return eventDate && eventDate >= now && eventDate <= threeDays;
+      }).length;
+    } catch (e) {
+      console.log('⚠️ Error calculating 3 day escorts:', e.message);
+    }
+
     // Calculate active riders
     const activeRiders = riders.filter(r => r.status === 'Active').length;
 
@@ -568,7 +581,8 @@ function getAdminDashboardData() {
       systemUsers: riders.length + admins.length + dispatchers.length,
       todayRequests: todayRequests,
       unassignedEscorts: unassignedEscorts,
-      pendingAssignments: pendingAssignments
+      pendingAssignments: pendingAssignments,
+      threeDayEscorts: threeDayEscorts
     };
     
     console.log('✅ Admin dashboard data:', result);
@@ -585,7 +599,8 @@ function getAdminDashboardData() {
       systemUsers: 0,
       todayRequests: 0,
       unassignedEscorts: 0,
-      pendingAssignments: 0
+      pendingAssignments: 0,
+      threeDayEscorts: 0
     };
   }
 }

@@ -348,15 +348,15 @@
         <div class="quick-stats">
             <div class="quick-stat">
                 <div class="quick-stat-number" id="todayRequests">-</div>
-                <div class="quick-stat-label">Today's Requests</div>
+                <div class="quick-stat-label">Today's Escorts</div>
+            </div>
+            <div class="quick-stat">
+                <div class="quick-stat-number" id="threeDayEscorts">-</div>
+                <div class="quick-stat-label">3 Day Escorts</div>
             </div>
             <div class="quick-stat">
                 <div class="quick-stat-number" id="unassignedEscorts">-</div>
                 <div class="quick-stat-label">Unassigned Escorts (3&nbsp;day)</div>
-            </div>
-            <div class="quick-stat">
-                <div class="quick-stat-number" id="pendingAssignments">-</div>
-                <div class="quick-stat-label">Pending Assignments</div>
             </div>
         </div>
 
@@ -517,8 +517,8 @@
 
                 // Update quick stats
                 document.getElementById('todayRequests').textContent = data.todayRequests || 0;
+                document.getElementById('threeDayEscorts').textContent = data.threeDayEscorts || 0;
                 document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts || 0;
-                document.getElementById('pendingAssignments').textContent = data.pendingAssignments || 0;
 
                 console.log('✅ Dashboard stats updated');
             } catch (error) {
@@ -784,8 +784,8 @@ function displaySystemLogs(logs) {
                 totalAssignments: 89,
                 systemUsers: 45,
                 todayRequests: 12,
-                unassignedEscorts: 2,
-                pendingAssignments: 5
+                threeDayEscorts: 5,
+                unassignedEscorts: 2
             };
         }
 
