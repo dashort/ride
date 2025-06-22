@@ -8,56 +8,13 @@
 </nav>
 
 <script>
-(function() {
-    // Set up navigation links
-    function setLinks(base) {
-        if (!base || base === '#') {
-            // Fallback if the web app URL couldn't be retrieved
-            document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                var page = a.getAttribute('data-page');
-                var href = page === 'dashboard' ? 'index.html' : page + '.html';
-                a.href = href;
-                a.dataset.url = href;
-            });
-            return;
-        }
-
-        document.querySelectorAll('nav.navigation a').forEach(function(a) {
-            var page = a.getAttribute('data-page');
-            var href = page === 'dashboard' ? base : base + '?page=' + page;
-            a.href = href;
-            a.dataset.url = href;
-        });
-    }
-
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
-    } else {
-        // Fallback for local testing
-        document.querySelectorAll('nav.navigation a').forEach(function(a) {
-            var page = a.getAttribute('data-page');
-            var href = page === 'dashboard' ? 'index.html' : page + '.html';
-            a.href = href;
-            a.dataset.url = href;
-        });
-    }
-
-    // Navigation links rely on standard browser behavior. This avoids issues
-    // where custom click handlers prevent navigation when base URLs are not
-    // correctly resolved.
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('🧭 Navigation initialized');
-    });
-
-    // CRITICAL: NO PAGESHOW RELOAD - Let browser handle back/forward naturally
-    console.log('📄 Navigation script loaded - back button will work normally');
-
-})();
-
 // Global navigation function (if needed by other scripts)
 function navigateToPage(url) {
     if (url && url !== '#') {
         window.location.href = url;
     }
 }
+
+// It's good practice to indicate when scripts are loaded, especially for debugging.
+console.log('📄 _navigation.html script loaded - navigateToPage() is available.');
 </script>
