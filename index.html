@@ -880,10 +880,12 @@
        navType = 'error';
      }
      
+     // Log the event details for debugging
      console.log('[Embedded in index.html] pageshow event. persisted:', evt.persisted, 'navType:', navType);
      
-     if (evt.persisted || navType === 'back_forward') {
-       console.log('[Embedded in index.html] Back/forward navigation detected, reloading page.');
+     // Only reload if the page is loaded from bfcache
+     if (evt.persisted) {
+       console.log('[Embedded in index.html] Page loaded from bfcache (persisted=true), reloading page.');
        window.location.reload();
      }
    });
@@ -895,6 +897,6 @@
     // Debug helper (disabled)
     // debugNavigation();
 </script>
-<script src="load-navigation.js"></script>
+<!-- <script src="load-navigation.js"></script> -->
 </body>
 </html>
