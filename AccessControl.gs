@@ -514,18 +514,30 @@ function getAdminDashboardData() {
       console.log('⚠️ Error calculating today requests:', e.message);
     }
     
-    // Calculate active escorts
-    let activeEscorts = 0;
+    // Calculate unassigned escorts within the next 3 days
+    let unassignedEscorts = 0;
     try {
-      activeEscorts = assignments.filter(a => 
-        a.status === 'In Progress' || a.status === 'Active' || a.status === 'Pending'
-      ).length;
+      const now = new Date();
+      const threeDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+      unassignedEscorts = assignments.filter(a => {
+        const eventDate = new Date(a.eventDate || a['Event Date']);
+        return eventDate && eventDate >= now && eventDate <= threeDays &&
+          a.status !== 'Assigned';
+      }).length;
     } catch (e) {
-      console.log('⚠️ Error calculating active escorts:', e.message);
+      console.log('⚠️ Error calculating unassigned escorts:', e.message);
     }
-    
+
     // Calculate active riders
     const activeRiders = riders.filter(r => r.status === 'Active').length;
+
+    // Calculate pending assignments
+    let pendingAssignments = 0;
+    try {
+      pendingAssignments = assignments.filter(a => a.status === 'Pending').length;
+    } catch (e) {
+      console.log('⚠️ Error calculating pending assignments:', e.message);
+    }
     
     const result = {
       totalRequests: requests.length,
@@ -533,9 +545,8 @@ function getAdminDashboardData() {
       totalAssignments: assignments.length,
       systemUsers: riders.length + admins.length + dispatchers.length,
       todayRequests: todayRequests,
-      activeEscorts: activeEscorts,
-      onlineRiders: activeRiders, // Simplified for now
-      systemHealth: 98
+      unassignedEscorts: unassignedEscorts,
+      pendingAssignments: pendingAssignments
     };
     
     console.log('✅ Admin dashboard data:', result);
@@ -551,9 +562,8 @@ function getAdminDashboardData() {
       totalAssignments: 0,
       systemUsers: 0,
       todayRequests: 0,
-      activeEscorts: 0,
-      onlineRiders: 0,
-      systemHealth: 100
+      unassignedEscorts: 0,
+      pendingAssignments: 0
     };
   }
 }
