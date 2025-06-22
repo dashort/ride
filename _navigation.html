@@ -8,26 +8,67 @@
 </nav>
 
 <script>
+(function() {
+    // Set up navigation links
+    function setLinks(base) {
+        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+            var page = a.getAttribute('data-page');
+            var href = page === 'dashboard' ? base : base + '?page=' + page;
+            a.href = href;
+            a.dataset.url = href;
+        });
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
+    } else {
+        // Fallback for local testing
+        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+            var page = a.getAttribute('data-page');
+            var href = page === 'dashboard' ? 'index.html' : page + '.html';
+            a.href = href;
+            a.dataset.url = href;
+        });
+    }
+
+    // Navigation click handler
+    function handleNavigation(link) {
+        var url = link.dataset.url || link.getAttribute('href');
+        if (!url || url === '#') return false;
+        
+        try {
+            if (window.top !== window) {
+                window.top.location.href = url;
+            } else {
+                window.location.href = url;
+            }
+        } catch (e) {
+            window.location.href = url;
+        }
+        return false;
+    }
+
+    // Add click handlers to navigation links
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('nav.navigation a').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                handleNavigation(this);
+            });
+        });
+        
+        console.log('🧭 Navigation initialized - NO AUTO RELOAD');
+    });
+
+    // CRITICAL: NO PAGESHOW RELOAD - Let browser handle back/forward naturally
+    console.log('📄 Navigation script loaded - back button will work normally');
+
+})();
+
 // Global navigation function (if needed by other scripts)
 function navigateToPage(url) {
     if (url && url !== '#') {
         window.location.href = url;
     }
 }
-
-// It's good practice to indicate when scripts are loaded, especially for debugging.
-// If running inside the Apps Script web app, adjust links to use ?page= parameters
-(function() {
-    const isAppsScript = typeof google !== 'undefined' && google.script && google.script.run;
-    if (isAppsScript) {
-        document.querySelectorAll('nav.navigation a[data-page]').forEach(a => {
-            const page = a.getAttribute('data-page');
-            const url = page === 'dashboard' ? '?page=dashboard' : `?page=${page}`;
-            a.setAttribute('href', url);
-            a.removeAttribute('target');
-        });
-    }
-    console.log('📄 _navigation.html script loaded - links adjusted:', isAppsScript);
-})();
-</script>
 </script>

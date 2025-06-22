@@ -233,9 +233,14 @@ function getAdminUsers() {
     console.log('❌ Error accessing spreadsheet:', error.message);
   }
   
-  // Fallback removed
-  console.log('INFO in getAdminUsers (Code.gs - simple version): Failed to retrieve admins from Settings sheet or no admins found. Returning empty list.');
-  return [];
+  // Fallback to hardcoded admin emails
+  console.log('📧 Using hardcoded admin fallback');
+  return [
+    'admin@yourdomain.com',
+    'jpsotraffic@gmail.com',
+    'manager@yourdomain.com'
+    // Add your admin emails here
+  ];
 }
 /**
  * Fix the Settings sheet structure to have clean email data
@@ -318,17 +323,17 @@ function fixSettingsSheetStructure() {
  * Robust admin email reading function that handles mixed data types
  * REPLACE your getAdminUsers function with this version
  */
-function getAdminUsers() { // This is the second (robust) definition
+function getAdminUsers() {
   console.log('🔍 getAdminUsers called (robust version)...');
   
   try {
     const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
     if (settingsSheet) {
-      console.log('📖 Reading admin emails from Settings sheet (robust version)...');
+      console.log('📖 Reading admin emails from Settings sheet...');
       
       // Read the range
       const adminRange = settingsSheet.getRange('B2:B11').getValues(); // Extended range
-      // console.log('📊 Raw admin range data (robust):', adminRange); // Keep original log for verbosity if needed, or remove for cleaner prod logs
+      console.log('📊 Raw admin range data:', adminRange);
       
       // Robust filtering to handle mixed data types
       const adminEmails = adminRange
@@ -353,31 +358,27 @@ function getAdminUsers() { // This is the second (robust) definition
         })
         .map(email => email.trim()); // Clean up the emails
       
-      // console.log('📧 Filtered admin emails (robust):', adminEmails); // Keep original log for verbosity if needed
+      console.log('📧 Filtered admin emails:', adminEmails);
       
       if (adminEmails.length > 0) {
-        console.log('✅ INFO in getAdminUsers (Code.gs - robust version): Successfully retrieved ' + adminEmails.length + ' admin(s) from Settings sheet.');
         return adminEmails;
       } else {
-        console.log('INFO in getAdminUsers (Code.gs - robust version): No valid admin emails found in Settings sheet. Returning empty list.');
-        return [];
+        console.log('⚠️ No valid admin emails found in Settings sheet');
       }
     } else {
-      console.log('INFO in getAdminUsers (Code.gs - robust version): Settings sheet not found. Returning empty list.');
-      return [];
+      console.log('⚠️ Settings sheet not found');
     }
-  } catch (e) { // Changed error variable to 'e' to match logging style
-    console.log('ERROR in getAdminUsers (Code.gs - robust version): Failed to retrieve admins from Settings sheet. Returning empty list. Error: ' + e.message);
-    return [];
+  } catch (error) {
+    console.log('❌ Error reading Settings sheet:', error.message);
   }
   
-  // Fallback removed - The above logic should return [] if sheet/data is not found or on error.
-  // console.log('📧 Using hardcoded admin fallback');
-  // return [
-  //   'dashort@gmail.com',
-  //   'jpsotraffic@gmail.com',
-  //   'manager@example.com'
-  // ];
+  // Fallback to hardcoded admin emails
+  console.log('📧 Using hardcoded admin fallback');
+  return [
+    'dashort@gmail.com',
+    'jpsotraffic@gmail.com',
+    'manager@example.com'
+  ];
 }
 
 /**
@@ -3199,102 +3200,68 @@ function getCurrentUser() {
 }
 
 /**
- * Guaranteed wrapper around getTotalRequestsCount
- */
-function guaranteedGetTotalRequestsCount() {
-  try {
-    return getTotalRequestsCount();
-  } catch (error) {
-    console.error('Error in guaranteedGetTotalRequestsCount:', error);
-    return 0;
-  }
-}
-
-/**
- * Guaranteed wrapper around getTotalAssignmentsCount
- */
-function guaranteedGetTotalAssignmentsCount() {
-  try {
-    return getTotalAssignmentsCount();
-  } catch (error) {
-    console.error('Error in guaranteedGetTotalAssignmentsCount:', error);
-    return 0;
-  }
-}
-
-/**
- * Guaranteed wrapper around getUnassignedRequestsCount
- */
-function guaranteedGetUnassignedRequestsCount() {
-  try {
-    return getUnassignedRequestsCount();
-  } catch (error) {
-    console.error('Error in guaranteedGetUnassignedRequestsCount:', error);
-    return 0;
-  }
-}
-
-/**
- * Guaranteed wrapper that returns dashboard stats or defaults on failure
- */
-function guaranteedGetDashboardStats() {
-  try {
-    return getDashboardStats();
-  } catch (error) {
-    console.error('Error in guaranteedGetDashboardStats:', error);
-    return getDefaultStats();
-  }
-}
-
-/**
  * Get dashboard statistics
  */
 function getDashboardStats() {
   try {
-    console.log('📊 GUARANTEED: Getting dashboard stats...');
+    console.log('📊 Calculating dashboard stats with consistent counts...');
+    
+    const requestsData = getRequestsData();
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+    
+    // Use consistent counting for all rider stats
+    const totalRiders = getTotalRiderCount(); // Uses consistent logic
+    const activeRiders = getActiveRidersCount(); // Uses consistent logic
+    
+    // Calculate other stats
+    const pendingRequests = requestsData.data.filter(request => {
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      return ['New', 'Pending', 'Unassigned'].includes(status);
+    }).length;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayAssignments = assignmentsData.data.filter(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (!(eventDate instanceof Date)) return false;
+      const assignmentDate = new Date(eventDate);
+      assignmentDate.setHours(0, 0, 0, 0);
+      return assignmentDate.getTime() === today.getTime();
+    }).length;
+    
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const weekAssignments = assignmentsData.data.filter(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (!(eventDate instanceof Date)) return false;
+      return eventDate >= weekStart && eventDate <= weekEnd;
+    }).length;
     
     const stats = {
-      // Use guaranteed functions for the broken ones
-      totalRequests: guaranteedGetTotalRequestsCount(),
-      totalAssignments: guaranteedGetTotalAssignmentsCount(),
-      unassignedRequests: guaranteedGetUnassignedRequestsCount(),
-      
-      // Keep the working ones as they are
-      activeRiders: getActiveRidersCount(),
-      totalRiders: getActiveRidersCount(),
-      todayAssignments: getTodayAssignmentsCount(),
-      
-      // Aliases for admin dashboard
-      escortsToday: getTodayAssignmentsCount(),
-      unassignedEscorts: guaranteedGetUnassignedRequestsCount(),
-      
-      // Add pending requests with fallback
-      pendingRequests: 0
+      totalRiders: totalRiders,        // Consistent count
+      activeRiders: activeRiders,      // Consistent count
+      pendingRequests: pendingRequests,
+      todayAssignments: todayAssignments,
+      weekAssignments: weekAssignments
     };
     
-    // Ensure all values are numbers, not undefined
-    Object.keys(stats).forEach(key => {
-      if (stats[key] === undefined || stats[key] === null || isNaN(stats[key])) {
-        console.log(`⚠️ ${key} was ${stats[key]}, setting to 0`);
-        stats[key] = 0;
-      }
-    });
-    
-    console.log('✅ GUARANTEED stats calculated:', stats);
+    console.log('✅ Dashboard stats calculated:', stats);
     return stats;
     
   } catch (error) {
-    console.error('❌ Guaranteed stats failed:', error);
+    logError('Error getting dashboard stats', error);
     return {
-      totalRequests: 0,
-      totalAssignments: 0,
-      activeRiders: 0,
       totalRiders: 0,
+      activeRiders: 0,
       pendingRequests: 0,
-      unassignedRequests: 0,
       todayAssignments: 0,
-      escortsToday: 0,
-      unassignedEscorts: 0
+      weekAssignments: 0
     };
   }
 }
@@ -3659,7 +3626,79 @@ function debugNotificationsFile() {
   }
 }
 
+/**
+ * 🔧 USER MANAGEMENT ROUTING FIX
+ * Replace your doGet function with this simplified version that handles user management properly
+ */
 
+
+function doGet(e) {
+  try {
+    console.log('🚀 doGet with cache-friendly headers...');
+    
+    // Authentication and page logic (your existing code)
+    const authResult = authenticateAndAuthorizeUser();
+    if (!authResult.success) {
+      return createSignInPageEnhanced();
+    }
+    
+    const { user: authenticatedUser, rider } = authResult;
+    const pageName = e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
+    
+    console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
+
+        if (pageName === 'auth-setup') {
+      console.log('🔐 Handling auth-setup page specifically');
+      
+      if (authenticatedUser.role !== 'admin') {
+        return createAccessDeniedPage('Only administrators can access authentication setup', authenticatedUser);
+      }
+      
+      return createAuthMappingPage();
+    }
+    
+    // Handle user-management page separately
+    if (pageName === 'user-management') {
+      console.log('👥 Handling user-management page specifically');
+      
+      if (authenticatedUser.role !== 'admin') {
+        return createAccessDeniedPage('Only administrators can access user management', authenticatedUser);
+      }
+      
+      return handleUserManagementPage(e);
+    }
+    
+    // Load page content (your existing logic)
+    const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
+    let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    let content = htmlOutput.getContent();
+    content = addMotorcycleLoaderToContent(content);
+    
+    // Add navigation and user info (your existing code)
+    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
+    content = injectUserInfoSafe(content, authenticatedUser, rider);
+    content = addNavigationToContentSafe(content, navigationHtml);
+    
+    htmlOutput.setContent(content);
+    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider);
+    addMobileOptimizations(htmlOutput, authenticatedUser, rider);
+    
+    // CACHE-FRIENDLY CONFIGURATION
+    const finalOutput = htmlOutput
+      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    // Try to make the page more cache-friendly by avoiding dynamic elements
+    // that prevent browser caching
+    
+    console.log(`✅ Page ${pageName} ready with cache-friendly settings`);
+    return finalOutput;
+      
+  } catch (error) {
+    console.error('❌ doGet error:', error);
+    return createErrorPageWithSignInSafe(error);
+  }
+}
 
 /**
  * Simple user management page (if HTML file doesn't exist)
@@ -7913,8 +7952,6 @@ function logout() {
   try {
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
-    // Also remove the custom user session stored in user properties
-    logoutUser();
   } catch (error) {
     console.error('Error clearing cached user info during logout:', error);
   }

@@ -356,7 +356,7 @@
     </header>
 
     <div class="container">
-        <div id="navigation-container"></div>
+        <!--NAVIGATION_MENU_PLACEHOLDER-->
 
         <div class="dashboard-grid">
             <!-- Statistics Card -->
@@ -880,12 +880,10 @@
        navType = 'error';
      }
      
-     // Log the event details for debugging
      console.log('[Embedded in index.html] pageshow event. persisted:', evt.persisted, 'navType:', navType);
      
-     // Only reload if the page is loaded from bfcache
-     if (evt.persisted) {
-       console.log('[Embedded in index.html] Page loaded from bfcache (persisted=true), reloading page.');
+     if (evt.persisted || navType === 'back_forward') {
+       console.log('[Embedded in index.html] Back/forward navigation detected, reloading page.');
        window.location.reload();
      }
    });
@@ -894,9 +892,8 @@
     window.addEventListener('unload', function() {
         // This function can remain empty. Its presence helps prevent bfcache in some browsers.
     });
-    // Debug helper (disabled)
-    // debugNavigation();
+    // Add this to your main pages to debug navigation issues
+()();
 </script>
-<script src="load-navigation.js"></script>
 </body>
 </html>

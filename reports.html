@@ -370,7 +370,7 @@
         </div>
     </header>
 
-    <div id="navigation-container"></div>
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
 
     <div class="container">
         <div class="reports-header">
@@ -825,7 +825,6 @@ function displayRiderActivityReport(result) {
                 '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
                 'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
                 '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
-<script src="load-navigation.js"></script>
                 '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
 
             var reportWindow = window.open('', '_blank');
@@ -860,7 +859,6 @@ function displayRiderActivityReport(result) {
                 '<p>Total Hours: ' + escapeHtml(result.data.totalHours) + '</p>' +
                 '<h3>Request Type Distribution</h3>' +
                 '<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-<script src="load-navigation.js"></script>
                 '</body></html>';
 
             var reportWindow = window.open('', '_blank');
@@ -917,6 +915,5 @@ function displayRiderActivityReport(result) {
             }
         }
     </script>
-<!-- <script src="load-navigation.js"></script> -->
 </body>
 </html>
