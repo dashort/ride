@@ -7950,6 +7950,9 @@ function getRoleBasedNavigationSafe(currentPage, user, rider) {
  */
 function logout() {
   try {
+    if (typeof logoutUser === 'function') {
+      logoutUser();
+    }
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
   } catch (error) {

@@ -264,7 +264,28 @@ function getRoleBasedNavigation(currentPage, user, rider) {
 function getEnhancedUserSession() {
   try {
     console.log('🔍 getEnhancedUserSession called from AccessControl.gs');
-    
+
+    // 1) Check custom session used by spreadsheet logins
+    try {
+      if (typeof getCustomSession === 'function') {
+        const custom = getCustomSession();
+        if (custom) {
+          console.log('✅ Found custom session for ' + custom.email);
+          traceAuthFunction('getEnhancedUserSession', custom.email, 'custom_session');
+          return {
+            email: String(custom.email || '').trim(),
+            name: String(custom.name || '').trim(),
+            role: custom.role || '',
+            hasEmail: !!custom.email,
+            hasName: !!custom.name,
+            source: 'custom_session'
+          };
+        }
+      }
+    } catch (err) {
+      console.log('⚠️ Error retrieving custom session: ' + err.message);
+    }
+
     let user = null;
     let userEmail = '';
     let userName = '';
@@ -338,6 +359,7 @@ function getEnhancedUserSession() {
     const enhancedUser = {
       email: userEmail.trim(),
       name: userName.trim() || extractNameFromEmail(userEmail),
+      role: '',
       hasEmail: !!userEmail.trim(),
       hasName: !!userName.trim(),
       source: sessionSource
@@ -723,36 +745,49 @@ function authenticateAndAuthorizeUser() {
     const isAdmin = adminUsers.includes(userSession.email);
     const isDispatcher = dispatcherUsers.includes(userSession.email);
 
-    // Prefer dispatcher role if user appears in both lists
-    console.log('🔍 Checking admin users:', adminUsers);
-    if (isDispatcher) {
-      userRole = 'dispatcher';
-      permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
-      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'dispatcher');
-    } else if (isAdmin) {
-      userRole = 'admin';
-      permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
-      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'admin');
-    } else if (rider && rider.status === 'Active') {
-      userRole = 'rider';
-      permissions = ['view_own_assignments', 'update_own_status'];
-      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'rider');
+    // If custom session provided role, trust it
+    if (userSession.source === 'custom_session' && userSession.role) {
+      userRole = userSession.role;
+      if (userRole === 'admin') {
+        permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+      } else if (userRole === 'dispatcher') {
+        permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+      } else if (userRole === 'rider') {
+        permissions = ['view_own_assignments', 'update_own_status'];
+      }
+      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, userRole + '(custom)');
     } else {
-      traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'unauthorized');
-      return {
-        success: false,
-        error: 'UNAUTHORIZED',
-        message: 'Your account is not authorized to access this system',
-        userEmail: userSession.email,
-        userName: userSession.name,
-        user: {
-          name: userSession.name || 'User',
-          email: userSession.email,
-          roles: ['unauthorized'],
-          role: 'unauthorized',
-          permissions: []
-        }
-      };
+      // Prefer dispatcher role if user appears in both lists
+      console.log('🔍 Checking admin users:', adminUsers);
+      if (isDispatcher) {
+        userRole = 'dispatcher';
+        permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
+        traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'dispatcher');
+      } else if (isAdmin) {
+        userRole = 'admin';
+        permissions = ['view_all', 'edit_all', 'assign_riders', 'manage_users', 'view_reports'];
+        traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'admin');
+      } else if (rider && rider.status === 'Active') {
+        userRole = 'rider';
+        permissions = ['view_own_assignments', 'update_own_status'];
+        traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'rider');
+      } else {
+        traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, 'unauthorized');
+        return {
+          success: false,
+          error: 'UNAUTHORIZED',
+          message: 'Your account is not authorized to access this system',
+          userEmail: userSession.email,
+          userName: userSession.name,
+          user: {
+            name: userSession.name || 'User',
+            email: userSession.email,
+            roles: ['unauthorized'],
+            role: 'unauthorized',
+            permissions: []
+          }
+        };
+      }
     }
     
     const authenticatedUser = {
@@ -1261,10 +1296,12 @@ function testAuthenticationSimple() {
 function doGet(e) {
   try {
     // Authentication
-    if (e.parameter?.action === 'signin') return createSignInPage();
-    
+    if (e.parameter?.action === 'signin' || e.parameter?.action === 'login') {
+      return createLoginPage();
+    }
+
     const userSession = getEnhancedUserSession();
-    if (!userSession.hasEmail) return createSignInPage();
+    if (!userSession.hasEmail) return createLoginPage();
     
     // Authorization
     const rider = getRiderByGoogleEmailSafe(userSession.email);
@@ -1522,6 +1559,18 @@ function createSignInPageEnhanced() {
   return HtmlService.createHtmlOutput(html)
     .setTitle('Sign In - Escort Management')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Simple login page for hybrid authentication
+function createLoginPage() {
+  try {
+    return HtmlService.createHtmlOutputFromFile('login')
+      .setTitle('Login - Escort Management')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (e) {
+    console.error('Error creating login page:', e);
+    return HtmlService.createHtmlOutput('Unable to load login page.');
+  }
 }
 
 // 🛡️ ADDITIONAL SAFE WRAPPER FUNCTIONS
