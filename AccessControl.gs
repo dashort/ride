@@ -524,6 +524,7 @@ function getAdminDashboardData() {
     
     // Calculate today's requests
     let todayRequests = 0;
+    let todaysEscorts = 0; // Number of assignments scheduled for today
     try {
       todayRequests = requests.filter(r => {
         const reqDate = r.dateCreated || r['Date Created'] || r.date || '';
@@ -534,6 +535,16 @@ function getAdminDashboardData() {
       }).length;
     } catch (e) {
       console.log('⚠️ Error calculating today requests:', e.message);
+    }
+
+    // Calculate escorts scheduled for today
+    try {
+      todaysEscorts = assignments.filter(a => {
+        const eventDate = a.eventDate || a['Event Date'];
+        return eventDate && new Date(eventDate).toDateString() === todayStr;
+      }).length;
+    } catch (e) {
+      console.log('⚠️ Error calculating todays escorts:', e.message);
     }
     
     // Calculate unassigned escorts within the next 3 days
@@ -589,6 +600,7 @@ function getAdminDashboardData() {
       totalAssignments: assignments.length,
       pendingNotifications: pendingNotifications,
       todayRequests: todayRequests,
+      todaysEscorts: todaysEscorts,
       unassignedEscorts: unassignedEscorts,
       pendingAssignments: pendingAssignments,
       threeDayEscorts: threeDayEscorts
@@ -607,6 +619,7 @@ function getAdminDashboardData() {
       totalAssignments: 0,
       pendingNotifications: 0,
       todayRequests: 0,
+      todaysEscorts: 0,
       unassignedEscorts: 0,
       pendingAssignments: 0,
       threeDayEscorts: 0

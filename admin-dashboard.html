@@ -347,7 +347,7 @@
         <!-- Quick Stats -->
         <div class="quick-stats">
             <div class="quick-stat">
-                <div class="quick-stat-number" id="todayRequests">-</div>
+                <div class="quick-stat-number" id="todaysEscorts">-</div>
                 <div class="quick-stat-label">Today's Escorts</div>
             </div>
             <div class="quick-stat">
@@ -516,7 +516,7 @@
                 document.getElementById('pendingNotifications').textContent = data.pendingNotifications || 0;
 
                 // Update quick stats
-                document.getElementById('todayRequests').textContent = data.todayRequests || 0;
+                document.getElementById('todaysEscorts').textContent = data.todaysEscorts || 0;
                 document.getElementById('threeDayEscorts').textContent = data.threeDayEscorts || 0;
                 document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts || 0;
 
@@ -783,7 +783,7 @@ function displaySystemLogs(logs) {
                 totalRiders: 23,
                 totalAssignments: 89,
                 pendingNotifications: 3,
-                todayRequests: 12,
+                todaysEscorts: 12,
                 threeDayEscorts: 5,
                 unassignedEscorts: 2
             };
