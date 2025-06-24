@@ -619,9 +619,13 @@
         }
 
         function openNewRequests() {
-            getDeployedUrl(function(baseUrl) {
-                window.open(baseUrl + '?page=requests&status=New', '_top');
-            });
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                getDeployedUrl(function(baseUrl) {
+                    window.open(baseUrl + '?page=requests&status=New', '_top');
+                });
+            } else {
+                window.open('requests.html?status=New', '_top');
+            }
         }
 
         function navigateStat(page) {
