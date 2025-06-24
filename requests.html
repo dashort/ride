@@ -1248,13 +1248,14 @@
      * @return {void}
      */
     function updateStats(requests) {
-        const total = requests.length;
+        const openStatuses = ['New', 'Pending', 'Unassigned'];
+        const totalOpen = requests.filter(r => openStatuses.includes(r.status)).length;
         const assigned = requests.filter(r => r.status === 'Assigned').length;
         const pending = requests.filter(r => r.status === 'Pending').length;
         const newRequests = requests.filter(r => r.status === 'New').length;
 
         document.getElementById('statsDisplay').innerHTML =
-            `Total: ${total} | New: ${newRequests} | Pending: ${pending} | Assigned: ${assigned}`;
+            `Total: ${totalOpen} | New: ${newRequests} | Pending: ${pending} | Assigned: ${assigned}`;
     }
 
     /**
