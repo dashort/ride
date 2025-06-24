@@ -2373,10 +2373,17 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           continue;
         }
         
-        // Apply status filter
-        if (filter !== 'All' && status !== filter) {
+      // Apply status filter
+      if (filter !== 'All') {
+        if (filter === 'Unassigned') {
+          // Unassigned filter should also include new and pending requests
+          if (!['Unassigned', 'New', 'Pending'].includes(status)) {
+            continue;
+          }
+        } else if (status !== filter) {
           continue;
         }
+      }
         
         // Build the formatted request object
         const formattedRequest = {
