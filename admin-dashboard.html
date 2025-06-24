@@ -346,19 +346,19 @@
 
         <!-- Quick Stats -->
         <div class="quick-stats">
-            <div class="quick-stat">
+            <div class="quick-stat" style="cursor:pointer" onclick="navigateQuickStat('new')">
                 <div class="quick-stat-number" id="newRequests">-</div>
                 <div class="quick-stat-label">New Requests</div>
             </div>
-            <div class="quick-stat">
+            <div class="quick-stat" style="cursor:pointer" onclick="navigateQuickStat('today')">
                 <div class="quick-stat-number" id="todaysEscorts">-</div>
                 <div class="quick-stat-label">Today's Escorts</div>
             </div>
-            <div class="quick-stat">
+            <div class="quick-stat" style="cursor:pointer" onclick="navigateQuickStat('three')">
                 <div class="quick-stat-number" id="threeDayEscorts">-</div>
                 <div class="quick-stat-label">3 Day Escorts</div>
             </div>
-            <div class="quick-stat">
+            <div class="quick-stat" style="cursor:pointer" onclick="navigateQuickStat('unassigned')">
                 <div class="quick-stat-number" id="unassignedEscorts">-</div>
                 <div class="quick-stat-label">Unassigned Escorts (3&nbsp;day)</div>
             </div>
@@ -622,6 +622,29 @@
             getDeployedUrl(function(baseUrl) {
                 window.open(baseUrl + '?page=' + page, '_top');
             });
+        }
+
+        function navigateToWithParams(page, params) {
+            getDeployedUrl(function(baseUrl) {
+                const url = new URL(baseUrl);
+                url.searchParams.set('page', page);
+                Object.keys(params || {}).forEach(function(key) {
+                    url.searchParams.set(key, params[key]);
+                });
+                window.open(url.toString(), '_top');
+            });
+        }
+
+        function navigateQuickStat(type) {
+            if (type === 'new') {
+                navigateToWithParams('requests', { status: 'New' });
+            } else if (type === 'today') {
+                navigateToWithParams('assignments', { date: 'today' });
+            } else if (type === 'three') {
+                navigateToWithParams('assignments', { date: 'week' });
+            } else if (type === 'unassigned') {
+                navigateToWithParams('assignments', {});
+            }
         }
 
         function viewSystemLogs() {
