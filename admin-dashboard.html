@@ -433,6 +433,9 @@
                     <button class="btn btn-primary" onclick="generateReports()">
                         📊 Generate Reports
                     </button>
+                    <button class="btn btn-primary" onclick="viewEmailResponses()">
+                        📧 Email Responses
+                    </button>
                 </div>
             </div>
 
@@ -643,6 +646,41 @@ function displaySystemLogs(logs) {
                      '<td>' + (log.Type || log.type || '') + '</td>' +
                      '<td>' + (log.Message || log.message || '') + '</td>' +
                      '<td>' + (log.Details || log.details || '') + '</td></tr>');
+        });
+        doc.write('</table>');
+    }
+    doc.write('</body></html>');
+    doc.close();
+}
+
+        function viewEmailResponses() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(responses) {
+                        displayEmailResponses(responses);
+                    })
+                    .withFailureHandler(handleError)
+                    .getEmailResponses();
+            } else {
+                alert('Email responses feature requires Google Apps Script connection');
+            }
+        }
+function displayEmailResponses(responses) {
+    const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
+    const doc = win.document;
+    doc.write('<html><head><title>Rider Email Responses</title></head><body>');
+    doc.write('<h2>Rider Email Responses</h2>');
+    if (!responses || responses.length === 0) {
+        doc.write('<p>No responses available.</p>');
+    } else {
+        doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
+        doc.write('<tr><th>Timestamp</th><th>From Email</th><th>Rider Name</th><th>Message Body</th><th>Action</th></tr>');
+        responses.forEach(function(r) {
+            doc.write('<tr><td>' + (r.Timestamp || r.timestamp || '') + '</td>' +
+                     '<td>' + (r["From Email"] || r.fromEmail || '') + '</td>' +
+                     '<td>' + (r["Rider Name"] || r.riderName || '') + '</td>' +
+                     '<td>' + (r["Message Body"] || r.messageBody || '') + '</td>' +
+                     '<td>' + (r.Action || r.action || '') + '</td></tr>');
         });
         doc.write('</table>');
     }
