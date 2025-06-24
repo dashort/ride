@@ -672,9 +672,10 @@
     document.addEventListener('DOMContentLoaded', function() {
         const params = new URLSearchParams(window.location.search);
         const statusParam = params.get('status');
-        if (statusParam) {
-            const statusFilter = document.getElementById('statusFilter');
-            if (statusFilter) {
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', loadPageData);
+            if (statusParam) {
                 statusFilter.value = statusParam;
             }
         }
@@ -691,7 +692,6 @@
         }
 
         loadPageData();
-        document.getElementById('statusFilter').addEventListener('change', loadPageData);
         const completedCheckbox = document.getElementById('showCompleted');
         if (completedCheckbox) {
             completedCheckbox.addEventListener('change', loadPageData);
