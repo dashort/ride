@@ -347,6 +347,10 @@
         <!-- Quick Stats -->
         <div class="quick-stats">
             <div class="quick-stat">
+                <div class="quick-stat-number" id="newRequests">-</div>
+                <div class="quick-stat-label">New Requests</div>
+            </div>
+            <div class="quick-stat">
                 <div class="quick-stat-number" id="todaysEscorts">-</div>
                 <div class="quick-stat-label">Today's Escorts</div>
             </div>
@@ -519,6 +523,7 @@
                 document.getElementById('pendingNotifications').textContent = data.pendingNotifications || 0;
 
                 // Update quick stats
+                document.getElementById('newRequests').textContent = data.newRequests || 0;
                 document.getElementById('todaysEscorts').textContent = data.todaysEscorts || 0;
                 document.getElementById('threeDayEscorts').textContent = data.threeDayEscorts || 0;
                 document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts || 0;
@@ -823,7 +828,8 @@ function displayEmailResponses(responses) {
                 pendingNotifications: 3,
                 todaysEscorts: 12,
                 threeDayEscorts: 5,
-                unassignedEscorts: 2
+                unassignedEscorts: 2,
+                newRequests: 4
             };
         }
 
