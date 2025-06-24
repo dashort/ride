@@ -346,7 +346,7 @@
 
         <!-- Quick Stats -->
         <div class="quick-stats">
-            <div class="quick-stat">
+            <div class="quick-stat" onclick="openNewRequests()" style="cursor:pointer">
                 <div class="quick-stat-number" id="newRequests">-</div>
                 <div class="quick-stat-label">New Requests</div>
             </div>
@@ -615,6 +615,12 @@
         function openAuthSetup() {
             getDeployedUrl(function(baseUrl) {
                 window.open(baseUrl + '?page=auth-setup', '_blank');
+            });
+        }
+
+        function openNewRequests() {
+            getDeployedUrl(function(baseUrl) {
+                window.open(baseUrl + '?page=requests&status=New', '_top');
             });
         }
 
