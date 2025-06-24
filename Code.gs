@@ -2158,6 +2158,9 @@ function handleEmailMessage(fromEmail, messageBody) {
       return { action: 'unknown_email', rider: null };
     }
 
+    // Append the raw message to the rider's assignment notes for tracking
+    appendEmailResponseToAssignments(rider.name, messageBody);
+
     let action = 'general_response';
 
     if (cleanBody.includes('confirm') || cleanBody === 'yes' || cleanBody === 'y') {
@@ -2198,6 +2201,44 @@ function logEmailResponse(fromEmail, messageBody, result) {
   } catch (error) {
     console.error('❌ Error logging email response:', error);
     logError('Error logging email response', error);
+  }
+}
+
+/**
+ * Append an email response to the rider's assignment notes
+ * @param {string} riderName Rider name associated with the assignments
+ * @param {string} messageBody Full email body text
+ */
+function appendEmailResponseToAssignments(riderName, messageBody) {
+  try {
+    const assignmentsData = getAssignmentsData(false); // Use fresh data
+    const sheet = assignmentsData.sheet;
+    const columnMap = assignmentsData.columnMap;
+
+    const notesCol = columnMap[CONFIG.columns.assignments.notes];
+    const riderCol = columnMap[CONFIG.columns.assignments.riderName];
+    const statusCol = columnMap[CONFIG.columns.assignments.status];
+
+    if (notesCol === undefined || riderCol === undefined) return;
+
+    const timestamp = formatDateTimeForDisplay(new Date());
+    const noteText = `[Email ${timestamp}] ${messageBody}`;
+
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      const assignmentRider = row[riderCol];
+      const status = statusCol !== undefined ? row[statusCol] : '';
+
+      if (assignmentRider === riderName && status !== 'Completed') {
+        const rowNumber = i + 2; // Account for header row
+        const existingNote = row[notesCol] || '';
+        const newNote = existingNote ? existingNote + '\n' + noteText : noteText;
+        sheet.getRange(rowNumber, notesCol + 1).setValue(newNote);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error appending email response to assignments:', error);
+    logError('Error appending email response to assignments', error);
   }
 }
 
