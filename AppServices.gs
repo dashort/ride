@@ -3581,6 +3581,7 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     const ridersAssignedCol = columnMap[CONFIG.columns.requests.ridersAssigned];
     const statusCol = columnMap[CONFIG.columns.requests.status];
     const lastUpdatedCol = columnMap[CONFIG.columns.requests.lastUpdated];
+    const ridersNeededCol = columnMap[CONFIG.columns.requests.ridersNeeded];
 
     // Update assigned riders
     if (ridersAssignedCol !== undefined) {
@@ -3588,9 +3589,27 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
       requestsSheet.getRange(sheetRowNumber, ridersAssignedCol + 1).setValue(ridersText);
     }
 
-    // Update status based on whether riders were assigned
+    // Determine how many riders are needed for this request
+    let ridersNeeded = 0;
+    if (ridersNeededCol !== undefined) {
+      const neededVal = requestsSheet.getRange(sheetRowNumber, ridersNeededCol + 1).getValue();
+      const parsedNeeded = parseInt(neededVal, 10);
+      ridersNeeded = isNaN(parsedNeeded) ? 0 : parsedNeeded;
+    }
+
+    // Update status based on how many riders are assigned
     if (statusCol !== undefined) {
-      const newStatus = riderNames.length > 0 ? 'Assigned' : 'Unassigned';
+      const currentStatus = String(requestsSheet.getRange(sheetRowNumber, statusCol + 1).getValue()).trim();
+      let newStatus;
+      if (currentStatus === 'Completed' || currentStatus === 'Cancelled') {
+        newStatus = currentStatus;
+      } else if (riderNames.length === 0) {
+        newStatus = 'Unassigned';
+      } else if (riderNames.length < ridersNeeded) {
+        newStatus = 'Unassigned';
+      } else {
+        newStatus = 'Assigned';
+      }
       requestsSheet.getRange(sheetRowNumber, statusCol + 1).setValue(newStatus);
     }
 
