@@ -33,3 +33,12 @@ The `userinfo.email` and `userinfo.profile` scopes allow the script to read the 
 5. Click **Deploy**.
 
 On first use, each user will be shown Google's OAuth consent screen asking to approve the above scopes. They must grant access for the web app to function correctly.
+
+## Response tracking
+
+The app logs rider replies to two auxiliary sheets:
+
+- `SMS_Responses`
+- `Email_Responses`
+
+Both sheets will be created automatically if they do not exist. The `Assignments` sheet should also include a `Notes` column so that rider responses can be appended to the relevant assignment.

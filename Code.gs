@@ -2211,15 +2211,27 @@ function logEmailResponse(fromEmail, messageBody, result) {
  */
 function appendEmailResponseToAssignments(riderName, messageBody) {
   try {
-    const assignmentsData = getAssignmentsData(false); // Use fresh data
-    const sheet = assignmentsData.sheet;
-    const columnMap = assignmentsData.columnMap;
+    let assignmentsData = getAssignmentsData(false); // Use fresh data
+    let sheet = assignmentsData.sheet;
+    let columnMap = assignmentsData.columnMap;
 
-    const notesCol = columnMap[CONFIG.columns.assignments.notes];
+    let notesCol = columnMap[CONFIG.columns.assignments.notes];
     const riderCol = columnMap[CONFIG.columns.assignments.riderName];
     const statusCol = columnMap[CONFIG.columns.assignments.status];
 
-    if (notesCol === undefined || riderCol === undefined) return;
+    if (riderCol === undefined) return;
+
+    // Add a Notes column if missing
+    if (notesCol === undefined) {
+      const newColIndex = assignmentsData.headers.length + 1; // 1-based
+      sheet.insertColumnAfter(assignmentsData.headers.length);
+      sheet.getRange(1, newColIndex).setValue(CONFIG.columns.assignments.notes).setFontWeight('bold');
+      // Reload mapping
+      assignmentsData = getAssignmentsData(false);
+      sheet = assignmentsData.sheet;
+      columnMap = assignmentsData.columnMap;
+      notesCol = columnMap[CONFIG.columns.assignments.notes];
+    }
 
     const timestamp = formatDateTimeForDisplay(new Date());
     const noteText = `[Email ${timestamp}] ${messageBody}`;

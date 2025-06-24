@@ -43,6 +43,8 @@ const CONFIG = {
     requests: "Requests",
     riders: "Riders",
     assignments: "Assignments",
+    smsResponses: "SMS_Responses",
+    emailResponses: "Email_Responses",
 
     riderAvailability: "Rider Availability",
     availability: "Rider Availability",
