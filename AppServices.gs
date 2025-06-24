@@ -4238,6 +4238,31 @@ function getSystemLogs(limit) {
 }
 
 /**
+ * Returns recent rider email responses.
+ * @param {number} [limit=50] Maximum number of responses to return.
+ * @return {Array<Object>} Array of response objects.
+ */
+function getEmailResponses(limit) {
+  try {
+    var max = limit || 50;
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Email_Responses');
+    if (!sheet) return [];
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return [];
+    var headers = data[0];
+    var rows = data.slice(-Math.min(max, data.length - 1)).reverse();
+    return rows.map(function(row) {
+      var entry = {};
+      headers.forEach(function(h, i) { entry[h] = row[i]; });
+      return entry;
+    });
+  } catch (error) {
+    logError('Error in getEmailResponses', error);
+    return [];
+  }
+}
+
+/**
  * Retrieves the current assignment rotation order from script properties.
  * Generates a default order from active riders if none exists.
  * @return {string[]} Ordered list of rider names.
