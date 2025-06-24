@@ -518,6 +518,14 @@ function getAdminDashboardData() {
     
     const admins = getAdminUsersSafe();
     const dispatchers = getDispatcherUsersSafe();
+
+    // Calculate new requests with status 'New'
+    let newRequests = 0;
+    try {
+      newRequests = requests.filter(r => String(r.status || r['Status']).trim() === 'New').length;
+    } catch (e) {
+      console.log('⚠️ Error calculating new requests:', e.message);
+    }
     
     const today = new Date();
     const todayStr = today.toDateString();
@@ -603,7 +611,8 @@ function getAdminDashboardData() {
       todaysEscorts: todaysEscorts,
       unassignedEscorts: unassignedEscorts,
       pendingAssignments: pendingAssignments,
-      threeDayEscorts: threeDayEscorts
+      threeDayEscorts: threeDayEscorts,
+      newRequests: newRequests
     };
     
     console.log('✅ Admin dashboard data:', result);
@@ -622,7 +631,8 @@ function getAdminDashboardData() {
       todaysEscorts: 0,
       unassignedEscorts: 0,
       pendingAssignments: 0,
-      threeDayEscorts: 0
+      threeDayEscorts: 0,
+      newRequests: 0
     };
   }
 }
