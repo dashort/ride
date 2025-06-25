@@ -619,18 +619,17 @@
         }
 
         function openNewRequests() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                getDeployedUrl(function(baseUrl) {
-                    window.open(baseUrl + '?page=requests&status=New', '_top');
-                });
-            } else {
-                window.open('requests.html?status=New', '_top');
-            }
+            navigateStat('requests', { status: 'New' });
         }
 
-        function navigateStat(page) {
+        function navigateStat(page, params) {
             getDeployedUrl(function(baseUrl) {
-                window.open(baseUrl + '?page=' + page, '_top');
+                const search = new URLSearchParams();
+                search.set('page', page);
+                if (params) {
+                    Object.keys(params).forEach(key => search.set(key, params[key]));
+                }
+                window.open(baseUrl + '?' + search.toString(), '_top');
             });
         }
 
