@@ -1376,7 +1376,8 @@ function navigateTo(page, params = {}) {
         google.script.run
             .withSuccessHandler(openUrl)
             .withFailureHandler(function() {
-                var fallbackBase = window.location.origin + window.location.pathname;
+                var basePath = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+                var fallbackBase = basePath + (page === 'dashboard' ? 'index.html' : page + '.html');
                 openUrl(fallbackBase);
             })
             .getWebAppUrl();
