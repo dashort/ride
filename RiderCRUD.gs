@@ -434,8 +434,13 @@ function updateRider(riderData) {
       normalizedData['parttimerider'] ||
       normalizedData['part time rider'] ||
       normalizedData['parttime'];
+
     if (normalizedPartTime !== undefined) {
+      // Ensure we map the value to all normalized variations so the header match
+      // succeeds regardless of the column name used in the sheet.
       normalizedData['part time'] = normalizedPartTime;
+      normalizedData['part time rider'] = normalizedPartTime;
+      normalizedData['parttimerider'] = normalizedPartTime;
     }
 
     // Create updated row array using normalized matching
