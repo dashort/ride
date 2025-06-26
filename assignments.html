@@ -1488,7 +1488,10 @@ function selectRequestById(requestId) {
             var availability = riderAvailability[rider.name] || 'Available';
             var isUnavailable = availability !== 'Available';
 
-            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" data-rider-name="' + rider.name.replace(/"/g,'&quot;') + '" onclick="toggleRider(\'' + rider.name + '\')">' +
+            var encodedName = rider.name.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+            return '<div class="rider-card ' + (isSelected ? 'selected' : '') + ' ' + (isUnavailable ? 'unavailable' : '') + '" ' +
+                'data-rider-name="' + encodedName + '" onclick="toggleRider(this.dataset.riderName)">' +
                 '<div class="rider-status status-' + availability.toLowerCase() + '"></div>' +
                 '<div class="rider-name">' + rider.name + '</div>' +
                 '<div class="rider-info">JP: ' + rider.jpNumber + '</div>' +
