@@ -619,7 +619,12 @@
         }
 
         function openNewRequests() {
-            navigateTo('requests', { status: 'New' });
+            var isLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+            if (isLocal) {
+                window.location.assign('requests.html?status=New');
+            } else {
+                navigateTo('requests', { status: 'New' });
+            }
         }
 
 
