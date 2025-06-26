@@ -366,19 +366,19 @@
 
         <!-- Main Stats Grid -->
         <div class="stats-grid">
-            <div class="stat-card requests" style="cursor:pointer" onclick="navigateStat('requests')">
+            <div class="stat-card requests" style="cursor:pointer" onclick="navigateTo('requests')">
                 <div class="stat-number" id="totalRequests">-</div>
                 <div class="stat-label">Total Requests</div>
             </div>
-            <div class="stat-card riders" style="cursor:pointer" onclick="navigateStat('riders')">
+            <div class="stat-card riders" style="cursor:pointer" onclick="navigateTo('riders')">
                 <div class="stat-number" id="totalRiders">-</div>
                 <div class="stat-label">Active Riders</div>
             </div>
-            <div class="stat-card assignments" style="cursor:pointer" onclick="navigateStat('assignments')">
+            <div class="stat-card assignments" style="cursor:pointer" onclick="navigateTo('assignments')">
                 <div class="stat-number" id="totalAssignments">-</div>
                 <div class="stat-label">Assignments</div>
             </div>
-            <div class="stat-card system" style="cursor:pointer" onclick="navigateStat('notifications')">
+            <div class="stat-card system" style="cursor:pointer" onclick="navigateTo('notifications')">
                 <div class="stat-number" id="pendingNotifications">-</div>
                 <div class="stat-label">Notifications</div>
             </div>
@@ -619,18 +619,37 @@
         }
 
         function openNewRequests() {
-            navigateStat('requests', { status: 'New' });
+            navigateTo('requests', { status: 'New' });
         }
 
-        function navigateStat(page, params) {
-            getDeployedUrl(function(baseUrl) {
-                const search = new URLSearchParams();
-                search.set('page', page);
-                if (params) {
-                    Object.keys(params).forEach(key => search.set(key, params[key]));
+
+        function navigateTo(page, params = {}) {
+            const search = new URLSearchParams();
+            search.set('page', page);
+            Object.keys(params).forEach(key => search.set(key, params[key]));
+
+            function openUrl(base) {
+                const url = base + (base.includes('?') ? '&' : '?') + search.toString();
+                try {
+                    window.top.location.assign(url);
+                } catch (error) {
+                    window.location.assign(url);
                 }
-                window.open(baseUrl + '?' + search.toString(), '_top');
-            });
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(openUrl)
+                    .withFailureHandler(function() {
+                        var basePath = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+                        var fallbackBase = basePath + (page === 'dashboard' ? 'index.html' : page + '.html');
+                        openUrl(fallbackBase);
+                    })
+                    .getWebAppUrl();
+            } else {
+                const base = page === 'dashboard' ? 'index.html' : page + '.html';
+                openUrl(base);
+            }
         }
 
         function viewSystemLogs() {
