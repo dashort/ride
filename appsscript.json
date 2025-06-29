@@ -26,6 +26,7 @@
   },
   "urlFetchWhitelist": [
     "https://script.google.com/",
-    "https://accounts.google.com/"
+    "https://accounts.google.com/",
+    "https://api.twilio.com/"
   ]
 }
