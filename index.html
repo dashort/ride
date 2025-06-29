@@ -772,7 +772,12 @@
     }
 
     function goToRequests(status) {
-        navigateTo('requests', { status: status });
+        var isLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+        if (isLocal) {
+            window.location.assign('requests.html?status=' + encodeURIComponent(status));
+        } else {
+            navigateTo('requests', { status: status });
+        }
     }
 
     function goToAssignments(range) {
