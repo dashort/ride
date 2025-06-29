@@ -9,6 +9,7 @@ This repository contains a Google Apps Script project used to manage ride schedu
    - From the Apps Script editor click **Services** > **+** and enable *Gmail API*.
    - In the linked Google Cloud project also enable the *Gmail API*.
 3. Copy all `.gs` and `.html` files from this repo into your project along with the `appsscript.json`.
+4. In `appsscript.json` add `https://api.twilio.com/` to the `urlFetchWhitelist` section so the script can call the Twilio API.
 
 ## OAuth scopes
 
