@@ -5807,13 +5807,16 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     enhanceMobileNavigation();
     addTouchEnhancements();
     
-    // Add device class to body
-    document.body.classList.add(
+    // Add device class to body without empty tokens
+    const classes = [
       device.isMobile ? 'mobile' : 'desktop',
-      device.isTablet ? 'tablet' : '',
       device.isTouchDevice ? 'touch-device' : 'mouse-device',
       device.orientation
-    );
+    ];
+    if (device.isTablet) {
+      classes.push('tablet');
+    }
+    document.body.classList.add(...classes);
     
     console.log('✅ Mobile optimizations ready!');
   });
