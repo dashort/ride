@@ -367,9 +367,9 @@
                         <span class="stat-number" id="activeRiders">-</span>
                         <div class="stat-label">Active Riders</div>
                     </div>
-                    <div class="stat-item" style="cursor:pointer" onclick="goToRequests('Pending')">
-                        <span class="stat-number" id="pendingRequests">-</span>
-                        <div class="stat-label">Pending Requests</div>
+                    <div class="stat-item" style="cursor:pointer" onclick="goToRequests('New')">
+                        <span class="stat-number" id="newRequests">-</span>
+                        <div class="stat-label">New Requests</div>
                     </div>
                     <div class="stat-item" style="cursor:pointer" onclick="goToAssignments('today')">
                         <span class="stat-number" id="todayAssignments">-</span>
@@ -573,7 +573,7 @@
         };
 
         safeUpdateStat('activeRiders', stats.activeRiders);
-        safeUpdateStat('pendingRequests', stats.pendingRequests);
+        safeUpdateStat('newRequests', stats.newRequests ?? stats.pendingRequests);
         safeUpdateStat('todayAssignments', stats.todayAssignments);
         safeUpdateStat('weekAssignments', stats.weekAssignments);
     }
@@ -719,7 +719,7 @@
 
         updateStats({
             activeRiders: 0,
-            pendingRequests: 0,
+            newRequests: 0,
             todayAssignments: 0,
             weekAssignments: 0
         });
@@ -799,7 +799,7 @@
         showMessage('Refreshing dashboard...', 'info');
 
         document.getElementById('activeRiders').textContent = '-';
-        document.getElementById('pendingRequests').textContent = '-';
+        document.getElementById('newRequests').textContent = '-';
         document.getElementById('todayAssignments').textContent = '-';
         document.getElementById('weekAssignments').textContent = '-';
 
