@@ -2760,9 +2760,9 @@ function generateReportData(filters) {
     const ridersData = getRidersData();
     
     // Filter data based on date range
-    const startDate = new Date(filters.startDate);
+    const startDate = parseDateString(filters.startDate) || new Date(1970, 0, 1);
     startDate.setHours(0,0,0,0);
-    const endDate = new Date(filters.endDate);
+    const endDate = parseDateString(filters.endDate) || new Date();
     endDate.setHours(23, 59, 59, 999);
     
     const filteredRequests = requestsData.data.filter(request => {
