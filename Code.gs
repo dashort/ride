@@ -2770,9 +2770,7 @@ function generateReportData(filters) {
         }
       });
 
-      if (totalHours > 0) {
-        riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
-      }
+      riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
     });
 
     const reportData = {
