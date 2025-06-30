@@ -429,6 +429,21 @@ function updateExistingRequest(requestData) {
       clearRequestsCache();
     }
 
+    // Update any assignments linked to this request
+    if (typeof updateAssignmentsFromRequest === 'function') {
+      const refreshedRow = sheet.getRange(sheetRowNumber, 1, 1, headers.length).getValues()[0];
+      const updatedRequestFields = {
+        eventDate: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.eventDate),
+        startTime: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.startTime),
+        endTime: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.endTime),
+        startLocation: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.startLocation),
+        endLocation: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.endLocation),
+        secondaryLocation: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.secondaryLocation),
+        notes: getColumnValue(refreshedRow, columnMap, CONFIG.columns.requests.notes)
+      };
+      updateAssignmentsFromRequest(requestData.requestId, updatedRequestFields);
+    }
+
     // Log the successful update
     logActivity(`Request updated: ${requestData.requestId} - Updated ${updates.length} fields`);
     
@@ -541,6 +556,63 @@ function deleteRequest(requestId) {
   } catch (error) {
     logError('Error deleting request', error); // Assumes logError is global
     return { success: false, message: 'Error deleting request: ' + error.message };
+  }
+}
+
+/**
+ * Updates assignment rows when a request's details change.
+ * @param {string} requestId The request ID associated with the assignments.
+ * @param {object} requestFields Object containing updated request fields.
+ */
+function updateAssignmentsFromRequest(requestId, requestFields) {
+  try {
+    const assignmentsData = getAssignmentsData(false);
+    if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) return;
+
+    const sheet = assignmentsData.sheet;
+    const colMap = assignmentsData.columnMap;
+
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      const rowRequestId = getColumnValue(row, colMap, CONFIG.columns.assignments.requestId);
+      if (String(rowRequestId).trim() !== String(requestId).trim()) continue;
+
+      const rowNum = i + 2; // account for header
+
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.eventDate) && requestFields.eventDate !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.eventDate] + 1)
+             .setValue(requestFields.eventDate ? parseDateString(requestFields.eventDate) : '');
+      }
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.startTime) && requestFields.startTime !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.startTime] + 1)
+             .setValue(requestFields.startTime ? parseTimeString(requestFields.startTime) : '');
+      }
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.endTime) && requestFields.endTime !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.endTime] + 1)
+             .setValue(requestFields.endTime ? parseTimeString(requestFields.endTime) : '');
+      }
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.startLocation) && requestFields.startLocation !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.startLocation] + 1)
+             .setValue(requestFields.startLocation);
+      }
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.endLocation) && requestFields.endLocation !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.endLocation] + 1)
+             .setValue(requestFields.endLocation);
+      }
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.secondaryLocation) && requestFields.secondaryLocation !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.secondaryLocation] + 1)
+             .setValue(requestFields.secondaryLocation);
+      }
+      if (colMap.hasOwnProperty(CONFIG.columns.assignments.notes) && requestFields.notes !== undefined) {
+        sheet.getRange(rowNum, colMap[CONFIG.columns.assignments.notes] + 1)
+             .setValue(requestFields.notes);
+      }
+    }
+
+    SpreadsheetApp.flush();
+    console.log(`✅ Assignments updated for request ${requestId}`);
+  } catch (error) {
+    logError('Error updating assignments from request', error);
   }
 }
 // 🛠️ SETUP FUNCTIONS FOR GOOGLE AUTHENTICATION
