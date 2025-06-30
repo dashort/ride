@@ -195,6 +195,15 @@ function parseTimeString(timeInput) {
     if (timeInput instanceof Date) {
         return timeInput; // Already a Date object
     }
+
+    // Handle numeric times from Sheets (fraction of a day)
+    if (typeof timeInput === 'number' && !isNaN(timeInput)) {
+        const base = new Date();
+        base.setHours(0, 0, 0, 0);
+        const ms = Math.round(timeInput * 24 * 60 * 60 * 1000);
+        return new Date(base.getTime() + ms);
+    }
+
     if (typeof timeInput !== 'string' || timeInput.trim() === '') {
         return null;
     }
@@ -202,13 +211,15 @@ function parseTimeString(timeInput) {
     const now = new Date(); // Use current date as base
     let hours = 0;
     let minutes = 0;
+    let seconds = 0;
 
-    const timeParts = timeInput.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    const timeParts = timeInput.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
 
     if (timeParts) {
         hours = parseInt(timeParts[1], 10);
         minutes = parseInt(timeParts[2], 10);
-        const ampm = timeParts[3];
+        seconds = timeParts[3] ? parseInt(timeParts[3], 10) : 0;
+        const ampm = timeParts[4];
 
         if (ampm) {
             if (ampm.toLowerCase() === 'pm' && hours < 12) {
@@ -218,10 +229,13 @@ function parseTimeString(timeInput) {
             }
         }
         // If no AM/PM, assume 24-hour format if hours > 12, otherwise assume AM.
-        // This might need adjustment based on common input format.
     } else {
-        // Try parsing "HHMM" or "HMM" if that's a possible input format
-        if (timeInput.length === 4 && !isNaN(timeInput)) { // "1430"
+        // Try parsing "HHMMSS", "HHMM" or "HMM" if that's a possible input format
+        if (timeInput.length === 6 && !isNaN(timeInput)) { // "143000"
+            hours = parseInt(timeInput.substring(0,2), 10);
+            minutes = parseInt(timeInput.substring(2,4), 10);
+            seconds = parseInt(timeInput.substring(4,6), 10);
+        } else if (timeInput.length === 4 && !isNaN(timeInput)) { // "1430"
             hours = parseInt(timeInput.substring(0,2), 10);
             minutes = parseInt(timeInput.substring(2,4), 10);
         } else if (timeInput.length === 3 && !isNaN(timeInput)) { // "930"
@@ -233,12 +247,15 @@ function parseTimeString(timeInput) {
         }
     }
 
-    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
-        console.warn(`Invalid time components from string: "${timeInput}" (H:${hours}, M:${minutes})`);
+    if (
+        isNaN(hours) || isNaN(minutes) || isNaN(seconds) ||
+        hours < 0 || hours > 23 || minutes < 0 || minutes > 59 || seconds < 0 || seconds > 59
+    ) {
+        console.warn(`Invalid time components from string: "${timeInput}" (H:${hours}, M:${minutes}, S:${seconds})`);
         return null;
     }
 
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds);
 }
 
 /**
