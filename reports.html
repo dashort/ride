@@ -715,6 +715,9 @@
                     var r = tables.riderHours[i];
                     hoursRows += '<tr><td>' + r.name + '</td><td>' + r.hours + '</td></tr>';
                 }
+                if (tables.riderHours.length === 0) {
+                    hoursRows = '<tr><td colspan="2" style="text-align:center;">No hours recorded</td></tr>';
+                }
                 var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             }
