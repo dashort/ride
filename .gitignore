@@ -1,0 +1,14 @@
+# Node dependencies
+node_modules/
+
+# Google Apps Script clasp backups
+.clasp.json.*
+!.clasp.json
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+npm-debug.log*
