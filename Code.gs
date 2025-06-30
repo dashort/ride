@@ -7620,22 +7620,7 @@ function getUserManagementData() {
   }
 }
 
-/**
- * Extract name from email for display
- */
-function extractNameFromEmail(email) {
-  if (!email) return 'User';
-  
-  try {
-    const localPart = email.split('@')[0];
-    const nameParts = localPart.split(/[._]/).map(part => 
-      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-    );
-    return nameParts.join(' ');
-  } catch (error) {
-    return 'User';
-  }
-}
+
 
 /**
  * Get recent system activity
