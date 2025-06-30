@@ -45,7 +45,7 @@ function diagnoseBlankPageIssue() {
     
     requiredFunctions.forEach(funcName => {
       try {
-        const func = this[funcName];
+        const func = eval(funcName);
         functionTests[funcName] = typeof func === 'function' ? 'EXISTS' : 'NOT_FUNCTION';
         console.log(`   ${functionTests[funcName] === 'EXISTS' ? '✅' : '❌'} ${funcName}`);
       } catch (e) {
@@ -979,7 +979,7 @@ function diagnoseDashboardStats() {
     
     countFunctions.forEach(funcName => {
       try {
-        const func = this[funcName];
+        const func = eval(funcName);
         if (typeof func === 'function') {
           const count = func();
           results.countFunctions[funcName] = { success: true, count: count };
@@ -1415,8 +1415,8 @@ function testIndividualCountFunctions() {
   functions.forEach(funcName => {
     try {
       console.log(`\n--- Testing ${funcName} ---`);
-      const func = this[funcName];
-
+      const func = eval(funcName);
+      
       if (typeof func === 'function') {
         const result = func();
         console.log(`Result: ${result} (type: ${typeof result})`);

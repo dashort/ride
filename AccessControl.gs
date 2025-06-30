@@ -736,6 +736,26 @@ function getUserManagementData() {
   }
 }
 /**
+ * Extract name from email address as fallback
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  
+  try {
+    // Get part before @
+    const localPart = email.split('@')[0];
+    
+    // Split by dots or underscores and capitalize
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
+/**
  * 🔐 COMPLETE AUTHENTICATION FUNCTIONS
  * Add these to your Authentication.js file (or Code.js if you prefer)
  * These are the missing functions that are causing the errors
@@ -907,7 +927,22 @@ function viewAuthTrace() {
 
 
 
-
+/**
+ * Extract name from email address as fallback
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  
+  try {
+    const localPart = email.split('@')[0];
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
 
 /**
  * Safe wrapper for getting rider by Google email

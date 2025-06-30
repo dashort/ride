@@ -597,99 +597,10 @@ function isThisMonth(date) {
          checkDate.getFullYear() === now.getFullYear();
 }
 
-function getAssignmentsForRider(riderId, statusFilter) {
-  try {
-    if (!riderId) return [];
-
-    const rider = typeof getRiderDetails === 'function' ?
-      getRiderDetails(riderId) : null;
-    const riderName = rider ? rider.name : null;
-
-    const assignmentsData = getAssignmentsData();
-    if (!assignmentsData || !assignmentsData.data) return [];
-
-    const cm = assignmentsData.columnMap;
-    const results = [];
-
-    assignmentsData.data.forEach(row => {
-      const rowRiderName = getColumnValue(row, cm, CONFIG.columns.assignments.riderName);
-      const rowRiderId = getColumnValue(row, cm, CONFIG.columns.assignments.jpNumber);
-      if (riderName) {
-        if (rowRiderName !== riderName && rowRiderId !== riderId) return;
-      } else {
-        if (rowRiderId !== riderId && rowRiderName !== riderId) return;
-      }
-
-      const status = getColumnValue(row, cm, CONFIG.columns.assignments.status);
-      if (statusFilter && status !== statusFilter) return;
-
-      results.push({
-        assignmentId: getColumnValue(row, cm, CONFIG.columns.assignments.id),
-        requestId: getColumnValue(row, cm, CONFIG.columns.assignments.requestId),
-        eventDate: getColumnValue(row, cm, CONFIG.columns.assignments.eventDate),
-        startTime: getColumnValue(row, cm, CONFIG.columns.assignments.startTime),
-        endTime: getColumnValue(row, cm, CONFIG.columns.assignments.endTime),
-        completionDate: getColumnValue(row, cm, CONFIG.columns.assignments.completedDate),
-        status: status
-      });
-    });
-
-    return results;
-
-  } catch (err) {
-    if (typeof logError === 'function') {
-      logError('Error in getAssignmentsForRider', err);
-    }
-    return [];
-  }
-}
-
 function calculateRiderHours(riderId, period) {
-  try {
-    const assignments = getAssignmentsForRider(riderId);
-    if (!assignments || assignments.length === 0) return 0;
-
-    const start = new Date();
-    const end = new Date();
-
-    switch (period) {
-      case 'this_month':
-        start.setDate(1);
-        break;
-      case 'last_month':
-        start.setDate(1);
-        start.setMonth(start.getMonth() - 1);
-        end.setFullYear(start.getFullYear(), start.getMonth() + 1, 0);
-        break;
-      default:
-        start.setFullYear(1970, 0, 1);
-    }
-
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
-
-    let total = 0;
-    assignments.forEach(a => {
-      let eventDate = a.eventDate instanceof Date ? new Date(a.eventDate) : parseDateString(a.eventDate);
-      if (!eventDate || eventDate < start || eventDate > end) return;
-
-      if (a.status !== 'Completed') return;
-
-      const s = parseTimeString(a.startTime);
-      const e = parseTimeString(a.endTime);
-      if (s && e && e > s) {
-        total += (e.getTime() - s.getTime()) / (1000 * 60 * 60);
-      }
-    });
-
-    return Math.round(total * 100) / 100;
-
-  } catch (err) {
-    if (typeof logError === 'function') {
-      logError('Error in calculateRiderHours', err);
-    }
-    return 0;
-  }
+  // Implement your hour calculation logic here
+  // This would typically look at assignment start/end times
+  return 0; // Placeholder
 }
 
 function getRiderRecentActivity(riderId) {

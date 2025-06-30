@@ -279,10 +279,6 @@
             border-left-color: #e74c3c;
         }
 
-        .summary-card.info {
-            border-left-color: #1abc9c;
-        }
-
         .filter-section {
             background: #f8f9fa;
             border-radius: 10px;
@@ -436,10 +432,6 @@
             <div class="summary-card warning">
                 <div class="metric-value" id="activeRiders">-</div>
                 <div class="metric-label">Active Riders</div>
-            </div>
-            <div class="summary-card info">
-                <div class="metric-value" id="totalHoursWorked">-</div>
-                <div class="metric-label">Total Hours Worked</div>
             </div>
         </div>
 
@@ -620,7 +612,7 @@
                 google.script.run
                     .withSuccessHandler(handlePageDataSuccess)
                     .withFailureHandler(handlePageDataFailure)
-                    .getPageDataForReports(window.currentUser, filters);
+                    .getPageDataForReports(filters);
             } else {
                 console.log('Google Apps Script not available for reports page.');
                 handlePageDataFailure({ message: 'Google Apps Script not available.' });
@@ -689,7 +681,6 @@
             document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
             document.getElementById('completedRequests').textContent = summary.completedRequests || 0;
             document.getElementById('activeRiders').textContent = summary.activeRiders || 0;
-            document.getElementById('totalHoursWorked').textContent = summary.totalHoursWorked || 0;
         }
 
         function updateCharts(charts) {
@@ -756,7 +747,7 @@
             hideLoading();
             console.log('Using fallback data for reports');
             var data = {
-                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0, totalHoursWorked: 0 },
+                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
                 charts: {},
                 tables: {}
             };

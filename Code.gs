@@ -2122,40 +2122,20 @@ function findRiderByEmail(emailAddress) {
 }
 
 /**
- * Parse assignment and request IDs from an email subject line.
- * Expected format: "Assignment <assignmentId> - <requestId>"
- * @param {string} subject The email subject line.
- * @return {{assignmentId: string|null, requestId: string|null}}
- */
-function parseIdsFromSubject(subject) {
-  const result = { assignmentId: null, requestId: null };
-  if (!subject) return result;
-  const regex = /Assignment\s+(\S+)\s*-\s*(\S+)/i;
-  const match = String(subject).match(regex);
-  if (match) {
-    result.assignmentId = match[1];
-    result.requestId = match[2];
-  }
-  return result;
-}
-
-/**
  * Process unread email replies from riders
  * Intended to run via time-based trigger
  */
 function processEmailResponses() {
   try {
-    const threads = GmailApp.search('is:unread in:inbox subject:(Assignment)');
+    const threads = GmailApp.search('is:unread in:inbox');
     threads.forEach(thread => {
       const messages = thread.getMessages();
       messages.forEach(msg => {
         if (!msg.isUnread()) return;
         const fromEmail = msg.getFrom().replace(/.*<|>.*/g, '').trim().toLowerCase();
-        const subject = msg.getSubject();
         const body = msg.getPlainBody();
-        const ids = parseIdsFromSubject(subject);
-        const result = handleEmailMessage(fromEmail, subject, body, ids);
-        logEmailResponse(fromEmail, subject, body, ids, result);
+        const result = handleEmailMessage(fromEmail, body);
+        logEmailResponse(fromEmail, body, result);
         msg.markRead();
       });
     });
@@ -2170,22 +2150,16 @@ function processEmailResponses() {
 /**
  * Handle a single email message from a rider
  */
-function handleEmailMessage(fromEmail, subject, messageBody, ids) {
+function handleEmailMessage(fromEmail, messageBody) {
   try {
     const cleanBody = String(messageBody).trim().toLowerCase();
     const rider = findRiderByEmail(fromEmail);
     if (!rider) {
-      return { action: 'unknown_email', rider: null, assignmentId: ids.assignmentId, requestId: ids.requestId };
+      return { action: 'unknown_email', rider: null };
     }
 
-    if (ids.assignmentId) {
-      appendEmailResponseToAssignment(ids.assignmentId, messageBody);
-    } else {
-      appendEmailResponseToAssignments(rider.name, messageBody);
-    }
-    if (ids.requestId) {
-      appendEmailResponseToRequest(ids.requestId, messageBody);
-    }
+    // Append the raw message to the rider's assignment notes for tracking
+    appendEmailResponseToAssignments(rider.name, messageBody);
 
     let action = 'general_response';
 
@@ -2197,7 +2171,7 @@ function handleEmailMessage(fromEmail, subject, messageBody, ids) {
       updateAssignmentStatus(rider.name, 'Declined');
     }
 
-    return { action: action, rider: rider.name, assignmentId: ids.assignmentId, requestId: ids.requestId };
+    return { action: action, rider: rider.name };
 
   } catch (error) {
     logError('Error handling email message', error);
@@ -2208,20 +2182,17 @@ function handleEmailMessage(fromEmail, subject, messageBody, ids) {
 /**
  * Log email responses to tracking sheet
  */
-function logEmailResponse(fromEmail, subject, messageBody, ids, result) {
+function logEmailResponse(fromEmail, messageBody, result) {
   try {
     const sheet = getOrCreateSheet('Email_Responses', [
-      'Timestamp', 'From Email', 'Rider Name', 'Subject', 'Message Body', 'Assignment ID', 'Request ID', 'Action'
+      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Action'
     ]);
 
     sheet.appendRow([
       new Date(),
       fromEmail,
       result.rider || 'Unknown',
-      subject,
       messageBody,
-      ids.assignmentId || '',
-      ids.requestId || '',
       result.action
     ]);
 
@@ -2268,70 +2239,6 @@ function appendEmailResponseToAssignments(riderName, messageBody) {
   } catch (error) {
     console.error('❌ Error appending email response to assignments:', error);
     logError('Error appending email response to assignments', error);
-  }
-}
-
-/**
- * Append an email response to a specific assignment by ID.
- * @param {string} assignmentId Assignment ID to update.
- * @param {string} messageBody Full email body text.
- */
-function appendEmailResponseToAssignment(assignmentId, messageBody) {
-  try {
-    const assignmentsData = getAssignmentsData(false);
-    const sheet = assignmentsData.sheet;
-    const columnMap = assignmentsData.columnMap;
-    const idCol = columnMap[CONFIG.columns.assignments.id];
-    const notesCol = columnMap[CONFIG.columns.assignments.notes];
-    if (idCol === undefined || notesCol === undefined) return;
-
-    for (let i = 0; i < assignmentsData.data.length; i++) {
-      const row = assignmentsData.data[i];
-      const id = row[idCol];
-      if (String(id) === String(assignmentId)) {
-        const rowNumber = i + 2;
-        const existing = row[notesCol] || '';
-        const timestamp = formatDateTimeForDisplay(new Date());
-        const noteText = `[Email ${timestamp}] ${messageBody}`;
-        const newNote = existing ? existing + '\n' + noteText : noteText;
-        sheet.getRange(rowNumber, notesCol + 1).setValue(newNote);
-        break;
-      }
-    }
-  } catch (error) {
-    logError('Error appending email response to assignment', error);
-  }
-}
-
-/**
- * Append an email response to a request by ID.
- * @param {string} requestId Request ID to update.
- * @param {string} messageBody Email body text.
- */
-function appendEmailResponseToRequest(requestId, messageBody) {
-  try {
-    const requestsData = getRequestsData(false);
-    const sheet = requestsData.sheet;
-    const columnMap = requestsData.columnMap;
-    const idCol = columnMap[CONFIG.columns.requests.id];
-    const notesCol = columnMap[CONFIG.columns.requests.notes];
-    if (idCol === undefined || notesCol === undefined) return;
-
-    for (let i = 0; i < requestsData.data.length; i++) {
-      const row = requestsData.data[i];
-      const id = row[idCol];
-      if (String(id) === String(requestId)) {
-        const rowNumber = i + 2;
-        const existing = row[notesCol] || '';
-        const timestamp = formatDateTimeForDisplay(new Date());
-        const noteText = `[Email ${timestamp}] ${messageBody}`;
-        const newNote = existing ? existing + '\n' + noteText : noteText;
-        sheet.getRange(rowNumber, notesCol + 1).setValue(newNote);
-        break;
-      }
-    }
-  } catch (error) {
-    logError('Error appending email response to request', error);
   }
 }
 
@@ -2766,13 +2673,13 @@ function generateReportData(filters) {
     endDate.setHours(23, 59, 59, 999);
     
     const filteredRequests = requestsData.data.filter(request => {
-      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
       const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
       const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-
+      
       let matchesDate = true;
-      if (eventDate instanceof Date) {
-        matchesDate = eventDate >= startDate && eventDate <= endDate;
+      if (requestDate instanceof Date) {
+        matchesDate = requestDate >= startDate && requestDate <= endDate;
       }
       
       let matchesType = true;
@@ -2813,25 +2720,27 @@ function generateReportData(filters) {
       
       const assignments = assignmentsData.data.filter(assignment => {
         const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-
+        const createdDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.createdDate);
+        
         let matchesDate = true;
-        if (eventDate instanceof Date) {
-          matchesDate = eventDate >= startDate && eventDate <= endDate;
+        if (createdDate instanceof Date) {
+          matchesDate = createdDate >= startDate && createdDate <= endDate;
         }
-
+        
         return assignmentRider === riderName && matchesDate;
       });
-
-      const completed = assignments.filter(assignment =>
-        getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) === 'Completed'
-      ).length;
-
-      riderPerformance.push({
-        name: riderName,
-        assignments: assignments.length,
-        completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
-      });
+      
+      if (assignments.length > 0) {
+        const completed = assignments.filter(assignment =>
+          getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) === 'Completed'
+        ).length;
+        
+        riderPerformance.push({
+          name: riderName,
+          assignments: assignments.length,
+          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
+        });
+      }
     });
 
     // Calculate total escort hours per rider within the period
@@ -2861,18 +2770,17 @@ function generateReportData(filters) {
         }
       });
 
-      riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
-      });
+      if (totalHours > 0) {
+        riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
+      }
+    });
 
-    const totalRiderHours = riderHours.reduce(function(sum, r) { return sum + r.hours; }, 0);
-
-     const reportData = {
+    const reportData = {
       summary: {
         totalRequests: totalRequests,
         completedRequests: completedRequests,
         activeRiders: activeRiders,
-        avgCompletionRate: riderPerformance.length > 0 ? Math.round(riderPerformance.reduce(function(sum, r){return sum + r.completionRate;}, 0) / riderPerformance.length) : 0,
-        totalHoursWorked: Math.round(totalRiderHours * 100) / 100
+        avgCompletionRate: riderPerformance.length > 0 ? Math.round(riderPerformance.reduce((sum, r) => sum + r.completionRate, 0) / riderPerformance.length) : 0
       },
       charts: {
         requestVolume: {
@@ -7712,7 +7620,22 @@ function getUserManagementData() {
   }
 }
 
-
+/**
+ * Extract name from email for display
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  
+  try {
+    const localPart = email.split('@')[0];
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
 
 /**
  * Get recent system activity

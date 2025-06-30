@@ -452,11 +452,6 @@
             margin-bottom: 1rem;
         }
 
-        .past-toggle {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
         .filter-tab {
             padding: 0.5rem 1rem;
             border: 2px solid #ecf0f1;
@@ -546,10 +541,6 @@
                     <div class="filter-tab" data-status="Assigned">Assigned</div>
                 </div>
 
-                <div class="past-toggle">
-                    <label><input type="checkbox" id="showPast"> Past</label>
-                </div>
-
                 <div id="requestsList">
                     <div class="loading">Loading requests...</div>
                 </div>
@@ -630,8 +621,6 @@
         loadingTimeout: 15000,
         dateFilter: 'all'
     };
-
-    var showPast = false;
 
     // The duplicate declarations of preselectedRequestId and preselectAttempted that were here previously should be removed by this change.
     // var currentRequests = []; ... etc. will remain as is.
@@ -1220,14 +1209,6 @@ if (!document.getElementById('debug-styles')) {
                 loadRidersWithAvailability(availCheckbox.checked);
             });
         }
-
-        var pastCheckbox = document.getElementById('showPast');
-        if (pastCheckbox) {
-            pastCheckbox.addEventListener('change', function() {
-                showPast = pastCheckbox.checked;
-                filterRequests();
-            });
-        }
     }
 
     /**
@@ -1273,19 +1254,7 @@ if (!document.getElementById('debug-styles')) {
                 }
             }
 
-            var matchesPast = true;
-            if (!showPast) {
-                try {
-                    var rDate = new Date(request.eventDate);
-                    var todayStart = new Date();
-                    todayStart.setHours(0,0,0,0);
-                    matchesPast = rDate >= todayStart;
-                } catch (e) {
-                    matchesPast = true;
-                }
-            }
-
-            return matchesSearch && matchesStatus && matchesDate && matchesPast && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
+            return matchesSearch && matchesStatus && matchesDate && ['New', 'Pending', 'Assigned', 'Unassigned'].indexOf(request.status) !== -1;
         });
 
         renderFilteredRequests(filtered);

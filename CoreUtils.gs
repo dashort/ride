@@ -472,24 +472,6 @@ function getSmsGatewayEmail(phone, carrier) {
 }
 
 /**
- * Extract name from email address as fallback.
- * @param {string} email The email address.
- * @return {string} A displayable name extracted from the email.
- */
-function extractNameFromEmail(email) {
-  if (!email) return 'User';
-  try {
-    const localPart = email.split('@')[0];
-    const nameParts = localPart.split(/[._]/).map(part =>
-      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-    );
-    return nameParts.join(' ');
-  } catch (error) {
-    return 'User';
-  }
-}
-
-/**
  * Tests basic server-side connectivity and script functionality.
  * @return {object} An object containing a timestamp, active spreadsheet name, sheet count, and server status.
  */
