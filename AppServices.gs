@@ -2960,14 +2960,32 @@ function getRecentNotificationActivity(assignments) {
  * @return {object} An object containing `user` and `reportData`.
  *                  Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForReports(user, filters) { // Added user parameter
+function getPageDataForReports(filters) {
   try {
-    // const user = getCurrentUser(); // Removed: user is now a parameter
-    const reportData = generateReportData(filters); // From Reports.js
-    return { success: true, user, reportData };
+    console.log('🔄 Loading reports page data...', filters);
+
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        reportData: null
+      };
+    }
+
+    const user = Object.assign({}, auth.user, { roles: auth.user.roles || [auth.user.role] });
+
+    const reportData = generateReportData(filters);
+    return { success: true, user: user, reportData: reportData };
   } catch (error) {
     logError('Error in getPageDataForReports', error);
-    return { success: false, error: error.message, user: user, reportData: null }; // Use passed user
+    return { success: false, error: error.message, user: { name: 'System User' }, reportData: null };
   }
 }
 
