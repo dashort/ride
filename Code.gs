@@ -2122,20 +2122,40 @@ function findRiderByEmail(emailAddress) {
 }
 
 /**
+ * Parse assignment and request IDs from an email subject line.
+ * Expected format: "Assignment <assignmentId> - <requestId>"
+ * @param {string} subject The email subject line.
+ * @return {{assignmentId: string|null, requestId: string|null}}
+ */
+function parseIdsFromSubject(subject) {
+  const result = { assignmentId: null, requestId: null };
+  if (!subject) return result;
+  const regex = /Assignment\s+(\S+)\s*-\s*(\S+)/i;
+  const match = String(subject).match(regex);
+  if (match) {
+    result.assignmentId = match[1];
+    result.requestId = match[2];
+  }
+  return result;
+}
+
+/**
  * Process unread email replies from riders
  * Intended to run via time-based trigger
  */
 function processEmailResponses() {
   try {
-    const threads = GmailApp.search('is:unread in:inbox');
+    const threads = GmailApp.search('is:unread in:inbox subject:(Assignment)');
     threads.forEach(thread => {
       const messages = thread.getMessages();
       messages.forEach(msg => {
         if (!msg.isUnread()) return;
         const fromEmail = msg.getFrom().replace(/.*<|>.*/g, '').trim().toLowerCase();
+        const subject = msg.getSubject();
         const body = msg.getPlainBody();
-        const result = handleEmailMessage(fromEmail, body);
-        logEmailResponse(fromEmail, body, result);
+        const ids = parseIdsFromSubject(subject);
+        const result = handleEmailMessage(fromEmail, subject, body, ids);
+        logEmailResponse(fromEmail, subject, body, ids, result);
         msg.markRead();
       });
     });
@@ -2150,16 +2170,22 @@ function processEmailResponses() {
 /**
  * Handle a single email message from a rider
  */
-function handleEmailMessage(fromEmail, messageBody) {
+function handleEmailMessage(fromEmail, subject, messageBody, ids) {
   try {
     const cleanBody = String(messageBody).trim().toLowerCase();
     const rider = findRiderByEmail(fromEmail);
     if (!rider) {
-      return { action: 'unknown_email', rider: null };
+      return { action: 'unknown_email', rider: null, assignmentId: ids.assignmentId, requestId: ids.requestId };
     }
 
-    // Append the raw message to the rider's assignment notes for tracking
-    appendEmailResponseToAssignments(rider.name, messageBody);
+    if (ids.assignmentId) {
+      appendEmailResponseToAssignment(ids.assignmentId, messageBody);
+    } else {
+      appendEmailResponseToAssignments(rider.name, messageBody);
+    }
+    if (ids.requestId) {
+      appendEmailResponseToRequest(ids.requestId, messageBody);
+    }
 
     let action = 'general_response';
 
@@ -2171,7 +2197,7 @@ function handleEmailMessage(fromEmail, messageBody) {
       updateAssignmentStatus(rider.name, 'Declined');
     }
 
-    return { action: action, rider: rider.name };
+    return { action: action, rider: rider.name, assignmentId: ids.assignmentId, requestId: ids.requestId };
 
   } catch (error) {
     logError('Error handling email message', error);
@@ -2182,17 +2208,20 @@ function handleEmailMessage(fromEmail, messageBody) {
 /**
  * Log email responses to tracking sheet
  */
-function logEmailResponse(fromEmail, messageBody, result) {
+function logEmailResponse(fromEmail, subject, messageBody, ids, result) {
   try {
     const sheet = getOrCreateSheet('Email_Responses', [
-      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Action'
+      'Timestamp', 'From Email', 'Rider Name', 'Subject', 'Message Body', 'Assignment ID', 'Request ID', 'Action'
     ]);
 
     sheet.appendRow([
       new Date(),
       fromEmail,
       result.rider || 'Unknown',
+      subject,
       messageBody,
+      ids.assignmentId || '',
+      ids.requestId || '',
       result.action
     ]);
 
@@ -2239,6 +2268,70 @@ function appendEmailResponseToAssignments(riderName, messageBody) {
   } catch (error) {
     console.error('❌ Error appending email response to assignments:', error);
     logError('Error appending email response to assignments', error);
+  }
+}
+
+/**
+ * Append an email response to a specific assignment by ID.
+ * @param {string} assignmentId Assignment ID to update.
+ * @param {string} messageBody Full email body text.
+ */
+function appendEmailResponseToAssignment(assignmentId, messageBody) {
+  try {
+    const assignmentsData = getAssignmentsData(false);
+    const sheet = assignmentsData.sheet;
+    const columnMap = assignmentsData.columnMap;
+    const idCol = columnMap[CONFIG.columns.assignments.id];
+    const notesCol = columnMap[CONFIG.columns.assignments.notes];
+    if (idCol === undefined || notesCol === undefined) return;
+
+    for (let i = 0; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      const id = row[idCol];
+      if (String(id) === String(assignmentId)) {
+        const rowNumber = i + 2;
+        const existing = row[notesCol] || '';
+        const timestamp = formatDateTimeForDisplay(new Date());
+        const noteText = `[Email ${timestamp}] ${messageBody}`;
+        const newNote = existing ? existing + '\n' + noteText : noteText;
+        sheet.getRange(rowNumber, notesCol + 1).setValue(newNote);
+        break;
+      }
+    }
+  } catch (error) {
+    logError('Error appending email response to assignment', error);
+  }
+}
+
+/**
+ * Append an email response to a request by ID.
+ * @param {string} requestId Request ID to update.
+ * @param {string} messageBody Email body text.
+ */
+function appendEmailResponseToRequest(requestId, messageBody) {
+  try {
+    const requestsData = getRequestsData(false);
+    const sheet = requestsData.sheet;
+    const columnMap = requestsData.columnMap;
+    const idCol = columnMap[CONFIG.columns.requests.id];
+    const notesCol = columnMap[CONFIG.columns.requests.notes];
+    if (idCol === undefined || notesCol === undefined) return;
+
+    for (let i = 0; i < requestsData.data.length; i++) {
+      const row = requestsData.data[i];
+      const id = row[idCol];
+      if (String(id) === String(requestId)) {
+        const rowNumber = i + 2;
+        const existing = row[notesCol] || '';
+        const timestamp = formatDateTimeForDisplay(new Date());
+        const noteText = `[Email ${timestamp}] ${messageBody}`;
+        const newNote = existing ? existing + '\n' + noteText : noteText;
+        sheet.getRange(rowNumber, notesCol + 1).setValue(newNote);
+        break;
+      }
+    }
+  } catch (error) {
+    logError('Error appending email response to request', error);
   }
 }
 
