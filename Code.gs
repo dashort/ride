@@ -2766,13 +2766,13 @@ function generateReportData(filters) {
     endDate.setHours(23, 59, 59, 999);
     
     const filteredRequests = requestsData.data.filter(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
       const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
       const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      
+
       let matchesDate = true;
-      if (requestDate instanceof Date) {
-        matchesDate = requestDate >= startDate && requestDate <= endDate;
+      if (eventDate instanceof Date) {
+        matchesDate = eventDate >= startDate && eventDate <= endDate;
       }
       
       let matchesType = true;
@@ -2813,27 +2813,25 @@ function generateReportData(filters) {
       
       const assignments = assignmentsData.data.filter(assignment => {
         const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const createdDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.createdDate);
-        
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+
         let matchesDate = true;
-        if (createdDate instanceof Date) {
-          matchesDate = createdDate >= startDate && createdDate <= endDate;
+        if (eventDate instanceof Date) {
+          matchesDate = eventDate >= startDate && eventDate <= endDate;
         }
-        
+
         return assignmentRider === riderName && matchesDate;
       });
-      
-      if (assignments.length > 0) {
-        const completed = assignments.filter(assignment =>
-          getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) === 'Completed'
-        ).length;
-        
-        riderPerformance.push({
-          name: riderName,
-          assignments: assignments.length,
-          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
-        });
-      }
+
+      const completed = assignments.filter(assignment =>
+        getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) === 'Completed'
+      ).length;
+
+      riderPerformance.push({
+        name: riderName,
+        assignments: assignments.length,
+        completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
+      });
     });
 
     // Calculate total escort hours per rider within the period
@@ -2863,9 +2861,7 @@ function generateReportData(filters) {
         }
       });
 
-      if (totalHours > 0) {
       riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
-      }
       });
 
     const totalRiderHours = riderHours.reduce(function(sum, r) { return sum + r.hours; }, 0);
