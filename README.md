@@ -34,3 +34,22 @@ The `userinfo.email` and `userinfo.profile` scopes allow the script to read the 
 5. Click **Deploy**.
 
 On first use, each user will be shown Google's OAuth consent screen asking to approve the above scopes. They must grant access for the web app to function correctly.
+## Authentication
+
+This project supports two sign‑in methods:
+
+1. **Google Sign‑in** – users authenticate with their Google account. The
+   built‑in functions automatically create a session based on the current Google
+   user.
+2. **Spreadsheet Credentials** – maintain a `Users` sheet in the spreadsheet
+   with columns `email`, `hashedPassword`, `role`, `status` and `name`.  Users on
+   this sheet can log in with their email and password via the login page.
+
+Passwords in the sheet must be stored as a SHA‑256 hash.  Run the
+`hashPassword("yourPassword")` function inside Apps Script to generate the value
+for a new user.
+
+Access the login form by opening the web app URL with `?action=login`.  Users who
+are not signed in or authorized will automatically be redirected to this form.
+Their name and role appear in the top‑right corner of each page once signed in.
+
