@@ -620,7 +620,7 @@
                 google.script.run
                     .withSuccessHandler(handlePageDataSuccess)
                     .withFailureHandler(handlePageDataFailure)
-                    .getPageDataForReports(filters);
+                    .getPageDataForReports(window.currentUser, filters);
             } else {
                 console.log('Google Apps Script not available for reports page.');
                 handlePageDataFailure({ message: 'Google Apps Script not available.' });
