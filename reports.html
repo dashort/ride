@@ -561,8 +561,7 @@
                     startDate.setDate(today.getDate() - 7);
                     break;
                 case 'month':
-                    startDate = new Date(today);
-                    startDate.setMonth(today.getMonth() - 1);
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
                     break;
                 case 'quarter':
                     startDate = new Date(today);
