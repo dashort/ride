@@ -10,6 +10,10 @@ This repository contains a Google Apps Script project used to manage ride schedu
    - In the linked Google Cloud project also enable the *Gmail API*.
 3. Copy all `.gs` and `.html` files from this repo into your project along with the `appsscript.json`.
 4. In `appsscript.json` add `https://api.twilio.com/` to the `urlFetchWhitelist` section so the script can call the Twilio API.
+5. In the Apps Script editor open **Project Settings** and add the following **Script properties** so the Twilio features work:
+   - `TWILIO_ACCOUNT_SID` – your Twilio account SID
+   - `TWILIO_AUTH_TOKEN` – your Twilio auth token
+   - `TWILIO_FROM_NUMBER` – the Twilio phone number used to send SMS
 
 ## OAuth scopes
 
