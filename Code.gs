@@ -2771,16 +2771,19 @@ function generateReportData(filters) {
       });
 
       if (totalHours > 0) {
-        riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
+      riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
       }
-    });
+      });
 
-    const reportData = {
+    const totalRiderHours = riderHours.reduce(function(sum, r) { return sum + r.hours; }, 0);
+
+     const reportData = {
       summary: {
         totalRequests: totalRequests,
         completedRequests: completedRequests,
         activeRiders: activeRiders,
-        avgCompletionRate: riderPerformance.length > 0 ? Math.round(riderPerformance.reduce((sum, r) => sum + r.completionRate, 0) / riderPerformance.length) : 0
+        avgCompletionRate: riderPerformance.length > 0 ? Math.round(riderPerformance.reduce(function(sum, r){return sum + r.completionRate;}, 0) / riderPerformance.length) : 0,
+        totalHoursWorked: Math.round(totalRiderHours * 100) / 100
       },
       charts: {
         requestVolume: {
