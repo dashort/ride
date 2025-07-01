@@ -350,7 +350,7 @@
                 <div class="quick-stat-number" id="newRequests">-</div>
                 <div class="quick-stat-label">New Requests</div>
             </div>
-            <div class="quick-stat">
+            <div class="quick-stat" style="cursor:pointer" onclick="goToTodaysEscorts()">
                 <div class="quick-stat-number" id="todaysEscorts">-</div>
                 <div class="quick-stat-label">Today's Escorts</div>
             </div>
@@ -624,6 +624,17 @@
                 window.location.assign('requests.html?status=New');
             } else {
                 navigateTo('requests', { status: 'New' });
+            }
+        }
+
+        function goToTodaysEscorts() {
+            console.log('🏍️ Navigating to today\'s escorts...');
+            const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+            var isLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+            if (isLocal) {
+                window.location.assign('requests.html?dateFilter=' + today);
+            } else {
+                navigateTo('requests', { dateFilter: today });
             }
         }
 
