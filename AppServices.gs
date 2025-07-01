@@ -1474,8 +1474,8 @@ function getPageDataForRequests(filter = 'All') {
     });
 
     // Get requests using the enhanced function
-    const requests = getFilteredRequestsForWebApp(user, filter); // Pass user
-    console.log(`✅ Requests retrieved: ${requests?.length || 0} items`);
+    const requests = getFilteredRequestsForWebApp(user, filter); // Pass user and filter correctly
+    console.log(`✅ Requests retrieved: ${requests?.length || 0} items with filter: ${filter}`);
     
     // Ensure we return an array
     const safeRequests = Array.isArray(requests) ? requests : [];

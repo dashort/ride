@@ -4186,6 +4186,7 @@ function doGet(e) {
     const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
     content = injectUserInfoSafe(content, authenticatedUser, rider);
     content = addNavigationToContentSafe(content, navigationHtml);
+    content = injectUrlParameters(content, e.parameter);
     
     htmlOutput.setContent(content);
     addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider);
@@ -5867,6 +5868,64 @@ function addUserDataInjection(htmlOutput, user, rider) {
   } catch (error) {
     console.error("Error in addUserDataInjection:", error);
     return htmlOutput;
+  }
+}
+
+/**
+ * Injects URL parameters into the page content as a script
+ * This allows individual pages to access parameters that were passed to the doGet function
+ */
+function injectUrlParameters(content, parameters) {
+  try {
+    if (!parameters || Object.keys(parameters).length === 0) {
+      console.log('📄 No URL parameters to inject');
+      return content;
+    }
+    
+    console.log('📄 Injecting URL parameters:', parameters);
+    
+    // Create a script that sets the URL parameters in the window object
+    const paramScript = `
+<script>
+// URL Parameters injected by server-side doGet function
+window.urlParameters = ${JSON.stringify(parameters)};
+console.log('📄 URL parameters injected:', window.urlParameters);
+
+// Update the browser's URL to include the parameters for client-side compatibility
+if (window.urlParameters && Object.keys(window.urlParameters).length > 0) {
+  try {
+    const url = new URL(window.location);
+    Object.keys(window.urlParameters).forEach(key => {
+      if (key !== 'page') { // Don't add 'page' parameter to URL as it's handled server-side
+        url.searchParams.set(key, window.urlParameters[key]);
+      }
+    });
+    
+    // Update URL without triggering a page reload
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, '', url.toString());
+      console.log('📄 Browser URL updated with parameters');
+    }
+  } catch (error) {
+    console.log('📄 Could not update browser URL:', error);
+  }
+}
+</script>`;
+    
+    // Inject the script at the end of the head section or before the closing body tag
+    if (content.includes('</head>')) {
+      content = content.replace('</head>', paramScript + '</head>');
+    } else if (content.includes('</body>')) {
+      content = content.replace('</body>', paramScript + '</body>');
+    } else {
+      content = content + paramScript;
+    }
+    
+    return content;
+    
+  } catch (error) {
+    console.error('❌ Error injecting URL parameters:', error);
+    return content;
   }
 }
 
