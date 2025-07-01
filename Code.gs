@@ -4140,14 +4140,20 @@ function debugNotificationsFile() {
  */
 
 
-function doGet(e) {
+function doGetOriginal(e) {
   try {
     console.log('🚀 doGet with cache-friendly headers...');
     
-    // Authentication and page logic (your existing code)
+    // Check if user explicitly wants the login page
+    if (e.parameter && e.parameter.action === 'login') {
+      return HtmlService.createHtmlOutputFromFile('login');
+    }
+    
+    // Try authentication first
     const authResult = authenticateAndAuthorizeUser();
     if (!authResult.success) {
-      return createSignInPageEnhanced();
+      // If Google OAuth failed, show custom login page with both options
+      return HtmlService.createHtmlOutputFromFile('login');
     }
     
     const { user: authenticatedUser, rider } = authResult;
