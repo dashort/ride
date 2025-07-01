@@ -552,6 +552,9 @@
                 <option value="Unassigned">Unassigned</option>
                 <option value="Assigned">Assigned</option>
             </select>
+            <label><strong>Date:</strong></label>
+            <input type="date" id="dateFilter" title="Filter by event date">
+            <button onclick="clearDateFilter()" title="Clear date filter">🗑️</button>
             <label><input type="checkbox" id="showCompleted"> Completed</label>
             <button onclick="loadPageData()">🔄 Refresh</button>
             <button onclick="exportToCSV()">📊 Export</button>
@@ -860,6 +863,7 @@
         // Check for parameters from both URL and server-injected parameters
         const params = new URLSearchParams(window.location.search);
         let statusParam = params.get('status');
+        let dateParam = params.get('dateFilter');
         
         // Also check server-injected parameters (for Apps Script web app)
         if (!statusParam && window.urlParameters && window.urlParameters.status) {
@@ -868,13 +872,29 @@
         } else if (statusParam) {
             console.log('🔍 Status parameter found in URL:', statusParam);
         }
+
+        if (!dateParam && window.urlParameters && window.urlParameters.dateFilter) {
+            dateParam = window.urlParameters.dateFilter;
+            console.log('🔍 Date parameter found in injected parameters:', dateParam);
+        } else if (dateParam) {
+            console.log('🔍 Date parameter found in URL:', dateParam);
+        }
         
         const statusFilter = document.getElementById('statusFilter');
         if (statusFilter) {
-            statusFilter.addEventListener('change', loadPageData);
+            statusFilter.addEventListener('change', sortAndDisplayRequests);
             if (statusParam) {
                 statusFilter.value = statusParam;
                 console.log('🔍 Status filter set to:', statusParam);
+            }
+        }
+
+        const dateFilter = document.getElementById('dateFilter');
+        if (dateFilter) {
+            dateFilter.addEventListener('change', sortAndDisplayRequests);
+            if (dateParam) {
+                dateFilter.value = dateParam;
+                console.log('🔍 Date filter set to:', dateParam);
             }
         }
 
@@ -1079,9 +1099,30 @@
 
         const searchInput = document.getElementById('requestSearch');
         const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        
+        const statusFilter = document.getElementById('statusFilter');
+        const statusFilterValue = statusFilter ? statusFilter.value : 'All';
+        
+        const dateFilter = document.getElementById('dateFilter');
+        const dateFilterValue = dateFilter ? dateFilter.value : '';
 
         let requests = [...allRequests];
 
+        // Apply status filter
+        if (statusFilterValue && statusFilterValue !== 'All') {
+            requests = requests.filter(r => r.status === statusFilterValue);
+        }
+
+        // Apply date filter
+        if (dateFilterValue) {
+            requests = requests.filter(r => {
+                if (!r.eventDate) return false;
+                const requestDate = formatDateForInput(r.eventDate);
+                return requestDate === dateFilterValue;
+            });
+        }
+
+        // Apply search filter
         if (term) {
             requests = requests.filter(r =>
                 String(r.requestId).toLowerCase().includes(term) ||
@@ -1100,6 +1141,7 @@
             return;
         }
 
+        // Apply sorting
         if (sortBy === 'requestId') {
             requests.sort((a, b) => String(a.requestId).localeCompare(String(b.requestId)));
         } else if (sortBy === 'requestType') {
@@ -1120,6 +1162,14 @@
         displayRequests(requests);
         updateStats(requests);
         showTable();
+    }
+
+    function clearDateFilter() {
+        const dateFilter = document.getElementById('dateFilter');
+        if (dateFilter) {
+            dateFilter.value = '';
+            sortAndDisplayRequests();
+        }
     }
 
     /**
