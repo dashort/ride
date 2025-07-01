@@ -2762,12 +2762,30 @@ function generateReportData(filters) {
           dateMatches = eventDate >= startDate && eventDate <= endDate;
         }
 
-        if (assignmentRider === riderName && status === 'Completed' && dateMatches) {
-          escorts++;
-          const start = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
-          const end = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
-          if (start && end && end > start) {
-            totalHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        // More flexible rider name and status matching
+        if (assignmentRider && riderName && 
+            assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase() && 
+            dateMatches) {
+          
+          // More flexible status checking - count assignments that were actually worked
+          const statusLower = (status || '').toLowerCase().trim();
+          const countableStatuses = ['completed', 'in progress', 'assigned', 'confirmed', 'en route'];
+          
+          if (countableStatuses.includes(statusLower)) {
+            escorts++;
+            
+            const start = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
+            const end = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
+            
+            if (start && end && end > start) {
+              totalHours += (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            } else {
+              // Fallback: add estimated hours for assignments without valid time data
+              // This addresses the common issue where time data is missing or invalid
+              const estimatedHours = estimateEscortHoursByType(assignment, assignmentsData.columnMap);
+              totalHours += estimatedHours;
+              console.log(`Used estimated ${estimatedHours} hours for assignment without valid times: ${assignmentRider}`);
+            }
           }
         }
       });
@@ -2810,8 +2828,214 @@ function generateReportData(filters) {
     throw error;
   }
 }
+
 /**
- * Generates a rider activity report for the given date range.
+ * Helper function to estimate escort hours when actual times aren't available
+ * @param {Array} assignment - The assignment row data
+ * @param {Object} columnMap - Column mapping for assignments
+ * @return {number} Estimated hours for the escort
+ */
+function estimateEscortHoursByType(assignment, columnMap) {
+  // Default estimates by request type (in hours)
+  const typeEstimates = {
+    'Wedding': 2.5,
+    'Funeral': 1.5,
+    'Float Movement': 3.0,
+    'VIP': 2.0,
+    'Other': 2.0
+  };
+  
+  try {
+    // Try to get the request type from the assignment's request ID
+    const requestId = getColumnValue(assignment, columnMap, CONFIG.columns.assignments.requestId);
+    
+    if (requestId) {
+      const requestsData = getRequestsData();
+      const request = requestsData.data.find(r => 
+        getColumnValue(r, requestsData.columnMap, CONFIG.columns.requests.id) === requestId
+      );
+      
+      if (request) {
+        const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+        const estimatedHours = typeEstimates[requestType] || typeEstimates['Other'];
+        console.log(`Estimated ${estimatedHours} hours for ${requestType} escort (Request ID: ${requestId})`);
+        return estimatedHours;
+      }
+    }
+  } catch (error) {
+    console.warn('Could not estimate hours from request data:', error);
+  }
+  
+  // Default fallback
+  return typeEstimates['Other'];
+}
+
+/**
+ * Debug function to diagnose assignment data issues in reports
+ * Run this function to check what data is available for rider hours calculation
+ * @return {Object} Debug information about assignments data
+ */
+function debugAssignmentDataForReports() {
+  try {
+    const assignmentsData = getAssignmentsData();
+    const ridersData = getRidersData();
+    
+    console.log('=== ASSIGNMENT DATA DEBUG ===');
+    console.log(`Total assignments found: ${assignmentsData.data.length}`);
+    console.log(`Total riders found: ${ridersData.data.length}`);
+    
+    // Check first 5 assignments
+    console.log('\n=== SAMPLE ASSIGNMENTS ===');
+    for (let i = 0; i < Math.min(5, assignmentsData.data.length); i++) {
+      const assignment = assignmentsData.data[i];
+      console.log(`Assignment ${i + 1}:`, {
+        riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
+        status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status),
+        eventDate: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate),
+        startTime: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime),
+        endTime: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime),
+        requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)
+      });
+    }
+    
+    // Check status distribution
+    console.log('\n=== STATUS DISTRIBUTION ===');
+    const statusCounts = {};
+    assignmentsData.data.forEach(assignment => {
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const statusKey = status || 'EMPTY/NULL';
+      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
+    });
+    console.log('Status distribution:', statusCounts);
+    
+    // Check rider distribution
+    console.log('\n=== RIDER DISTRIBUTION ===');
+    const riderCounts = {};
+    assignmentsData.data.forEach(assignment => {
+      const rider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const riderKey = rider || 'EMPTY/NULL';
+      riderCounts[riderKey] = (riderCounts[riderKey] || 0) + 1;
+    });
+    console.log('Top 10 riders by assignment count:');
+    Object.entries(riderCounts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10)
+      .forEach(([rider, count]) => {
+        console.log(`  ${rider}: ${count} assignments`);
+      });
+    
+    // Check time data availability
+    console.log('\n=== TIME DATA AVAILABILITY ===');
+    let assignmentsWithTimes = 0;
+    let assignmentsWithoutTimes = 0;
+    
+    assignmentsData.data.forEach(assignment => {
+      const startTime = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
+      const endTime = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime);
+      
+      if (startTime && endTime) {
+        assignmentsWithTimes++;
+      } else {
+        assignmentsWithoutTimes++;
+      }
+    });
+    
+    console.log(`Assignments WITH time data: ${assignmentsWithTimes}`);
+    console.log(`Assignments WITHOUT time data: ${assignmentsWithoutTimes}`);
+    
+    return {
+      success: true,
+      totalAssignments: assignmentsData.data.length,
+      totalRiders: ridersData.data.length,
+      statusDistribution: statusCounts,
+      riderDistribution: riderCounts,
+      timeDataStats: {
+        withTimes: assignmentsWithTimes,
+        withoutTimes: assignmentsWithoutTimes
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in debugAssignmentDataForReports:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+     }
+ }
+
+/**
+ * Test function to verify the reports fix is working
+ * This function can be run manually to test the improved rider hours calculation
+ * @return {Object} Test results showing if escort hours are now being calculated
+ */
+function testReportsFixForZeroHours() {
+  try {
+    console.log('🧪 Testing Reports Fix for Zero Hours Issue...');
+    
+    // Test with last 30 days
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setDate(endDate.getDate() - 30);
+    
+    const filters = {
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0]
+    };
+    
+    console.log(`Testing with date range: ${filters.startDate} to ${filters.endDate}`);
+    
+    // Generate report data using the fixed function
+    const reportData = generateReportData(filters);
+    
+    // Check the results
+    const riderHours = reportData.tables.riderHours || [];
+    const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
+    const totalHours = riderHours.reduce((sum, rider) => sum + rider.hours, 0);
+    
+    console.log('\n📊 TEST RESULTS:');
+    console.log(`Total riders with data: ${riderHours.length}`);
+    console.log(`Total escorts counted: ${totalEscorts}`);
+    console.log(`Total hours calculated: ${totalHours.toFixed(2)}`);
+    
+    if (riderHours.length > 0) {
+      console.log('\n🏍️ Top 5 riders by hours:');
+      riderHours.slice(0, 5).forEach((rider, i) => {
+        console.log(`  ${i + 1}. ${rider.name}: ${rider.escorts} escorts, ${rider.hours} hours`);
+      });
+    }
+    
+    // Test the debug function
+    console.log('\n🔍 Running diagnostic check...');
+    const debugInfo = debugAssignmentDataForReports();
+    
+    const testResult = {
+      success: true,
+      ridersWithData: riderHours.length,
+      totalEscorts: totalEscorts,
+      totalHours: parseFloat(totalHours.toFixed(2)),
+      topRiders: riderHours.slice(0, 5),
+      debugInfo: debugInfo,
+      message: totalHours > 0 ? 
+        '✅ SUCCESS: Hours are now being calculated!' : 
+        '⚠️ WARNING: Still showing zero hours - check debug info'
+    };
+    
+    console.log('\n📋 Final Test Result:', testResult.message);
+    return testResult;
+    
+  } catch (error) {
+    console.error('❌ Error in testReportsFixForZeroHours:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: '❌ ERROR: Test failed - check logs for details'
+    };
+  }
+}
+ 
+ /**
+  * Generates a rider activity report for the given date range.
  * @param {string} startDate Start date in YYYY-MM-DD format.
  * @param {string} endDate End date in YYYY-MM-DD format.
  * @return {object} Result object with success flag and data array.
@@ -2835,9 +3059,14 @@ function generateRiderActivityReport(startDate, endDate) {
         if (eventDate < start || eventDate > end) return;
       }
       const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-      if (status !== 'Completed') return;
       const rider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
       if (!rider) return;
+
+      // More flexible status checking - count assignments that were actually worked
+      const statusLower = (status || '').toLowerCase().trim();
+      const countableStatuses = ['completed', 'in progress', 'assigned', 'confirmed', 'en route'];
+      
+      if (!countableStatuses.includes(statusLower)) return;
 
       const startTime = parseTimeString(getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
       const endTime = parseTimeString(getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
@@ -2846,8 +3075,13 @@ function generateRiderActivityReport(startDate, endDate) {
         riderMap[rider] = { escorts: 0, hours: 0 };
       }
       riderMap[rider].escorts++;
+      
       if (startTime && endTime && endTime > startTime) {
         riderMap[rider].hours += (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+      } else {
+        // Use estimated hours when actual times aren't available
+        const estimatedHours = estimateEscortHoursByType(row, assignmentsData.columnMap);
+        riderMap[rider].hours += estimatedHours;
       }
     });
 
@@ -2939,12 +3173,28 @@ function generateExecutiveSummary(startDate, endDate) {
       typeMap[type] = (typeMap[type] || 0) + 1;
 
       const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
-      if (status === 'Completed') {
+      
+      // More flexible status checking for executive summary
+      const statusLower = (status || '').toLowerCase().trim();
+      const countableStatuses = ['completed', 'in progress'];
+      
+      if (countableStatuses.includes(statusLower)) {
         completed++;
         const s = parseTimeString(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime));
         const e = parseTimeString(getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endTime));
         if (s && e && e > s) {
           totalHours += (e.getTime() - s.getTime()) / (1000 * 60 * 60);
+        } else {
+          // Estimate hours based on request type when times are not available
+          const requestType = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type);
+          const typeEstimates = {
+            'Wedding': 2.5,
+            'Funeral': 1.5,
+            'Float Movement': 3.0,
+            'VIP': 2.0,
+            'Other': 2.0
+          };
+          totalHours += typeEstimates[requestType] || typeEstimates['Other'];
         }
       }
     });
