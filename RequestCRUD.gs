@@ -446,6 +446,22 @@ function updateExistingRequest(requestData) {
       clearRequestsCache();
     }
 
+    // Check if request status was changed to "Completed" and record actual completion times
+    if (requestData.status && requestData.status.toLowerCase() === 'completed') {
+      try {
+        console.log(`🕒 Request marked as completed - recording actual completion times for ${requestData.requestId}`);
+        const completionResult = recordActualCompletionTimes(requestData.requestId);
+        if (completionResult.success) {
+          console.log(`✅ ${completionResult.message}`);
+        } else {
+          console.warn(`⚠️ ${completionResult.message}`);
+        }
+      } catch (completionError) {
+        console.error(`❌ Error recording completion times for ${requestData.requestId}:`, completionError);
+        // Don't fail the whole update if completion recording fails
+      }
+    }
+
     // Log the successful update
     logActivity(`Request updated: ${requestData.requestId} - Updated ${updates.length} fields`);
     
@@ -474,6 +490,442 @@ function updateExistingRequest(requestData) {
       success: false, 
       message: 'Error updating request: ' + error.message,
       requestId: requestData.requestId || 'unknown'
+    };
+  }
+}
+
+/**
+ * Automatically records actual completion times for all assignments when a request is marked as completed
+ * @param {string} requestId - The ID of the completed request
+ * @return {Object} Result indicating success/failure and details
+ */
+function recordActualCompletionTimes(requestId) {
+  try {
+    console.log(`📋 Recording actual completion times for request ${requestId}...`);
+    
+    if (!requestId) {
+      throw new Error('Request ID is required');
+    }
+    
+    // Get all assignments for this request
+    const assignmentsData = getAssignmentsData(false); // Don't use cache
+    if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
+      throw new Error('No assignments data found');
+    }
+    
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+    if (!assignmentsSheet) {
+      throw new Error('Assignments sheet not found');
+    }
+    
+    const columnMap = assignmentsData.columnMap;
+    const relatedAssignments = [];
+    
+    // Find all assignments for this request
+    assignmentsData.data.forEach((assignment, index) => {
+      const assignmentRequestId = getColumnValue(assignment, columnMap, CONFIG.columns.assignments.requestId);
+      if (String(assignmentRequestId).trim() === String(requestId).trim()) {
+        relatedAssignments.push({
+          data: assignment,
+          rowIndex: index + 2 // +2 because data array is 0-based and sheet is 1-based with header
+        });
+      }
+    });
+    
+    if (relatedAssignments.length === 0) {
+      return {
+        success: false,
+        message: `No assignments found for request ${requestId}`
+      };
+    }
+    
+    console.log(`Found ${relatedAssignments.length} assignments for request ${requestId}`);
+    
+    // Get the original request data to calculate duration
+    const requestsData = getRequestsData(false);
+    const request = requestsData.data.find(r => 
+      getColumnValue(r, requestsData.columnMap, CONFIG.columns.requests.id) === requestId
+    );
+    
+    if (!request) {
+      throw new Error(`Request ${requestId} not found`);
+    }
+    
+    const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+    const originalStartTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+    const originalEndTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+    
+    // Calculate completion time and duration
+    const completionTime = new Date();
+    let actualDuration = calculateActualDuration(requestType, originalStartTime, originalEndTime);
+    
+    console.log(`Request type: ${requestType}, Calculated duration: ${actualDuration} hours`);
+    
+    // Update all related assignments
+    const updateResults = [];
+    
+    for (const assignmentInfo of relatedAssignments) {
+      try {
+        const assignment = assignmentInfo.data;
+        const rowIndex = assignmentInfo.rowIndex;
+        const riderName = getColumnValue(assignment, columnMap, CONFIG.columns.assignments.riderName);
+        
+        // Calculate actual start and end times based on original request times
+        let actualStartTime = originalStartTime;
+        let actualEndTime = new Date(completionTime.getTime()); // Use current completion time as end
+        
+        // If we have original times, adjust the end time based on duration
+        if (originalStartTime && parseTimeString(originalStartTime)) {
+          const startTime = parseTimeString(originalStartTime);
+          actualEndTime = new Date(startTime.getTime() + (actualDuration * 60 * 60 * 1000));
+        }
+        
+        // Prepare updates for this assignment
+        const updates = [];
+        
+        // Update status to Completed
+        if (columnMap.hasOwnProperty(CONFIG.columns.assignments.status)) {
+          const statusColumn = columnMap[CONFIG.columns.assignments.status] + 1;
+          updates.push({ column: statusColumn, value: 'Completed' });
+        }
+        
+        // Update completed date
+        if (columnMap.hasOwnProperty(CONFIG.columns.assignments.completedDate)) {
+          const completedDateColumn = columnMap[CONFIG.columns.assignments.completedDate] + 1;
+          updates.push({ column: completedDateColumn, value: completionTime });
+        }
+        
+        // Update actual start time
+        if (columnMap.hasOwnProperty(CONFIG.columns.assignments.actualStartTime) && actualStartTime) {
+          const actualStartColumn = columnMap[CONFIG.columns.assignments.actualStartTime] + 1;
+          updates.push({ column: actualStartColumn, value: actualStartTime });
+        }
+        
+        // Update actual end time
+        if (columnMap.hasOwnProperty(CONFIG.columns.assignments.actualEndTime) && actualEndTime) {
+          const actualEndColumn = columnMap[CONFIG.columns.assignments.actualEndTime] + 1;
+          updates.push({ column: actualEndColumn, value: actualEndTime });
+        }
+        
+        // Update actual duration
+        if (columnMap.hasOwnProperty(CONFIG.columns.assignments.actualDuration)) {
+          const actualDurationColumn = columnMap[CONFIG.columns.assignments.actualDuration] + 1;
+          updates.push({ column: actualDurationColumn, value: actualDuration });
+        }
+        
+        // Apply all updates for this assignment
+        for (const update of updates) {
+          try {
+            assignmentsSheet.getRange(rowIndex, update.column).setValue(update.value);
+          } catch (cellError) {
+            console.error(`Error updating column ${update.column} for assignment:`, cellError);
+          }
+        }
+        
+        updateResults.push({
+          rider: riderName,
+          success: true,
+          duration: actualDuration,
+          updatedFields: updates.length
+        });
+        
+        console.log(`✅ Updated assignment for ${riderName}: ${actualDuration} hours`);
+        
+      } catch (assignmentError) {
+        console.error(`Error updating assignment at row ${assignmentInfo.rowIndex}:`, assignmentError);
+        updateResults.push({
+          rider: 'Unknown',
+          success: false,
+          error: assignmentError.message
+        });
+      }
+    }
+    
+    // Flush all changes
+    SpreadsheetApp.flush();
+    
+    // Clear assignments cache
+    if (typeof clearDataCache === 'function') {
+      clearDataCache();
+    }
+    
+    const successCount = updateResults.filter(r => r.success).length;
+    const failCount = updateResults.filter(r => !r.success).length;
+    
+    return {
+      success: true,
+      message: `Recorded completion times for ${successCount} assignment(s) (${failCount} failed)`,
+      requestId: requestId,
+      assignmentsUpdated: successCount,
+      assignmentsFailed: failCount,
+      duration: actualDuration,
+      requestType: requestType,
+      details: updateResults
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error recording completion times for ${requestId}:`, error);
+    return {
+      success: false,
+      message: `Failed to record completion times: ${error.message}`,
+      requestId: requestId,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Calculates actual duration based on request type and original times
+ * @param {string} requestType - Type of the request (Wedding, Funeral, etc.)
+ * @param {string|Date} originalStartTime - Original start time from request
+ * @param {string|Date} originalEndTime - Original end time from request
+ * @return {number} Duration in decimal hours
+ */
+function calculateActualDuration(requestType, originalStartTime, originalEndTime) {
+  // Realistic duration estimates based on request type
+  const typeDurations = {
+    'Funeral': 0.5,
+    'Wedding': 2.5,
+    'VIP': 4.0,
+    'Float Movement': 4.0,
+    'Other': 2.0
+  };
+  
+  // Try to use original request duration if available and reasonable
+  if (originalStartTime && originalEndTime) {
+    try {
+      const start = parseTimeString(originalStartTime);
+      const end = parseTimeString(originalEndTime);
+      
+      if (start && end && end > start) {
+        const calculatedDuration = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        
+        // Use calculated duration if it's reasonable (between 0.25 and 12 hours)
+        if (calculatedDuration >= 0.25 && calculatedDuration <= 12) {
+          console.log(`Using calculated duration from original times: ${calculatedDuration} hours`);
+          return Math.round(calculatedDuration * 100) / 100; // Round to 2 decimal places
+        }
+      }
+    } catch (error) {
+      console.warn('Error calculating duration from original times:', error);
+    }
+  }
+  
+  // Fall back to type-based estimate
+  const estimatedDuration = typeDurations[requestType] || typeDurations['Other'];
+  console.log(`Using type-based duration estimate for ${requestType}: ${estimatedDuration} hours`);
+  return estimatedDuration;
+}
+
+/**
+ * Manual function to record completion times for a specific request
+ * Useful for backfilling completion data for historical requests
+ * @param {string} requestId - The ID of the request to mark as completed
+ * @param {number} [customDuration] - Optional custom duration in hours (overrides calculation)
+ * @return {Object} Result of the completion recording
+ */
+function manuallyRecordCompletion(requestId, customDuration = null) {
+  try {
+    console.log(`🔧 Manually recording completion for request ${requestId}`);
+    
+    if (!requestId) {
+      throw new Error('Request ID is required');
+    }
+    
+    // First, update the request status to Completed if it's not already
+    const requestsData = getRequestsData(false);
+    const request = requestsData.data.find(r => 
+      getColumnValue(r, requestsData.columnMap, CONFIG.columns.requests.id) === requestId
+    );
+    
+    if (!request) {
+      throw new Error(`Request ${requestId} not found`);
+    }
+    
+    const currentStatus = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+    
+    if (currentStatus && currentStatus.toLowerCase() !== 'completed') {
+      console.log(`Updating request ${requestId} status to Completed`);
+      const updateResult = updateExistingRequest({
+        requestId: requestId,
+        status: 'Completed'
+      });
+      
+      if (!updateResult.success) {
+        throw new Error(`Failed to update request status: ${updateResult.message}`);
+      }
+    }
+    
+    // If custom duration is provided, temporarily override the calculation
+    if (customDuration !== null) {
+      console.log(`Using custom duration: ${customDuration} hours`);
+      
+      // Get all assignments for this request and update them with custom duration
+      const assignmentsData = getAssignmentsData(false);
+      const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+      const columnMap = assignmentsData.columnMap;
+      
+      let updatedCount = 0;
+      
+      assignmentsData.data.forEach((assignment, index) => {
+        const assignmentRequestId = getColumnValue(assignment, columnMap, CONFIG.columns.assignments.requestId);
+        if (String(assignmentRequestId).trim() === String(requestId).trim()) {
+          const rowIndex = index + 2; // +2 for header and 0-based index
+          
+          // Update status, completed date, and duration
+          if (columnMap.hasOwnProperty(CONFIG.columns.assignments.status)) {
+            const statusColumn = columnMap[CONFIG.columns.assignments.status] + 1;
+            assignmentsSheet.getRange(rowIndex, statusColumn).setValue('Completed');
+          }
+          
+          if (columnMap.hasOwnProperty(CONFIG.columns.assignments.completedDate)) {
+            const completedDateColumn = columnMap[CONFIG.columns.assignments.completedDate] + 1;
+            assignmentsSheet.getRange(rowIndex, completedDateColumn).setValue(new Date());
+          }
+          
+          if (columnMap.hasOwnProperty(CONFIG.columns.assignments.actualDuration)) {
+            const actualDurationColumn = columnMap[CONFIG.columns.assignments.actualDuration] + 1;
+            assignmentsSheet.getRange(rowIndex, actualDurationColumn).setValue(customDuration);
+          }
+          
+          updatedCount++;
+        }
+      });
+      
+      SpreadsheetApp.flush();
+      
+      return {
+        success: true,
+        message: `Manually recorded completion for ${updatedCount} assignment(s) with ${customDuration} hours`,
+        requestId: requestId,
+        assignmentsUpdated: updatedCount,
+        duration: customDuration,
+        method: 'manual'
+      };
+    } else {
+      // Use automatic recording
+      return recordActualCompletionTimes(requestId);
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error in manuallyRecordCompletion:`, error);
+    return {
+      success: false,
+      message: `Failed to manually record completion: ${error.message}`,
+      requestId: requestId,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Test function to verify automatic completion time recording
+ * @param {string} testRequestId - Optional specific request ID to test with
+ * @return {Object} Test results
+ */
+function testAutomaticCompletionRecording(testRequestId = null) {
+  try {
+    console.log('🧪 Testing automatic completion time recording...');
+    
+    let requestId = testRequestId;
+    
+    // If no specific request ID provided, find a suitable test request
+    if (!requestId) {
+      const requestsData = getRequestsData();
+      const testableRequests = requestsData.data.filter(r => {
+        const status = getColumnValue(r, requestsData.columnMap, CONFIG.columns.requests.status);
+        return status && status.toLowerCase() !== 'completed' && status.toLowerCase() !== 'cancelled';
+      });
+      
+      if (testableRequests.length === 0) {
+        return {
+          success: false,
+          message: 'No testable requests found. All requests are either completed or cancelled.',
+          suggestion: 'Create a new test request or provide a specific request ID'
+        };
+      }
+      
+      requestId = getColumnValue(testableRequests[0], requestsData.columnMap, CONFIG.columns.requests.id);
+      console.log(`Using test request: ${requestId}`);
+    }
+    
+    // Check assignments before completion
+    const assignmentsData = getAssignmentsData();
+    const relatedAssignments = assignmentsData.data.filter(a => {
+      const assignmentRequestId = getColumnValue(a, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+      return String(assignmentRequestId).trim() === String(requestId).trim();
+    });
+    
+    console.log(`Found ${relatedAssignments.length} assignments for test request ${requestId}`);
+    
+    if (relatedAssignments.length === 0) {
+      return {
+        success: false,
+        message: `No assignments found for request ${requestId}`,
+        requestId: requestId
+      };
+    }
+    
+    // Simulate marking the request as completed
+    console.log(`Marking request ${requestId} as completed...`);
+    const updateResult = updateExistingRequest({
+      requestId: requestId,
+      status: 'Completed'
+    });
+    
+    if (!updateResult.success) {
+      throw new Error(`Failed to update request: ${updateResult.message}`);
+    }
+    
+    // Check if completion times were recorded
+    console.log('Checking if completion times were recorded...');
+    const updatedAssignmentsData = getAssignmentsData(false); // Fresh data
+    const updatedAssignments = updatedAssignmentsData.data.filter(a => {
+      const assignmentRequestId = getColumnValue(a, updatedAssignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+      return String(assignmentRequestId).trim() === String(requestId).trim();
+    });
+    
+    let recordedCompletions = 0;
+    let totalDuration = 0;
+    
+    updatedAssignments.forEach(assignment => {
+      const status = getColumnValue(assignment, updatedAssignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const actualDuration = getColumnValue(assignment, updatedAssignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
+      const completedDate = getColumnValue(assignment, updatedAssignmentsData.columnMap, CONFIG.columns.assignments.completedDate);
+      
+      if (status === 'Completed' && (actualDuration || completedDate)) {
+        recordedCompletions++;
+        if (actualDuration && !isNaN(parseFloat(actualDuration))) {
+          totalDuration += parseFloat(actualDuration);
+        }
+      }
+    });
+    
+    const testResult = {
+      success: true,
+      requestId: requestId,
+      totalAssignments: relatedAssignments.length,
+      recordedCompletions: recordedCompletions,
+      totalDuration: totalDuration,
+      message: recordedCompletions > 0 ? 
+        `✅ SUCCESS: Automatic completion recording worked! ${recordedCompletions}/${relatedAssignments.length} assignments updated with ${totalDuration} total hours` :
+        '⚠️ WARNING: Request was marked completed but completion times were not recorded automatically',
+      details: {
+        automaticRecording: recordedCompletions > 0,
+        completionRate: Math.round((recordedCompletions / relatedAssignments.length) * 100)
+      }
+    };
+    
+    console.log('📋 Test Result:', testResult.message);
+    return testResult;
+    
+  } catch (error) {
+    console.error('❌ Error in testAutomaticCompletionRecording:', error);
+    return {
+      success: false,
+      message: `Test failed: ${error.message}`,
+      requestId: testRequestId,
+      error: error.message
     };
   }
 }
