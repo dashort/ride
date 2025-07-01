@@ -103,6 +103,9 @@ const CONFIG = {
       smsSent: 'SMS Sent',
       emailSent: 'Email Sent',
       completedDate: 'Completed Date',
+      actualStartTime: 'Actual Start Time',
+      actualEndTime: 'Actual End Time',
+      actualDuration: 'Actual Duration (Hours)',
       calendarEventId: 'Calendar Event ID',
       notes: 'Notes'
     },
