@@ -18,7 +18,8 @@
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/script.webapp.deploy"
+    "https://www.googleapis.com/auth/script.webapp.deploy",
+    "https://www.googleapis.com/auth/calendar"
   ],
   "webapp": {
     "executeAs": "USER_DEPLOYING",
