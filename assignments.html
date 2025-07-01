@@ -656,7 +656,7 @@
 
     /**
      * Loads all necessary data for the assignments page by calling the consolidated
-     * server-side function `getAssignmentsPageData`.
+     * server-side function `getPageDataForAssignments`.
      * Passes a requestId from URL parameters if present.
      * @return {void}
      */
@@ -669,7 +669,7 @@
             google.script.run
                 .withSuccessHandler(handleAssignmentsDataSuccess)
                 .withFailureHandler(handleAssignmentsDataFailure)
-                .getAssignmentsPageData(requestIdToLoad);
+                .getPageDataForAssignments(requestIdToLoad);
         } else {
             console.log('⚠️ Google Apps Script not available for assignments page.');
             handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
@@ -1652,67 +1652,35 @@ function updateAssignmentOrder() {
      * @return {void}
      */
     function fetchRiderAvailabilityForRequest() {
-        if (!selectedRequest || !activeRiders || activeRiders.length === 0) {
-            riderAvailability = {}; // Clear previous availability
-            updateRidersGridWithAvailability(); // Update UI to show all as potentially available or loading
+        if (!selectedRequest) return;
+
+        riderAvailability = {};
+        remainingAvailabilityCallbacks = activeRiders.length;
+        if (remainingAvailabilityCallbacks === 0) {
             updateAssignmentOrder();
             return;
         }
 
-        console.log('📞 Fetching bulk rider availability...');
-        const riderNames = activeRiders.map(r => r.name);
-
-        // Initialize all to a 'loading' or 'unknown' state visually if desired
-        riderAvailability = {}; // Clear previous
-        activeRiders.forEach(r => { riderAvailability[r.name] = "Checking..."; });
-        updateRidersGridWithAvailability();
-
-
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(bulkResults) {
-                    console.log('✅ Bulk availability results received:', bulkResults);
-                    // Update riderAvailability map with actual results
-                    for (const riderName in bulkResults) {
-                        if (bulkResults.hasOwnProperty(riderName)) {
-                            riderAvailability[riderName] = bulkResults[riderName] ? 'Available' : 'Unavailable';
-                        }
-                    }
-                    // Fill in any missing riders as 'Available' (or handle as error/unknown)
-                    activeRiders.forEach(r => {
-                        if (!riderAvailability.hasOwnProperty(r.name)) {
-                            riderAvailability[r.name] = 'Available'; // Default if not in results
-                        }
-                    });
-                    updateRidersGridWithAvailability();
-                    updateAssignmentOrder();
-                })
-                .withFailureHandler(function(err) {
-                    console.error('Bulk availability check failed:', err);
-                    // On failure, mark all as 'Error' or 'Available' to allow selection
-                    activeRiders.forEach(r => { riderAvailability[r.name] = 'Error'; });
-                    updateRidersGridWithAvailability();
-                    updateAssignmentOrder();
-                    showError("Could not fetch rider availability: " + err.message);
-                })
-                .getBulkRiderAvailability(riderNames, selectedRequest.eventDate, selectedRequest.startTime);
-        } else {
-            console.warn("google.script.run not available for bulk availability check.");
-            // Fallback: mark all as available or show error
-            activeRiders.forEach(r => { riderAvailability[r.name] = 'Available (Offline)'; });
-            updateRidersGridWithAvailability();
-            updateAssignmentOrder();
-        }
-    }
-
-    /**
-     * Updates the entire rider grid based on the current riderAvailability map.
-     */
-    function updateRidersGridWithAvailability() {
-        var ridersGrid = document.getElementById('ridersGrid');
-        if (ridersGrid) {
-            ridersGrid.innerHTML = renderRidersGrid(); // renderRidersGrid should use global riderAvailability
-        }
+        activeRiders.forEach(function(rider) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(available) {
+                        riderAvailability[rider.name] = available ? 'Available' : 'Unavailable';
+                        updateSingleRiderAvailability(rider.name);
+                        remainingAvailabilityCallbacks--;
+                        if (remainingAvailabilityCallbacks === 0) updateAssignmentOrder();
+                    })
+                    .withFailureHandler(function(err) {
+                        console.error('Availability check failed for', rider.name, err);
+                        remainingAvailabilityCallbacks--;
+                        if (remainingAvailabilityCallbacks === 0) updateAssignmentOrder();
+                    })
+                    .isRiderAvailable(rider.name, selectedRequest.eventDate, selectedRequest.startTime);
+            } else {
+                remainingAvailabilityCallbacks--;
+                if (remainingAvailabilityCallbacks === 0) updateAssignmentOrder();
+            }
+        });
     }
 
     /**

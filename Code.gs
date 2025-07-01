@@ -32,7 +32,6 @@ function traceAuthFunction(functionName, email, source) {
  * Enhanced getCurrentUser with tracing
  * REPLACE your getCurrentUser function in CoreUtils.gs with this version
  */
-/*
 function getCurrentUser() {
   try {
     console.log('🔍 getCurrentUser called from CoreUtils.gs');
@@ -66,7 +65,6 @@ function getCurrentUser() {
     return { email: 'anonymous@example.com', name: 'Guest User', roles: ['guest'], permissions: ['view'] };
   }
 }
-*/
 /**
  * Comprehensive Settings sheet diagnostic
  * Add this to your Code.gs and run it to see what's in your Settings sheet
@@ -190,7 +188,6 @@ function diagnoseSettingsSheet() {
  * Fixed getAdminUsers function that works regardless of CONFIG
  * REPLACE your getAdminUsers function in Code.gs with this version
  */
-/*
 function getAdminUsers() {
   console.log('🔍 getAdminUsers called...');
   
@@ -245,12 +242,10 @@ function getAdminUsers() {
     // Add your admin emails here
   ];
 }
-*/
 /**
  * Fix the Settings sheet structure to have clean email data
  * Run this function to restructure your Settings sheet properly
  */
-/*
 function fixSettingsSheetStructure() {
   console.log('🛠️ Fixing Settings sheet structure...');
   
@@ -328,7 +323,6 @@ function fixSettingsSheetStructure() {
  * Robust admin email reading function that handles mixed data types
  * REPLACE your getAdminUsers function with this version
  */
-/*
 function getAdminUsers() {
   console.log('🔍 getAdminUsers called (robust version)...');
   
@@ -386,11 +380,10 @@ function getAdminUsers() {
     'manager@example.com'
   ];
 }
-*/
+
 /**
  * Robust dispatcher email reading function
  */
-/*
 function getDispatcherUsers() {
   console.log('🔍 getDispatcherUsers called (robust version)...');
   
@@ -440,7 +433,7 @@ function getDispatcherUsers() {
     'jpdispatcher100@gmail.com'
   ];
 }
-*/
+
 /**
  * Test admin email reading after fix
  */
@@ -988,7 +981,6 @@ function testNavigationUrls() {
 /**
  * Robust getNavigationHtml function
  */
-/*
 function getNavigationHtml(currentPage = '') {
   try {
     console.log('getNavigationHtml: Called for page: ' + currentPage); // Added
@@ -1047,7 +1039,7 @@ function getNavigationHtml(currentPage = '') {
     </nav>`;
   }
 }
-*/
+
 // ISSUE 4: Test the complete flow
 /**
  * Complete navigation flow test
@@ -1413,7 +1405,7 @@ TESTING CHECKLIST:
 /**
  * Test the force injection approach
  */
-/* function testForceInjection() {
+function testForceInjection() {
   try {
     console.log('=== TESTING FORCE INJECTION ===');
     
@@ -1439,7 +1431,7 @@ TESTING CHECKLIST:
     console.error('Force injection test failed:', error);
     return { success: false, error: error.message };
   }
-} */
+}
 
 
 
@@ -1511,97 +1503,63 @@ function _onEdit(e) {
     return;
   }
 
-  // Clear relevant caches based on the edited sheet.
-  const scriptCache = CacheService.getScriptCache();
-  const dashboardCacheKeys = [
-    'dashboard_stats_cache',
-    'dashboard_recent_requests_cache',
-    'dashboard_upcoming_assignments_cache',
-    'dashboard_notifications_cache'
-  ];
+  // Clear relevant caches when the underlying data changes.
+  if (['Requests', 'Assignments', 'Riders'].includes(sheetName)) {
+    clearRequestsCache();
+    clearDashboardCache();
 
-  switch (sheetName) {
-    case CONFIG.sheets.requests:
-      console.log(`_onEdit: Requests sheet edited. Clearing relevant caches.`);
-      dataCache.clear('sheet_' + CONFIG.sheets.requests);
-      // Clear all dashboard related scriptCache items as they depend on requests
-      scriptCache.removeAll(dashboardCacheKeys);
-      logActivity(`Caches cleared for Requests sheet and dashboard components due to edit on ${sheetName}`);
-
-      if (row > 1) { // Not header row - For Request ID generation
+    // Specific actions only for Requests sheet
+    if (sheetName === CONFIG.sheets.requests) {
+      if (row > 1) { // Not header row
+        // Generation of Request ID (in column A).
+        // This is necessary because onEditRequestsSheet is called within _onEdit now.
+        // It needs to be inside a conditional to only trigger if the ID is missing.
         const requestIdCell = sheet.getRange(row, 1);
         requestIdCell.setNumberFormat('@'); // Force plain text format
         let requestId = requestIdCell.getValue();
+
         if (!requestId || typeof requestId !== 'string' || !requestId.match(/^[A-L]-\d{2}-\d{2}$/)) {
-          const newId = generateRequestId(sheet); // generateRequestId should be robust
+          const newId = generateRequestId(sheet);
           requestIdCell.setValue(newId);
-          logActivity(`Generated new Request ID: ${newId} for row ${row} in ${sheetName}`);
+          logActivity(`Generated new Request ID: ${newId} for row ${row}`);
+          // A break is needed here to prevent immediate re-triggering, or simply let the next `onEdit` catch it.
+          // For simplicity and efficiency, let's allow onEditRequestsSheet handle post-ID-generation logic.
         }
       }
       onEditRequestsSheet(e); // Route to specialized handler for Requests sheet
-      return; // Exit after handling
+      return;
+    }
+  }
 
-    case CONFIG.sheets.assignments:
-      console.log(`_onEdit: Assignments sheet edited. Clearing relevant caches.`);
-      dataCache.clear('sheet_' + CONFIG.sheets.assignments);
-      scriptCache.removeAll(dashboardCacheKeys); // Dashboard stats depend on assignments
-      logActivity(`Caches cleared for Assignments sheet and dashboard components due to edit on ${sheetName}`);
-      // Add any specific onEdit logic for Assignments sheet if needed here
-      return; // Exit after handling
+  // Handle Dashboard sheet edits.
+  if (sheetName === CONFIG.sheets.dashboard) {
+    console.log('_onEdit: Routing to dashboard logic');
 
-    case CONFIG.sheets.riders:
-      console.log(`_onEdit: Riders sheet edited. Clearing relevant caches.`);
-      dataCache.clear('sheet_' + CONFIG.sheets.riders);
-      scriptCache.removeAll(dashboardCacheKeys); // Dashboard stats depend on riders
-      dataCache.clear('assignment_rotation_order'); // Assignment rotation depends on riders
-      logActivity(`Caches cleared for Riders sheet, dashboard components, and assignment_rotation_order due to edit on ${sheetName}`);
-      // Add any specific onEdit logic for Riders sheet if needed here
-      return; // Exit after handling
-
-    case CONFIG.sheets.settings:
-      console.log(`_onEdit: Settings sheet edited. Clearing relevant caches.`);
-      dataCache.clear('sheet_' + CONFIG.sheets.settings);
-      scriptCache.removeAll(['admin_users_cache', 'dispatcher_users_cache']); // Clear specific user role caches
-      // Potentially clear all dashboard caches if settings affect roles broadly
-      scriptCache.removeAll(dashboardCacheKeys);
-      logActivity(`Caches cleared for Settings sheet, user roles, and dashboard components due to edit on ${sheetName}`);
-      return; // Exit after handling
-
-    case CONFIG.sheets.dashboard:
-      console.log('_onEdit: Dashboard sheet edited.');
-      // Handle filter dropdown changes (cell B9).
-      if (cellA1 === CONFIG.dashboard.filterCell) {
-        console.log(`_onEdit: Filter cell changed to "${range.getValue()}", refreshing dashboard.`);
-        // Refreshing dashboard might use cached data, but the intention here is to show fresh view based on new filter.
-        // The underlying data caches (requests, assignments, riders) would have been cleared if their sheets were edited.
-        const lock = LockService.getScriptLock();
-        if (lock.tryLock(10000)) {
-          try {
-            // refreshDashboard(true); // Force update dashboard - this function would need to be intelligent
-                                    // or we ensure 'dashboard_stats' is up-to-date.
-                                    // For now, we assume this function will fetch what it needs, respecting other caches.
-            dataCache.clear('dashboard_stats'); // Clear specific dashboard stats cache before refresh
-            logActivity('Dashboard stats cache cleared due to filter change.');
-            // Consider if refreshDashboard itself should manage its specific cache or rely on this.
-          } catch (err) {
-            logError('Error during dashboard refresh on filter change', err);
-          } finally {
-            lock.releaseLock();
-          }
+    // Handle filter dropdown changes (cell B9).
+    if (cellA1 === CONFIG.dashboard.filterCell) {
+      console.log(`_onEdit: Filter cell changed to "${range.getValue()}", refreshing dashboard.`);
+      const lock = LockService.getScriptLock();
+      if (lock.tryLock(10000)) { // Attempt to acquire lock for 10 seconds.
+        try {
+          refreshDashboard(true); // Force update dashboard
+        } catch (err) {
+          logError('Error refreshing dashboard on filter change', err);
+        } finally {
+          lock.releaseLock();
         }
       }
-      // Handle notification column actions (column K - 11th column).
-      const requestsDisplayStartRow = CONFIG.dashboard.requestsDisplayStartRow; // Ensure this is defined in CONFIG
-      if (CONFIG.dashboard && col === 11 && row >= requestsDisplayStartRow) { // Check CONFIG.dashboard exists
-        console.log(`_onEdit: Notification action selected at row ${row}`);
-        handleEnhancedNotificationAction(e, sheet, row); // This function should be efficient
-      }
-      return; // Exit after handling
+      return;
+    }
 
-    default:
-      console.log(`_onEdit: Edit on unmonitored sheet "${sheetName}" or unhandled cell, skipping specific cache clearing.`);
-      break;
+    // Handle notification column actions (column K - 11th column).
+    const requestsDisplayStartRow = CONFIG.dashboard.requestsDisplayStartRow;
+    if (col === 11 && row >= requestsDisplayStartRow) {
+      console.log(`_onEdit: Notification action selected at row ${row}`);
+      handleEnhancedNotificationAction(e, sheet, row);
+      return;
+    }
   }
+  console.log(`_onEdit: Edit on unrelated sheet "${sheetName}" or column, skipping.`);
 }
 
 // =======================
@@ -1619,7 +1577,7 @@ function _onEdit(e) {
  * @param {string} [currentPage=''] The name of the current page (e.g., 'dashboard', 'requests') to set the active link.
  * @return {string} The HTML content of the navigation menu.
  */
-/* function getNavigationHtml(currentPage = '') {
+function getNavigationHtml(currentPage = '') {
   try {
     Logger.log("Base Script URL: " + getWebAppUrl()); // Added for URL context
     let navHtmlFromFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
@@ -1657,7 +1615,7 @@ function _onEdit(e) {
     Logger.log('Error in getNavigationHtml: ' + error.toString());
     return '<!-- Navigation Load Error -->'; // Fallback
   }
-} */
+}
 
 // ===== WEB APP ENTRY POINTS (DO NOT EDIT FUNCTION NAMES)=====
 

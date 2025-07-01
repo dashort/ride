@@ -172,97 +172,6 @@ function getPageDataForDashboard(user) {
 }
 
 /**
- * Internal helper to format recent requests for the dashboard from pre-fetched data.
- * @param {object} requestsData - The raw data object from getRequestsData().
- * @param {object} user - The current user object.
- * @return {Array<object>} An array of formatted recent request objects.
- */
-function formatRecentRequestsForDashboard(requestsData, user) {
-  try {
-    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      return [];
-    }
-    // This uses the more generic getFilteredRequestsForWebApp,
-    // which can be adapted or simplified if only basic formatting is needed here.
-    // For now, we leverage its existing formatting logic.
-    const allFormattedRequests = getFilteredRequestsForWebApp(user, 'All', requestsData);
-
-    // Sort by date (assuming 'date' or 'eventDate' field exists and is parsable)
-    // The getFilteredRequestsForWebApp already sorts by eventDate descending.
-    // We just need to take the top N.
-    return allFormattedRequests.slice(0, 10); // Get top 10 recent
-  } catch (error) {
-    logError('Error in formatRecentRequestsForDashboard', error);
-    return [];
-  }
-}
-
-/**
- * Internal helper to format upcoming assignments for the dashboard from pre-fetched data.
- * @param {object} assignmentsData - The raw data object from getAssignmentsData().
- * @param {object} user - The current user object.
- * @return {Array<object>} An array of formatted upcoming assignment objects.
- */
-function formatUpcomingAssignmentsForDashboard(assignmentsData, user) {
-  try {
-    if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      return [];
-    }
-
-    const columnMap = assignmentsData.columnMap;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const thirtyDaysFromNow = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000));
-
-    const upcoming = assignmentsData.data
-      .filter(row => {
-        const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
-        const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
-        const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
-        const eventDateValue = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
-
-        if (!assignmentId || !riderName || !eventDateValue) return false;
-        if (['Completed', 'Cancelled', 'No Show'].includes(status)) return false;
-
-        const assignmentDate = new Date(eventDateValue);
-        return !isNaN(assignmentDate.getTime()) && assignmentDate >= today && assignmentDate <= thirtyDaysFromNow;
-      })
-      .map(row => {
-        // This mapping logic is similar to getUpcomingAssignmentsForWebApp
-        // It can be extracted into a shared helper if needed.
-        const eventDate = getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate);
-        const startTime = getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime);
-        const startLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation);
-        const endLocation = getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation);
-        let displayLocation = startLocation || 'Location TBD';
-        if (startLocation && endLocation) displayLocation = `${startLocation} → ${endLocation}`;
-        else if (endLocation) displayLocation = `To: ${endLocation}`;
-
-        return {
-          assignmentId: getColumnValue(row, columnMap, CONFIG.columns.assignments.id),
-          requestId: getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId) || 'Unknown',
-          eventDate: formatDateForDisplay(eventDate),
-          startTime: formatTimeForDisplay(startTime),
-          riderName: getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName) || 'Unknown Rider',
-          startLocation: displayLocation, // Use the combined or individual location
-          status: getColumnValue(row, columnMap, CONFIG.columns.assignments.status) || 'Assigned'
-        };
-      })
-      .sort((a, b) => {
-        try {
-          return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
-        } catch (e) { return 0;}
-      })
-      .slice(0, 10); // Limit to 10 for dashboard
-
-    return upcoming;
-  } catch (error) {
-    logError('Error in formatUpcomingAssignmentsForDashboard', error);
-    return [];
-  }
-}
-
-/**
  * Secured requests data with role-based filtering
  */
 function getPageDataForRequests(user, filters = {}) {
@@ -992,72 +901,6 @@ function getActiveRidersForWebApp() {
 }
 
 /**
- * Internal helper to get active riders from pre-fetched raw riders data.
- * @param {object} rawRidersData - The raw data object from getRidersData().
- * @return {Array<object>} An array of active rider objects formatted for the web app.
- */
-function getActiveRidersForWebAppInternal(rawRidersData) {
-  try {
-    console.log('🌐 Getting active riders for web app internally...');
-    if (!rawRidersData || !rawRidersData.data || rawRidersData.data.length === 0) {
-      console.log('❌ No raw riders data provided to internal function');
-      return [];
-    }
-
-    // Use the logic from getActiveRidersForAssignments, as it's already designed for this
-    // and now expects rawRidersData via the getRidersData() call it makes.
-    // To truly use rawRidersData directly, we'd replicate its filtering here.
-    // For now, let's assume getActiveRidersForAssignments can be refactored
-    // or we create a more direct filter here.
-
-    // Direct filtering logic based on getActiveRidersForAssignments:
-    const columnMap = rawRidersData.columnMap;
-    const activeRiders = [];
-    const nameColIndex = columnMap[CONFIG.columns.riders.name];
-    const statusColIndex = columnMap[CONFIG.columns.riders.status];
-    const jpNumberColIndex = columnMap[CONFIG.columns.riders.jpNumber];
-    const phoneColIndex = columnMap[CONFIG.columns.riders.phone];
-    const emailColIndex = columnMap[CONFIG.columns.riders.email];
-    const partTimeColIndex = columnMap[CONFIG.columns.riders.partTime];
-
-
-    for (let i = 0; i < rawRidersData.data.length; i++) {
-      const row = rawRidersData.data[i];
-      const riderName = nameColIndex >= 0 ? row[nameColIndex] : (row[1] || '');
-      const status = statusColIndex >= 0 ? row[statusColIndex] : 'Active'; // Default to Active
-
-      if (!riderName || String(riderName).trim().length === 0) continue;
-
-      const riderStatus = String(status || '').trim().toLowerCase();
-      const isActive = !riderStatus || riderStatus === '' || riderStatus === 'active' || riderStatus === 'available' ||
-                       riderStatus === 'yes' || riderStatus === 'y' || riderStatus === 'true' || riderStatus === '1' ||
-                       !['inactive', 'disabled', 'suspended', 'no', 'false', '0'].includes(riderStatus);
-
-      if (isActive) {
-        activeRiders.push({
-          name: String(riderName).trim(),
-          jpNumber: (jpNumberColIndex >= 0 ? String(row[jpNumberColIndex] || '').trim() : `R${i}`),
-          phone: (phoneColIndex >= 0 ? String(row[phoneColIndex] || '').trim() : '555-0000'),
-          email: (emailColIndex >= 0 ? String(row[emailColIndex] || '').trim() : ''),
-          carrier: 'Unknown', // Carrier info might need another lookup or be in ridersData
-          partTime: (partTimeColIndex >=0 ? String(row[partTimeColIndex] || 'No').trim() : 'No'),
-          status: 'Available' // Standardize status for web app
-        });
-      }
-    }
-
-    console.log(`✅ Returning ${activeRiders.length} active riders from internal function`);
-    return activeRiders;
-
-  } catch (error) {
-    console.error('❌ Error in getActiveRidersForWebAppInternal:', error);
-    logError('Error in getActiveRidersForWebAppInternal', error);
-    return [];
-  }
-}
-
-
-/**
  * Returns riders for the assignments page optionally filtered by active status.
  * When `filterActive` is true, only active riders are returned. Otherwise all
  * riders are provided in the same simplified format used by the web app.
@@ -1596,86 +1439,6 @@ function renderEscortSidebarForWebApp() {
     ).setTitle('Assignment Error').setWidth(400);
   }
 }
-
-/**
- * Internal helper to get assignable requests from pre-fetched raw requests data.
- * @param {object} user The current user object.
- * @param {object} rawRequestsData - The raw data object from getRequestsData().
- * @return {Array<object>} An array of formatted request objects suitable for assignment.
- */
-function getFilteredRequestsForAssignmentsInternal(user, rawRequestsData) {
-  try {
-    console.log('📋 Getting filtered requests for assignments internally...');
-    if (!rawRequestsData || !rawRequestsData.data || rawRequestsData.data.length === 0) {
-      console.log('❌ No raw requests data provided to internal function');
-      return [];
-    }
-    const columnMap = rawRequestsData.columnMap;
-    // console.log('Column map for internal requests:', columnMap); // Already logged by getRequestsData
-
-    const assignableRequests = [];
-    for (let i = 0; i < rawRequestsData.data.length; i++) {
-      try {
-        const row = rawRequestsData.data[i];
-        const requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-        const requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName);
-        const status = getColumnValue(row, columnMap, CONFIG.columns.requests.status);
-        const eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate);
-
-        if (!requestId) {
-          // console.log(`⚠️ Skipping row ${i} in internal filter: Missing Request ID`);
-          continue;
-        }
-        if (!requesterName) {
-          // console.log(`⚠️ Skipping row ${i} in internal filter: Missing requester name for Request ID: ${requestId}`);
-          continue;
-        }
-        if (!['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress'].includes(status)) {
-          continue;
-        }
-        assignableRequests.push({
-          id: requestId, requestId, requesterName, // Ensure 'id' and 'requestId' are present
-          type: getColumnValue(row, columnMap, CONFIG.columns.requests.type) || 'Unknown',
-          eventDate: formatDateForDisplay(eventDate) || 'No Date',
-          startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.startTime)) || 'No Time',
-          endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.endTime)) || '',
-          startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || 'Location TBD',
-          endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
-          ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
-          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
-          status: status || 'New'
-        });
-      } catch (rowError) {
-        console.log(`⚠️ Error processing request row ${i} internally:`, rowError);
-      }
-    }
-    // Sort by event date (most recent first)
-    const sortedRequests = assignableRequests.sort((a, b) => {
-      try {
-        if (a.eventDate === 'No Date' && b.eventDate === 'No Date') return 0;
-        if (a.eventDate === 'No Date') return 1; // Sort 'No Date' to the end
-        if (b.eventDate === 'No Date') return -1;
-
-        // Attempt to parse dates for proper comparison
-        const dateA = new Date(a.eventDate);
-        const dateB = new Date(b.eventDate);
-
-        if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-        if (isNaN(dateA.getTime())) return 1;
-        if (isNaN(dateB.getTime())) return -1;
-
-        return dateB.getTime() - dateA.getTime(); // Most recent first
-      } catch (sortError) { return 0; }
-    });
-    console.log(`✅ Returning ${sortedRequests.length} assignable requests from internal function`);
-    return sortedRequests;
-  } catch (error) {
-    console.error('❌ Error in getFilteredRequestsForAssignmentsInternal:', error);
-    logError('Error in getFilteredRequestsForAssignmentsInternal', error);
-    return [];
-  }
-}
-
 
 /**
  * Gets filtered requests for web app display
@@ -2442,70 +2205,23 @@ function debugAssignmentsPageData() {
  * Fetches all necessary data for the main dashboard (index.html) in a single call.
  * @return {object} An object containing `user`, `stats`, `recentRequests`, and `upcomingAssignments`. Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForDashboard(user) {
+function getPageDataForDashboard(user) { // Added user parameter
   try {
-    console.log('🚀 Loading consolidated dashboard data for user:', user ? user.email : 'Unknown');
-    // const auth = authenticateAndAuthorizeUser(); // Assuming user object is already authenticated and passed
-    // if (!auth.success) {
-    //   return { success: false, error: auth.error || 'UNAUTHORIZED', user: auth.user || { name: 'User', email: '', roles: ['unauthorized'] } };
-    // }
-    // const user = auth.user;
-
-    // Fetch all necessary raw data once
-    // const requestsData = getRequestsData(true); // Use cache - These will be fetched only if derived data is not in script cache
-    // const ridersData = getRidersData(true);     // Use cache
-    // const assignmentsData = getAssignmentsData(true); // Use cache
-
-    const scriptCache = CacheService.getScriptCache();
-    const CACHE_EXPIRATION_SECONDS = 15 * 60; // 15 minutes
-
-    const statsCacheKey = 'dashboard_stats_cache';
-    const recentRequestsCacheKey = 'dashboard_recent_requests_cache';
-    const upcomingAssignmentsCacheKey = 'dashboard_upcoming_assignments_cache';
-    const notificationsCacheKey = 'dashboard_notifications_cache';
-
-    let stats = JSON.parse(scriptCache.get(statsCacheKey));
-    let recentRequests = JSON.parse(scriptCache.get(recentRequestsCacheKey));
-    let upcomingAssignments = JSON.parse(scriptCache.get(upcomingAssignmentsCacheKey));
-    let notifications = JSON.parse(scriptCache.get(notificationsCacheKey));
-
-    let requestsData, ridersData, assignmentsData; // Declare here, fetch only if needed
-
-    if (!stats || !recentRequests || !upcomingAssignments || !notifications) {
-        console.log('🚀 Dashboard cache miss, fetching and computing data...');
-        requestsData = getRequestsData(true);
-        ridersData = getRidersData(true);
-        assignmentsData = getAssignmentsData(true);
-        const notificationsDataFull = (typeof getNotificationHistory === 'function') ? getNotificationHistory() : [];
-
-        if (!stats) {
-            stats = calculateDashboardStatisticsInternal(requestsData, ridersData, assignmentsData);
-            scriptCache.put(statsCacheKey, JSON.stringify(stats), CACHE_EXPIRATION_SECONDS);
-        }
-        if (!recentRequests) {
-            recentRequests = formatRecentRequestsForDashboard(requestsData, user);
-            scriptCache.put(recentRequestsCacheKey, JSON.stringify(recentRequests), CACHE_EXPIRATION_SECONDS);
-        }
-        if (!upcomingAssignments) {
-            upcomingAssignments = formatUpcomingAssignmentsForDashboard(assignmentsData, user);
-            scriptCache.put(upcomingAssignmentsCacheKey, JSON.stringify(upcomingAssignments), CACHE_EXPIRATION_SECONDS);
-        }
-        if (!notifications) {
-            notifications = notificationsDataFull.slice(0,10);
-            scriptCache.put(notificationsCacheKey, JSON.stringify(notifications), CACHE_EXPIRATION_SECONDS);
-        }
-    } else {
-        console.log('🚀 Dashboard data loaded from script cache.');
+    // const user = getCurrentUser(); // Removed: user is now a parameter
+    const stats = calculateDashboardStatistics();
+    const rawRequests = getRequestsData();
+    let recentRequests = [];
+    if (rawRequests && rawRequests.data) {
+      const allFormattedRequests = getFilteredRequestsForWebApp(user, 'All', rawRequests); // Adjusted parameters
+      try {
+        recentRequests = allFormattedRequests.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+      } catch (e) {
+        console.error("Error sorting recent requests: ", e);
+        recentRequests = allFormattedRequests.slice(0, 10);
+      }
     }
-
-    return {
-      success: true,
-      user: user,
-      stats: stats,
-      recentRequests: recentRequests,
-      upcomingAssignments: upcomingAssignments,
-      notifications: notifications
-    };
+    const upcomingAssignments = getUpcomingAssignmentsForWebApp(user);
+    return { success: true, user, stats, recentRequests, upcomingAssignments };
   } catch (error) {
     logError('Error in getPageDataForDashboard', error);
     return {
@@ -2522,16 +2238,18 @@ function getPageDataForDashboard(user) {
  * @param {string} [requestIdToLoad] - Optional request ID to pre-select
  * @return {object} Consolidated data object with user, requests, riders, and optional initial request details
  */
-function getAssignmentsPageData(requestIdToLoad) {
+function getPageDataForAssignments(requestIdToLoad) {
   try {
+    console.log('🔄 Loading assignments page data...', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
+
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
       return {
         success: false,
         error: auth.error || 'UNAUTHORIZED',
         user: auth.user || {
-          name: 'User',
-          email: '',
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
           roles: ['unauthorized'],
           permissions: []
         },
@@ -2541,21 +2259,12 @@ function getAssignmentsPageData(requestIdToLoad) {
         assignmentOrder: []
       };
     }
-    const user = auth.user;
 
-    console.log(
-      '🔄 Loading assignments page data for user:',
-      user ? user.email : 'Unknown',
-      requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : ''
-    );
-
-    // Fetch raw data once
-    const rawRequestsData = getRequestsData(true);
-    const rawRidersData = getRidersData(true);
+    const user = Object.assign({}, auth.user, { roles: auth.user.roles || [auth.user.role] });
 
     const result = {
       success: true,
-      user: user, // Return the authenticated user object
+      user: user,
       requests: [],
       riders: [],
       initialRequestDetails: null,
@@ -2564,46 +2273,44 @@ function getAssignmentsPageData(requestIdToLoad) {
     
     // Get assignable requests
     try {
-      // Modify getFilteredRequestsForAssignments to accept rawRequestsData
-      result.requests = getFilteredRequestsForAssignmentsInternal(user, rawRequestsData);
+      result.requests = getFilteredRequestsForAssignments(result.user);
       console.log(`✅ Loaded ${result.requests.length} assignable requests`);
     } catch (requestsError) {
-      console.log('⚠️ Could not load assignable requests:', requestsError);
+      console.log('⚠️ Could not load requests:', requestsError);
       result.requests = [];
     }
     
     // Get active riders
     try {
-      // Modify getActiveRidersForWebApp to accept rawRidersData
-      result.riders = getActiveRidersForWebAppInternal(rawRidersData);
+      result.riders = getActiveRidersForWebApp();
       console.log(`✅ Loaded ${result.riders.length} active riders`);
     } catch (ridersError) {
-      console.log('⚠️ Could not load active riders:', ridersError);
+      console.log('⚠️ Could not load riders:', ridersError);
       result.riders = [];
     }
 
     try {
-      // Modify getAssignmentRotation to accept rawRidersData if it depends on active riders list
-      result.assignmentOrder = getAssignmentRotationInternal(rawRidersData);
+      result.assignmentOrder = getAssignmentRotation();
       console.log(`✅ Loaded assignment rotation with ${result.assignmentOrder.length} riders`);
     } catch (orderError) {
       console.log('⚠️ Could not load assignment order:', orderError);
       result.assignmentOrder = [];
     }
     
-    // If a specific request ID was requested, try to get its details from rawRequestsData
+    // If a specific request ID was requested, try to get its details
     if (requestIdToLoad) {
       const cleanedRequestIdToLoad = String(requestIdToLoad).trim();
       try {
-        const directlyFetchedRequest = getRequestDetailsInternal(cleanedRequestIdToLoad, rawRequestsData);
+        // Attempt to fetch the specific request directly
+        const directlyFetchedRequest = getRequestDetails(cleanedRequestIdToLoad); // Assuming getRequestDetails is available
         if (directlyFetchedRequest) {
           result.initialRequestDetails = directlyFetchedRequest;
           console.log(`✅ Successfully fetched initial request details directly for ID: "${cleanedRequestIdToLoad}"`);
         } else {
-          console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection was not found in provided requestsData.`);
+          console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection was not found through direct fetch.`);
         }
       } catch (fetchError) {
-        console.error(`⚠️ Error during internal fetch for initial request details (ID "${cleanedRequestIdToLoad}"):`, fetchError);
+        console.error(`⚠️ Error during direct fetch for initial request details (ID "${cleanedRequestIdToLoad}"):`, fetchError);
       }
     }
     
@@ -2625,138 +2332,10 @@ function getAssignmentsPageData(requestIdToLoad) {
 }
 
 /**
- * Internal helper to calculate dashboard statistics from pre-fetched data.
- * @param {object} requestsData - The raw data object from getRequestsData().
- * @param {object} ridersData - The raw data object from getRidersData().
- * @param {object} assignmentsData - The raw data object from getAssignmentsData().
- * @return {object} An object containing dashboard statistics.
- */
-function calculateDashboardStatisticsInternal(requestsData, ridersData, assignmentsData) {
-  try {
-    console.log('📊 Calculating dashboard stats internally...');
-
-    const totalRiders = ridersData.data ? ridersData.data.length : 0;
-
-    let activeRiders = 0;
-    if (ridersData && ridersData.data) {
-      activeRiders = ridersData.data.filter(row => {
-        const status = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.status);
-        return !status || String(status).toLowerCase() === 'active' || String(status).toLowerCase() === 'available';
-      }).length;
-    }
-
-    let pendingRequests = 0;
-    let newRequests = 0;
-    if (requestsData && requestsData.data) {
-      pendingRequests = requestsData.data.filter(request => {
-        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-        return ['Pending', 'Unassigned'].includes(status); // Example statuses
-      }).length;
-      newRequests = requestsData.data.filter(request => {
-        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-        return status === 'New';
-      }).length;
-    }
-
-    let todayAssignments = 0;
-    let weekAssignments = 0;
-    if (assignmentsData && assignmentsData.data) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay()); // Assuming week starts on Sunday
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-
-      assignmentsData.data.forEach(assignment => {
-        const eventDateValue = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-        if (eventDateValue instanceof Date) {
-          const assignmentDate = new Date(eventDateValue);
-          assignmentDate.setHours(0,0,0,0);
-          if (assignmentDate.getTime() === today.getTime()) {
-            todayAssignments++;
-          }
-          if (assignmentDate >= weekStart && assignmentDate <= weekEnd) {
-            weekAssignments++;
-          }
-        }
-      });
-    }
-
-    const stats = {
-      activeRiders: activeRiders,
-      pendingRequests: pendingRequests, // You might want to sum newRequests and pendingRequests for a "total pending"
-      newRequests: newRequests,
-      todayAssignments: todayAssignments,
-      weekAssignments: weekAssignments,
-      totalRequests: requestsData.data ? requestsData.data.length : 0, // Example, adjust as needed
-      // Add other stats as calculated by your original calculateDashboardStatistics
-    };
-    console.log('✅ Internal dashboard stats calculated:', stats);
-    return stats;
-
-  } catch (error) {
-    logError('Error in calculateDashboardStatisticsInternal', error);
-    return { activeRiders: 0, pendingRequests: 0, newRequests: 0, todayAssignments: 0, weekAssignments: 0, totalRequests: 0 };
-  }
-}
-
-
-/**
  * Gets consolidated data for the requests page
  * @param {string} [filter='All'] - Status filter for requests
  * @return {object} Consolidated data object with user and filtered requests
  */
-function getPageDataForRequests(user, filter = 'All') { // Added user parameter, filter default
-  try {
-    console.log(`📋 getPageDataForRequests called for user: ${user ? user.email : 'Unknown'} with filter: ${filter}`);
-
-    // const auth = authenticateAndAuthorizeUser(); // Assuming user is already authenticated
-    // if (!auth.success) {
-    //   return { success: false, error: auth.error || 'UNAUTHORIZED', user: auth.user || { name: 'User', email: '', roles: ['unauthorized'] }, requests: [] };
-    // }
-    // const user = auth.user;
-
-    // Fetch raw requests data once
-    const rawRequestsData = getRequestsData(true); // Use cache
-
-    // Get requests using the enhanced function, passing the raw data
-    const requests = getFilteredRequestsForWebApp(user, filter, rawRequestsData);
-    console.log(`✅ Requests retrieved: ${requests?.length || 0} items`);
-
-    const safeRequests = Array.isArray(requests) ? requests : [];
-
-    const result = {
-      success: true,
-      user: user, // Return the authenticated user object
-      requests: safeRequests,
-      // You can add other page-specific data here if needed, like dropdown options for filters
-      // filterOptions: CONFIG.options.requestStatuses
-    };
-
-    console.log('✅ getPageDataForRequests result:', {
-      success: result.success,
-      userName: result.user?.name,
-      requestsCount: result.requests?.length || 0
-    });
-
-    return result;
-
-  } catch (error) {
-    console.error('❌ Error in getPageDataForRequests:', error);
-    logError('Error in getPageDataForRequests', error);
-
-    return {
-      success: false,
-      error: error.message,
-      user: user || { name: 'System User', email: '', roles: ['system'] }, // Fallback user
-      requests: []
-    };
-  }
-}
-
-
 /**
  * Enhanced function to get filtered requests for web app with better error handling
  * Add this to your Dashboard.js or AppServices.gs file
@@ -4890,142 +4469,9 @@ function updateRotationOnUnassign(unassignedNames) {
 }
 
 /**
- * Internal helper to get assignment rotation from pre-fetched raw riders data.
- * @param {object} rawRidersData - The raw data object from getRidersData().
- * @return {string[]} Ordered list of rider names.
- */
-function getAssignmentRotationInternal(rawRidersData) {
-  try {
-    let order = [];
-    const prop = PropertiesService.getScriptProperties().getProperty('ASSIGNMENT_ORDER');
-    if (prop) {
-      order = prop.split('\n').map(n => n.trim()).filter(n => n);
-    }
-
-    // Use the pre-fetched active riders list, which needs to be generated from rawRidersData
-    const activeRidersList = getActiveRidersForWebAppInternal(rawRidersData); // This now uses rawRidersData
-    const riderLookup = {};
-    activeRidersList.forEach(rider => {
-      riderLookup[rider.name] = rider;
-    });
-
-    order = order.filter(name => {
-      const rider = riderLookup[name];
-      if (!rider) return false;
-      const isPartTime = String(rider.partTime || 'No').toLowerCase() === 'yes';
-      return !isPartTime;
-    });
-
-    if (order.length === 0) {
-      const fullTimeRiders = activeRidersList.filter(r => String(r.partTime || 'No').toLowerCase() !== 'yes');
-      order = fullTimeRiders.sort((a, b) => a.name.localeCompare(b.name)).map(r => r.name);
-    }
-
-    // PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', order.join('\n')); // Avoid writing in a get helper
-    return order;
-
-  } catch (error) {
-    logError('Error in getAssignmentRotationInternal', error);
-    return [];
-  }
-}
-
-
-/**
  * Exposed function for the web application to retrieve the assignment order.
  * @return {string[]} Current assignment order.
  */
 function getAssignmentOrderForWeb() {
   return getAssignmentRotation();
-}
-
-/**
- * Gets availability for a list of riders for a specific event date and time.
- * @param {Array<string>} riderNames An array of rider names to check.
- * @param {string} eventDateStr The event date string (e.g., "MM/DD/YYYY" or ISO).
- * @param {string} startTimeStr The event start time string (e.g., "HH:MM AM/PM" or "HH:MM").
- * @return {object} An object mapping rider names to their availability status (true if available, false otherwise).
- */
-function getBulkRiderAvailability(riderNames, eventDateStr, startTimeStr) {
-  console.log(`📅 Checking bulk availability for ${riderNames.length} riders on ${eventDateStr} at ${startTimeStr}`);
-  const availabilityResults = {};
-  if (!riderNames || riderNames.length === 0) {
-    return availabilityResults;
-  }
-
-  try {
-    // Pre-fetch all assignments data once to optimize isRiderAvailable calls if it uses it.
-    // However, isRiderAvailable itself calls getAssignmentsData.
-    // For true optimization, isRiderAvailable would need to accept rawAssignmentsData.
-    // For now, we accept the multiple fetches within the loop of isRiderAvailable,
-    // but at least the client makes only one call to the server.
-
-    // Also pre-fetch rider availability data if isRiderAvailable uses it.
-    // getRiderAvailabilityData(); // This will cache it if not already cached.
-
-    riderNames.forEach(riderName => {
-      try {
-        availabilityResults[riderName] = isRiderAvailable(riderName, eventDateStr, startTimeStr);
-      } catch (e) {
-        console.error(`Error checking availability for ${riderName}: ${e.message}`);
-        availabilityResults[riderName] = false; // Default to unavailable on error
-      }
-    });
-    console.log('✅ Bulk availability check complete:', availabilityResults);
-    return availabilityResults;
-  } catch (error) {
-    logError('Error in getBulkRiderAvailability', error);
-    // On general error, mark all as unavailable or handle as needed
-    riderNames.forEach(name => availabilityResults[name] = false);
-    return availabilityResults;
-  }
-}
-
-/**
- * Internal helper to get details for a specific request by ID from pre-fetched raw requests data.
- * @param {string} requestId - The request ID to look up.
- * @param {object} rawRequestsData - The raw data object from getRequestsData().
- * @return {object|null} Request details object or null if not found.
- */
-function getRequestDetailsInternal(requestId, rawRequestsData) {
-  try {
-    if (!rawRequestsData || !rawRequestsData.data) {
-      console.log('❌ No raw requests data provided to getRequestDetailsInternal');
-      return null;
-    }
-
-    const columnMap = rawRequestsData.columnMap;
-    const cleanedTargetId = String(requestId || '').trim().toLowerCase();
-
-    for (let i = 0; i < rawRequestsData.data.length; i++) {
-      const row = rawRequestsData.data[i];
-      const rowIdRaw = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-      // Assuming normalizeRequestId is a utility function available globally or in CoreUtils.gs
-      const normalizedRowId = normalizeRequestId(String(rowIdRaw));
-      const cleanedRowId = normalizedRowId.trim().toLowerCase();
-
-      if (cleanedRowId === cleanedTargetId) {
-        return {
-          id: getColumnValue(row, columnMap, CONFIG.columns.requests.id),
-          requesterName: getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName),
-          eventDate: getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate), // Keep raw, format on client
-          startTime: getColumnValue(row, columnMap, CONFIG.columns.requests.startTime), // Keep raw
-          endTime: getColumnValue(row, columnMap, CONFIG.columns.requests.endTime),     // Keep raw
-          startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation),
-          endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation),
-          secondaryLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation),
-          type: getColumnValue(row, columnMap, CONFIG.columns.requests.type),
-          ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded),
-          status: getColumnValue(row, columnMap, CONFIG.columns.requests.status),
-          notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes),
-          ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || ''
-        };
-      }
-    }
-    console.log(`ℹ️ Request ID ${requestId} not found in getRequestDetailsInternal.`);
-    return null;
-  } catch (error) {
-    logError(`Error getting request details internally for ID ${requestId}`, error);
-    return null;
-  }
 }

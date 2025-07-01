@@ -258,11 +258,8 @@ function applyTimeFormatting(data) {
  * @return {object} An object containing headers, data rows, columnMap, and sheet reference for "Requests".
  */
 function getRequestsData(useCache = true) {
-  // const data = getSheetData(CONFIG.sheets.requests, useCache);
-  // return data;
-  // Switch to getFormattedSheetData to ensure dates/times are JS Date objects
-  console.log('[SheetServices DEBUG] getRequestsData called, will use getFormattedSheetData for requests.');
-  return getFormattedSheetData(CONFIG.sheets.requests, useCache);
+  const data = getSheetData(CONFIG.sheets.requests, useCache);
+  return data;
 }
 
 /**
@@ -273,38 +270,63 @@ function getRequestsData(useCache = true) {
  * @return {object} An object containing headers, data rows, columnMap, and sheet reference for "Riders".
  */
 function getRidersData(useCache = true) {
-  // const cacheKey = `sheet_${CONFIG.sheets.riders}`; // Cache key will be handled by getFormattedSheetData
+  const cacheKey = `sheet_${CONFIG.sheets.riders}`;
 
-  // if (useCache) {
-  //   const cached = dataCache.get(cacheKey);
-  //   if (cached) {
-  //     // Apply filtering to cached data as well
-  //     return applyRidersDataFiltering(cached);
-  //   }
-  // }
+  if (useCache) {
+    const cached = dataCache.get(cacheKey);
+    if (cached) {
+      // Apply filtering to cached data as well
+      return applyRidersDataFiltering(cached);
+    }
+  }
 
   try {
-    // First, get the formatted sheet data, which includes date/time parsing if configured
-    // and its own caching layer (for formatted_sheet_CONFIG.sheets.riders)
-    console.log('[SheetServices DEBUG] getRidersData called, will use getFormattedSheetData for riders.');
-    const formattedSheetDataObject = getFormattedSheetData(CONFIG.sheets.riders, useCache);
+    const sheet = getSheet(CONFIG.sheets.riders);
+    const range = sheet.getDataRange();
+    const values = range.getValues();
 
-    if (!formattedSheetDataObject || !formattedSheetDataObject.data) {
-      logError(`Error or no data from getFormattedSheetData for ${CONFIG.sheets.riders}`);
+    if (values.length === 0) {
       return {
         headers: [],
         data: [],
         columnMap: {},
-        sheet: getSheet(CONFIG.sheets.riders) // Attempt to get sheet for consistency
+        sheet: sheet
       };
     }
 
-    // Now, apply the specific filtering logic for riders to the formatted data
-    const resultWithFiltering = applyRidersDataFiltering(formattedSheetDataObject);
+    const headers = values[0];
+    const allData = values.slice(1);
 
-    // The result from applyRidersDataFiltering already contains headers, filtered data, columnMap, and sheet reference.
-    // console.log(`✅ getRidersData: Returning filtered and formatted riders data. Filtered count: ${resultWithFiltering.data.length}`);
-    return resultWithFiltering;
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      columnMap[header] = index;
+    });
+
+    // FILTER OUT EMPTY ROWS HERE - this is the key fix
+    const validData = allData.filter(row => {
+      const nameIdx = columnMap[CONFIG.columns.riders.name];
+      const idIdx = columnMap[CONFIG.columns.riders.jpNumber];
+      
+      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+      const riderId = idIdx !== undefined ? String(row[idIdx] || '').trim() : '';
+      
+      // Only include rows that have either a name OR an ID
+      return name.length > 0 || riderId.length > 0;
+    });
+
+    const result = {
+      headers,
+      data: validData, // Use filtered data instead of allData
+      columnMap,
+      sheet
+    };
+
+    if (useCache) {
+      dataCache.set(cacheKey, result);
+    }
+
+    console.log(`✅ getRidersData: Filtered ${allData.length} total rows to ${validData.length} valid riders`);
+    return result;
 
   } catch (error) {
     logError(`Error getting data from ${CONFIG.sheets.riders}`, error);
@@ -312,7 +334,7 @@ function getRidersData(useCache = true) {
       headers: [],
       data: [],
       columnMap: {},
-      sheet: getSheet(CONFIG.sheets.riders) // Attempt to get sheet for consistency
+      sheet: getSheet(CONFIG.sheets.riders)
     };
   }
 }
@@ -384,11 +406,8 @@ function getTotalRiderCount() {
  * @return {object} An object containing headers, data rows, columnMap, and sheet reference for "Assignments".
  */
 function getAssignmentsData(useCache = true) {
-  // const data = getSheetData(CONFIG.sheets.assignments, useCache);
-  // return data;
-  // Switch to getFormattedSheetData to ensure dates/times are JS Date objects
-  console.log('[SheetServices DEBUG] getAssignmentsData called, will use getFormattedSheetData for assignments.');
-  return getFormattedSheetData(CONFIG.sheets.assignments, useCache);
+  const data = getSheetData(CONFIG.sheets.assignments, useCache);
+  return data;
 }
 
 /**
