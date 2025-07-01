@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>🗓️ Availability Calendar - Motorcycle Escort Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .mobile-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .mobile-header h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .user-info {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* View Mode Toggle */
+        .view-toggle {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .toggle-buttons {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            color: #666;
+        }
+
+        .toggle-btn.active {
+            background: #3498db;
+            color: white;
+            box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        /* Calendar Container */
+        .calendar-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 400px;
+        }
+
+        /* Quick Action Panel */
+        .quick-actions {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .quick-actions h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .action-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .action-card.recurring {
+            border-left-color: #27ae60;
+        }
+
+        .action-card.unavailable {
+            border-left-color: #e74c3c;
+        }
+
+        .action-card h4 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .form-row input,
+        .form-row select {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-row input:focus,
+        .form-row select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover, .btn-primary:active {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        /* Admin View */
+        .admin-view {
+            display: none;
+        }
+
+        .admin-view.active {
+            display: block;
+        }
+
+        .rider-filters {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .rider-list {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .rider-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .rider-card:hover, .rider-card.selected {
+            background: #e3f2fd;
+            transform: translateX(4px);
+        }
+
+        .rider-card.available {
+            border-left-color: #27ae60;
+        }
+
+        .rider-card.busy {
+            border-left-color: #f39c12;
+        }
+
+        .rider-card.unavailable {
+            border-left-color: #e74c3c;
+        }
+
+        .rider-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+
+        .rider-status {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .availability-summary {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .availability-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-busy {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-unavailable {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: #3498db;
+            color: white;
+            padding: 1rem;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .close {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        /* FullCalendar Customization */
+        .fc {
+            font-size: 0.9rem;
+        }
+
+        .fc-event {
+            border: none !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            padding: 2px 4px !important;
+        }
+
+        .fc-event.available {
+            background: #27ae60 !important;
+            color: white !important;
+        }
+
+        .fc-event.busy {
+            background: #f39c12 !important;
+            color: white !important;
+        }
+
+        .fc-event.unavailable {
+            background: #e74c3c !important;
+            color: white !important;
+        }
+
+        .fc-event.partial {
+            background: linear-gradient(135deg, #27ae60 50%, #f39c12 50%) !important;
+            color: white !important;
+        }
+
+        /* Loading States */
+        .loading-state {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-row input,
+            .form-row select {
+                min-width: unset;
+            }
+
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .availability-summary {
+                justify-content: center;
+            }
+
+            .modal-content {
+                width: 98%;
+                margin: 2% auto;
+                max-height: 95vh;
+            }
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Success/Error Messages */
+        .message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-header">
+        <h1>🗓️ Availability Calendar</h1>
+        <div class="user-info" id="userInfo">Loading user...</div>
+    </div>
+
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <div class="container">
+        <!-- View Mode Toggle -->
+        <div class="view-toggle">
+            <div class="toggle-buttons">
+                <button class="toggle-btn active" id="myCalendarBtn" onclick="switchView('my')">
+                    📅 My Calendar
+                </button>
+                <button class="toggle-btn" id="allRidersBtn" onclick="switchView('all')" style="display: none;">
+                    👥 All Riders
+                </button>
+            </div>
+        </div>
+
+        <!-- Message Container -->
+        <div id="messageContainer"></div>
+
+        <!-- My Calendar View -->
+        <div id="myCalendarView" class="rider-view">
+            <!-- Quick Actions Panel -->
+            <div class="quick-actions">
+                <h3>⚡ Quick Actions</h3>
+                <div class="action-grid">
+                    <!-- Set Available -->
+                    <div class="action-card">
+                        <h4>✅ Set Available</h4>
+                        <div class="form-row">
+                            <input type="date" id="availableDate" />
+                            <input type="time" id="availableStart" />
+                            <input type="time" id="availableEnd" />
+                        </div>
+                        <button class="btn btn-success btn-full" onclick="setQuickAvailability('available')">
+                            Add Availability
+                        </button>
+                    </div>
+
+                    <!-- Set Unavailable -->
+                    <div class="action-card unavailable">
+                        <h4>❌ Set Unavailable</h4>
+                        <div class="form-row">
+                            <input type="date" id="unavailableDate" />
+                            <input type="time" id="unavailableStart" />
+                            <input type="time" id="unavailableEnd" />
+                        </div>
+                        <input type="text" id="unavailableReason" placeholder="Reason (optional)" style="width: 100%; margin-bottom: 0.5rem;" />
+                        <button class="btn btn-danger btn-full" onclick="setQuickAvailability('unavailable')">
+                            Mark Unavailable
+                        </button>
+                    </div>
+
+                    <!-- Recurring Availability -->
+                    <div class="action-card recurring">
+                        <h4>🔄 Recurring Schedule</h4>
+                        <div class="form-row">
+                            <select id="recurringDay">
+                                <option value="">Select day...</option>
+                                <option value="monday">Monday</option>
+                                <option value="tuesday">Tuesday</option>
+                                <option value="wednesday">Wednesday</option>
+                                <option value="thursday">Thursday</option>
+                                <option value="friday">Friday</option>
+                                <option value="saturday">Saturday</option>
+                                <option value="sunday">Sunday</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <input type="time" id="recurringStart" />
+                            <input type="time" id="recurringEnd" />
+                        </div>
+                        <div class="form-row">
+                            <input type="date" id="recurringUntil" placeholder="Until date" />
+                        </div>
+                        <button class="btn btn-primary btn-full" onclick="setRecurringAvailability()">
+                            Set Recurring
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar -->
+            <div class="calendar-container">
+                <div id="riderCalendar"></div>
+            </div>
+        </div>
+
+        <!-- Admin/Dispatcher View -->
+        <div id="allRidersView" class="admin-view">
+            <!-- Filters -->
+            <div class="rider-filters">
+                <h3>🔍 Filter Riders</h3>
+                <div class="filter-grid">
+                    <select id="statusFilter">
+                        <option value="all">All Statuses</option>
+                        <option value="available">Available Today</option>
+                        <option value="busy">Partially Available</option>
+                        <option value="unavailable">Unavailable Today</option>
+                    </select>
+                    <select id="dateFilter">
+                        <option value="today">Today</option>
+                        <option value="tomorrow">Tomorrow</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                    <input type="text" id="nameFilter" placeholder="Search by name..." />
+                </div>
+                <button class="btn btn-primary" onclick="loadAllRidersData()">
+                    🔄 Refresh Data
+                </button>
+            </div>
+
+            <!-- Rider List -->
+            <div class="rider-list">
+                <h3>👥 Rider Availability</h3>
+                <div id="ridersList">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        Loading rider data...
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Riders Calendar -->
+            <div class="calendar-container">
+                <div id="allRidersCalendar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Availability Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">✏️ Edit Availability</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <div class="form-row">
+                        <label>Date:</label>
+                        <input type="date" id="editDate" required />
+                    </div>
+                    <div class="form-row">
+                        <label>Start Time:</label>
+                        <input type="time" id="editStart" required />
+                    </div>
+                    <div class="form-row">
+                        <label>End Time:</label>
+                        <input type="time" id="editEnd" required />
+                    </div>
+                    <div class="form-row">
+                        <label>Status:</label>
+                        <select id="editStatus" required>
+                            <option value="available">Available</option>
+                            <option value="unavailable">Unavailable</option>
+                            <option value="busy">Busy/Assigned</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>Notes:</label>
+                        <input type="text" id="editNotes" placeholder="Optional notes..." />
+                    </div>
+                    <div class="form-row" style="margin-top: 1rem;">
+                        <button type="button" class="btn btn-success" onclick="saveEditedAvailability()">
+                            💾 Save Changes
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="deleteAvailability()">
+                            🗑️ Delete
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEditModal()">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        // Global variables
+        let currentUser = null;
+        let riderCalendar = null;
+        let allRidersCalendar = null;
+        let currentView = 'my';
+        let allRidersData = [];
+        let selectedRiders = [];
+        let editingEvent = null;
+
+        // Initialize application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentUser();
+            initializeCalendars();
+            setDefaultDates();
+        });
+
+        // Load current user info
+        function loadCurrentUser() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleUserLoaded)
+                    .withFailureHandler(handleUserError)
+                    .getCurrentUserForAvailability();
+            } else {
+                // Development fallback
+                handleUserLoaded({
+                    success: true,
+                    user: {
+                        email: 'test@example.com',
+                        name: 'Test User',
+                        role: 'rider',
+                        riderId: 'TEST-001'
+                    }
+                });
+            }
+        }
+
+        function handleUserLoaded(result) {
+            if (result.success && result.user) {
+                currentUser = result.user;
+                document.getElementById('userInfo').textContent = 
+                    `${currentUser.name} (${currentUser.role})`;
+                
+                // Show admin view toggle if user has admin permissions
+                if (currentUser.role === 'admin' || currentUser.role === 'dispatcher') {
+                    document.getElementById('allRidersBtn').style.display = 'block';
+                }
+
+                loadMyAvailability();
+            } else {
+                showMessage('Failed to load user information', 'error');
+            }
+        }
+
+        function handleUserError(error) {
+            console.error('Error loading user:', error);
+            showMessage('Error loading user information', 'error');
+        }
+
+        // Initialize calendars
+        function initializeCalendars() {
+            // Rider's personal calendar
+            const riderCalendarEl = document.getElementById('riderCalendar');
+            riderCalendar = new FullCalendar.Calendar(riderCalendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                selectable: true,
+                selectMirror: true,
+                dayMaxEvents: 3,
+                moreLinkText: 'more',
+                height: 'auto',
+                eventClick: function(info) {
+                    openEditModal(info.event);
+                },
+                select: function(info) {
+                    createNewAvailability(info.start, info.end);
+                },
+                eventDidMount: function(info) {
+                    // Add custom styling based on event type
+                    const status = info.event.extendedProps.status;
+                    if (status) {
+                        info.el.classList.add(status);
+                    }
+                }
+            });
+
+            // All riders calendar (for admin view)
+            const allRidersCalendarEl = document.getElementById('allRidersCalendar');
+            allRidersCalendar = new FullCalendar.Calendar(allRidersCalendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek'
+                },
+                height: 'auto',
+                dayMaxEvents: 5,
+                moreLinkText: 'more',
+                eventClick: function(info) {
+                    if (currentUser.role === 'admin' || currentUser.role === 'dispatcher') {
+                        showRiderDetails(info.event);
+                    }
+                }
+            });
+
+            riderCalendar.render();
+            allRidersCalendar.render();
+        }
+
+        // Switch between views
+        function switchView(view) {
+            currentView = view;
+            
+            // Update toggle buttons
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (view === 'my') {
+                document.getElementById('myCalendarBtn').classList.add('active');
+                document.getElementById('myCalendarView').style.display = 'block';
+                document.getElementById('allRidersView').style.display = 'none';
+                loadMyAvailability();
+            } else {
+                document.getElementById('allRidersBtn').classList.add('active');
+                document.getElementById('myCalendarView').style.display = 'none';
+                document.getElementById('allRidersView').style.display = 'block';
+                loadAllRidersData();
+            }
+        }
+
+        // Load rider's own availability
+        function loadMyAvailability() {
+            if (!currentUser) return;
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleMyAvailabilityLoaded)
+                    .withFailureHandler(handleAvailabilityError)
+                    .getUserAvailabilityForCalendar(currentUser.email);
+            } else {
+                // Development fallback
+                handleMyAvailabilityLoaded([
+                    {
+                        id: '1',
+                        title: 'Available',
+                        start: new Date().toISOString().split('T')[0] + 'T09:00:00',
+                        end: new Date().toISOString().split('T')[0] + 'T17:00:00',
+                        status: 'available'
+                    }
+                ]);
+            }
+        }
+
+        function handleMyAvailabilityLoaded(events) {
+            riderCalendar.removeAllEvents();
+            events.forEach(event => {
+                riderCalendar.addEvent({
+                    id: event.id,
+                    title: event.title || getStatusTitle(event.status),
+                    start: event.start,
+                    end: event.end,
+                    extendedProps: {
+                        status: event.status,
+                        notes: event.notes,
+                        riderId: event.riderId
+                    }
+                });
+            });
+        }
+
+        // Load all riders data (admin view)
+        function loadAllRidersData() {
+            if (currentView !== 'all') return;
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleAllRidersLoaded)
+                    .withFailureHandler(handleAvailabilityError)
+                    .getAllRidersAvailabilityForCalendar();
+            } else {
+                // Development fallback
+                handleAllRidersLoaded({
+                    riders: [
+                        { id: '1', name: 'John Doe', status: 'available', email: 'john@example.com' },
+                        { id: '2', name: 'Jane Smith', status: 'busy', email: 'jane@example.com' }
+                    ],
+                    events: []
+                });
+            }
+        }
+
+        function handleAllRidersLoaded(data) {
+            allRidersData = data.riders || [];
+            
+            // Update riders list
+            updateRidersList();
+            
+            // Update calendar
+            allRidersCalendar.removeAllEvents();
+            if (data.events) {
+                data.events.forEach(event => {
+                    allRidersCalendar.addEvent({
+                        id: event.id,
+                        title: `${event.riderName}: ${event.title}`,
+                        start: event.start,
+                        end: event.end,
+                        extendedProps: {
+                            status: event.status,
+                            riderId: event.riderId,
+                            riderName: event.riderName
+                        }
+                    });
+                });
+            }
+        }
+
+        function updateRidersList() {
+            const container = document.getElementById('ridersList');
+            const statusFilter = document.getElementById('statusFilter').value;
+            const nameFilter = document.getElementById('nameFilter').value.toLowerCase();
+            
+            let filteredRiders = allRidersData.filter(rider => {
+                const nameMatch = !nameFilter || rider.name.toLowerCase().includes(nameFilter);
+                const statusMatch = statusFilter === 'all' || rider.todayStatus === statusFilter;
+                return nameMatch && statusMatch;
+            });
+
+            if (filteredRiders.length === 0) {
+                container.innerHTML = '<div class="loading-state">No riders found matching filters.</div>';
+                return;
+            }
+
+            container.innerHTML = filteredRiders.map(rider => `
+                <div class="rider-card ${rider.todayStatus || 'unknown'}" onclick="selectRider('${rider.id}')">
+                    <div class="rider-name">${rider.name}</div>
+                    <div class="rider-status">ID: ${rider.id} • ${rider.email}</div>
+                    <div class="availability-summary">
+                        <span class="availability-badge badge-${rider.todayStatus || 'unknown'}">
+                            ${getStatusTitle(rider.todayStatus)}
+                        </span>
+                        ${rider.todayHours ? `<span class="availability-badge badge-available">${rider.todayHours}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Quick availability actions
+        function setQuickAvailability(status) {
+            const isAvailable = status === 'available';
+            const dateInput = document.getElementById(isAvailable ? 'availableDate' : 'unavailableDate');
+            const startInput = document.getElementById(isAvailable ? 'availableStart' : 'unavailableStart');
+            const endInput = document.getElementById(isAvailable ? 'availableEnd' : 'unavailableEnd');
+            const reasonInput = document.getElementById('unavailableReason');
+
+            if (!dateInput.value || !startInput.value || !endInput.value) {
+                showMessage('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const availabilityData = {
+                date: dateInput.value,
+                startTime: startInput.value,
+                endTime: endInput.value,
+                status: status,
+                notes: isAvailable ? '' : (reasonInput ? reasonInput.value : ''),
+                riderId: currentUser.riderId
+            };
+
+            saveAvailability(availabilityData);
+        }
+
+        function setRecurringAvailability() {
+            const day = document.getElementById('recurringDay').value;
+            const start = document.getElementById('recurringStart').value;
+            const end = document.getElementById('recurringEnd').value;
+            const until = document.getElementById('recurringUntil').value;
+
+            if (!day || !start || !end || !until) {
+                showMessage('Please fill in all fields for recurring availability', 'error');
+                return;
+            }
+
+            const recurringData = {
+                dayOfWeek: day,
+                startTime: start,
+                endTime: end,
+                untilDate: until,
+                status: 'available',
+                riderId: currentUser.riderId
+            };
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleRecurringSaved)
+                    .withFailureHandler(handleSaveError)
+                    .saveRecurringAvailability(recurringData);
+            } else {
+                handleRecurringSaved({ success: true, message: 'Recurring availability saved (demo)' });
+            }
+        }
+
+        function handleRecurringSaved(result) {
+            if (result.success) {
+                showMessage(result.message || 'Recurring availability saved successfully!', 'success');
+                clearRecurringForm();
+                loadMyAvailability();
+            } else {
+                showMessage(result.error || 'Failed to save recurring availability', 'error');
+            }
+        }
+
+        // Save availability
+        function saveAvailability(data) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleAvailabilitySaved)
+                    .withFailureHandler(handleSaveError)
+                    .saveRiderAvailabilityData(data);
+            } else {
+                handleAvailabilitySaved({ success: true, message: 'Availability saved (demo)' });
+            }
+        }
+
+        function handleAvailabilitySaved(result) {
+            if (result.success) {
+                showMessage(result.message || 'Availability saved successfully!', 'success');
+                clearQuickActionForms();
+                loadMyAvailability();
+            } else {
+                showMessage(result.error || 'Failed to save availability', 'error');
+            }
+        }
+
+        function handleSaveError(error) {
+            console.error('Save error:', error);
+            showMessage('Error saving availability', 'error');
+        }
+
+        function handleAvailabilityError(error) {
+            console.error('Availability error:', error);
+            showMessage('Error loading availability data', 'error');
+        }
+
+        // Edit modal functions
+        function openEditModal(event) {
+            editingEvent = event;
+            document.getElementById('editDate').value = event.start.toISOString().split('T')[0];
+            document.getElementById('editStart').value = event.start.toTimeString().slice(0, 5);
+            document.getElementById('editEnd').value = event.end ? event.end.toTimeString().slice(0, 5) : '';
+            document.getElementById('editStatus').value = event.extendedProps.status || 'available';
+            document.getElementById('editNotes').value = event.extendedProps.notes || '';
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+            editingEvent = null;
+        }
+
+        function saveEditedAvailability() {
+            if (!editingEvent) return;
+
+            const data = {
+                id: editingEvent.id,
+                date: document.getElementById('editDate').value,
+                startTime: document.getElementById('editStart').value,
+                endTime: document.getElementById('editEnd').value,
+                status: document.getElementById('editStatus').value,
+                notes: document.getElementById('editNotes').value,
+                riderId: currentUser.riderId
+            };
+
+            saveAvailability(data);
+            closeEditModal();
+        }
+
+        function deleteAvailability() {
+            if (!editingEvent) return;
+
+            if (confirm('Are you sure you want to delete this availability entry?')) {
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    google.script.run
+                        .withSuccessHandler(handleDeleteSuccess)
+                        .withFailureHandler(handleSaveError)
+                        .deleteRiderAvailability(editingEvent.id);
+                } else {
+                    handleDeleteSuccess({ success: true, message: 'Deleted (demo)' });
+                }
+            }
+        }
+
+        function handleDeleteSuccess(result) {
+            if (result.success) {
+                showMessage('Availability deleted successfully!', 'success');
+                closeEditModal();
+                loadMyAvailability();
+            } else {
+                showMessage(result.error || 'Failed to delete availability', 'error');
+            }
+        }
+
+        // Create new availability from calendar selection
+        function createNewAvailability(start, end) {
+            const startDate = start.toISOString().split('T')[0];
+            const startTime = start.toTimeString().slice(0, 5);
+            const endTime = end ? end.toTimeString().slice(0, 5) : '';
+
+            document.getElementById('availableDate').value = startDate;
+            document.getElementById('availableStart').value = startTime;
+            document.getElementById('availableEnd').value = endTime;
+
+            // Scroll to quick actions
+            document.querySelector('.quick-actions').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Utility functions
+        function setDefaultDates() {
+            const today = new Date();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
+            const todayString = today.toISOString().split('T')[0];
+            const tomorrowString = tomorrow.toISOString().split('T')[0];
+
+            // Set default dates for quick actions
+            document.getElementById('availableDate').value = todayString;
+            document.getElementById('unavailableDate').value = todayString;
+            document.getElementById('recurringUntil').value = tomorrowString;
+
+            // Set default times
+            document.getElementById('availableStart').value = '09:00';
+            document.getElementById('availableEnd').value = '17:00';
+            document.getElementById('unavailableStart').value = '09:00';
+            document.getElementById('unavailableEnd').value = '17:00';
+            document.getElementById('recurringStart').value = '09:00';
+            document.getElementById('recurringEnd').value = '17:00';
+        }
+
+        function clearQuickActionForms() {
+            document.getElementById('availableDate').value = '';
+            document.getElementById('availableStart').value = '';
+            document.getElementById('availableEnd').value = '';
+            document.getElementById('unavailableDate').value = '';
+            document.getElementById('unavailableStart').value = '';
+            document.getElementById('unavailableEnd').value = '';
+            document.getElementById('unavailableReason').value = '';
+            setDefaultDates();
+        }
+
+        function clearRecurringForm() {
+            document.getElementById('recurringDay').value = '';
+            document.getElementById('recurringStart').value = '09:00';
+            document.getElementById('recurringEnd').value = '17:00';
+            document.getElementById('recurringUntil').value = '';
+        }
+
+        function getStatusTitle(status) {
+            switch (status) {
+                case 'available': return 'Available';
+                case 'unavailable': return 'Unavailable';
+                case 'busy': return 'Busy/Assigned';
+                default: return 'Unknown';
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            
+            container.innerHTML = '';
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function selectRider(riderId) {
+            // Toggle rider selection for filtering
+            const card = event.target.closest('.rider-card');
+            card.classList.toggle('selected');
+            
+            if (selectedRiders.includes(riderId)) {
+                selectedRiders = selectedRiders.filter(id => id !== riderId);
+            } else {
+                selectedRiders.push(riderId);
+            }
+            
+            // Filter calendar events if riders are selected
+            filterCalendarBySelectedRiders();
+        }
+
+        function filterCalendarBySelectedRiders() {
+            // Implementation for filtering calendar events by selected riders
+            // This would update the allRidersCalendar to show only selected riders' events
+        }
+
+        function showRiderDetails(event) {
+            const riderName = event.extendedProps.riderName;
+            const riderId = event.extendedProps.riderId;
+            alert(`Rider: ${riderName}\nID: ${riderId}\nStatus: ${event.extendedProps.status}\nTime: ${event.start.toLocaleString()}`);
+        }
+
+        // Filter event handlers
+        document.getElementById('statusFilter').addEventListener('change', updateRidersList);
+        document.getElementById('nameFilter').addEventListener('input', updateRidersList);
+
+        // Modal close on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        };
+    </script>
+    <script src="load-navigation.js"></script>
+</body>
+</html>
