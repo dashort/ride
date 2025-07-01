@@ -5711,7 +5711,8 @@ function getDispatcherUsers() {
   
   return [
     'dispatcher@yourdomain.com',
-    'jpdispatcher100@gmail.com'
+    'jpdispatcher100@gmail.com',
+    'ADD_THE_ACTUAL_GOOGLE_EMAIL_HERE@gmail.com' // ← Replace this with the actual email
     // Add dispatcher emails here
   ];
 }
