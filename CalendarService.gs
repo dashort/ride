@@ -177,6 +177,22 @@ function syncRequestToCalendar(requestId) {
     if (rowIndex !== -1 && idCol !== undefined) {
       sheet.getRange(rowIndex, idCol + 1).setValue(event.getId());
     }
+
+    // Remove any duplicate events that may exist for the same request
+    const eventsForDay = calendar.getEventsForDay(startDate);
+    for (var i = 0; i < eventsForDay.length; i++) {
+      var evt = eventsForDay[i];
+      if (evt.getTitle() === title &&
+          evt.getStartTime().getTime() === startDate.getTime() &&
+          evt.getId() !== event.getId()) {
+        try {
+          evt.deleteEvent();
+          Utilities.sleep(500); // Throttle after deletion
+        } catch (dupErr) {
+          // Ignore deletion errors
+        }
+      }
+    }
   } catch (error) {
     logError(`Error syncing request ${requestId} to calendar`, error);
   }
