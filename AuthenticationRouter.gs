@@ -37,6 +37,11 @@ function doGet(e) {
       
       return loadAuthenticatedPage(pageName, authenticatedUser, rider, e);
     } else {
+      // Check if we should show access request page
+      if (authResult.showAccessRequest) {
+        return createAccessRequestPage(authResult.userEmail, authResult.userName);
+      }
+      
       // Google OAuth failed or user not authorized via Google
       // Show option for credential-based login
       return createAuthenticationChoicePage();
@@ -797,10 +802,15 @@ function authenticateWithGoogle() {
     } else if (rider && rider.status === 'Active') {
       userRole = 'rider';
     } else {
+      // User not authorized - offer access request instead of denying
+      const user = Session.getActiveUser();
       return {
         success: false,
         error: 'UNAUTHORIZED',
-        message: 'Your Google account is not authorized to access this system'
+        message: 'Your Google account is not authorized to access this system',
+        showAccessRequest: true,
+        userEmail: userEmail,
+        userName: user.getName() || userEmail.split('@')[0]
       };
     }
     
@@ -1053,6 +1063,256 @@ function createAccessDeniedPage(reason, user) {
 </html>`;
   
   return HtmlService.createHtmlOutput(html).setTitle('Access Denied');
+}
+
+/**
+ * Self-registration for Google OAuth users
+ */
+function requestAccess(userEmail, requestedRole = 'rider') {
+  try {
+    console.log(`📝 Access request from: ${userEmail}`);
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let requestsSheet = ss.getSheetByName('Access_Requests');
+    
+    // Create Access_Requests sheet if it doesn't exist
+    if (!requestsSheet) {
+      requestsSheet = ss.insertSheet('Access_Requests');
+      const headers = ['Timestamp', 'Email', 'Name', 'Requested Role', 'Status', 'Approved By'];
+      requestsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    }
+    
+    // Check if request already exists
+    const data = requestsSheet.getDataRange().getValues();
+    const existingRequest = data.find(row => row[1] === userEmail);
+    
+    if (existingRequest) {
+      return { 
+        success: false, 
+        message: 'Access request already submitted. Please wait for approval.' 
+      };
+    }
+    
+    // Add new request
+    const timestamp = new Date();
+    const user = Session.getActiveUser();
+    const userName = user.getName() || userEmail.split('@')[0];
+    
+    const newRequest = [
+      timestamp,
+      userEmail,
+      userName,
+      requestedRole,
+      'Pending',
+      ''
+    ];
+    
+    requestsSheet.appendRow(newRequest);
+    
+    // Send notification to admins
+    try {
+      const adminEmails = getAdminUsersSafe();
+      if (adminEmails && adminEmails.length > 0) {
+        const subject = `🔐 New Access Request: ${userEmail}`;
+        const body = `
+New access request received:
+
+Email: ${userEmail}
+Name: ${userName}
+Requested Role: ${requestedRole}
+Timestamp: ${timestamp}
+
+Please review in the Access_Requests sheet and approve if appropriate.
+        `;
+        
+        adminEmails.forEach(adminEmail => {
+          MailApp.sendEmail(adminEmail, subject, body);
+        });
+      }
+    } catch (emailError) {
+      console.log('Could not send notification email:', emailError.message);
+    }
+    
+    return {
+      success: true,
+      message: 'Access request submitted successfully. You will be notified when approved.'
+    };
+    
+  } catch (error) {
+    console.error('❌ Access request error:', error);
+    return {
+      success: false,
+      message: 'Error submitting access request. Please contact an administrator.'
+    };
+  }
+}
+
+/**
+ * Create access request page for unauthorized users
+ */
+function createAccessRequestPage(userEmail, userName) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request Access - Motorcycle Escort Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      padding: 2.5rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+    
+    .header h1 {
+      color: #333;
+      margin: 0 0 1rem 0;
+      font-size: 1.8rem;
+    }
+    
+    .user-info {
+      background: #f8f9fa;
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 0.5rem 0;
+    }
+    
+    .btn-primary {
+      background: #28a745;
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .message {
+      margin: 1rem 0;
+      padding: 10px 15px;
+      border-radius: 8px;
+      display: none;
+    }
+    
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔐 Access Required</h1>
+      <p>Motorcycle Escort Management System</p>
+    </div>
+    
+    <div class="user-info">
+      <h3>Your Google Account</h3>
+      <p><strong>Email:</strong> ${userEmail}</p>
+      <p><strong>Name:</strong> ${userName}</p>
+    </div>
+    
+    <p>You need access approval to use this system. Would you like to request access?</p>
+    
+    <div id="roleSelection">
+      <p><strong>Select your role:</strong></p>
+      <button class="btn btn-primary" onclick="requestRole('dispatcher')">
+        📋 Request Dispatcher Access
+      </button>
+      <button class="btn btn-primary" onclick="requestRole('rider')">
+        🏍️ Request Rider Access
+      </button>
+    </div>
+    
+    <div class="message" id="message"></div>
+    
+    <div style="margin-top: 2rem;">
+      <button class="btn btn-secondary" onclick="useCredentialLogin()">
+        🔑 Use Email & Password Instead
+      </button>
+    </div>
+  </div>
+  
+  <script>
+    function requestRole(role) {
+      const roleSelection = document.getElementById('roleSelection');
+      const message = document.getElementById('message');
+      
+      roleSelection.style.display = 'none';
+      message.textContent = 'Submitting access request...';
+      message.className = 'message';
+      message.style.display = 'block';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            message.textContent = result.message;
+            message.className = 'message success';
+          } else {
+            message.textContent = result.message;
+            message.className = 'message error';
+            roleSelection.style.display = 'block';
+          }
+        })
+        .withFailureHandler(function(error) {
+          message.textContent = 'Error submitting request. Please try again.';
+          message.className = 'message error';
+          roleSelection.style.display = 'block';
+        })
+        .requestAccess('${userEmail}', role);
+    }
+    
+    function useCredentialLogin() {
+      window.location.href = window.location.origin + window.location.pathname + '?action=credential-login';
+    }
+  </script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Request Access')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
