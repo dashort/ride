@@ -2522,15 +2522,32 @@ function getPageDataForDashboard(user) {
  * @param {string} [requestIdToLoad] - Optional request ID to pre-select
  * @return {object} Consolidated data object with user, requests, riders, and optional initial request details
  */
-function getPageDataForAssignments(user, requestIdToLoad) { // Added user parameter
+function getAssignmentsPageData(requestIdToLoad) {
   try {
-    console.log('🔄 Loading assignments page data for user:', user ? user.email : 'Unknown', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: 'User',
+          email: '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        requests: [],
+        riders: [],
+        initialRequestDetails: null,
+        assignmentOrder: []
+      };
+    }
+    const user = auth.user;
 
-    // const auth = authenticateAndAuthorizeUser(); // Assuming user is already authenticated
-    // if (!auth.success) {
-    //   return { success: false, error: auth.error || 'UNAUTHORIZED', user: auth.user || { name: 'User', email: '', roles: ['unauthorized'] }, requests: [], riders: [], initialRequestDetails: null, assignmentOrder: [] };
-    // }
-    // const user = auth.user;
+    console.log(
+      '🔄 Loading assignments page data for user:',
+      user ? user.email : 'Unknown',
+      requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : ''
+    );
 
     // Fetch raw data once
     const rawRequestsData = getRequestsData(true);
