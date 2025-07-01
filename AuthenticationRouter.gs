@@ -205,38 +205,299 @@ function createAuthenticationChoicePage() {
  * Create credential-only login page
  */
 function createCredentialLoginPage() {
-  // Return the enhanced login.html but with Google option hidden/modified
-  let loginHtml = HtmlService.createHtmlOutputFromFile('login').getContent();
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Login - Motorcycle Escort Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #loginContainer {
+      max-width: 450px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      padding: 2.5rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+      color: #333;
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+    }
+    
+    .header p {
+      color: #666;
+      margin: 0;
+      font-size: 0.9rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    input[type="email"]:focus, input[type="password"]:focus {
+      outline: none;
+      border-color: #4285f4;
+      box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 1rem;
+    }
+    
+    .btn-primary {
+      background: #4285f4;
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #3367d6;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+      transform: translateY(-1px);
+    }
+    
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    .divider {
+      text-align: center;
+      margin: 1.5rem 0;
+      position: relative;
+    }
+    
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #e0e0e0;
+    }
+    
+    .divider span {
+      background: white;
+      padding: 0 1rem;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .message {
+      margin-top: 1rem;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      display: none;
+    }
+    
+    .message.error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+    
+    .message.info {
+      background: #e3f2fd;
+      color: #1565c0;
+      border: 1px solid #bbdefb;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 1rem;
+    }
+    
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #4285f4;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+<div id="loginContainer">
+  <div class="header">
+    <h1>🔑 Email Login</h1>
+    <p>Motorcycle Escort Management System</p>
+  </div>
   
-  // Modify the HTML to hide/modify Google login option
-  loginHtml = loginHtml.replace(
-    '<button id="googleBtn" class="btn btn-google">',
-    '<button id="googleBtn" class="btn btn-google" onclick="useGoogleInstead()" type="button">'
-  );
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+    </div>
+    
+    <button type="submit" id="loginBtn" class="btn btn-primary">
+      🔑 Sign In
+    </button>
+  </form>
   
-  loginHtml = loginHtml.replace(
-    '🔐 Sign In with Google',
-    '🔄 Use Google Sign-In Instead'
-  );
+  <div class="divider">
+    <span>or</span>
+  </div>
   
-  // Add JavaScript function to redirect to Google auth
-  const additionalScript = `
-    <script>
-      function useGoogleInstead() {
-        if (confirm('Switch to Google authentication? This will redirect you to Google sign-in.')) {
-          window.location.href = window.location.origin + window.location.pathname;
-        }
-      }
-      
-      // Override the original Google login handler
-      document.getElementById('googleBtn').onclick = useGoogleInstead;
-    </script>
-  `;
+  <button id="googleBtn" class="btn btn-secondary" onclick="useGoogleAuth()">
+    🔄 Use Google Sign-In Instead
+  </button>
   
-  loginHtml = loginHtml.replace('</body>', additionalScript + '</body>');
+  <div id="message" class="message"></div>
   
-  return HtmlService.createHtmlOutput(loginHtml)
-    .setTitle('Credential Login')
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Authenticating...</p>
+  </div>
+</div>
+
+<script>
+  const loginForm = document.getElementById('loginForm');
+  const loginBtn = document.getElementById('loginBtn');
+  const messageDiv = document.getElementById('message');
+  const loadingDiv = document.getElementById('loading');
+  
+  loginForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+      showMessage('Please enter both email and password', 'error');
+      return;
+    }
+    
+    setLoading(true);
+    
+    // Submit credentials via server function
+    google.script.run
+      .withSuccessHandler(handleLoginResponse)
+      .withFailureHandler(handleLoginError)
+      .loginWithCredentials(email, password);
+  });
+  
+  function handleLoginResponse(response) {
+    setLoading(false);
+    
+    if (response && response.success) {
+      showMessage('Login successful! Redirecting...', 'info');
+      setTimeout(() => {
+        window.location.href = response.url || window.location.origin + window.location.pathname;
+      }, 1000);
+    } else {
+      showMessage(response.message || 'Login failed', 'error');
+    }
+  }
+  
+  function handleLoginError(error) {
+    setLoading(false);
+    console.error('Login error:', error);
+    showMessage('Login system error. Please try again.', 'error');
+  }
+  
+  function useGoogleAuth() {
+    if (confirm('Switch to Google authentication? This will redirect you to Google sign-in.')) {
+      window.location.href = window.location.origin + window.location.pathname;
+    }
+  }
+  
+  function setLoading(loading) {
+    if (loading) {
+      loadingDiv.style.display = 'block';
+      loginBtn.disabled = true;
+    } else {
+      loadingDiv.style.display = 'none';
+      loginBtn.disabled = false;
+    }
+  }
+  
+  function showMessage(text, type = 'info') {
+    messageDiv.textContent = text;
+    messageDiv.className = \`message \${type}\`;
+    messageDiv.style.display = 'block';
+  }
+  
+  // Focus email input on load
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('email').focus();
+  });
+</script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Email Login')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -271,6 +532,239 @@ function handleCredentialLoginSubmission(parameters) {
   } catch (error) {
     return createCredentialLoginPageWithError('Login system error');
   }
+}
+
+/**
+ * Create credential login page with error message
+ */
+function createCredentialLoginPageWithError(errorMessage) {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Login - Motorcycle Escort Management</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #loginContainer {
+      max-width: 450px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 15px;
+      padding: 2.5rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .header h1 {
+      color: #333;
+      margin: 0 0 0.5rem 0;
+      font-size: 1.8rem;
+    }
+    
+    .header p {
+      color: #666;
+      margin: 0;
+      font-size: 0.9rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    input[type="email"], input[type="password"] {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    input[type="email"]:focus, input[type="password"]:focus {
+      outline: none;
+      border-color: #4285f4;
+      box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-bottom: 1rem;
+    }
+    
+    .btn-primary {
+      background: #4285f4;
+      color: white;
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      background: #3367d6;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    }
+    
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+      transform: translateY(-1px);
+    }
+    
+    .divider {
+      text-align: center;
+      margin: 1.5rem 0;
+      position: relative;
+    }
+    
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #e0e0e0;
+    }
+    
+    .divider span {
+      background: white;
+      padding: 0 1rem;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .message {
+      margin-top: 1rem;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    
+    .message.error {
+      background: #ffebee;
+      color: #c62828;
+      border: 1px solid #ffcdd2;
+    }
+  </style>
+</head>
+<body>
+<div id="loginContainer">
+  <div class="header">
+    <h1>🔑 Email Login</h1>
+    <p>Motorcycle Escort Management System</p>
+  </div>
+  
+  <div class="message error">
+    ${errorMessage}
+  </div>
+  
+  <form id="loginForm">
+    <div class="form-group">
+      <label for="email">Email Address</label>
+      <input type="email" id="email" name="email" placeholder="Enter your email" required autocomplete="email">
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="Enter your password" required autocomplete="current-password">
+    </div>
+    
+    <button type="submit" id="loginBtn" class="btn btn-primary">
+      🔑 Try Again
+    </button>
+  </form>
+  
+  <div class="divider">
+    <span>or</span>
+  </div>
+  
+  <button id="googleBtn" class="btn btn-secondary" onclick="useGoogleAuth()">
+    🔄 Use Google Sign-In Instead
+  </button>
+</div>
+
+<script>
+  const loginForm = document.getElementById('loginForm');
+  
+  loginForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+      alert('Please enter both email and password');
+      return;
+    }
+    
+    // Submit credentials via server function
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response && response.success) {
+          alert('Login successful! Redirecting...');
+          window.location.href = response.url || window.location.origin + window.location.pathname;
+        } else {
+          alert(response.message || 'Login failed');
+        }
+      })
+      .withFailureHandler(function(error) {
+        alert('Login system error. Please try again.');
+      })
+      .loginWithCredentials(email, password);
+  });
+  
+  function useGoogleAuth() {
+    if (confirm('Switch to Google authentication?')) {
+      window.location.href = window.location.origin + window.location.pathname;
+    }
+  }
+  
+  // Focus email input on load
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('email').focus();
+  });
+</script>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Email Login')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /**
@@ -356,19 +850,39 @@ function loadAuthenticatedPage(pageName, authenticatedUser, rider, e) {
   
   // Load page content
   const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
-  let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+  let htmlOutput;
+  try {
+    htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+  } catch (error) {
+    // Fallback if file doesn't exist
+    console.log('Page file not found:', fileName, 'falling back to index');
+    htmlOutput = HtmlService.createHtmlOutputFromFile('index');
+  }
+  
   let content = htmlOutput.getContent();
   
-  // Add enhancements
-  content = addMotorcycleLoaderToContent(content);
+  // Add enhancements (with safe fallbacks)
+  if (typeof addMotorcycleLoaderToContent === 'function') {
+    content = addMotorcycleLoaderToContent(content);
+  }
+  
   const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
   content = injectUserInfoSafe(content, authenticatedUser, rider);
   content = addNavigationToContentSafe(content, navigationHtml);
-  content = injectUrlParameters(content, e.parameter);
+  
+  if (typeof injectUrlParameters === 'function') {
+    content = injectUrlParameters(content, e.parameter);
+  }
   
   htmlOutput.setContent(content);
-  addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider);
-  addMobileOptimizations(htmlOutput, authenticatedUser, rider);
+  
+  if (typeof addUserDataInjectionSafe === 'function') {
+    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider);
+  }
+  
+  if (typeof addMobileOptimizations === 'function') {
+    addMobileOptimizations(htmlOutput, authenticatedUser, rider);
+  }
   
   return htmlOutput
     .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
@@ -405,6 +919,140 @@ function createErrorPageWithAuthOptions(error) {
 </html>`;
   
   return HtmlService.createHtmlOutput(html).setTitle('System Error');
+}
+
+/**
+ * Safe helper functions (fallbacks if not defined elsewhere)
+ */
+
+function getPageFileNameSafe(pageName, userRole) {
+  // Try to use existing function, fallback to simple mapping
+  if (typeof getPageFileName === 'function') {
+    return getPageFileName(pageName, userRole);
+  }
+  
+  // Fallback mapping
+  const pageMap = {
+    'dashboard': 'index',
+    'requests': 'requests',
+    'assignments': 'assignments',
+    'riders': 'riders',
+    'notifications': 'notifications',
+    'reports': 'reports',
+    'user-management': 'user-management',
+    'rider-schedule': 'rider-schedule',
+    'admin-schedule': 'admin-schedule'
+  };
+  
+  return pageMap[pageName] || 'index';
+}
+
+function getRoleBasedNavigationSafe(currentPage, user, rider) {
+  // Try to use existing function
+  if (typeof getRoleBasedNavigation === 'function') {
+    return getRoleBasedNavigation(currentPage, user, rider);
+  }
+  
+  // Fallback simple navigation
+  const baseUrl = getWebAppUrlSafe();
+  let navItems = [];
+  
+  if (user.role === 'admin') {
+    navItems = [
+      { page: 'dashboard', label: '📊 Dashboard' },
+      { page: 'requests', label: '📋 Requests' },
+      { page: 'assignments', label: '🏍️ Assignments' },
+      { page: 'riders', label: '👥 Riders' },
+      { page: 'reports', label: '📊 Reports' }
+    ];
+  } else if (user.role === 'dispatcher') {
+    navItems = [
+      { page: 'dashboard', label: '📊 Dashboard' },
+      { page: 'requests', label: '📋 Requests' },
+      { page: 'assignments', label: '🏍️ Assignments' }
+    ];
+  } else if (user.role === 'rider') {
+    navItems = [
+      { page: 'dashboard', label: '📊 My Dashboard' },
+      { page: 'rider-schedule', label: '📅 My Schedule' }
+    ];
+  }
+  
+  let navHtml = '<nav class="navigation">';
+  navItems.forEach(item => {
+    const isActive = item.page === currentPage ? ' active' : '';
+    const url = item.page === 'dashboard' ? baseUrl : `${baseUrl}?page=${item.page}`;
+    navHtml += `<a href="${url}" class="nav-button${isActive}">${item.label}</a>`;
+  });
+  navHtml += '</nav>';
+  
+  return navHtml;
+}
+
+function injectUserInfoSafe(content, user, rider) {
+  // Try to use existing function
+  if (typeof injectUserInfo === 'function') {
+    return injectUserInfo(content, user, rider);
+  }
+  
+  // Fallback user info injection
+  content = content.replace(/\{\{USER_NAME\}\}/g, user.name || 'User');
+  content = content.replace(/\{\{USER_EMAIL\}\}/g, user.email || '');
+  content = content.replace(/\{\{USER_ROLE\}\}/g, user.role || '');
+  content = content.replace(/\{\{USER_AVATAR\}\}/g, user.avatar || user.name.charAt(0));
+  
+  return content;
+}
+
+function addNavigationToContentSafe(content, navigationHtml) {
+  // Try to use existing function
+  if (typeof addNavigationToContent === 'function') {
+    return addNavigationToContent(content, navigationHtml);
+  }
+  
+  // Fallback navigation injection
+  if (content.includes('{{NAVIGATION}}')) {
+    content = content.replace('{{NAVIGATION}}', navigationHtml);
+  } else if (content.includes('<body>')) {
+    content = content.replace('<body>', '<body>' + navigationHtml);
+  }
+  
+  return content;
+}
+
+function createAccessDeniedPage(reason, user) {
+  // Try to use existing function
+  if (typeof createAccessDeniedPageSimple === 'function') {
+    return createAccessDeniedPageSimple(user);
+  }
+  
+  // Fallback access denied page
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Access Denied</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+    .container { max-width: 500px; margin: 0 auto; background: white; padding: 2rem; border-radius: 10px; }
+    .btn { background: #4285f4; color: white; padding: 10px 20px; border: none; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚫 Access Denied</h1>
+    <p>You don't have permission to access this page.</p>
+    <p><strong>Reason:</strong> ${reason}</p>
+    <p><strong>Your Role:</strong> ${user ? user.role : 'Unknown'}</p>
+    
+    <div style="margin-top: 2rem;">
+      <button class="btn" onclick="window.location.href='${getWebAppUrlSafe()}'">🏠 Go to Dashboard</button>
+    </div>
+  </div>
+</body>
+</html>`;
+  
+  return HtmlService.createHtmlOutput(html).setTitle('Access Denied');
 }
 
 /**
