@@ -56,12 +56,6 @@ function getCustomSession() {
 }
 
 function loginWithCredentials(email, password) {
-  // Use enhanced secure login if available
-  if (typeof secureLoginWithCredentials === 'function') {
-    return secureLoginWithCredentials(email, password);
-  }
-  
-  // Fallback to original implementation
   const user = findUserRecord(email);
   if (!user || user.status !== 'active') {
     return { success: false, message: 'Invalid credentials' };
@@ -74,12 +68,6 @@ function loginWithCredentials(email, password) {
 }
 
 function loginWithGoogle() {
-  // Use enhanced secure login if available
-  if (typeof secureLoginWithGoogle === 'function') {
-    return secureLoginWithGoogle();
-  }
-  
-  // Fallback to original implementation
   const auth = authenticateUser();
   if (auth.success) {
     createCustomSession(auth.user);
@@ -89,12 +77,6 @@ function loginWithGoogle() {
 }
 
 function logoutUser() {
-  // Use enhanced secure logout if available
-  if (typeof secureLogout === 'function') {
-    return secureLogout();
-  }
-  
-  // Fallback to original implementation
   PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
   return { success: true };
 }
