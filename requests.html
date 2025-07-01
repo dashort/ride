@@ -426,6 +426,115 @@
         .search-box:focus {
             border-color: #3498db;
         }
+
+        /* Rider Assignment Modal Styles */
+        .rider-assignment-card {
+            border: 2px solid #ecf0f1;
+            border-radius: 10px;
+            padding: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 120px;
+        }
+
+        .rider-assignment-card:hover {
+            border-color: #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.2);
+        }
+
+        .rider-assignment-card.selected {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.05);
+            box-shadow: 0 2px 10px rgba(39, 174, 96, 0.3);
+        }
+
+        .rider-assignment-card.unavailable {
+            opacity: 0.6;
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.05);
+        }
+
+        .rider-status-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
+        }
+
+        .rider-status-indicator.unavailable {
+            background: #e74c3c;
+        }
+
+        .rider-status-indicator.checking {
+            background: #f39c12;
+        }
+
+        .rider-status-indicator.unknown {
+            background: #95a5a6;
+        }
+
+        .rider-name {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+            padding-left: 20px;
+        }
+
+        .rider-info {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            line-height: 1.3;
+        }
+
+        .rider-info div {
+            margin-bottom: 0.25rem;
+        }
+
+        .selection-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.2rem;
+        }
+
+        .request-assignment-summary {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .request-assignment-summary h3 {
+            margin-bottom: 0.5rem;
+            color: #2c3e50;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        /* Modal responsiveness for rider assignment */
+        @media (max-width: 768px) {
+            #ridersAssignmentGrid {
+                grid-template-columns: 1fr;
+            }
+            
+            .rider-assignment-card {
+                min-height: auto;
+            }
+        }
     </style>
 </head>
 <body>
@@ -606,9 +715,91 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" onclick="deleteRequest()" id="deleteBtn">🗑️ Delete Request</button>
                 <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="redirectToAssignmentPage()">🏍️ Assign Riders</button>
+                <button type="button" class="btn btn-info" id="assignRidersBtnModal" onclick="openRiderAssignmentModal()">🏍️ Assign Riders</button>
                 <button type="button" class="btn btn-primary" id="saveChangesBtn" onclick="saveRequest()">💾 Save Changes</button>
                 <button type="button" class="btn btn-success" id="completeRequestBtn" onclick="completeRequest()" style="display:none;">✅ Complete Request</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rider Assignment Modal -->
+    <div id="riderAssignmentModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1000px; width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 id="assignmentModalTitle">Assign Riders to Request</h2>
+                <span class="close" onclick="closeRiderAssignmentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Request Summary -->
+                <div class="request-assignment-summary" style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h3 style="margin-bottom: 0.5rem; color: #2c3e50;">Request Details</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <strong>Request ID:</strong> <span id="assignmentRequestId"></span>
+                        </div>
+                        <div>
+                            <strong>Date:</strong> <span id="assignmentEventDate"></span>
+                        </div>
+                        <div>
+                            <strong>Time:</strong> <span id="assignmentStartTime"></span>
+                        </div>
+                        <div>
+                            <strong>Riders Needed:</strong> <span id="assignmentRidersNeeded"></span>
+                        </div>
+                        <div>
+                            <strong>Start Location:</strong> <span id="assignmentStartLocation"></span>
+                        </div>
+                        <div>
+                            <strong>End Location:</strong> <span id="assignmentEndLocation"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Currently Assigned Riders -->
+                <div id="currentlyAssignedSection" style="margin-bottom: 1.5rem;">
+                    <h3 style="color: #2c3e50; margin-bottom: 0.5rem;">Currently Assigned Riders</h3>
+                    <div id="currentlyAssignedList" style="background: #fff3cd; padding: 1rem; border-radius: 8px; border-left: 4px solid #f39c12;">
+                        <ul id="currentAssignedRiders" style="margin: 0; padding-left: 1.2rem;">
+                            <li>None</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Assignment Controls -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 style="color: #2c3e50; margin: 0;">Available Riders</h3>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="checkbox" id="showAvailableOnly">
+                            <span>Show available only</span>
+                        </label>
+                        <span>Selected: <strong id="selectedRidersCount">0</strong></span>
+                    </div>
+                </div>
+
+                <!-- Search Box -->
+                <input type="text" id="riderSearchBox" placeholder="Search riders by name, JP number, or phone..." 
+                       style="width: 100%; padding: 0.75rem; border: 2px solid #ecf0f1; border-radius: 8px; margin-bottom: 1rem;">
+
+                <!-- Riders Grid -->
+                <div id="ridersAssignmentGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; max-height: 400px; overflow-y: auto; padding: 0.5rem;">
+                    <!-- Rider cards will be populated here -->
+                </div>
+
+                <!-- Loading State -->
+                <div id="ridersLoadingState" style="text-align: center; padding: 2rem; color: #7f8c8d; display: none;">
+                    <div>Loading riders...</div>
+                </div>
+
+                <!-- No Riders State -->
+                <div id="noRidersState" style="text-align: center; padding: 2rem; color: #7f8c8d; display: none;">
+                    <div>No riders available</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-warning" onclick="clearAllAssignments()">🗑️ Clear All</button>
+                <button type="button" class="btn btn-secondary" onclick="closeRiderAssignmentModal()">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveRiderAssignments()" id="saveAssignmentBtn">💾 Save Assignment</button>
             </div>
         </div>
     </div>
@@ -1370,38 +1561,34 @@
         URL.revokeObjectURL(url);
     }
 
+    function navigateTo(page, params = {}) {
+        const search = new URLSearchParams();
+        search.set('page', page);
+        Object.keys(params).forEach(key => search.set(key, params[key]));
 
+        function openUrl(base) {
+            const url = base + '?' + search.toString();
+            try {
+                window.top.location.assign(url);
+            } catch (error) {
+                window.location.assign(url);
+            }
+        }
 
-
-function navigateTo(page, params = {}) {
-    const search = new URLSearchParams();
-    search.set('page', page);
-    Object.keys(params).forEach(key => search.set(key, params[key]));
-
-    function openUrl(base) {
-        const url = base + '?' + search.toString();
-        try {
-            window.top.location.assign(url);
-        } catch (error) {
-            window.location.assign(url);
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(openUrl)
+                .withFailureHandler(function() {
+                    var basePath = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+                    var fallbackBase = basePath + (page === 'dashboard' ? 'index.html' : page + '.html');
+                    openUrl(fallbackBase);
+                })
+                .getWebAppUrl();
+        } else {
+            const base = page === 'dashboard' ? 'index.html' : page + '.html';
+            openUrl(base);
         }
     }
-
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run
-            .withSuccessHandler(openUrl)
-            .withFailureHandler(function() {
-                var basePath = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
-                var fallbackBase = basePath + (page === 'dashboard' ? 'index.html' : page + '.html');
-                openUrl(fallbackBase);
-            })
-            .getWebAppUrl();
-    } else {
-        const base = page === 'dashboard' ? 'index.html' : page + '.html';
-        openUrl(base);
-    }
-}
-
 
     function redirectToAssignmentPage() {
         if (currentEditingRequest && currentEditingRequest.requestId) {
@@ -1412,6 +1599,353 @@ function navigateTo(page, params = {}) {
         } else {
             showToast('No request selected or request ID is missing. Cannot navigate to assignments.');
             console.error('redirectToAssignmentPage called without a valid currentEditingRequest or requestId.');
+        }
+    }
+
+    // Global variables for rider assignment
+    let availableRiders = [];
+    let selectedRiderNames = new Set();
+    let riderAvailabilityData = {};
+
+    function openRiderAssignmentModal() {
+        if (currentEditingRequest && currentEditingRequest.requestId) {
+            const requestId = currentEditingRequest.requestId;
+            console.log('Opening rider assignment modal for request:', requestId);
+
+            // Populate request details
+            document.getElementById('assignmentRequestId').textContent = requestId;
+            document.getElementById('assignmentEventDate').textContent = currentEditingRequest.eventDate || 'N/A';
+            document.getElementById('assignmentStartTime').textContent = currentEditingRequest.startTime || 'N/A';
+            document.getElementById('assignmentRidersNeeded').textContent = currentEditingRequest.ridersNeeded || 'N/A';
+            document.getElementById('assignmentStartLocation').textContent = currentEditingRequest.startLocation || 'N/A';
+            document.getElementById('assignmentEndLocation').textContent = currentEditingRequest.endLocation || 'N/A';
+
+            // Get currently assigned riders
+            let assignedRiders = currentEditingRequest.ridersAssigned ? 
+                currentEditingRequest.ridersAssigned.split(',').map(r => r.trim()).filter(r => r) : [];
+            
+            // Update currently assigned section
+            const currentlyAssignedList = document.getElementById('currentAssignedRiders');
+            if (assignedRiders.length > 0) {
+                currentlyAssignedList.innerHTML = assignedRiders.map(r => 
+                    `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')"><span style="cursor: pointer;">❌ ${r}</span></li>`
+                ).join('');
+            } else {
+                currentlyAssignedList.innerHTML = '<li>None</li>';
+            }
+
+            // Initialize selected riders with currently assigned ones
+            selectedRiderNames = new Set(assignedRiders);
+            updateSelectedRidersCount();
+
+            // Show the modal
+            document.getElementById('riderAssignmentModal').style.display = 'block';
+
+            // Load riders data
+            loadRidersForAssignment();
+
+            // Set up event listeners
+            setupAssignmentModalEventListeners();
+        } else {
+            showToast('No request selected or request ID is missing. Cannot open rider assignment modal.');
+            console.error('openRiderAssignmentModal called without a valid currentEditingRequest or requestId.');
+        }
+    }
+
+    function loadRidersForAssignment() {
+        // Show loading state
+        document.getElementById('ridersLoadingState').style.display = 'block';
+        document.getElementById('ridersAssignmentGrid').style.display = 'none';
+        document.getElementById('noRidersState').style.display = 'none';
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handleRidersDataLoaded)
+                .withFailureHandler(handleRidersDataError)
+                .getPageDataForRiders(currentUser || {});
+        } else {
+            // Fallback for testing
+            handleRidersDataError({ message: "Google Apps Script not available." });
+        }
+    }
+
+    function handleRidersDataLoaded(data) {
+        document.getElementById('ridersLoadingState').style.display = 'none';
+        
+        if (data && data.success && data.riders) {
+            availableRiders = data.riders.filter(rider => 
+                rider.status === 'Active' || rider.status === 'Available' || !rider.status
+            );
+            
+            if (availableRiders.length > 0) {
+                document.getElementById('ridersAssignmentGrid').style.display = 'grid';
+                displayRidersForAssignment();
+                
+                // Check rider availability for this specific request
+                if (currentEditingRequest) {
+                    checkRiderAvailability();
+                }
+            } else {
+                document.getElementById('noRidersState').style.display = 'block';
+            }
+        } else {
+            document.getElementById('noRidersState').style.display = 'block';
+            showToast('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
+        }
+    }
+
+    function handleRidersDataError(error) {
+        document.getElementById('ridersLoadingState').style.display = 'none';
+        document.getElementById('noRidersState').style.display = 'block';
+        showToast('Error loading riders: ' + (error.message || error));
+    }
+
+    function displayRidersForAssignment() {
+        const grid = document.getElementById('ridersAssignmentGrid');
+        const showAvailableOnly = document.getElementById('showAvailableOnly').checked;
+        const searchTerm = document.getElementById('riderSearchBox').value.toLowerCase();
+
+        let filteredRiders = availableRiders;
+
+        // Apply search filter
+        if (searchTerm) {
+            filteredRiders = filteredRiders.filter(rider => 
+                rider.name.toLowerCase().includes(searchTerm) ||
+                (rider.jpNumber && rider.jpNumber.toLowerCase().includes(searchTerm)) ||
+                (rider.phone && rider.phone.includes(searchTerm))
+            );
+        }
+
+        // Apply availability filter
+        if (showAvailableOnly) {
+            filteredRiders = filteredRiders.filter(rider => 
+                !riderAvailabilityData[rider.name] || riderAvailabilityData[rider.name] === 'Available'
+            );
+        }
+
+        if (filteredRiders.length === 0) {
+            grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #7f8c8d;">No riders match your criteria</div>';
+            return;
+        }
+
+        grid.innerHTML = filteredRiders.map(rider => {
+            const isSelected = selectedRiderNames.has(rider.name);
+            const availability = riderAvailabilityData[rider.name] || 'Checking...';
+            const isUnavailable = availability !== 'Available' && availability !== 'Checking...';
+            
+            return `
+                <div class="rider-assignment-card ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''}" 
+                     data-rider-name="${rider.name.replace(/"/g, '&quot;')}" 
+                     onclick="toggleRiderSelection('${rider.name.replace(/'/g, "\\'")}')">
+                    <div class="rider-status-indicator ${availability.toLowerCase()}"></div>
+                    <div class="rider-name" style="font-weight: bold; margin-bottom: 0.5rem;">${rider.name}</div>
+                    <div class="rider-info" style="font-size: 0.9rem; color: #666;">
+                        <div>JP: ${rider.jpNumber || 'N/A'}</div>
+                        <div>📞 ${rider.phone || 'N/A'}</div>
+                        <div>📧 ${rider.email || 'N/A'}</div>
+                        ${isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${availability}</div>` : ''}
+                    </div>
+                    <div class="selection-indicator" style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem;">
+                        ${isSelected ? '✅' : '⬜'}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function checkRiderAvailability() {
+        if (!currentEditingRequest || !currentEditingRequest.eventDate || !currentEditingRequest.startTime) {
+            return;
+        }
+
+        availableRiders.forEach(rider => {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(isAvailable) {
+                        riderAvailabilityData[rider.name] = isAvailable ? 'Available' : 'Unavailable';
+                        updateRiderAvailabilityDisplay(rider.name);
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Availability check failed for', rider.name, error);
+                        riderAvailabilityData[rider.name] = 'Unknown';
+                        updateRiderAvailabilityDisplay(rider.name);
+                    })
+                    .isRiderAvailable(rider.name, currentEditingRequest.eventDate, currentEditingRequest.startTime);
+            }
+        });
+    }
+
+    function updateRiderAvailabilityDisplay(riderName) {
+        const card = document.querySelector(`[data-rider-name="${riderName.replace(/"/g, '&quot;')}"]`);
+        if (!card) return;
+
+        const availability = riderAvailabilityData[riderName];
+        const isUnavailable = availability !== 'Available';
+
+        card.classList.toggle('unavailable', isUnavailable);
+        
+        const statusIndicator = card.querySelector('.rider-status-indicator');
+        if (statusIndicator) {
+            statusIndicator.className = `rider-status-indicator ${availability.toLowerCase()}`;
+        }
+
+        // Update or add availability warning
+        const existingWarning = card.querySelector('.availability-warning');
+        if (existingWarning) {
+            existingWarning.remove();
+        }
+
+        if (isUnavailable) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'availability-warning';
+            warningDiv.style.cssText = 'color: #e74c3c; font-weight: bold; margin-top: 0.5rem;';
+            warningDiv.innerHTML = `⚠️ ${availability}`;
+            card.querySelector('.rider-info').appendChild(warningDiv);
+        }
+    }
+
+    function toggleRiderSelection(riderName) {
+        if (selectedRiderNames.has(riderName)) {
+            selectedRiderNames.delete(riderName);
+        } else {
+            selectedRiderNames.add(riderName);
+        }
+        
+        updateSelectedRidersCount();
+        updateRiderSelectionDisplay();
+    }
+
+    function updateRiderSelectionDisplay() {
+        document.querySelectorAll('.rider-assignment-card').forEach(card => {
+            const riderName = card.dataset.riderName;
+            const isSelected = selectedRiderNames.has(riderName);
+            
+            card.classList.toggle('selected', isSelected);
+            
+            const indicator = card.querySelector('.selection-indicator');
+            if (indicator) {
+                indicator.textContent = isSelected ? '✅' : '⬜';
+            }
+        });
+    }
+
+    function updateSelectedRidersCount() {
+        document.getElementById('selectedRidersCount').textContent = selectedRiderNames.size;
+    }
+
+    function removeAssignedRider(riderName) {
+        selectedRiderNames.delete(riderName);
+        updateSelectedRidersCount();
+        updateRiderSelectionDisplay();
+        
+        // Update currently assigned list
+        const assignedArray = Array.from(selectedRiderNames);
+        const currentlyAssignedList = document.getElementById('currentAssignedRiders');
+        if (assignedArray.length > 0) {
+            currentlyAssignedList.innerHTML = assignedArray.map(r => 
+                `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')"><span style="cursor: pointer;">❌ ${r}</span></li>`
+            ).join('');
+        } else {
+            currentlyAssignedList.innerHTML = '<li>None</li>';
+        }
+    }
+
+    function setupAssignmentModalEventListeners() {
+        // Search functionality
+        const searchBox = document.getElementById('riderSearchBox');
+        searchBox.addEventListener('input', displayRidersForAssignment);
+
+        // Show available only filter
+        const availableOnlyCheckbox = document.getElementById('showAvailableOnly');
+        availableOnlyCheckbox.addEventListener('change', displayRidersForAssignment);
+
+        // Close modal when clicking outside
+        document.getElementById('riderAssignmentModal').addEventListener('click', function(event) {
+            if (event.target === this) {
+                closeRiderAssignmentModal();
+            }
+        });
+    }
+
+    function closeRiderAssignmentModal() {
+        document.getElementById('riderAssignmentModal').style.display = 'none';
+    }
+
+    function saveRiderAssignments() {
+        if (!currentEditingRequest || !currentEditingRequest.requestId) {
+            showToast('No request selected for assignment.');
+            return;
+        }
+
+        const requestId = currentEditingRequest.requestId;
+        const selectedRidersArray = Array.from(selectedRiderNames);
+
+        console.log('Saving rider assignments for request:', requestId);
+        console.log('Selected riders:', selectedRidersArray);
+
+        showLoadingOverlay();
+
+        // Create rider objects for the assignment function
+        const riderObjects = selectedRidersArray.map(riderName => {
+            const rider = availableRiders.find(r => r.name === riderName);
+            return {
+                name: riderName,
+                jpNumber: rider ? rider.jpNumber : '',
+                phone: rider ? rider.phone : '',
+                email: rider ? rider.email : ''
+            };
+        });
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(handleAssignmentSaveSuccess)
+                .withFailureHandler(handleAssignmentSaveError)
+                .processAssignmentAndPopulate(requestId, riderObjects, true);
+        } else {
+            hideLoadingOverlay();
+            showToast('Google Apps Script not available for saving assignments.');
+        }
+    }
+
+    function handleAssignmentSaveSuccess(result) {
+        hideLoadingOverlay();
+        
+        if (result && result.success) {
+            showToast(`Successfully assigned ${result.successCount || selectedRiderNames.size} rider(s) to request ${result.requestId}`);
+            
+            // Update the current request data to reflect the assignment
+            if (currentEditingRequest) {
+                currentEditingRequest.ridersAssigned = Array.from(selectedRiderNames).join(', ');
+                currentEditingRequest.status = selectedRiderNames.size > 0 ? 'Assigned' : 'Unassigned';
+            }
+            
+            closeRiderAssignmentModal();
+            
+            // Refresh the requests list to show updated status
+            setTimeout(() => {
+                loadPageData();
+            }, 1000);
+        } else {
+            showToast('Assignment partially completed: ' + (result.message || 'Some assignments may have failed'));
+            console.error('Assignment result:', result);
+        }
+    }
+
+    function handleAssignmentSaveError(error) {
+        hideLoadingOverlay();
+        showToast('Error saving rider assignments: ' + (error.message || error));
+        console.error('Assignment save error:', error);
+    }
+
+    function clearAllAssignments() {
+        if (confirm('Clear all rider assignments for this request?')) {
+            selectedRiderNames.clear();
+            updateSelectedRidersCount();
+            updateRiderSelectionDisplay();
+            
+            // Update currently assigned list
+            const currentlyAssignedList = document.getElementById('currentAssignedRiders');
+            currentlyAssignedList.innerHTML = '<li>None</li>';
         }
     }
 </script>
