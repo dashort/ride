@@ -656,7 +656,7 @@
 
     /**
      * Loads all necessary data for the assignments page by calling the consolidated
-     * server-side function `getPageDataForAssignments`.
+     * server-side function `getAssignmentsPageData`.
      * Passes a requestId from URL parameters if present.
      * @return {void}
      */
@@ -669,7 +669,7 @@
             google.script.run
                 .withSuccessHandler(handleAssignmentsDataSuccess)
                 .withFailureHandler(handleAssignmentsDataFailure)
-                .getPageDataForAssignments(requestIdToLoad);
+                .getAssignmentsPageData(requestIdToLoad);
         } else {
             console.log('⚠️ Google Apps Script not available for assignments page.');
             handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
