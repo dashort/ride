@@ -2743,13 +2743,14 @@ function generateReportData(filters) {
       }
     });
 
-    // Calculate total escort hours per rider within the period
+    // Calculate escort count and total hours per rider within the period
     const riderHours = [];
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName) return;
 
       let totalHours = 0;
+      let escorts = 0;
 
       assignmentsData.data.forEach(assignment => {
         const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
@@ -2762,6 +2763,7 @@ function generateReportData(filters) {
         }
 
         if (assignmentRider === riderName && status === 'Completed' && dateMatches) {
+          escorts++;
           const start = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime));
           const end = parseTimeString(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime));
           if (start && end && end > start) {
@@ -2770,7 +2772,11 @@ function generateReportData(filters) {
         }
       });
 
-      riderHours.push({ name: riderName, hours: Math.round(totalHours * 100) / 100 });
+      riderHours.push({
+        name: riderName,
+        escorts: escorts,
+        hours: Math.round(totalHours * 100) / 100
+      });
     });
 
     const reportData = {
