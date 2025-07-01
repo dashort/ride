@@ -666,13 +666,24 @@
      * @listens DOMContentLoaded
      */
     document.addEventListener('DOMContentLoaded', function() {
+        // Check for parameters from both URL and server-injected parameters
         const params = new URLSearchParams(window.location.search);
-        const statusParam = params.get('status');
+        let statusParam = params.get('status');
+        
+        // Also check server-injected parameters (for Apps Script web app)
+        if (!statusParam && window.urlParameters && window.urlParameters.status) {
+            statusParam = window.urlParameters.status;
+            console.log('🔍 Status parameter found in injected parameters:', statusParam);
+        } else if (statusParam) {
+            console.log('🔍 Status parameter found in URL:', statusParam);
+        }
+        
         const statusFilter = document.getElementById('statusFilter');
         if (statusFilter) {
             statusFilter.addEventListener('change', loadPageData);
             if (statusParam) {
                 statusFilter.value = statusParam;
+                console.log('🔍 Status filter set to:', statusParam);
             }
         }
 
@@ -687,6 +698,7 @@
             }
         }
 
+        // Call loadPageData after setting the filter to ensure the correct filter is applied
         loadPageData();
         const completedCheckbox = document.getElementById('showCompleted');
         if (completedCheckbox) {
@@ -702,7 +714,12 @@
             searchInput.addEventListener('input', sortAndDisplayRequests);
         }
 
-        const actionParam = params.get('action');
+        // Check for action parameter
+        let actionParam = params.get('action');
+        if (!actionParam && window.urlParameters && window.urlParameters.action) {
+            actionParam = window.urlParameters.action;
+        }
+        
         if (actionParam && actionParam.toLowerCase() === 'create') {
             openNewRequestForm();
         }
@@ -718,6 +735,8 @@
         const filter = document.getElementById('statusFilter').value;
         const includeCompleted = document.getElementById('showCompleted').checked;
         const hideCompleted = !includeCompleted;
+
+        console.log('📋 Loading page data with filter:', filter, 'hideCompleted:', hideCompleted);
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run

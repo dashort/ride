@@ -732,9 +732,11 @@
     }
 
     function navigateTo(page, params = {}) {
+        console.log('🔗 navigateTo called with page:', page, 'params:', params);
         const search = new URLSearchParams();
         search.set('page', page);
         Object.keys(params).forEach(key => search.set(key, params[key]));
+        console.log('🔗 Search params created:', search.toString());
 
         let base;
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -742,6 +744,8 @@
         } else {
             base = page === 'dashboard' ? 'index.html' : page + '.html';
         }
+        console.log('🔗 Base URL determined:', base);
+        
         let url;
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             // In Apps Script the base already points to the deployed web app
@@ -749,10 +753,12 @@
         } else {
             url = base + (search.toString() ? '?' + search.toString() : '');
         }
+        console.log('🔗 Final URL:', url);
 
         try {
             window.top.location.assign(url);
         } catch (error) {
+            console.log('🔗 Fallback to window.location.assign');
             window.location.assign(url);
         }
     }
@@ -772,10 +778,16 @@
     }
 
     function goToRequests(status) {
+        console.log('🔗 goToRequests called with status:', status);
         var isLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+        console.log('🔗 isLocal:', isLocal, 'hostname:', window.location.hostname, 'protocol:', window.location.protocol);
+        
         if (isLocal) {
-            window.location.assign('requests.html?status=' + encodeURIComponent(status));
+            const url = 'requests.html?status=' + encodeURIComponent(status);
+            console.log('🔗 Local navigation to:', url);
+            window.location.assign(url);
         } else {
+            console.log('🔗 Using navigateTo function with status:', status);
             navigateTo('requests', { status: status });
         }
     }
