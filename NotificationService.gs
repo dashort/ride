@@ -73,7 +73,7 @@ function addEnhancedNotificationDropdowns(dashSheet, startRow, numRows) {
 function handleEnhancedNotificationAction(e, dashSheet, row) {
   try {
     const selectedAction = e.range.getValue();
-    console.log(`handleEnhancedNotificationAction: Action "${selectedAction}" selected at row ${row}`);
+    debugLog(`handleEnhancedNotificationAction: Action "${selectedAction}" selected at row ${row}`);
     
     if (!selectedAction || selectedAction === 'Select action...' || selectedAction.startsWith('──')) {
       return;
@@ -106,9 +106,9 @@ function handleEnhancedNotificationAction(e, dashSheet, row) {
       markRequestAsNotified(requestId);
     } else if (selectedAction.includes('Show Notification Status')) {
       showNotificationStatus(requestId);
-    } else {
-      console.log(`Unknown notification action: ${selectedAction}`);
-    }
+          } else {
+        debugLog(`Unknown notification action: ${selectedAction}`);
+      }
     
   } catch (error) {
     logError('Error handling enhanced notification action', error);
@@ -125,7 +125,7 @@ function handleEnhancedNotificationAction(e, dashSheet, row) {
  */
 function sendIndividualNotification(requestId, riderName, type) {
   try {
-    console.log(`Sending ${type} to ${riderName} for request ${requestId}`);
+    debugLog(`Sending ${type} to ${riderName} for request ${requestId}`);
     
     const assignments = getAssignmentsForRequest(requestId);
     const assignmentsData = getAssignmentsData();
@@ -174,7 +174,7 @@ function sendIndividualNotification(requestId, riderName, type) {
  */
 function showNotificationStatus(requestId) {
   try {
-    console.log(`Showing notification status for ${requestId}`);
+    debugLog(`Showing notification status for ${requestId}`);
     
     const assignments = getAssignmentsForRequest(requestId);
     const assignmentsData = getAssignmentsData();
@@ -218,7 +218,7 @@ function showNotificationStatus(requestId) {
  */
 function sendNotificationsToRequest(requestId, notificationType) {
   try {
-    console.log(`sendNotificationsToRequest: Sending ${notificationType} for request ${requestId}`);
+    debugLog(`sendNotificationsToRequest: Sending ${notificationType} for request ${requestId}`);
     
     const assignments = getAssignmentsForRequest(requestId);
     
@@ -234,7 +234,7 @@ function sendNotificationsToRequest(requestId, notificationType) {
       const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id);
       const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
       
-      console.log(`Sending ${notificationType} to ${riderName} (${assignmentId})`);
+      debugLog(`Sending ${notificationType} to ${riderName} (${assignmentId})`);
       
       try {
         if (notificationType === 'SMS' || notificationType === 'Both') {
@@ -268,7 +268,7 @@ function sendNotificationsToRequest(requestId, notificationType) {
  */
 function markRequestAsNotified(requestId) {
   try {
-    console.log(`markRequestAsNotified: Marking ${requestId} as notified`);
+    debugLog(`markRequestAsNotified: Marking ${requestId} as notified`);
     
     const assignments = getAssignmentsForRequest(requestId);
     const assignmentsData = getAssignmentsData();
@@ -315,7 +315,7 @@ function markRequestAsNotified(requestId) {
  * @return {Object} Result object indicating success/failure.
  */
 function sendAssignmentNotification(assignmentId, type) {
-  console.log(`📱 Sending ${type} notification for assignment ${assignmentId}`);
+  debugLog(`Sending ${type} notification for assignment ${assignmentId}`);
   
   try {
     const assignmentsData = getAssignmentsData();
@@ -429,9 +429,9 @@ function sendAssignmentNotification(assignmentId, type) {
         if (formattedDetails) {
           emailMessage += `\n\nRequest Details:\n${formattedDetails}`;
         }
-      } catch (otherError) {
-        console.log(`Could not retrieve other riders for ${requestId}: ${otherError}`);
-      }
+              } catch (otherError) {
+          debugLog(`Could not retrieve other riders for ${requestId}: ${otherError}`);
+        }
     }
     
     let smsResult = { success: true };

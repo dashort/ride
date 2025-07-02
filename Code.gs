@@ -2767,20 +2767,21 @@ function generateReportData(filters) {
             assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase() && 
             dateMatches) {
           
-          // Only count assignments that have actually been worked (past event date or completed)
+          // OPTIMIZED: More flexible status matching for better counting
           const statusLower = (status || '').toLowerCase().trim();
           const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           
-          // Count if:
-          // 1. Status is 'Completed', OR
-          // 2. Event date has passed and rider was assigned (should have completion data)
-          const isCompleted = statusLower === 'completed';
+          // Count valid escort assignments - expanded criteria
+          const validStatuses = ['completed', 'in progress', 'assigned', 'confirmed', 'en route'];
+          const hasValidStatus = !statusLower || validStatuses.includes(statusLower);
           const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
-          const wasAssigned = ['assigned', 'confirmed', 'en route', 'in progress'].includes(statusLower);
           
-          if (isCompleted || (eventHasPassed && wasAssigned)) {
+          // Count if:
+          // 1. Assignment has a valid working status, OR
+          // 2. Event date has passed (indicating work was done)
+          if (hasValidStatus || eventHasPassed) {
             escorts++;
             
             // Priority 1: Use actual completion times if available
@@ -2793,21 +2794,19 @@ function generateReportData(filters) {
             if (actualDuration && !isNaN(parseFloat(actualDuration))) {
               // Use recorded duration if available
               hoursToAdd = parseFloat(actualDuration);
-              console.log(`Using recorded duration: ${hoursToAdd} hours for ${assignmentRider}`);
+              debugLog(`Using recorded duration: ${hoursToAdd} hours for ${assignmentRider}`);
             } else if (actualStart && actualEnd) {
               // Calculate from actual start/end times
               const startTime = parseTimeString(actualStart);
               const endTime = parseTimeString(actualEnd);
               if (startTime && endTime && endTime > startTime) {
                 hoursToAdd = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
-                console.log(`Calculated from actual times: ${hoursToAdd} hours for ${assignmentRider}`);
+                debugLog(`Calculated from actual times: ${hoursToAdd} hours for ${assignmentRider}`);
               }
-            }
-            
-            // If no actual data available and event has passed, use realistic estimates
-            if (hoursToAdd === 0 && eventHasPassed) {
+            } else {
+              // OPTIMIZED: Use estimated hours for all countable assignments
               hoursToAdd = getRealisticEscortHours(assignment, assignmentsData.columnMap);
-              console.log(`Using realistic estimate: ${hoursToAdd} hours for ${assignmentRider} (event has passed)`);
+              debugLog(`Using realistic estimate: ${hoursToAdd} hours for ${assignmentRider}`);
             }
             
             totalHours += hoursToAdd;
@@ -2884,12 +2883,12 @@ function getRealisticEscortHours(assignment, columnMap) {
       if (request) {
         const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
         const estimatedHours = realisticEstimates[requestType] || realisticEstimates['Other'];
-        console.log(`Applied realistic estimate: ${estimatedHours} hours for ${requestType} escort (Request ID: ${requestId})`);
+        debugLog(`Applied realistic estimate: ${estimatedHours} hours for ${requestType} escort (Request ID: ${requestId})`);
         return estimatedHours;
       }
     }
   } catch (error) {
-    console.warn('Could not determine request type for realistic estimate:', error);
+    debugLog('Could not determine request type for realistic estimate:', error);
   }
   
   // Default fallback

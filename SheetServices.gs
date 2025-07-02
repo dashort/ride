@@ -325,7 +325,18 @@ function getRidersData(useCache = true) {
       dataCache.set(cacheKey, result);
     }
 
-    console.log(`✅ getRidersData: Filtered ${allData.length} total rows to ${validData.length} valid riders`);
+    debugLog(`getRidersData: Filtered ${allData.length} total rows to ${validData.length} valid riders`);
+    
+    // Create indexes for faster lookups if caching is enabled
+    if (useCache && result.data.length > 0 && dataCache.createIndex) {
+      dataCache.createIndex(cacheKey, 'id', (row, columnMap) => 
+        getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber)
+      );
+      dataCache.createIndex(cacheKey, 'email', (row, columnMap) => 
+        getColumnValue(row, columnMap, CONFIG.columns.riders.email)
+      );
+    }
+    
     return result;
 
   } catch (error) {
@@ -366,37 +377,39 @@ function applyRidersDataFiltering(ridersData) {
   };
 }
 function getTotalRiderCount() {
-  try {
-    console.log('📊 Getting total rider count...');
-    const ridersData = getRidersData();
+  return trackPerformance('getTotalRiderCount', () => {
+    try {
+      debugLog('Getting total rider count...');
+      const ridersData = getRidersData();
 
-    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
+      if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
+        return 0;
+      }
+
+      const columnMap = ridersData.columnMap;
+      const nameIdx = columnMap[CONFIG.columns.riders.name];
+      const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
+
+      let totalCount = 0;
+      
+      for (let i = 0; i < ridersData.data.length; i++) {
+        const row = ridersData.data[i];
+        const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+        const jpNumber = jpNumberIdx !== undefined ? String(row[jpNumberIdx] || '').trim() : '';
+        
+        // Count only rows with valid data
+        if (name.length > 0 || jpNumber.length > 0) {
+          totalCount++;
+        }
+      }
+      
+      debugLog(`Total riders count: ${totalCount}`);
+      return totalCount;
+    } catch (error) {
+      debugLog('Error getting total rider count:', error);
       return 0;
     }
-
-    const columnMap = ridersData.columnMap;
-    const nameIdx = columnMap[CONFIG.columns.riders.name];
-    const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
-
-    let totalCount = 0;
-    
-    for (let i = 0; i < ridersData.data.length; i++) {
-      const row = ridersData.data[i];
-      const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
-      const jpNumber = jpNumberIdx !== undefined ? String(row[jpNumberIdx] || '').trim() : '';
-      
-      // Count only rows with valid data
-      if (name.length > 0 || jpNumber.length > 0) {
-        totalCount++;
-      }
-    }
-    
-    console.log(`✅ Total riders count: ${totalCount}`);
-    return totalCount;
-  } catch (error) {
-    console.error('❌ Error getting total rider count:', error);
-    return 0;
-  }
+  });
 }
 
 /**
@@ -448,8 +461,11 @@ function saveRiderAvailability(riderId, date, startTime, endTime, status) {
       status || 'Available'
     ];
 
+    // Batch operation: append row and flush once
     sheet.appendRow(row);
     SpreadsheetApp.flush();
+    
+    // Clear relevant cache
     dataCache.clear('sheet_' + CONFIG.sheets.riderAvailability);
     return { success: true };
   } catch (error) {
@@ -546,62 +562,64 @@ function getRiderAssignmentsForDate(riderName, date, rawAssignmentsData = null) 
  * @param {object} [rawRidersData=null] Optional raw riders data to use.
  * @return {Array<Array<any>>} An array of active rider data rows.
  */
-function getActiveRidersCount(rawRidersData = null) {
-  try {
-    console.log('🔄 Getting active riders count with consistent logic...');
-    const currentRidersData = rawRidersData || getRidersData();
+function getActiveRidersCountConsistent(rawRidersData = null) {
+  return trackPerformance('getActiveRidersCount', () => {
+    try {
+      debugLog('Getting active riders count with consistent logic...');
+      const currentRidersData = rawRidersData || getRidersData();
 
-    if (!currentRidersData || !currentRidersData.data || currentRidersData.data.length === 0) {
-      console.log('📊 No rider data found.');
-      return 0;
-    }
+      if (!currentRidersData || !currentRidersData.data || currentRidersData.data.length === 0) {
+        debugLog('No rider data found.');
+        return 0;
+      }
 
-    const riders = currentRidersData.data;
-    const columnMap = currentRidersData.columnMap;
+      const riders = currentRidersData.data;
+      const columnMap = currentRidersData.columnMap;
 
-    const statusIdx = columnMap[CONFIG.columns.riders.status];
-    const nameIdx = columnMap[CONFIG.columns.riders.name];
-    const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
+      const statusIdx = columnMap[CONFIG.columns.riders.status];
+      const nameIdx = columnMap[CONFIG.columns.riders.name];
+      const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
 
-    let activeCount = 0;
-    
-    for (let i = 0; i < riders.length; i++) {
-      const row = riders[i];
-      try {
-        const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
-        const jpNumber = jpNumberIdx !== undefined ? String(row[jpNumberIdx] || '').trim() : '';
-        
-        // CONSISTENT LOGIC: Must have either name OR JP number to be counted
-        const hasValidIdentifier = name.length > 0 || jpNumber.length > 0;
-        
-        if (!hasValidIdentifier) {
-          continue; // Skip rows without valid identifier
-        }
-        
-        // Check status (default to active if no status column or empty status)
-        if (statusIdx !== undefined) {
-          const status = String(row[statusIdx] || '').toLowerCase().trim();
-          if (!status || status === 'active' || status === 'available') {
+      let activeCount = 0;
+      
+      for (let i = 0; i < riders.length; i++) {
+        const row = riders[i];
+        try {
+          const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+          const jpNumber = jpNumberIdx !== undefined ? String(row[jpNumberIdx] || '').trim() : '';
+          
+          // CONSISTENT LOGIC: Must have either name OR JP number to be counted
+          const hasValidIdentifier = name.length > 0 || jpNumber.length > 0;
+          
+          if (!hasValidIdentifier) {
+            continue; // Skip rows without valid identifier
+          }
+          
+          // Check status (default to active if no status column or empty status)
+          if (statusIdx !== undefined) {
+            const status = String(row[statusIdx] || '').toLowerCase().trim();
+            if (!status || status === 'active' || status === 'available') {
+              activeCount++;
+            }
+          } else {
+            // If no status column, count as active
             activeCount++;
           }
-        } else {
-          // If no status column, count as active
-          activeCount++;
+          
+        } catch (rowError) {
+          debugLog(`Error processing rider row ${i}:`, rowError);
         }
-        
-      } catch (rowError) {
-        console.log(`⚠️ Error processing rider row ${i}:`, rowError);
       }
+      
+      debugLog(`Active riders count (consistent): ${activeCount}`);
+      return activeCount;
+      
+    } catch (error) {
+      debugLog('Error getting active riders count:', error);
+      logError('Error getting active riders count:', error);
+      return 0;
     }
-    
-    console.log(`✅ Active riders count (consistent): ${activeCount}`);
-    return activeCount;
-    
-  } catch (error) {
-    console.error('❌ Error getting active riders count:', error);
-    logError('Error getting active riders count:', error);
-    return 0;
-  }
+  });
 }
 
 /**
@@ -611,44 +629,7 @@ function getActiveRidersCount(rawRidersData = null) {
  * @return {number} The count of active riders. Returns 0 on error or if no data.
  */
 function getActiveRidersCount(rawRidersData = null) {
-  try {
-    console.log('🔄 Getting active riders count...');
-    const currentRidersData = rawRidersData || getRidersData();
-
-    if (!currentRidersData || !currentRidersData.data || currentRidersData.data.length === 0) {
-      console.log('📊 No rider data found.');
-      return 0;
-    }
-
-    const riders = currentRidersData.data;
-    const columnMap = currentRidersData.columnMap;
-
-    const statusIdx = columnMap[CONFIG.columns.riders.status];
-    const nameIdx = columnMap[CONFIG.columns.riders.name];
-    const jpNumberIdx = columnMap[CONFIG.columns.riders.jpNumber];
-
-    let activeCount = 0;
-    for (let i = 0; i < riders.length; i++) {
-      const row = riders[i];
-      try {
-        const hasName = nameIdx !== undefined && row[nameIdx] && String(row[nameIdx]).trim().length > 0;
-        const hasJpNumber = jpNumberIdx !== undefined && row[jpNumberIdx] && String(row[jpNumberIdx]).trim().length > 0;
-        if (!hasName && !hasJpNumber) continue;
-        if (statusIdx !== undefined) {
-          const status = String(row[statusIdx] || '').toLowerCase().trim();
-          if (!status || status === 'active' || status === 'available') activeCount++;
-        } else {
-          activeCount++;
-        }
-      } catch (rowError) { console.log(`⚠️ Error processing rider row ${i}:`, rowError); }
-    }
-    console.log(`✅ Active riders count: ${activeCount}`);
-    return activeCount;
-  } catch (error) {
-    console.error('❌ Error getting active riders count:', error);
-    logError('Error getting active riders count:', error); // Assumes logError is defined
-    return 0;
-  }
+  return getActiveRidersCountConsistent(rawRidersData); // Use the optimized version
 }
 
 // --- Content from RequestId.js ---
@@ -665,7 +646,7 @@ function getActiveRidersCount(rawRidersData = null) {
 function onEditRequestsSheet(e) {
   try {
     if (!e || !e.range || e.range.getSheet().getName() !== CONFIG.sheets.requests) {
-      console.log(`onEditRequestsSheet: Not on Requests sheet or outside range, exiting.`);
+      debugLog(`onEditRequestsSheet: Not on Requests sheet or outside range, exiting.`);
       return;
     }
 
@@ -674,7 +655,7 @@ function onEditRequestsSheet(e) {
     const sheet = e.range.getSheet();
 
     if (row < 2) {
-      console.log('onEditRequestsSheet: Edit on header row, exiting.');
+      debugLog('onEditRequestsSheet: Edit on header row, exiting.');
       return;
     }
 
@@ -685,7 +666,7 @@ function onEditRequestsSheet(e) {
     const requestsData = getRequestsData();
 
     if (!requestId || typeof requestId !== 'string' || !requestId.match(/^[A-L]-\d{2}-\d{2}$/)) {
-      console.log(`onEditRequestsSheet: Request ID is missing or malformed for row ${row}. Skipping status update.`);
+      debugLog(`onEditRequestsSheet: Request ID is missing or malformed for row ${row}. Skipping status update.`);
       return;
     }
 
@@ -694,14 +675,14 @@ function onEditRequestsSheet(e) {
     const ridersNeededCol1Idx = (ridersNeededColIdx !== undefined) ? ridersNeededColIdx + 1 : -1;
     const ridersAssignedCol1Idx = (ridersAssignedColIdx !== undefined) ? ridersAssignedColIdx + 1 : -1;
 
-    console.log(`onEditRequestsSheet: Script expects "Riders Needed" (1-indexed): ${ridersNeededCol1Idx}, "Riders Assigned" (1-indexed): ${ridersAssignedCol1Idx}`);
-    console.log(`onEditRequestsSheet: Actual edited column (1-indexed): ${col}`);
+    debugLog(`onEditRequestsSheet: Script expects "Riders Needed" (1-indexed): ${ridersNeededCol1Idx}, "Riders Assigned" (1-indexed): ${ridersAssignedCol1Idx}`);
+    debugLog(`onEditRequestsSheet: Actual edited column (1-indexed): ${col}`);
 
     if (col === 1 || col === ridersNeededCol1Idx || col === ridersAssignedCol1Idx) {
-      console.log(`onEditRequestsSheet: Calling updateRequestStatusBasedOnRiders for ID ${requestId} due to edit in col ${col}.`);
+      debugLog(`onEditRequestsSheet: Calling updateRequestStatusBasedOnRiders for ID ${requestId} due to edit in col ${col}.`);
       updateRequestStatusBasedOnRiders(requestId);
     } else {
-      console.log(`onEditRequestsSheet: Edit in column ${col} (not a trigger column for status update) for ID ${requestId}, skipping status update.`);
+      debugLog(`onEditRequestsSheet: Edit in column ${col} (not a trigger column for status update) for ID ${requestId}, skipping status update.`);
     }
 
     if (typeof syncRequestToCalendar === 'function') {
@@ -777,7 +758,7 @@ function updateRequestStatusBasedOnRiders(requestId) {
         logError(`Could not update status for ${requestId}: Status column or row index invalid.`);
       }
     } else {
-      console.log(`Status for ${requestId} remains ${currentStatus}. No update needed.`);
+      debugLog(`Status for ${requestId} remains ${currentStatus}. No update needed.`);
     }
 
   } catch (error) {

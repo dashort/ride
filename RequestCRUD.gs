@@ -17,42 +17,43 @@
  *                  { success: false, message: "Error details..." }
  */
 function createNewRequest(requestData, submittedBy = Session.getActiveUser().getEmail()) {
-  try {
-    console.log(`🚀 Starting new request creation by ${submittedBy} with data:`, JSON.stringify(requestData).substring(0, 200) + "...");
+  return trackPerformance('createNewRequest', () => {
+    try {
+      debugLog(`Starting new request creation by ${submittedBy} with data:`, JSON.stringify(requestData).substring(0, 200) + "...");
 
-    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
-    if (!requestsSheet) {
-      throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
-    }
-
-    const headers = getSheetHeaders(requestsSheet); // From SheetUtils.js (expected in CoreUtils.gs)
-    const columnMap = createHeaderMap(headers);     // From SheetUtils.js (expected in CoreUtils.gs)
-
-    // --- Data Validation ---
-    const requiredFields = [
-      'requesterName', 'requesterContact',
-      'eventDate', 'startTime', 'startLocation', 'endLocation',
-      'requestType', 'ridersNeeded'
-    ];
-    for (const field of requiredFields) {
-      if (!requestData[field] && requestData[field] !== 0) { // Allow 0 for ridersNeeded if it makes sense
-        throw new Error(`Missing required field: ${field}`);
+      const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
+      if (!requestsSheet) {
+        throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
       }
-    }
 
-    if (isNaN(parseInt(requestData.ridersNeeded)) || parseInt(requestData.ridersNeeded) <= 0) {
-        throw new Error(`Invalid number of riders needed: ${requestData.ridersNeeded}. Must be a positive number.`);
-    }
+      const headers = getSheetHeaders(requestsSheet); // From SheetUtils.js (expected in CoreUtils.gs)
+      const columnMap = createHeaderMap(headers);     // From SheetUtils.js (expected in CoreUtils.gs)
 
-    // --- ID Generation ---
-    let newRequestId;
-    if (typeof generateUniqueId === "function") { // generateUniqueId from CoreUtils.gs
-        newRequestId = generateUniqueId(CONFIG.requestIdPrefix, requestsSheet, columnMap[CONFIG.columns.requests.id]);
-    } else {
-        console.warn("generateUniqueId function not found. Using fallback ID generation for RequestCRUD.");
-        newRequestId = generateRequestIdFallback_RequestCRUD(requestsSheet, columnMap[CONFIG.columns.requests.id]);
-    }
-    console.log(`🔑 Generated Request ID: ${newRequestId}`);
+      // --- Data Validation ---
+      const requiredFields = [
+        'requesterName', 'requesterContact',
+        'eventDate', 'startTime', 'startLocation', 'endLocation',
+        'requestType', 'ridersNeeded'
+      ];
+      for (const field of requiredFields) {
+        if (!requestData[field] && requestData[field] !== 0) { // Allow 0 for ridersNeeded if it makes sense
+          throw new Error(`Missing required field: ${field}`);
+        }
+      }
+
+      if (isNaN(parseInt(requestData.ridersNeeded)) || parseInt(requestData.ridersNeeded) <= 0) {
+          throw new Error(`Invalid number of riders needed: ${requestData.ridersNeeded}. Must be a positive number.`);
+      }
+
+      // --- ID Generation ---
+      let newRequestId;
+      if (typeof generateUniqueId === "function") { // generateUniqueId from CoreUtils.gs
+          newRequestId = generateUniqueId(CONFIG.requestIdPrefix, requestsSheet, columnMap[CONFIG.columns.requests.id]);
+      } else {
+          debugLog("generateUniqueId function not found. Using fallback ID generation for RequestCRUD.");
+          newRequestId = generateRequestIdFallback_RequestCRUD(requestsSheet, columnMap[CONFIG.columns.requests.id]);
+      }
+      debugLog(`Generated Request ID: ${newRequestId}`);
 
 
     // --- Row Preparation ---
@@ -102,48 +103,60 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
         newRow.push(value);
     }
 
-    console.log(`➕ Appending new row data (sample): ${newRow.slice(0, 5).join(', ')}...`);
-    requestsSheet.appendRow(newRow);
-    SpreadsheetApp.flush(); // Ensure changes are written
+      debugLog(`Appending new row data (sample): ${newRow.slice(0, 5).join(', ')}...`);
+      
+      // Batch operation: append row and related operations together
+      const batchOperations = [];
+      batchOperations.push(() => requestsSheet.appendRow(newRow));
+      
+      // Execute batch operations
+      batchOperations.forEach(operation => operation());
+      
+      // Single flush after all operations
+      SpreadsheetApp.flush();
 
-    console.log(`✅ Request ${newRequestId} created successfully by ${submittedBy}.`);
-    logActivity(`New request ${newRequestId} created by ${submittedBy}. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
+      debugLog(`Request ${newRequestId} created successfully by ${submittedBy}.`);
+      logActivity(`New request ${newRequestId} created by ${submittedBy}. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
 
-    // Optional: Trigger notifications or other actions
-    if (typeof sendNewRequestNotification === 'function') { // From NotificationService.js
-        try {
-            const createdRequestDetails = {}; // Construct this from newRow and headers for the notification
-            headers.forEach((header, index) => createdRequestDetails[header] = newRow[index]);
-            sendNewRequestNotification(createdRequestDetails);
-        } catch (notifError) {
-            logError(`Failed to send new request notification for ${newRequestId}`, notifError);
-        }
-    }
-
-
-    // Sync to calendar if applicable
-    if (typeof syncRequestToCalendar === 'function') {
-      try {
-        syncRequestToCalendar(newRequestId);
-      } catch (syncError) {
-        logError(`Failed to sync request ${newRequestId} to calendar`, syncError);
+      // Optional: Trigger notifications or other actions
+      if (typeof sendNewRequestNotification === 'function') { // From NotificationService.js
+          try {
+              const createdRequestDetails = {}; // Construct this from newRow and headers for the notification
+              headers.forEach((header, index) => createdRequestDetails[header] = newRow[index]);
+              sendNewRequestNotification(createdRequestDetails);
+          } catch (notifError) {
+              logError(`Failed to send new request notification for ${newRequestId}`, notifError);
+          }
       }
+
+
+      // Sync to calendar if applicable
+      if (typeof syncRequestToCalendar === 'function') {
+        try {
+          syncRequestToCalendar(newRequestId);
+        } catch (syncError) {
+          logError(`Failed to sync request ${newRequestId} to calendar`, syncError);
+        }
+      }
+
+      // Clear cache to ensure fresh data
+      dataCache.clear('sheet_Requests');
+
+      return {
+        success: true,
+        requestId: newRequestId,
+        message: "Request created successfully."
+      };
+
+    } catch (error) {
+      debugLog(`Error in createNewRequest by ${submittedBy}:`, error.message, error.stack);
+      logError(`Error in createNewRequest by ${submittedBy}. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
+      return {
+        success: false,
+        message: `Failed to create request: ${error.message}`
+      };
     }
-
-    return {
-      success: true,
-      requestId: newRequestId,
-      message: "Request created successfully."
-    };
-
-  } catch (error) {
-    console.error(`❌ Error in createNewRequest by ${submittedBy}:`, error.message, error.stack);
-    logError(`Error in createNewRequest by ${submittedBy}. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
-    return {
-      success: false,
-      message: `Failed to create request: ${error.message}`
-    };
-  }
+  });
 }
 
 /**
@@ -303,46 +316,60 @@ function parseDateString(dateInput) {
  * @return {object} An object indicating success or failure, with a message.
  */
 function updateExistingRequest(requestData) {
-  try {
-    console.log('📝 Starting updateExistingRequest with data:', JSON.stringify(requestData, null, 2));
-    
-    if (!requestData || !requestData.requestId) {
-      throw new Error('Request ID is missing. Cannot update request.');
-    }
-
-    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
-    if (!requestsSheet) {
-      throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
-    }
-
-    // Use the existing getRequestsData function to get structured data
-    const requestsData = getRequestsData(false); // Don't use cache for updates
-    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      throw new Error('No requests data found in sheet.');
-    }
-
-    const columnMap = requestsData.columnMap;
-    const headers = requestsData.headers;
-    const sheet = requestsData.sheet;
-
-    // Find the request by ID
-    let targetRowIndex = -1;
-    for (let i = 0; i < requestsData.data.length; i++) {
-      const rowRequestId = getColumnValue(requestsData.data[i], columnMap, CONFIG.columns.requests.id);
-      if (String(rowRequestId).trim() === String(requestData.requestId).trim()) {
-        targetRowIndex = i;
-        break;
+  return trackPerformance('updateExistingRequest', () => {
+    try {
+      debugLog('Starting updateExistingRequest with data:', JSON.stringify(requestData, null, 2));
+      
+      if (!requestData || !requestData.requestId) {
+        throw new Error('Request ID is missing. Cannot update request.');
       }
-    }
 
-    if (targetRowIndex === -1) {
-      throw new Error(`Request with ID "${requestData.requestId}" not found.`);
-    }
+      const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
+      if (!requestsSheet) {
+        throw new Error(`Sheet "${CONFIG.sheets.requests}" not found.`);
+      }
 
-    // Calculate actual sheet row number (data array index + 2 because of header row)
-    const sheetRowNumber = targetRowIndex + 2;
+      // Use the existing getRequestsData function to get structured data
+      const requestsData = getRequestsData(false); // Don't use cache for updates
+      if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
+        throw new Error('No requests data found in sheet.');
+      }
 
-    console.log(`✅ Found request at data index ${targetRowIndex}, sheet row ${sheetRowNumber}`);
+      const columnMap = requestsData.columnMap;
+      const headers = requestsData.headers;
+      const sheet = requestsData.sheet;
+
+      // Optimized: Use index-based lookup if available
+      let targetRowIndex = -1;
+      const requestId = String(requestData.requestId).trim();
+      
+      // Try index lookup first (O(1) if available)
+      if (dataCache && dataCache.findByIndex) {
+        const indexed = dataCache.findByIndex('sheet_Requests', 'id', requestId);
+        if (indexed) {
+          targetRowIndex = indexed.rowIndex;
+        }
+      }
+      
+      // Fallback to linear search if index not available
+      if (targetRowIndex === -1) {
+        for (let i = 0; i < requestsData.data.length; i++) {
+          const rowRequestId = getColumnValue(requestsData.data[i], columnMap, CONFIG.columns.requests.id);
+          if (String(rowRequestId).trim() === requestId) {
+            targetRowIndex = i;
+            break;
+          }
+        }
+      }
+
+      if (targetRowIndex === -1) {
+        throw new Error(`Request with ID "${requestData.requestId}" not found.`);
+      }
+
+      // Calculate actual sheet row number (data array index + 2 because of header row)
+      const sheetRowNumber = targetRowIndex + 2;
+
+      debugLog(`Found request at data index ${targetRowIndex}, sheet row ${sheetRowNumber}`);
 
     // Update individual cells rather than entire row to be more robust
     const updates = [];
@@ -426,72 +453,84 @@ function updateExistingRequest(requestData) {
       });
     }
 
-    console.log(`📝 Preparing to update ${updates.length} fields for request ${requestData.requestId}`);
+      debugLog(`Preparing to update ${updates.length} fields for request ${requestData.requestId}`);
 
-    // Apply all updates
-    for (const update of updates) {
-      try {
-        sheet.getRange(sheetRowNumber, update.column).setValue(update.value);
-      } catch (cellError) {
-        console.error(`Error updating column ${update.column}:`, cellError);
-        // Continue with other updates rather than failing completely
+      // Batch updates for better performance
+      if (updates.length > 0) {
+        const batchOperations = [];
+        
+        // Group updates by row to optimize range operations
+        for (const update of updates) {
+          try {
+            batchOperations.push(() => sheet.getRange(sheetRowNumber, update.column).setValue(update.value));
+          } catch (cellError) {
+            debugLog(`Error preparing update for column ${update.column}:`, cellError);
+            // Continue with other updates rather than failing completely
+          }
+        }
+        
+        // Execute all batch operations
+        batchOperations.forEach(operation => operation());
+        
+        // Single flush after all operations
+        SpreadsheetApp.flush();
       }
-    }
-
-    // Force spreadsheet to flush changes
-    SpreadsheetApp.flush();
 
     // Clear cache to ensure fresh data on next load
     if (typeof clearRequestsCache === 'function') {
       clearRequestsCache();
     }
     
-    // Check if request status was changed to "Completed" and record actual completion times
-    if (requestData.status && requestData.status.toLowerCase() === 'completed') {
-      try {
-        console.log(`🕒 Request marked as completed - recording actual completion times for ${requestData.requestId}`);
-        const completionResult = recordActualCompletionTimes(requestData.requestId);
-        if (completionResult.success) {
-          console.log(`✅ ${completionResult.message}`);
-        } else {
-          console.warn(`⚠️ ${completionResult.message}`);
+      // Check if request status was changed to "Completed" and record actual completion times
+      if (requestData.status && requestData.status.toLowerCase() === 'completed') {
+        try {
+          debugLog(`Request marked as completed - recording actual completion times for ${requestData.requestId}`);
+          const completionResult = recordActualCompletionTimes(requestData.requestId);
+          if (completionResult.success) {
+            debugLog(`${completionResult.message}`);
+          } else {
+            debugLog(`Warning: ${completionResult.message}`);
+          }
+        } catch (completionError) {
+          debugLog(`Error recording completion times for ${requestData.requestId}:`, completionError);
+          // Don't fail the whole update if completion recording fails
         }
-      } catch (completionError) {
-        console.error(`❌ Error recording completion times for ${requestData.requestId}:`, completionError);
-        // Don't fail the whole update if completion recording fails
       }
-    }
 
-    // Log the successful update
-    logActivity(`Request updated: ${requestData.requestId} - Updated ${updates.length} fields`);
-    
-    console.log(`✅ Successfully updated request ${requestData.requestId}`);
+      // Clear cache to ensure fresh data
+      dataCache.clear('sheet_Requests');
 
-    // Sync calendar if feature is available
-    if (typeof syncRequestToCalendar === 'function') {
-      try {
-        syncRequestToCalendar(requestData.requestId);
-      } catch (syncError) {
-        logError(`Failed to sync request ${requestData.requestId} to calendar`, syncError);
+      // Log the successful update
+      logActivity(`Request updated: ${requestData.requestId} - Updated ${updates.length} fields`);
+      
+      debugLog(`Successfully updated request ${requestData.requestId}`);
+
+      // Sync calendar if feature is available
+      if (typeof syncRequestToCalendar === 'function') {
+        try {
+          syncRequestToCalendar(requestData.requestId);
+        } catch (syncError) {
+          logError(`Failed to sync request ${requestData.requestId} to calendar`, syncError);
+        }
       }
+
+      return {
+        success: true,
+        message: 'Request updated successfully.',
+        requestId: requestData.requestId,
+        updatedFields: updates.length
+      };
+
+    } catch (error) {
+      debugLog('Error in updateExistingRequest:', error);
+      logError('Error updating request', error);
+      return { 
+        success: false, 
+        message: 'Error updating request: ' + error.message,
+        requestId: requestData.requestId || 'unknown'
+      };
     }
-
-    return {
-      success: true,
-      message: 'Request updated successfully.',
-      requestId: requestData.requestId,
-      updatedFields: updates.length
-    };
-
-  } catch (error) {
-    console.error('❌ Error in updateExistingRequest:', error);
-    logError('Error updating request', error);
-    return { 
-      success: false, 
-      message: 'Error updating request: ' + error.message,
-      requestId: requestData.requestId || 'unknown'
-    };
-  }
+  });
 }
 
 /**
