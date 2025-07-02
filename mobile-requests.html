@@ -327,11 +327,47 @@
             body {
                 font-size: 18px;
             }
-            
+
             .mobile-btn {
                 padding: 1.25rem;
                 font-size: 1.1rem;
             }
+        }
+
+        /* Navigation styles */
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover,
+        .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
         }
     </style>
 </head>
@@ -341,6 +377,17 @@
     </div>
 
     <!--NAVIGATION_MENU_PLACEHOLDER-->
+
+    <!-- Fallback Navigation - shown if server-side replacement fails -->
+    <nav class="navigation" id="fallback-navigation" style="display: none;">
+        <a href="index.html" class="nav-button" data-page="dashboard">📊 Dashboard</a>
+        <a href="requests.html" class="nav-button active" data-page="requests">📋 Requests</a>
+        <a href="assignments.html" class="nav-button" data-page="assignments">🏍️ Assignments</a>
+        <a href="riders.html" class="nav-button" data-page="riders">👥 Riders</a>
+        <a href="enhanced-rider-availability.html" class="nav-button" data-page="availability">🗓️ Availability</a>
+        <a href="notifications.html" class="nav-button" data-page="notifications">📱 Notifications</a>
+        <a href="reports.html" class="nav-button" data-page="reports">📊 Reports</a>
+    </nav>
     
     <div class="mobile-controls">
         <div class="filter-section">
@@ -402,6 +449,24 @@
             loadMobileRequests();
             setupMobileEventListeners();
             setupPullToRefresh();
+
+            // Check navigation and show fallback if needed
+            setTimeout(() => {
+                checkAndShowNavigation();
+            }, 500);
+
+            // Additional navigation check after 2 seconds
+            setTimeout(() => {
+                const anyVisibleNav = document.querySelector(
+                    '.navigation[style*="display: flex"], .navigation:not([style*="display: none"])'
+                );
+                if (!anyVisibleNav) {
+                    const fallbackNav = document.getElementById('fallback-navigation');
+                    if (fallbackNav) {
+                        fallbackNav.style.display = 'flex';
+                    }
+                }
+            }, 2000);
         });
         
         function setupMobileEventListeners() {
@@ -755,6 +820,21 @@
         document.addEventListener('touchstart', function() {
             vibrate([5]);
         });
+
+        function checkAndShowNavigation() {
+            const hasPlaceholder = document.documentElement.innerHTML.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
+            const existingNav = document.querySelector('.navigation:not(#fallback-navigation)');
+            const hasVisibleNav = existingNav && existingNav.offsetParent !== null;
+
+            if (hasPlaceholder || !hasVisibleNav) {
+                const fallbackNav = document.getElementById('fallback-navigation');
+                if (fallbackNav) {
+                    fallbackNav.style.display = 'flex';
+                } else {
+                    console.error('Fallback navigation element not found');
+                }
+            }
+        }
     </script>
 </body>
 </html>
