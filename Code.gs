@@ -8663,37 +8663,6 @@ function testDashboardStatsFixed() {
     };
   }
 }
-      
-      let activeCount = 0;
-      ridersData.data.forEach(row => {
-        const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
-        const status = statusIdx !== undefined ? String(row[statusIdx] || '').trim().toLowerCase() : '';
-        
-        if (name.length > 0 && (!status || status === 'active' || status === 'available' || status === '')) {
-          activeCount++;
-        }
-      });
-      
-      console.log(`✅ Found ${activeCount} active riders out of ${ridersData.data.length} total`);
-      
-      return {
-        success: true,
-        totalRiders: ridersData.data.length,
-        activeRiders: activeCount,
-        sampleRider: ridersData.data[0] ? {
-          name: nameIdx !== undefined ? ridersData.data[0][nameIdx] : 'N/A',
-          status: statusIdx !== undefined ? ridersData.data[0][statusIdx] : 'N/A'
-        } : null
-      };
-    }
-    
-    return { success: true, totalRiders: 0, activeRiders: 0 };
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return { success: false, error: error.message };
-  }
-}
 function testFiles() {
   const existing = testExistingFiles();
   console.log('Existing files:', existing);
