@@ -2995,10 +2995,20 @@ function getPageDataForReports(filters) {
  * @return {object} An object containing `user`, `requests`, and `assignments`.
  *                  Includes a `success` flag and `error` message on failure.
  */
-function getPageDataForMobileRiderView(user, filter = 'All') { // Added user parameter
-  // let user = null; // Removed: user is now a parameter
+function getPageDataForMobileRiderView(user, filter = 'All') { // User parameter optional
   try {
-    // user = getCurrentUser(); // Attempt to get user info first // Removed
+    if (!user || typeof user !== 'object') {
+      // If a string was passed as first argument, treat it as the filter
+      if (typeof user === 'string' && filter === 'All') {
+        filter = user;
+      }
+      if (typeof getCurrentUser === 'function') {
+        user = getCurrentUser();
+      } else {
+        user = null;
+      }
+    }
+
 
     // Fetch general requests
     const rawRequests = getRequestsData();
@@ -3108,9 +3118,17 @@ function calculateStatsFromAssignmentsData(assignments) {
  *                         startLocation, status.
  *                         Returns an empty array if no assignments or an error occurs.
  */
-function getMobileAssignmentsForRider(user) { // Added user parameter
+function getMobileAssignmentsForRider(user) { // User parameter now optional
   try {
-    const userEmail = user.email; // Use user.email from parameter
+    if (!user || typeof user !== 'object') {
+      if (typeof getCurrentUser === 'function') {
+        user = getCurrentUser();
+      } else {
+        user = null;
+      }
+    }
+
+    const userEmail = user && user.email;
     if (!userEmail) {
       // console.warn('No active user email found for getMobileAssignmentsForRider.');
       return [];
