@@ -11,19 +11,7 @@
 <script>
 (function() {
     // Set up navigation links
-    function setLinks(base) {
-        document.querySelectorAll('nav.navigation a').forEach(function(a) {
-            var page = a.getAttribute('data-page');
-            var href = page === 'dashboard' ? base : base + '?page=' + page;
-            a.href = href;
-            a.dataset.url = href;
-        });
-    }
-
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
-    } else {
-        // Fallback for local testing
+    function applyLocalLinks() {
         document.querySelectorAll('nav.navigation a').forEach(function(a) {
             var page = a.getAttribute('data-page');
             var href;
@@ -37,6 +25,28 @@
             a.href = href;
             a.dataset.url = href;
         });
+    }
+
+    function setLinks(base) {
+        if (!base || base === '#') {
+            applyLocalLinks();
+            return;
+        }
+        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+            var page = a.getAttribute('data-page');
+            var href = page === 'dashboard' ? base : base + '?page=' + page;
+            a.href = href;
+            a.dataset.url = href;
+        });
+    }
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.withSuccessHandler(setLinks)
+            .withFailureHandler(applyLocalLinks)
+            .getWebAppUrl();
+    } else {
+        // Fallback for local testing
+        applyLocalLinks();
     }
 
     // Navigation click handler
