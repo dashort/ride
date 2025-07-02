@@ -4747,17 +4747,18 @@ function getPageFileNameSafe(pageName, userRole) {
       }
     }
     
-    // Default page mapping
-    const defaultPages = {
-      'dashboard': 'index',
-      'requests': 'requests',
-      'assignments': 'assignments',
-      'riders': 'riders',
-      'notifications': 'notifications',
-      'reports': 'reports',
-      'rider-schedule': 'rider-schedule',
-      'admin-schedule': 'admin-schedule'
-    };
+// Default page mapping
+const defaultPages = {
+  'dashboard': 'index',
+  'requests': 'requests',
+  'assignments': 'assignments',
+  'riders': 'riders',
+  'rider-availability': 'rider-availability',  // ADD THIS LINE
+  'notifications': 'notifications',
+  'reports': 'reports',
+  'rider-schedule': 'rider-schedule',
+  'admin-schedule': 'admin-schedule'
+};
     
     let fileName = defaultPages[pageName] || 'index';
     
