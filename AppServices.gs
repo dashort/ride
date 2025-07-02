@@ -144,7 +144,7 @@ function getEscortDetailsForAssignment(requestIdInput) {
 /**
  * Enhanced getPageData with access control
  */
-function getPageDataForDashboard(user) {
+function getSecuredDashboardPageData(user) {
   try {
     // Validate user authentication
     if (!user || !user.role) {
@@ -566,7 +566,7 @@ function getSecuredPageData(pageName, user, filters = {}) {
   try {
     // Map page names to secured functions
     const pageHandlers = {
-      'dashboard': () => getPageDataForDashboard(user),
+      'dashboard': () => getSecuredDashboardPageData(user),
       'requests': () => getPageDataForRequests(user, filters),
       'assignments': () => getPageDataForAssignments(user, filters),
       'riders': () => getPageDataForRiders(user, filters),
