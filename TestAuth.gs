@@ -79,7 +79,7 @@ function testUserAuthenticationAndRoles() {
 function testPageAccess() {
   console.log('\n--- Testing Page Access Control ---');
   const pageAccessResults = {};
-  const pagesToTest = ['dashboard', 'requests', 'assignments', 'riders', 'user-management', 'admin-schedule', 'rider-schedule', 'auth-setup'];
+  const pagesToTest = ['dashboard', 'requests', 'assignments', 'riders', 'rider-availability', 'user-management', 'admin-schedule', 'rider-schedule', 'auth-setup'];
 
   for (const roleKey in TEST_EMAILS) {
     const email = TEST_EMAILS[roleKey];
@@ -113,7 +113,7 @@ function simulateDoGetRequests() {
   const pagesToTest = {
      ADMIN: 'user-management',
      DISPATCHER: 'requests',
-     RIDER: 'rider-schedule', // or 'dashboard' if rider-schedule needs specific data setup
+           RIDER: 'rider-availability', // or 'dashboard' if rider-availability needs specific data setup
      UNKNOWN: 'dashboard'
   };
 

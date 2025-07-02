@@ -58,6 +58,15 @@ const PERMISSIONS_MATRIX = {
       rider_performance: true,
       system_logs: true
     },
+    // Availability
+    availability: {
+      view_own: true,
+      view_all: true,
+      edit_own: true,
+      edit_all: true,
+      delete_own: true,
+      delete_all: true
+    },
     // System
     system: {
       manage_users: true,
@@ -67,7 +76,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: true
     },
     // Pages
-    pages: ['dashboard', 'requests', 'assignments', 'riders', 'notifications', 'reports', 'admin-schedule', 'settings']
+    pages: ['dashboard', 'requests', 'assignments', 'riders', 'rider-availability', 'notifications', 'reports', 'admin-schedule', 'settings']
   },
 
   dispatcher: {
@@ -108,6 +117,15 @@ const PERMISSIONS_MATRIX = {
       rider_performance: true,
       system_logs: false
     },
+    // Availability
+    availability: {
+      view_own: true,
+      view_all: true,
+      edit_own: false,
+      edit_all: false,
+      delete_own: false,
+      delete_all: false
+    },
     // System
     system: {
       manage_users: false,
@@ -117,7 +135,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: true
     },
     // Pages
-    pages: ['dashboard', 'requests', 'assignments', 'notifications', 'reports']
+    pages: ['dashboard', 'requests', 'assignments', 'rider-availability', 'notifications', 'reports']
   },
 
   rider: {
@@ -158,6 +176,15 @@ const PERMISSIONS_MATRIX = {
       rider_performance: false, // Only own performance
       system_logs: false
     },
+    // Availability
+    availability: {
+      view_own: true,
+      view_all: false,
+      edit_own: true,
+      edit_all: false,
+      delete_own: true,
+      delete_all: false
+    },
     // System
     system: {
       manage_users: false,
@@ -167,7 +194,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: false
     },
     // Pages
-    pages: ['dashboard', 'rider-schedule', 'my-assignments', 'my-profile']
+    pages: ['dashboard', 'rider-availability', 'my-assignments', 'my-profile']
   }
 };
 
@@ -2104,6 +2131,7 @@ function getUserNavigationMenu(user) {
       'requests': '📋 Requests',
       'assignments': '🏍️ Assignments',
       'riders': '👥 Riders',
+      'rider-availability': '🗓️ Availability',
       'notifications': '📱 Notifications',
       'reports': '📊 Reports',
       'rider-schedule': '📅 My Schedule',
