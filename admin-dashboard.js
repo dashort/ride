@@ -38,6 +38,13 @@
         function loadUserInfo() {
             console.log('👤 Loading user info...');
             
+            // Immediately set loading state with better UX
+            updateUserDisplay({
+                name: '...',
+                email: '',
+                role: 'Loading'
+            });
+            
             // Check if user info is available from global scope
             if (typeof window.currentUser !== 'undefined' && window.currentUser) {
                 updateUserDisplay(window.currentUser);
@@ -46,15 +53,15 @@
             
             // Try to get user info from Google Apps Script
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                // Set a shorter timeout for user info
+                // Reduced timeout for faster fallback (1.5 seconds)
                 const userTimeout = setTimeout(function() {
-                    console.log('⏰ User info timeout, using fallback');
+                    console.log('⏰ User info timeout (1.5s), using fallback');
                     updateUserDisplay({
-                        name: 'Admin User',
-                        email: 'admin@system.com',
-                        role: 'admin'
+                        name: 'User',
+                        email: '',
+                        role: 'guest'
                     });
-                }, 3000);
+                }, 1500); // Reduced from 3000ms
                 
                 google.script.run
                     .withSuccessHandler(function(user) {
@@ -66,18 +73,18 @@
                         clearTimeout(userTimeout);
                         console.error('❌ Error loading user info:', error);
                         updateUserDisplay({
-                            name: 'Admin User',
-                            email: 'admin@system.com',
-                            role: 'admin'
+                            name: 'User',
+                            email: '',
+                            role: 'guest'
                         });
                     })
                     .getCurrentUser();
             } else {
                 console.log('⚠️ Google Apps Script not available, using default user');
                 updateUserDisplay({
-                    name: 'Admin User',
-                    email: 'admin@system.com',
-                    role: 'admin'
+                    name: 'User',
+                    email: '',
+                    role: 'guest'
                 });
             }
         }
@@ -107,21 +114,34 @@
         function loadAdminDashboardData() {
             console.log('📊 Loading admin dashboard data...');
             
+            // Immediately show loading with better UX (dots instead of dashes)
+            setStatsToLoadingState();
+            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                // Set a timeout for the dashboard data call
-                const dashboardTimeout = setTimeout(function() {
-                    console.log('⏰ Dashboard data timeout, using demo data');
-                    updateDashboardStats(getDemoData());
-                }, 10000); // 10 second timeout for dashboard data
+                // Primary timeout for faster user feedback (3 seconds)
+                const primaryTimeout = setTimeout(function() {
+                    console.log('⏰ Primary stats timeout (3s), using fallback data');
+                    if (allStatsStillLoading()) {
+                        updateDashboardStats(getDemoData());
+                    }
+                }, 3000);
+                
+                // Secondary timeout as final safety net (6 seconds)
+                const secondaryTimeout = setTimeout(function() {
+                    console.log('⏰ Secondary timeout (6s), forcing zero values');
+                    forceAllStatsToZero();
+                }, 6000);
                 
                 google.script.run
                     .withSuccessHandler(function(data) {
-                        clearTimeout(dashboardTimeout);
+                        clearTimeout(primaryTimeout);
+                        clearTimeout(secondaryTimeout);
                         console.log('✅ Dashboard data loaded:', data);
                         updateDashboardStats(data);
                     })
                     .withFailureHandler(function(error) {
-                        clearTimeout(dashboardTimeout);
+                        clearTimeout(primaryTimeout);
+                        clearTimeout(secondaryTimeout);
                         console.error('❌ Error loading admin dashboard data:', error);
                         console.log('⚠️ Falling back to demo data');
                         updateDashboardStats(getDemoData());
@@ -572,6 +592,41 @@
                 { recipient: 'John Doe', type: 'SMS', timestamp: new Date().toISOString(), requestId: 'REQ-1' },
                 { recipient: 'Jane Smith', type: 'Email', timestamp: new Date().toISOString(), requestId: 'REQ-2' }
             ];
+        }
+
+        // Helper functions for better loading state management
+        function setStatsToLoadingState() {
+            const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications', 
+                                  'newRequests', 'todaysEscorts', 'threeDayEscorts', 'unassignedEscorts'];
+            
+            statsElements.forEach(statId => {
+                const element = document.getElementById(statId);
+                if (element) {
+                    element.textContent = '...';
+                }
+            });
+        }
+
+        function allStatsStillLoading() {
+            const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications'];
+            return statsElements.some(statId => {
+                const element = document.getElementById(statId);
+                return element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...');
+            });
+        }
+
+        function forceAllStatsToZero() {
+            console.log('🔧 Forcing all stats to zero due to timeout');
+            const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications', 
+                                  'newRequests', 'todaysEscorts', 'threeDayEscorts', 'unassignedEscorts'];
+            
+            statsElements.forEach(statId => {
+                const element = document.getElementById(statId);
+                if (element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...')) {
+                    element.textContent = '0';
+                    console.log(`🔧 Forced ${statId} to zero`);
+                }
+            });
         }
 
         function logout() {
