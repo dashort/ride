@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧩 Visual Weekly Planner - Availability Tetris</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .planner-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .planner-header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .planner-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .planner-subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .planner-content {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            min-height: 600px;
+        }
+
+        /* Time Block Palette */
+        .block-palette {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .palette-section {
+            margin-bottom: 2rem;
+        }
+
+        .palette-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .time-block {
+            background: #27ae60;
+            color: white;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            cursor: grab;
+            user-select: none;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            position: relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .time-block:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .time-block:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+
+        .time-block.unavailable {
+            background: #e74c3c;
+        }
+
+        .time-block.maintenance {
+            background: #f39c12;
+        }
+
+        .time-block.personal {
+            background: #9b59b6;
+        }
+
+        .time-block.break {
+            background: #34495e;
+        }
+
+        .time-block.travel {
+            background: #16a085;
+        }
+
+        /* Duration indicators */
+        .time-block::after {
+            content: attr(data-duration);
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        /* Weekly Grid */
+        .weekly-grid {
+            padding: 1.5rem;
+            overflow-x: auto;
+        }
+
+        .week-header {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            gap: 1px;
+            margin-bottom: 1px;
+            background: #dee2e6;
+        }
+
+        .day-header {
+            background: #495057;
+            color: white;
+            padding: 1rem 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .time-label {
+            background: #6c757d;
+            color: white;
+            padding: 1rem 0.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 60px repeat(7, 1fr);
+            gap: 1px;
+            background: #dee2e6;
+        }
+
+        .time-slot {
+            background: #f8f9fa;
+            min-height: 60px;
+            position: relative;
+            transition: all 0.2s ease;
+            border: 2px dashed transparent;
+        }
+
+        .time-slot:hover {
+            background: #e9ecef;
+        }
+
+        .time-slot.drag-over {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+        }
+
+        .placed-block {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .placed-block.multi-hour {
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+        }
+
+        .placed-block:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Template Actions */
+        .template-actions {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .template-name {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ced4da;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Animation for block placement */
+        @keyframes blockPlace {
+            0% {
+                transform: scale(1.2);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .placed-block.just-placed {
+            animation: blockPlace 0.3s ease;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .planner-content {
+                grid-template-columns: 1fr;
+            }
+
+            .block-palette {
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+
+            .weekly-grid {
+                overflow-x: scroll;
+            }
+
+            .week-header,
+            .grid-container {
+                min-width: 600px;
+            }
+
+            .time-block {
+                text-align: center;
+                padding: 0.5rem;
+            }
+        }
+
+        /* Success/Error Messages */
+        .message-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .message-toast.show {
+            transform: translateX(0);
+        }
+
+        .message-toast.success {
+            background: #28a745;
+        }
+
+        .message-toast.error {
+            background: #dc3545;
+        }
+
+        .message-toast.info {
+            background: #17a2b8;
+        }
+
+        /* Drag ghost styling */
+        .dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        /* Statistics Panel */
+        .stats-panel {
+            background: #e9ecef;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .stat-item {
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="planner-container">
+        <!-- Header -->
+        <div class="planner-header">
+            <h1>🧩 Visual Weekly Planner</h1>
+            <p class="planner-subtitle">Drag and drop time blocks to create your perfect schedule</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="planner-content">
+            <!-- Time Block Palette -->
+            <div class="block-palette">
+                <div class="palette-section">
+                    <div class="palette-title">
+                        ✅ Available Blocks
+                    </div>
+                    <div class="time-block available" draggable="true" data-type="available" data-duration="2h">
+                        Available (2hr)
+                    </div>
+                    <div class="time-block available" draggable="true" data-type="available" data-duration="4h">
+                        Available (4hr)
+                    </div>
+                    <div class="time-block available" draggable="true" data-type="available" data-duration="8h">
+                        Available (Full Day)
+                    </div>
+                </div>
+
+                <div class="palette-section">
+                    <div class="palette-title">
+                        ❌ Unavailable Blocks
+                    </div>
+                    <div class="time-block unavailable" draggable="true" data-type="unavailable" data-duration="2h">
+                        Unavailable (2hr)
+                    </div>
+                    <div class="time-block unavailable" draggable="true" data-type="unavailable" data-duration="4h">
+                        Unavailable (4hr)
+                    </div>
+                    <div class="time-block unavailable" draggable="true" data-type="unavailable" data-duration="All Day">
+                        Unavailable (All Day)
+                    </div>
+                </div>
+
+                <div class="palette-section">
+                    <div class="palette-title">
+                        🔧 Special Blocks
+                    </div>
+                    <div class="time-block maintenance" draggable="true" data-type="maintenance" data-duration="2h">
+                        🔧 Bike Maintenance
+                    </div>
+                    <div class="time-block personal" draggable="true" data-type="personal" data-duration="2h">
+                        👨‍👩‍👧‍👦 Personal Time
+                    </div>
+                    <div class="time-block break" draggable="true" data-type="break" data-duration="1h">
+                        ☕ Break
+                    </div>
+                    <div class="time-block travel" draggable="true" data-type="travel" data-duration="1h">
+                        🚗 Travel Time
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weekly Grid -->
+            <div class="weekly-grid">
+                <div class="week-header">
+                    <div class="time-label">Time</div>
+                    <div class="day-header">MON</div>
+                    <div class="day-header">TUE</div>
+                    <div class="day-header">WED</div>
+                    <div class="day-header">THU</div>
+                    <div class="day-header">FRI</div>
+                    <div class="day-header">SAT</div>
+                    <div class="day-header">SUN</div>
+                </div>
+
+                <div class="grid-container" id="weeklyGrid">
+                    <!-- Grid will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Panel -->
+        <div class="stats-panel">
+            <div class="stat-item">
+                <div class="stat-value" id="totalHours">0</div>
+                <div class="stat-label">Total Hours</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="availableHours">0</div>
+                <div class="stat-label">Available Hours</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="unavailableHours">0</div>
+                <div class="stat-label">Unavailable Hours</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="specialHours">0</div>
+                <div class="stat-label">Special Blocks</div>
+            </div>
+        </div>
+
+        <!-- Template Actions -->
+        <div class="template-actions">
+            <div>
+                <input type="text" class="template-name" placeholder="Template name..." id="templateName">
+                <button class="btn btn-primary" onclick="saveTemplate()">💾 Save Template</button>
+                <button class="btn btn-warning" onclick="loadTemplate()">📁 Load Template</button>
+            </div>
+            <div>
+                <button class="btn btn-secondary" onclick="clearGrid()">🗑️ Clear All</button>
+                <button class="btn btn-success" onclick="saveSchedule()">✅ Save Schedule</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Toast -->
+    <div class="message-toast" id="messageToast"></div>
+
+    <script>
+        // Global variables
+        let weeklySchedule = {};
+        let draggedElement = null;
+        let timeSlots = [];
+
+        // Time slots (24-hour format)
+        const hours = [
+            '06:00', '07:00', '08:00', '09:00', '10:00', '11:00',
+            '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
+            '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
+        ];
+
+        const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+        // Initialize the grid
+        function initializeGrid() {
+            const grid = document.getElementById('weeklyGrid');
+            
+            hours.forEach(hour => {
+                // Time label
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'time-label';
+                timeLabel.textContent = hour;
+                grid.appendChild(timeLabel);
+
+                // Day slots
+                days.forEach(day => {
+                    const slot = document.createElement('div');
+                    slot.className = 'time-slot';
+                    slot.dataset.day = day;
+                    slot.dataset.time = hour;
+                    slot.dataset.slotId = `${day}-${hour}`;
+                    
+                    // Add drop event listeners
+                    slot.addEventListener('dragover', handleDragOver);
+                    slot.addEventListener('drop', handleDrop);
+                    slot.addEventListener('dragleave', handleDragLeave);
+                    
+                    grid.appendChild(slot);
+                    timeSlots.push(slot);
+                });
+            });
+        }
+
+        // Drag and Drop Event Handlers
+        function setupDragHandlers() {
+            const blocks = document.querySelectorAll('.time-block');
+            blocks.forEach(block => {
+                block.addEventListener('dragstart', handleDragStart);
+                block.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedElement = e.target;
+            e.target.classList.add('dragging');
+            
+            // Set drag data
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: e.target.dataset.type,
+                duration: e.target.dataset.duration,
+                text: e.target.textContent
+            }));
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedElement = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.target.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.target.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
+            
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const slot = e.target;
+            
+            // Check if slot is already occupied
+            if (slot.querySelector('.placed-block')) {
+                showMessage('Slot already occupied! Remove existing block first.', 'error');
+                return;
+            }
+            
+            // Create and place the block
+            placeBlock(slot, data);
+            updateStatistics();
+            
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+        }
+
+        function placeBlock(slot, data) {
+            const block = document.createElement('div');
+            block.className = `placed-block ${data.type} just-placed`;
+            block.textContent = data.text;
+            block.dataset.type = data.type;
+            block.dataset.duration = data.duration;
+            
+            // Add remove functionality
+            block.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (confirm('Remove this time block?')) {
+                    block.remove();
+                    updateStatistics();
+                    showMessage('Time block removed', 'info');
+                }
+            });
+            
+            // Handle multi-hour blocks
+            const duration = parseInt(data.duration);
+            if (duration > 2) {
+                block.classList.add('multi-hour');
+                
+                // Span multiple slots if needed
+                const currentHour = parseInt(slot.dataset.time.split(':')[0]);
+                const slotsToSpan = Math.min(duration / 2, hours.length - hours.findIndex(h => h.startsWith(slot.dataset.time.split(':')[0])));
+                
+                for (let i = 1; i < slotsToSpan; i++) {
+                    const nextHour = String(currentHour + i).padStart(2, '0') + ':00';
+                    const nextSlot = document.querySelector(`[data-day="${slot.dataset.day}"][data-time="${nextHour}"]`);
+                    if (nextSlot && !nextSlot.querySelector('.placed-block')) {
+                        const extendBlock = document.createElement('div');
+                        extendBlock.className = `placed-block ${data.type} continuation`;
+                        extendBlock.style.opacity = '0.7';
+                        extendBlock.dataset.type = data.type;
+                        extendBlock.addEventListener('click', () => block.click());
+                        nextSlot.appendChild(extendBlock);
+                    }
+                }
+            }
+            
+            slot.appendChild(block);
+            
+            // Store in schedule data
+            const slotId = slot.dataset.slotId;
+            weeklySchedule[slotId] = {
+                type: data.type,
+                duration: data.duration,
+                text: data.text
+            };
+            
+            // Remove the animation class after animation completes
+            setTimeout(() => {
+                block.classList.remove('just-placed');
+            }, 300);
+            
+            showMessage(`${data.text} placed successfully!`, 'success');
+        }
+
+        // Statistics
+        function updateStatistics() {
+            let totalHours = 0;
+            let availableHours = 0;
+            let unavailableHours = 0;
+            let specialHours = 0;
+
+            const placedBlocks = document.querySelectorAll('.placed-block:not(.continuation)');
+            
+            placedBlocks.forEach(block => {
+                const duration = parseInt(block.dataset.duration) || 2;
+                totalHours += duration;
+                
+                switch (block.dataset.type) {
+                    case 'available':
+                        availableHours += duration;
+                        break;
+                    case 'unavailable':
+                        unavailableHours += duration;
+                        break;
+                    default:
+                        specialHours += duration;
+                        break;
+                }
+            });
+
+            document.getElementById('totalHours').textContent = totalHours;
+            document.getElementById('availableHours').textContent = availableHours;
+            document.getElementById('unavailableHours').textContent = unavailableHours;
+            document.getElementById('specialHours').textContent = specialHours;
+        }
+
+        // Template Management
+        function saveTemplate() {
+            const templateName = document.getElementById('templateName').value.trim();
+            if (!templateName) {
+                showMessage('Please enter a template name', 'error');
+                return;
+            }
+
+            const templates = JSON.parse(localStorage.getItem('availabilityTemplates') || '{}');
+            templates[templateName] = weeklySchedule;
+            localStorage.setItem('availabilityTemplates', JSON.stringify(templates));
+            
+            showMessage(`Template "${templateName}" saved!`, 'success');
+            document.getElementById('templateName').value = '';
+        }
+
+        function loadTemplate() {
+            const templateName = prompt('Enter template name to load:');
+            if (!templateName) return;
+
+            const templates = JSON.parse(localStorage.getItem('availabilityTemplates') || '{}');
+            if (templates[templateName]) {
+                clearGrid();
+                weeklySchedule = templates[templateName];
+                
+                // Recreate blocks from saved data
+                Object.entries(weeklySchedule).forEach(([slotId, data]) => {
+                    const slot = document.querySelector(`[data-slot-id="${slotId}"]`);
+                    if (slot) {
+                        placeBlock(slot, data);
+                    }
+                });
+                
+                updateStatistics();
+                showMessage(`Template "${templateName}" loaded!`, 'success');
+            } else {
+                showMessage(`Template "${templateName}" not found`, 'error');
+            }
+        }
+
+        function clearGrid() {
+            document.querySelectorAll('.placed-block').forEach(block => block.remove());
+            weeklySchedule = {};
+            updateStatistics();
+            showMessage('Grid cleared', 'info');
+        }
+
+        function saveSchedule() {
+            // Here you would integrate with your availability service
+            console.log('Saving schedule:', weeklySchedule);
+            
+            // Simulate API call
+            setTimeout(() => {
+                showMessage('Weekly schedule saved successfully!', 'success');
+            }, 500);
+        }
+
+        // Utility Functions
+        function showMessage(message, type) {
+            const toast = document.getElementById('messageToast');
+            toast.textContent = message;
+            toast.className = `message-toast ${type} show`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key) {
+                    case 's':
+                        e.preventDefault();
+                        saveSchedule();
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        // Undo functionality could be added here
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        clearGrid();
+                        break;
+                }
+            }
+        });
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeGrid();
+            setupDragHandlers();
+            updateStatistics();
+            
+            // Show welcome message
+            setTimeout(() => {
+                showMessage('🧩 Drag blocks from the left to create your schedule!', 'info');
+            }, 1000);
+        });
+
+    </script>
+</body>
+</html>
