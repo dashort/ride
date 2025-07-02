@@ -399,88 +399,66 @@
     </style>
 
 <script>
-        (function() {
-            // Set up navigation links with proper web app URLs
-            function setNavigationLinks(baseUrl) {
-                console.log('🧭 Setting admin navigation links with base URL:', baseUrl);
-                document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                    var page = a.getAttribute('data-page');
-                    var href = page === 'admin-dashboard' ? baseUrl : baseUrl + '?page=' + page;
-                    a.href = href;
-                    a.dataset.url = href;
-                    console.log('🔗 Set link for', page, ':', href);
+        // Simplified navigation setup to avoid conflicts
+        function initializeAdminNavigation() {
+            console.log('🧭 Initializing admin navigation');
+            
+            // Set fallback navigation links
+            document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                var page = a.getAttribute('data-page');
+                var href = page === 'admin-dashboard' ? 'admin-dashboard.html' : page + '.html';
+                a.href = href;
+                a.dataset.url = href;
+                
+                // Add click handler
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var url = this.dataset.url || this.getAttribute('href');
+                    if (url && url !== '#') {
+                        try {
+                            if (window.top !== window) {
+                                window.top.location.href = url;
+                            } else {
+                                window.location.href = url;
+                            }
+                        } catch (error) {
+                            window.location.href = url;
+                        }
+                    }
+                    return false;
                 });
+            });
+            
+            // Highlight current page
+            var currentLink = document.querySelector('nav.navigation a[data-page="admin-dashboard"]');
+            if (currentLink) {
+                currentLink.classList.add('active');
             }
-
-            function setFallbackNavigationLinks() {
-                console.log('🔗 Setting fallback admin navigation links');
-                document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                    var page = a.getAttribute('data-page');
-                    var href = page === 'admin-dashboard' ? 'admin-dashboard.html' : page + '.html';
-                    a.href = href;
-                    a.dataset.url = href;
-                });
-            }
-
-            // Try to get the web app URL for navigation
+            
+            // Try to get web app URLs
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                console.log('🚀 Getting web app URL for admin navigation');
                 google.script.run
-                    .withSuccessHandler(setNavigationLinks)
+                    .withSuccessHandler(function(baseUrl) {
+                        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                            var page = a.getAttribute('data-page');
+                            var href = page === 'admin-dashboard' ? baseUrl : baseUrl + '?page=' + page;
+                            a.href = href;
+                            a.dataset.url = href;
+                        });
+                    })
                     .withFailureHandler(function(error) {
-                        console.error('❌ Failed to get web app URL for admin navigation:', error);
-                        setFallbackNavigationLinks();
+                        console.log('Using fallback navigation URLs');
                     })
                     .getWebAppUrl();
-            } else {
-                console.log('⚠️ Google Apps Script not available, using fallback admin navigation');
-                setFallbackNavigationLinks();
             }
-
-            // Navigation click handler
-            function handleAdminNavigation(link) {
-                var url = link.dataset.url || link.getAttribute('href');
-                if (!url || url === '#') {
-                    console.error('❌ No URL found for admin navigation link');
-                    return false;
-                }
-                
-                console.log('🔗 Admin navigating to:', url);
-                
-                try {
-                    // Use top level navigation for proper page loads
-                    if (window.top !== window) {
-                        window.top.location.href = url;
-                    } else {
-                        window.location.href = url;
-                    }
-                } catch (e) {
-                    console.error('❌ Admin navigation error:', e);
-                    window.location.href = url;
-                }
-                return false;
-            }
-
-            // Initialize navigation when DOM is ready
-            document.addEventListener('DOMContentLoaded', function() {
-                console.log('🧭 Initializing admin navigation click handlers');
-                document.querySelectorAll('nav.navigation a').forEach(function(link) {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        return handleAdminNavigation(this);
-                    });
-                });
-                
-                // Highlight current page
-                var currentLink = document.querySelector('nav.navigation a[data-page="admin-dashboard"]');
-                if (currentLink) {
-                    currentLink.classList.add('active');
-                    console.log('✅ Highlighted admin dashboard as current page');
-                }
-                
-                console.log('✅ Admin navigation initialized successfully');
-            });
-        })();
+        }
+        
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeAdminNavigation);
+        } else {
+            initializeAdminNavigation();
+        }
 </script>
 
     <div class="container">
@@ -637,41 +615,44 @@
 
 <script>
         // Initialize admin dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Admin dashboard loading...');
+        function initializeDashboard() {
+            console.log('🚀 Admin dashboard initializing...');
             
-            // Load user info first
-            loadUserInfo();
-            
-            // Load dashboard data
-            loadAdminDashboardData();
-            loadRecentActivity();
-            loadRecentNotifications();
+            try {
+                // Load user info first
+                loadUserInfo();
+                
+                // Load dashboard data with staggered timing to avoid conflicts
+                setTimeout(loadAdminDashboardData, 100);
+                setTimeout(loadRecentActivity, 200);
+                setTimeout(loadRecentNotifications, 300);
 
-            // Auto-refresh every 30 seconds
-            setInterval(loadAdminDashboardData, 30000);
-            
-            // CRITICAL: Set a timeout to force fallback data if loading takes too long
-            setTimeout(function() {
-                console.log('⏰ Loading timeout reached, checking if fallback is needed...');
-                const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications'];
-                let needsFallback = false;
-                
-                statsElements.forEach(statId => {
-                    const element = document.getElementById(statId);
-                    if (element && (element.textContent === '-' || element.textContent === 'Loading...')) {
-                        needsFallback = true;
+                // Auto-refresh every 60 seconds (reduced frequency)
+                setInterval(function() {
+                    try {
+                        loadAdminDashboardData();
+                    } catch (error) {
+                        console.error('❌ Error in auto-refresh:', error);
                     }
-                });
+                }, 60000);
                 
-                if (needsFallback) {
-                    console.log('🔧 Forcing fallback data due to loading timeout');
-                    updateDashboardStats(getDemoData());
-                    updateRecentActivity(getDemoActivity());
-                    updateRecentNotifications(getDemoNotifications());
-                }
-            }, 5000); // 5 second timeout
-        });
+                console.log('✅ Admin dashboard initialized successfully');
+            } catch (error) {
+                console.error('❌ Error initializing dashboard:', error);
+                // Force fallback data on any initialization error
+                updateDashboardStats(getDemoData());
+                updateRecentActivity(getDemoActivity());
+                updateRecentNotifications(getDemoNotifications());
+            }
+        }
+        
+        // Initialize when DOM is ready or immediately if already loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDashboard);
+        } else {
+            // DOM already loaded, initialize immediately
+            setTimeout(initializeDashboard, 50);
+        }
 
         function loadUserInfo() {
             console.log('👤 Loading user info...');
@@ -752,40 +733,42 @@
         function loadAdminDashboardData() {
             console.log('📊 Loading admin dashboard data...');
             
-            // Immediately show loading with better UX (dots instead of dashes)
+            // Immediately show loading state
             setStatsToLoadingState();
             
+            // Always set a fallback after 2 seconds
+            const fallbackTimeout = setTimeout(function() {
+                console.log('⏰ Applying fallback data after 2s timeout');
+                updateDashboardStats(getDemoData());
+            }, 2000);
+            
+            // Try to load real data
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                // Primary timeout for faster user feedback (3 seconds)
-                const primaryTimeout = setTimeout(function() {
-                    console.log('⏰ Primary stats timeout (3s), using fallback data');
-                    if (allStatsStillLoading()) {
-                        updateDashboardStats(getDemoData());
-                    }
-                }, 3000);
-                
-                // Secondary timeout as final safety net (6 seconds)
-                const secondaryTimeout = setTimeout(function() {
-                    console.log('⏰ Secondary timeout (6s), forcing zero values');
-                    forceAllStatsToZero();
-                }, 6000);
-                
-                google.script.run
-                    .withSuccessHandler(function(data) {
-                        clearTimeout(primaryTimeout);
-                        clearTimeout(secondaryTimeout);
-                        console.log('✅ Dashboard data loaded:', data);
-                        updateDashboardStats(data);
-                    })
-                    .withFailureHandler(function(error) {
-                        clearTimeout(primaryTimeout);
-                        clearTimeout(secondaryTimeout);
-                        console.error('❌ Error loading admin dashboard data:', error);
-                        console.log('⚠️ Falling back to demo data');
-                        updateDashboardStats(getDemoData());
-                    })
-                    .getAdminDashboardData();
+                try {
+                    google.script.run
+                        .withSuccessHandler(function(data) {
+                            clearTimeout(fallbackTimeout);
+                            console.log('✅ Dashboard data loaded:', data);
+                            if (data && typeof data === 'object') {
+                                updateDashboardStats(data);
+                            } else {
+                                console.warn('⚠️ Invalid data received, using demo data');
+                                updateDashboardStats(getDemoData());
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            clearTimeout(fallbackTimeout);
+                            console.error('❌ Error loading dashboard data:', error);
+                            updateDashboardStats(getDemoData());
+                        })
+                        .getAdminDashboardData();
+                } catch (error) {
+                    clearTimeout(fallbackTimeout);
+                    console.error('❌ Exception calling getAdminDashboardData:', error);
+                    updateDashboardStats(getDemoData());
+                }
             } else {
+                clearTimeout(fallbackTimeout);
                 console.log('⚠️ Google Apps Script not available, using demo data');
                 updateDashboardStats(getDemoData());
             }
@@ -840,56 +823,50 @@
         }
 
         function loadRecentActivity() {
+            // Always show demo data first, then update if real data loads
+            updateRecentActivity(getDemoActivity());
+            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                // Set timeout for activity loading
-                const activityTimeout = setTimeout(function() {
-                    console.log('⏰ Activity timeout, using demo activity');
-                    updateRecentActivity(getDemoActivity());
-                }, 8000); // 8 second timeout
-                
-                google.script.run
-                    .withSuccessHandler(function(activities) {
-                        clearTimeout(activityTimeout);
-                        console.log('✅ Recent activity loaded:', activities);
-                        updateRecentActivity(activities);
-                    })
-                    .withFailureHandler(function(error) {
-                        clearTimeout(activityTimeout);
-                        console.error('❌ Error loading recent activity:', error);
-                        console.log('⚠️ Falling back to demo activity');
-                        updateRecentActivity(getDemoActivity());
-                    })
-                    .getRecentSystemActivity();
-            } else {
-                console.log('⚠️ Google Apps Script not available, using demo activity');
-                updateRecentActivity(getDemoActivity());
+                try {
+                    google.script.run
+                        .withSuccessHandler(function(activities) {
+                            console.log('✅ Recent activity loaded:', activities);
+                            if (activities && Array.isArray(activities) && activities.length > 0) {
+                                updateRecentActivity(activities);
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            console.error('❌ Error loading recent activity:', error);
+                            // Keep demo data already displayed
+                        })
+                        .getRecentSystemActivity();
+                } catch (error) {
+                    console.error('❌ Exception loading recent activity:', error);
+                }
             }
         }
 
         function loadRecentNotifications() {
+            // Always show demo data first, then update if real data loads
+            updateRecentNotifications(getDemoNotifications());
+            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                // Set timeout for notifications loading
-                const notificationsTimeout = setTimeout(function() {
-                    console.log('⏰ Notifications timeout, using demo notifications');
-                    updateRecentNotifications(getDemoNotifications());
-                }, 8000); // 8 second timeout
-                
-                google.script.run
-                    .withSuccessHandler(function(notifications) {
-                        clearTimeout(notificationsTimeout);
-                        console.log('✅ Recent notifications loaded:', notifications);
-                        updateRecentNotifications(notifications);
-                    })
-                    .withFailureHandler(function(error) {
-                        clearTimeout(notificationsTimeout);
-                        console.error('❌ Error loading recent notifications:', error);
-                        console.log('⚠️ Falling back to demo notifications');
-                        updateRecentNotifications(getDemoNotifications());
-                    })
-                    .getNotificationHistory();
-            } else {
-                console.log('⚠️ Google Apps Script not available, using demo notifications');
-                updateRecentNotifications(getDemoNotifications());
+                try {
+                    google.script.run
+                        .withSuccessHandler(function(notifications) {
+                            console.log('✅ Recent notifications loaded:', notifications);
+                            if (notifications && Array.isArray(notifications) && notifications.length > 0) {
+                                updateRecentNotifications(notifications);
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            console.error('❌ Error loading recent notifications:', error);
+                            // Keep demo data already displayed
+                        })
+                        .getNotificationHistory();
+                } catch (error) {
+                    console.error('❌ Exception loading recent notifications:', error);
+                }
             }
         }
 
