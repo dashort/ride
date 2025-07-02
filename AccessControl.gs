@@ -1036,92 +1036,8 @@ function getRiderByGoogleEmailFallback(email) {
   }
 }
 
-/**
- * Safe wrapper for getting admin users
- */
-function getAdminUsersSafe() {
-  try {
-    if (typeof getAdminUsers === 'function') {
-      return getAdminUsers();
-    }
-    
-    return getAdminUsersFallback();
-    
-  } catch (error) {
-    console.error('❌ Error getting admin users:', error);
-    return ['admin@example.com']; // Default fallback
-  }
-}
-
-/**
- * Fallback method to get admin users
- */
-function getAdminUsersFallback() {
-  try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.settings); // Use CONFIG
-    if (settingsSheet) {
-      // Assuming admin emails are in a fixed range B2:B10 as CONFIG doesn't specify a column name.
-      // For more flexibility, consider adding a CONFIG.columns.settings.adminEmailColumn
-      // and then finding that column by header to read all its values.
-      const adminRange = settingsSheet.getRange('B2:B10').getValues();
-      const admins = adminRange.flat().filter(email => email && email.trim());
-      if (admins.length > 0) return admins;
-    }
-  } catch (error) {
-    console.log('⚠️ Could not read Settings sheet');
-  }
-  
-  // Default admin emails - UPDATE THESE WITH YOUR ACTUAL ADMIN EMAILS!
-  return [
-    'admin@yourdomain.com',
-    'jpsotraffic@gmail.com',
-    'manager@yourdomain.com',
-    // Add your actual admin email here:
-    // 'your-email@gmail.com'
-  ];
-}
-
-/**
- * Safe wrapper for getting dispatcher users
- */
-function getDispatcherUsersSafe() {
-  try {
-    if (typeof getDispatcherUsers === 'function') {
-      return getDispatcherUsers();
-    }
-    
-    return getDispatcherUsersFallback();
-    
-  } catch (error) {
-    console.error('❌ Error getting dispatcher users:', error);
-    return [];
-  }
-}
-
-/**
- * Fallback method to get dispatcher users
- */
-function getDispatcherUsersFallback() {
-  try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.settings); // Use CONFIG
-    if (settingsSheet) {
-      // Assuming dispatcher emails are in a fixed range C2:C10 as CONFIG doesn't specify a column name.
-      // For more flexibility, consider adding a CONFIG.columns.settings.dispatcherEmailColumn
-      // and then finding that column by header to read all its values.
-      const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
-      const dispatchers = dispatcherRange.flat().filter(email => email && email.trim());
-      return dispatchers; // Return even if empty, fallback below will handle if no dispatchers found
-    }
-  } catch (error) {
-    console.log('⚠️ Could not read Settings sheet for dispatchers');
-  }
-  
-  // Default dispatcher emails if sheet/range is empty or fails
-  return [
-    'dispatcher@yourdomain.com'
-    // Add dispatcher emails here
-  ];
-}
+// REMOVED: Duplicate getAdminUsersSafe and getDispatcherUsersSafe functions
+// Using the versions in Code.gs instead
 
 /**
  * Check file exists function
@@ -1661,29 +1577,8 @@ function getWebAppUrlSafe() {
   }
 }
 
-function getPageFileNameSafe(pageName, userRole) {
-  try {
-    if (typeof getPageFileName === 'function') {
-      return getPageFileName(pageName, userRole);
-    }
-    
-    // Fallback mapping
-    const pageMap = {
-      'dashboard': 'index',
-      'requests': 'requests',
-      'assignments': 'assignments',
-      'riders': 'riders',
-      'notifications': 'notifications',
-      'reports': 'reports'
-    };
-    
-    return pageMap[pageName] || 'index';
-    
-  } catch (error) {
-    console.error('Error getting page file name:', error);
-    return 'index';
-  }
-}
+// REMOVED: Duplicate getPageFileNameSafe function
+// Using the enhanced version in Code.gs instead
 
 function addNavigationToContentSafe(content, navigationHtml) {
   try {

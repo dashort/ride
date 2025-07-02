@@ -4757,7 +4757,8 @@ function getPageFileNameSafe(pageName, userRole) {
       'notifications': 'notifications',
       'reports': 'reports',
       'rider-schedule': 'rider-schedule',
-      'admin-schedule': 'admin-schedule'
+      'admin-schedule': 'admin-schedule',
+      'my-assignments': 'assignments'  // Redirect rider assignments to main assignments page
     };
     
     let fileName = defaultPages[pageName] || 'index';
@@ -5036,27 +5037,8 @@ function checkPageAccessSafe(pageName, user, rider) {
   }
 }
 
-function getPageFileNameSafe(pageName, userRole) {
-  try {
-    if (typeof getPageFileName === 'function') {
-      return getPageFileName(pageName, userRole);
-    }
-    
-    const pageMap = {
-      'dashboard': 'index',
-      'requests': 'requests',
-      'assignments': 'assignments',
-      'riders': 'riders',
-      'notifications': 'notifications',
-      'reports': 'reports'
-    };
-    
-    return pageMap[pageName] || 'index';
-  } catch (error) {
-    console.error('Error getting page file name:', error);
-    return 'index';
-  }
-}
+// REMOVED: Duplicate getPageFileNameSafe function (around line 5038)
+// The enhanced version at line 4717 is the one we're keeping
 
 function getRoleBasedNavigationSafe(pageName, user, rider) {
   try {
@@ -5545,41 +5527,8 @@ function getDispatcherUsersSafe() {
   }
 }
 
-function checkPageAccessSafe(pageName, user, rider) {
-  try {
-    if (typeof checkPageAccess === 'function') {
-      return checkPageAccess(pageName, user, rider);
-    }
-    return { allowed: true }; // Default to allow
-  } catch (error) {
-    console.error('Error in checkPageAccessSafe:', error);
-    return { allowed: true };
-  }
-}
-
-function getRoleBasedNavigationSafe(pageName, user, rider) {
-  try {
-    if (typeof getRoleBasedNavigation === 'function') {
-      return getRoleBasedNavigation(pageName, user, rider);
-    }
-    return '<nav>Navigation unavailable</nav>';
-  } catch (error) {
-    console.error('Error in getRoleBasedNavigationSafe:', error);
-    return '<nav>Navigation error</nav>';
-  }
-}
-
-function injectUserInfoSafe(content, user, rider) {
-  try {
-    if (typeof injectUserInfo === 'function') {
-      return injectUserInfo(content, user, rider);
-    }
-    return content;
-  } catch (error) {
-    console.error('Error in injectUserInfoSafe:', error);
-    return content;
-  }
-}
+// REMOVED: Duplicate wrapper functions (checkPageAccessSafe, getRoleBasedNavigationSafe, injectUserInfoSafe)
+// Using the versions defined earlier in this file
 
 function updateRiderLastLoginSafe(riderId) {
   try {
@@ -5796,6 +5745,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
       { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
       { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
       { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
+      { page: 'rider-availability', label: '🗓️ Availability', url: `${baseUrl}?page=rider-availability` },
       { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
       { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
     ],
@@ -5803,12 +5753,14 @@ function getRoleBasedNavigation(currentPage, user, rider) {
       { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
       { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
       { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+      { page: 'rider-availability', label: '🗓️ Availability', url: `${baseUrl}?page=rider-availability` },
       { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
       { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
     ],
     rider: [
       { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
       { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
+      { page: 'rider-availability', label: '🗓️ My Availability', url: `${baseUrl}?page=rider-availability` },
       { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
     ]
   };
@@ -8461,62 +8413,8 @@ function handleAuthSetupPage(e) {
   }
 }
 
-/**
- * Enhanced navigation that includes user management
- */
-function getRoleBasedNavigationSafe(currentPage, user, rider) {
-  try {
-    const baseUrl = getWebAppUrlSafe();
-    
-    const navigationMenus = {
-      admin: [
-        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
-        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
-        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
-        { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
-        { page: 'user-management', label: '🔐 User Management', url: `${baseUrl}?page=user-management` },
-        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
-        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
-      ],
-      dispatcher: [
-        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
-        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
-        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
-        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
-        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
-      ],
-      rider: [
-        { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
-        { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
-        { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
-      ]
-    };
-    
-    const menuItems = navigationMenus[user.role] || navigationMenus.rider;
-    
-    let navHtml = '<nav class="navigation" style="display: flex; justify-content: center; align-items: center;">';
-    
-    menuItems.forEach(item => {
-      const isActive = item.page === currentPage ? 'active' : '';
-      navHtml += `
-        <a href="${item.url}"
-           class="nav-button ${isActive}"
-           data-page="${item.page}"
-           target="_top">
-          ${item.label}
-        </a>
-      `;
-    });
-    
-    navHtml += '</nav>';
-    
-    return navHtml;
-    
-  } catch (error) {
-    console.error('❌ Error in getRoleBasedNavigationSafe:', error);
-    return '<nav>Navigation error</nav>';
-  }
-}
+// REMOVED: Another duplicate getRoleBasedNavigationSafe function
+// Using the version defined earlier in this file
 
 /**
  * Log out the current user and return a Google sign-out URL
