@@ -796,7 +796,6 @@ function diagnoseAuthenticationIssue() {
     return { error: error.message };
   }
 }
-
 /**
  * Clear all authentication cache and force fresh session detection
  */
@@ -1569,8 +1568,6 @@ function _onEdit(e) {
  * Function to handle onEdit events specifically for the Requests sheet.
  * Generates Request ID if missing and updates request status based on rider assignment changes.
  */
-
-
 // ===== NAVIGATION HELPER =====
 /**
  * Fetches the HTML content of the shared navigation menu.
@@ -2349,7 +2346,6 @@ function sendBulkByDateRange(notificationType, dateRange) {
     SpreadsheetApp.getUi().alert('Error: ' + error.message);
   }
 }
-
 /**
  * Core logic for sending bulk notifications by status type.
  * @param {string} notificationType - The type of notification ('SMS', 'Email', 'Both').
@@ -3096,7 +3092,6 @@ function testActualCompletionReportsFix() {
     };
     }
 }
-
 /**
  * Helper function to add actual completion time columns to the Assignments sheet
  * Run this once to add the necessary columns for tracking actual escort completion times
@@ -3897,7 +3892,6 @@ function normalizeColumnName(name) {
     .replace(/[-_]/g, ' ')
     .replace(/\s+/g, ' ');
 }
-
 function getColumnIndex(columnMap, columnName) {
   if (!columnMap || !columnName) return undefined;
   if (columnMap.hasOwnProperty(columnName)) {
@@ -4140,6 +4134,14 @@ function debugNotificationsFile() {
  */
 
 
+/*
+ * COMMENTED OUT: This doGet function conflicts with the one in AccessControl.gs
+ * The AccessControl.gs version includes proper role-based navigation that shows
+ * the Availability option for all user roles (admin, dispatcher, rider).
+ * 
+ * To restore this function, uncomment it and comment out the one in AccessControl.gs
+ */
+/*
 function doGet(e) {
   try {
     console.log('🚀 doGet with cache-friendly headers...');
@@ -4208,6 +4210,7 @@ function doGet(e) {
     return createErrorPageWithSignInSafe(error);
   }
 }
+*/
 
 /**
  * Simple user management page (if HTML file doesn't exist)
@@ -4682,7 +4685,6 @@ function createErrorPageSimple(error) {
   
   return HtmlService.createHtmlOutput(html).setTitle('Error');
 }
-
 /**
  * Test what happens with user management
  */
@@ -6222,7 +6224,6 @@ function addMobileOptimizations(htmlOutput, user, rider) {
   }
 }
 </style>
-
 <script>
 // MOBILE OPTIMIZATION JAVASCRIPT
 (function() {
@@ -7012,7 +7013,6 @@ function testNavigationGeneration() {
     return { success: false, error: error.message };
   }
 }
-
 /**
  * Test the complete doGet function
  */
@@ -7755,7 +7755,6 @@ function autoFixRidersIssue() {
     };
   }
 }
-
 /**
  * STEP 3: Simple test to verify riders are working
  */
@@ -7983,7 +7982,7 @@ function quickFixRidersError() {
   }
 }
 /**
- * Enhanced getRidersDataSafe that actually works
+ * Enhanced getRidersData that actually works
  */
 function getRidersDataSafe() {
   try {
@@ -8534,7 +8533,6 @@ function logout() {
   const baseUrl = getWebAppUrlSafe();
   return `https://accounts.google.com/Logout?continue=${encodeURIComponent(baseUrl)}`;
 }
-
 /**
  * Test function - run this to debug your setup
  */
@@ -8571,5 +8569,78 @@ function debugSystemSetup() {
   } catch (error) {
     console.error('❌ Debug failed:', error);
     return { error: error.message };
+  }
+}
+
+/**
+ * Test navigation availability - run this to check if availability option shows
+ */
+function testNavigationAvailability() {
+  console.log('🧪 TESTING NAVIGATION AVAILABILITY...');
+  
+  try {
+    const testUsers = [
+      { name: 'Admin User', email: 'admin@test.com', role: 'admin' },
+      { name: 'Dispatcher User', email: 'dispatcher@test.com', role: 'dispatcher' }, 
+      { name: 'Rider User', email: 'rider@test.com', role: 'rider' }
+    ];
+    
+    const results = {};
+    
+    testUsers.forEach(user => {
+      console.log(`\n--- Testing navigation for ${user.role} ---`);
+      
+      try {
+        // Test if role has access to rider-availability page
+        const hasPageAccess = canAccessPage(user, 'rider-availability');
+        console.log(`${user.role} can access rider-availability page: ${hasPageAccess ? '✅ YES' : '❌ NO'}`);
+        
+        // Test getting navigation menu for user
+        const navMenu = getUserNavigationMenu(user);
+        console.log(`${user.role} navigation menu items: ${navMenu.length}`);
+        
+        // Check if availability is in the menu
+        const hasAvailability = navMenu.some(item => item.page === 'rider-availability');
+        console.log(`${user.role} has availability in menu: ${hasAvailability ? '✅ YES' : '❌ NO'}`);
+        
+        // Test the actual navigation HTML generation
+        const navHtml = getRoleBasedNavigation('dashboard', user, null);
+        const hasAvailabilityHtml = navHtml.includes('🗓️ Availability') || navHtml.includes('rider-availability');
+        console.log(`${user.role} navigation HTML contains availability: ${hasAvailabilityHtml ? '✅ YES' : '❌ NO'}`);
+        
+        if (navMenu.length > 0) {
+          console.log(`${user.role} menu items:`, navMenu.map(item => item.label || item.page).join(', '));
+        }
+        
+        results[user.role] = {
+          hasPageAccess: hasPageAccess,
+          menuItemsCount: navMenu.length,
+          hasAvailabilityMenuItem: hasAvailability,
+          hasAvailabilityInHtml: hasAvailabilityHtml
+        };
+        
+      } catch (error) {
+        console.error(`❌ Error testing ${user.role}:`, error.message);
+        results[user.role] = { error: error.message };
+      }
+    });
+    
+    console.log('\n=== SUMMARY ===');
+    console.log('🎯 Expected: All roles should have access to rider-availability');
+    Object.keys(results).forEach(role => {
+      const result = results[role];
+      if (result.error) {
+        console.log(`${role}: ❌ ERROR - ${result.error}`);
+      } else {
+        const allGood = result.hasPageAccess && result.hasAvailabilityMenuItem && result.hasAvailabilityInHtml;
+        console.log(`${role}: ${allGood ? '✅ COMPLETE' : '⚠️ MISSING AVAILABILITY'} - Page Access: ${result.hasPageAccess}, Menu Item: ${result.hasAvailabilityMenuItem}, HTML: ${result.hasAvailabilityInHtml}`);
+      }
+    });
+    
+    return { success: true, results: results };
+    
+  } catch (error) {
+    console.error('❌ Navigation test failed:', error);
+    return { success: false, error: error.message };
   }
 }
