@@ -335,131 +335,7 @@
         </div>
     </header>
 
-    <!-- Navigation Menu -->
-    <nav class="navigation">
-        <a href="#" class="nav-button" id="nav-dashboard" data-page="admin-dashboard" target="_top">📊 Admin Dashboard</a>
-        <a href="#" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
-        <a href="#" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
-        <a href="#" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
-        <a href="#" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
-        <a href="#" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
-        <a href="#" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
-        <a href="#" class="nav-button" id="nav-user-management" data-page="user-management" target="_top">👥 User Management</a>
-    </nav>
-
-    <style>
-        .navigation {
-            display: flex !important;
-            gap: 1rem !important;
-            margin: 1rem auto 2rem auto !important;
-            max-width: 1400px !important;
-            padding: 0 2rem !important;
-            flex-wrap: wrap !important;
-            justify-content: center !important;
-            position: relative !important;
-            z-index: 10 !important;
-        }
-
-        .nav-button {
-            padding: 0.75rem 1.5rem !important;
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: none !important;
-            border-radius: 25px !important;
-            color: #2c3e50 !important;
-            text-decoration: none !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease !important;
-            cursor: pointer !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        .nav-button:hover, .nav-button.active {
-            background: #3498db !important;
-            color: white !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-        }
-
-        @media (max-width: 768px) {
-            .navigation {
-                flex-direction: column !important;
-                align-items: center !important;
-                padding: 0 1rem !important;
-                margin: 1rem auto 1rem auto !important;
-            }
-
-            .nav-button {
-                width: 100% !important;
-                max-width: 300px !important;
-                text-align: center !important;
-            }
-        }
-    </style>
-
-<script>
-        // Simplified navigation setup to avoid conflicts
-        function initializeAdminNavigation() {
-            console.log('🧭 Initializing admin navigation');
-            
-            // Set fallback navigation links
-            document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                var page = a.getAttribute('data-page');
-                var href = page === 'admin-dashboard' ? 'admin-dashboard.html' : page + '.html';
-                a.href = href;
-                a.dataset.url = href;
-                
-                // Add click handler
-                a.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    var url = this.dataset.url || this.getAttribute('href');
-                    if (url && url !== '#') {
-                        try {
-                            if (window.top !== window) {
-                                window.top.location.href = url;
-                            } else {
-                                window.location.href = url;
-                            }
-                        } catch (error) {
-                            window.location.href = url;
-                        }
-                    }
-                    return false;
-                });
-            });
-            
-            // Highlight current page
-            var currentLink = document.querySelector('nav.navigation a[data-page="admin-dashboard"]');
-            if (currentLink) {
-                currentLink.classList.add('active');
-            }
-            
-            // Try to get web app URLs
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(baseUrl) {
-                        document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                            var page = a.getAttribute('data-page');
-                            var href = page === 'admin-dashboard' ? baseUrl : baseUrl + '?page=' + page;
-                            a.href = href;
-                            a.dataset.url = href;
-                        });
-                    })
-                    .withFailureHandler(function(error) {
-                        console.log('Using fallback navigation URLs');
-                    })
-                    .getWebAppUrl();
-            }
-        }
-        
-        // Initialize when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeAdminNavigation);
-        } else {
-            initializeAdminNavigation();
-        }
-</script>
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
 
     <div class="container">
         <!-- Admin Header -->
@@ -613,162 +489,26 @@
         </div>
     </div>
 
-<script>
+    <script>
         // Initialize admin dashboard
-        function initializeDashboard() {
-            console.log('🚀 Admin dashboard initializing...');
-            
-            try {
-                // Load user info first
-                loadUserInfo();
-                
-                // Load dashboard data with staggered timing to avoid conflicts
-                setTimeout(loadAdminDashboardData, 100);
-                setTimeout(loadRecentActivity, 200);
-                setTimeout(loadRecentNotifications, 300);
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAdminDashboardData();
+            loadRecentActivity();
+            loadRecentNotifications();
 
-                // Auto-refresh every 60 seconds (reduced frequency)
-                setInterval(function() {
-                    try {
-                        loadAdminDashboardData();
-                    } catch (error) {
-                        console.error('❌ Error in auto-refresh:', error);
-                    }
-                }, 60000);
-                
-                console.log('✅ Admin dashboard initialized successfully');
-            } catch (error) {
-                console.error('❌ Error initializing dashboard:', error);
-                // Force fallback data on any initialization error
-                updateDashboardStats(getDemoData());
-                updateRecentActivity(getDemoActivity());
-                updateRecentNotifications(getDemoNotifications());
-            }
-        }
-        
-        // Initialize when DOM is ready or immediately if already loaded
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeDashboard);
-        } else {
-            // DOM already loaded, initialize immediately
-            setTimeout(initializeDashboard, 50);
-        }
-
-        function loadUserInfo() {
-            console.log('👤 Loading user info...');
-            
-            // Immediately set loading state with better UX
-            updateUserDisplay({
-                name: '...',
-                email: '',
-                role: 'Loading'
-            });
-            
-            // Check if user info is available from global scope
-            if (typeof window.currentUser !== 'undefined' && window.currentUser) {
-                updateUserDisplay(window.currentUser);
-                return;
-            }
-            
-            // Try to get user info from Google Apps Script
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                // Reduced timeout for faster fallback (1.5 seconds)
-                const userTimeout = setTimeout(function() {
-                    console.log('⏰ User info timeout (1.5s), using fallback');
-                    updateUserDisplay({
-                        name: 'User',
-                        email: '',
-                        role: 'guest'
-                    });
-                }, 1500); // Reduced from 3000ms
-                
-                google.script.run
-                    .withSuccessHandler(function(user) {
-                        clearTimeout(userTimeout);
-                        console.log('✅ User info loaded:', user);
-                        updateUserDisplay(user);
-                    })
-                    .withFailureHandler(function(error) {
-                        clearTimeout(userTimeout);
-                        console.error('❌ Error loading user info:', error);
-                        updateUserDisplay({
-                            name: 'User',
-                            email: '',
-                            role: 'guest'
-                        });
-                    })
-                    .getCurrentUser();
-            } else {
-                console.log('⚠️ Google Apps Script not available, using default user');
-                updateUserDisplay({
-                    name: 'User',
-                    email: '',
-                    role: 'guest'
-                });
-            }
-        }
-
-        function updateUserDisplay(user) {
-            try {
-                const safeUpdateElement = (id, value) => {
-                    const element = document.getElementById(id);
-                    if (element) {
-                        element.textContent = value;
-                        console.log(`✅ Updated ${id}: ${value}`);
-                    } else {
-                        console.warn(`⚠️ Element ${id} not found`);
-                    }
-                };
-
-                safeUpdateElement('userName', user.name || 'Admin User');
-                safeUpdateElement('userRole', user.role || 'Admin');
-                safeUpdateElement('userAvatar', (user.name || 'A').charAt(0).toUpperCase());
-
-                console.log('✅ User display updated successfully');
-            } catch (error) {
-                console.error('❌ Error updating user display:', error);
-            }
-        }
+            // Auto-refresh every 30 seconds
+            setInterval(loadAdminDashboardData, 30000);
+        });
 
         function loadAdminDashboardData() {
             console.log('📊 Loading admin dashboard data...');
             
-            // Immediately show loading state
-            setStatsToLoadingState();
-            
-            // Always set a fallback after 2 seconds
-            const fallbackTimeout = setTimeout(function() {
-                console.log('⏰ Applying fallback data after 2s timeout');
-                updateDashboardStats(getDemoData());
-            }, 2000);
-            
-            // Try to load real data
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                try {
-                    google.script.run
-                        .withSuccessHandler(function(data) {
-                            clearTimeout(fallbackTimeout);
-                            console.log('✅ Dashboard data loaded:', data);
-                            if (data && typeof data === 'object') {
-                                updateDashboardStats(data);
-                            } else {
-                                console.warn('⚠️ Invalid data received, using demo data');
-                                updateDashboardStats(getDemoData());
-                            }
-                        })
-                        .withFailureHandler(function(error) {
-                            clearTimeout(fallbackTimeout);
-                            console.error('❌ Error loading dashboard data:', error);
-                            updateDashboardStats(getDemoData());
-                        })
-                        .getAdminDashboardData();
-                } catch (error) {
-                    clearTimeout(fallbackTimeout);
-                    console.error('❌ Exception calling getAdminDashboardData:', error);
-                    updateDashboardStats(getDemoData());
-                }
+                google.script.run
+                    .withSuccessHandler(updateDashboardStats)
+                    .withFailureHandler(handleDashboardError)
+                    .getAdminDashboardData();
             } else {
-                clearTimeout(fallbackTimeout);
                 console.log('⚠️ Google Apps Script not available, using demo data');
                 updateDashboardStats(getDemoData());
             }
@@ -776,97 +516,43 @@
 
         function updateDashboardStats(data) {
             try {
-                console.log('📊 Updating dashboard stats with data:', data);
-
-                // Update main stats with better error handling
-                const safeUpdate = (id, value) => {
-                    const element = document.getElementById(id);
-                    if (element) {
-                        element.textContent = (value !== undefined && value !== null) ? value : 0;
-                        console.log(`✅ Updated ${id}: ${value}`);
-                    } else {
-                        console.warn(`⚠️ Element ${id} not found`);
-                    }
-                };
-
                 // Update main stats
-                safeUpdate('totalRequests', data.totalRequests);
-                safeUpdate('totalRiders', data.totalRiders);
-                safeUpdate('totalAssignments', data.totalAssignments);
-                safeUpdate('pendingNotifications', data.pendingNotifications);
+                document.getElementById('totalRequests').textContent = data.totalRequests || 0;
+                document.getElementById('totalRiders').textContent = data.totalRiders || 0;
+                document.getElementById('totalAssignments').textContent = data.totalAssignments || 0;
+                document.getElementById('pendingNotifications').textContent = data.pendingNotifications || 0;
 
                 // Update quick stats
-                safeUpdate('newRequests', data.newRequests);
-                safeUpdate('todaysEscorts', data.todaysEscorts);
-                safeUpdate('threeDayEscorts', data.threeDayEscorts);
-                safeUpdate('unassignedEscorts', data.unassignedEscorts);
+                document.getElementById('newRequests').textContent = data.newRequests || 0;
+                document.getElementById('todaysEscorts').textContent = data.todaysEscorts || 0;
+                document.getElementById('threeDayEscorts').textContent = data.threeDayEscorts || 0;
+                document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts || 0;
 
-                console.log('✅ Dashboard stats updated successfully');
+                console.log('✅ Dashboard stats updated');
             } catch (error) {
                 console.error('❌ Error updating dashboard stats:', error);
-                // Set fallback values on error
-                setFallbackStats();
             }
         }
 
-        function setFallbackStats() {
-            console.log('🔄 Setting fallback stats');
-            const stats = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications', 
-                          'newRequests', 'todaysEscorts', 'threeDayEscorts', 'unassignedEscorts'];
-            
-            stats.forEach(statId => {
-                const element = document.getElementById(statId);
-                if (element) {
-                    element.textContent = '0';
-                }
-            });
-        }
-
         function loadRecentActivity() {
-            // Always show demo data first, then update if real data loads
-            updateRecentActivity(getDemoActivity());
-            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                try {
-                    google.script.run
-                        .withSuccessHandler(function(activities) {
-                            console.log('✅ Recent activity loaded:', activities);
-                            if (activities && Array.isArray(activities) && activities.length > 0) {
-                                updateRecentActivity(activities);
-                            }
-                        })
-                        .withFailureHandler(function(error) {
-                            console.error('❌ Error loading recent activity:', error);
-                            // Keep demo data already displayed
-                        })
-                        .getRecentSystemActivity();
-                } catch (error) {
-                    console.error('❌ Exception loading recent activity:', error);
-                }
+                google.script.run
+                    .withSuccessHandler(updateRecentActivity)
+                    .withFailureHandler(handleActivityError)
+                    .getRecentSystemActivity();
+            } else {
+                updateRecentActivity(getDemoActivity());
             }
         }
 
         function loadRecentNotifications() {
-            // Always show demo data first, then update if real data loads
-            updateRecentNotifications(getDemoNotifications());
-            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
-                try {
-                    google.script.run
-                        .withSuccessHandler(function(notifications) {
-                            console.log('✅ Recent notifications loaded:', notifications);
-                            if (notifications && Array.isArray(notifications) && notifications.length > 0) {
-                                updateRecentNotifications(notifications);
-                            }
-                        })
-                        .withFailureHandler(function(error) {
-                            console.error('❌ Error loading recent notifications:', error);
-                            // Keep demo data already displayed
-                        })
-                        .getNotificationHistory();
-                } catch (error) {
-                    console.error('❌ Exception loading recent notifications:', error);
-                }
+                google.script.run
+                    .withSuccessHandler(updateRecentNotifications)
+                    .withFailureHandler(handleActivityError)
+                    .getNotificationHistory();
+            } else {
+                updateRecentNotifications(getDemoNotifications());
             }
         }
 
@@ -994,28 +680,27 @@
                 alert('System logs feature requires Google Apps Script connection');
             }
         }
-
-        function displaySystemLogs(logs) {
-            const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
-            const doc = win.document;
-            doc.write('<html><head><title>System Logs</title></head><body>');
-            doc.write('<h2>System Logs</h2>');
-            if (!logs || logs.length === 0) {
-                doc.write('<p>No logs available.</p>');
-            } else {
-                doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
-                doc.write('<tr><th>Timestamp</th><th>Type</th><th>Message</th><th>Details</th></tr>');
-                logs.forEach(function(log) {
-                    doc.write('<tr><td>' + (log.Timestamp || log.timestamp || '') + '</td>' +
-                             '<td>' + (log.Type || log.type || '') + '</td>' +
-                             '<td>' + (log.Message || log.message || '') + '</td>' +
-                             '<td>' + (log.Details || log.details || '') + '</td></tr>');
-                });
-                doc.write('</table>');
-            }
-            doc.write('</body></html>');
-            doc.close();
-        }
+function displaySystemLogs(logs) {
+    const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
+    const doc = win.document;
+    doc.write('<html><head><title>System Logs</title></head><body>');
+    doc.write('<h2>System Logs</h2>');
+    if (!logs || logs.length === 0) {
+        doc.write('<p>No logs available.</p>');
+    } else {
+        doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
+        doc.write('<tr><th>Timestamp</th><th>Type</th><th>Message</th><th>Details</th></tr>');
+        logs.forEach(function(log) {
+            doc.write('<tr><td>' + (log.Timestamp || log.timestamp || '') + '</td>' +
+                     '<td>' + (log.Type || log.type || '') + '</td>' +
+                     '<td>' + (log.Message || log.message || '') + '</td>' +
+                     '<td>' + (log.Details || log.details || '') + '</td></tr>');
+        });
+        doc.write('</table>');
+    }
+    doc.write('</body></html>');
+    doc.close();
+}
 
         function viewEmailResponses() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -1029,29 +714,28 @@
                 alert('Email responses feature requires Google Apps Script connection');
             }
         }
-
-        function displayEmailResponses(responses) {
-            const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
-            const doc = win.document;
-            doc.write('<html><head><title>Rider Email Responses</title></head><body>');
-            doc.write('<h2>Rider Email Responses</h2>');
-            if (!responses || responses.length === 0) {
-                doc.write('<p>No responses available.</p>');
-            } else {
-                doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
-                doc.write('<tr><th>Timestamp</th><th>From Email</th><th>Rider Name</th><th>Message Body</th><th>Action</th></tr>');
-                responses.forEach(function(r) {
-                    doc.write('<tr><td>' + (r.Timestamp || r.timestamp || '') + '</td>' +
-                             '<td>' + (r["From Email"] || r.fromEmail || '') + '</td>' +
-                             '<td>' + (r["Rider Name"] || r.riderName || '') + '</td>' +
-                             '<td>' + (r["Message Body"] || r.messageBody || '') + '</td>' +
-                             '<td>' + (r.Action || r.action || '') + '</td></tr>');
-                });
-                doc.write('</table>');
-            }
-            doc.write('</body></html>');
-            doc.close();
-        }
+function displayEmailResponses(responses) {
+    const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
+    const doc = win.document;
+    doc.write('<html><head><title>Rider Email Responses</title></head><body>');
+    doc.write('<h2>Rider Email Responses</h2>');
+    if (!responses || responses.length === 0) {
+        doc.write('<p>No responses available.</p>');
+    } else {
+        doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
+        doc.write('<tr><th>Timestamp</th><th>From Email</th><th>Rider Name</th><th>Message Body</th><th>Action</th></tr>');
+        responses.forEach(function(r) {
+            doc.write('<tr><td>' + (r.Timestamp || r.timestamp || '') + '</td>' +
+                     '<td>' + (r["From Email"] || r.fromEmail || '') + '</td>' +
+                     '<td>' + (r["Rider Name"] || r.riderName || '') + '</td>' +
+                     '<td>' + (r["Message Body"] || r.messageBody || '') + '</td>' +
+                     '<td>' + (r.Action || r.action || '') + '</td></tr>');
+        });
+        doc.write('</table>');
+    }
+    doc.write('</body></html>');
+    doc.close();
+}
 
         function runDiagnostics() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -1209,41 +893,6 @@
             ];
         }
 
-        // Helper functions for better loading state management
-        function setStatsToLoadingState() {
-            const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications', 
-                                  'newRequests', 'todaysEscorts', 'threeDayEscorts', 'unassignedEscorts'];
-            
-            statsElements.forEach(statId => {
-                const element = document.getElementById(statId);
-                if (element) {
-                    element.textContent = '...';
-                }
-            });
-        }
-
-        function allStatsStillLoading() {
-            const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications'];
-            return statsElements.some(statId => {
-                const element = document.getElementById(statId);
-                return element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...');
-            });
-        }
-
-        function forceAllStatsToZero() {
-            console.log('🔧 Forcing all stats to zero due to timeout');
-            const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications', 
-                                  'newRequests', 'todaysEscorts', 'threeDayEscorts', 'unassignedEscorts'];
-            
-            statsElements.forEach(statId => {
-                const element = document.getElementById(statId);
-                if (element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...')) {
-                    element.textContent = '0';
-                    console.log(`🔧 Forced ${statId} to zero`);
-                }
-            });
-        }
-
         function logout() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
@@ -1253,8 +902,7 @@
                 window.location.href = 'https://accounts.google.com/Logout';
             }
         }
-</script>
-
+    </script>
 </body>
 </html>
 

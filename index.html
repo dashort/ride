@@ -355,18 +355,8 @@
         </div>
     </header>
 
-    <!-- Navigation Menu -->
-    <nav class="navigation">
-        <a href="#" class="nav-button active" id="nav-dashboard" data-page="dashboard" target="_top">📊 Dashboard</a>
-        <a href="#" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
-        <a href="#" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
-        <a href="#" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
-        <a href="#" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
-        <a href="#" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
-        <a href="#" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
-    </nav>
-
     <div class="container">
+        <!--NAVIGATION_MENU_PLACEHOLDER-->
 
         <div class="dashboard-grid">
             <!-- Statistics Card -->
@@ -472,80 +462,15 @@
 
     function initializeDashboard() {
         console.log('🔄 Initializing dashboard with consolidated data call...');
-        
-        // Immediately set better loading states
-        setDashboardToLoadingState();
-        
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            // Primary timeout for faster user feedback (3 seconds)
-            const primaryTimeout = setTimeout(function() {
-                console.log('⏰ Primary dashboard timeout (3s), using fallback data');
-                if (dashboardStillLoading()) {
-                    handleDashboardDataFailure({ message: "Dashboard loading timed out after 3 seconds." });
-                }
-            }, 3000);
-            
-            // Secondary timeout as final safety net (6 seconds)
-            const secondaryTimeout = setTimeout(function() {
-                console.log('⏰ Secondary timeout (6s), forcing fallback values');
-                forceDashboardToFallbackState();
-            }, 6000);
-            
             google.script.run
-                .withSuccessHandler(function(data) {
-                    clearTimeout(primaryTimeout);
-                    clearTimeout(secondaryTimeout);
-                    console.log('✅ Dashboard data loaded successfully:', data);
-                    handleDashboardDataSuccess(data);
-                })
-                .withFailureHandler(function(error) {
-                    clearTimeout(primaryTimeout);
-                    clearTimeout(secondaryTimeout);
-                    console.error('❌ Dashboard data loading failed:', error);
-                    handleDashboardDataFailure(error);
-                })
+                .withSuccessHandler(handleDashboardDataSuccess)
+                .withFailureHandler(handleDashboardDataFailure)
                 .getPageDataForDashboard();
         } else {
             console.log('⚠️ Google Apps Script not available, using fallback data for dashboard.');
             handleDashboardDataFailure({ message: "Google Apps Script not available." });
         }
-        
-        // Reduced safety timeout to ensure UI never stays in loading state (8 seconds instead of 12)
-        setTimeout(function() {
-            console.log('⏰ Final safety check: ensuring no elements are still showing loading state');
-            
-            // Check stats elements
-            const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
-            statsIds.forEach(id => {
-                const element = document.getElementById(id);
-                if (element && (element.textContent === '-' || element.textContent === '...' || element.textContent.includes('Loading'))) {
-                    element.textContent = '0';
-                    console.log(`🔧 Fixed loading state for ${id}`);
-                }
-            });
-            
-            // Check user name element
-            const userNameElement = document.getElementById('userName');
-            if (userNameElement && (userNameElement.textContent.includes('Loading') || userNameElement.textContent === '...')) {
-                userNameElement.textContent = 'User';
-                console.log('🔧 Fixed loading state for userName');
-            }
-            
-            // Check lists for loading states
-            const containers = [
-                { id: 'recentRequestsList', fallback: '<div class="empty-message"><p>No recent requests</p></div>' },
-                { id: 'upcomingAssignmentsList', fallback: '<div class="empty-message"><p>No upcoming assignments</p></div>' },
-                { id: 'recentNotificationsList', fallback: '<div class="empty-message"><p>No recent notifications</p></div>' }
-            ];
-            
-            containers.forEach(container => {
-                const element = document.getElementById(container.id);
-                if (element && element.innerHTML.includes('Loading')) {
-                    element.innerHTML = container.fallback;
-                    console.log(`🔧 Fixed loading state for ${container.id}`);
-                }
-            });
-        }, 8000); // Reduced from 12 seconds
     }
 
     function handleDashboardDataSuccess(data) {
@@ -606,77 +531,6 @@
         } catch (error) {
             console.log('❌ Error in updateUserInfoSafely:', error);
         }
-    }
-
-    // Helper functions for better loading state management
-    function setDashboardToLoadingState() {
-        // Set user info to loading
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement) {
-            userNameElement.textContent = '...';
-        }
-        
-        // Set stats to loading
-        const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
-        statsIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = '...';
-            }
-        });
-        
-        // Set lists to loading
-        const containers = ['recentRequestsList', 'upcomingAssignmentsList', 'recentNotificationsList'];
-        containers.forEach(id => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.innerHTML = '<div class="loading">...</div>';
-            }
-        });
-    }
-
-    function dashboardStillLoading() {
-        const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
-        return statsIds.some(id => {
-            const element = document.getElementById(id);
-            return element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...');
-        });
-    }
-
-    function forceDashboardToFallbackState() {
-        console.log('🔧 Forcing dashboard to fallback state due to timeout');
-        
-        // Force stats to zero
-        const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
-        statsIds.forEach(id => {
-            const element = document.getElementById(id);
-            if (element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...')) {
-                element.textContent = '0';
-                console.log(`🔧 Forced ${id} to zero`);
-            }
-        });
-        
-        // Force user to fallback
-        const userNameElement = document.getElementById('userName');
-        if (userNameElement && (userNameElement.textContent === '...' || userNameElement.textContent.includes('Loading'))) {
-            userNameElement.textContent = 'User';
-            console.log('🔧 Forced userName to fallback');
-        }
-        
-        // Force lists to empty state
-        const containers = [
-            { id: 'recentRequestsList', fallback: '<div class="empty-message"><p>No recent requests</p></div>' },
-            { id: 'upcomingAssignmentsList', fallback: '<div class="empty-message"><p>No upcoming assignments</p></div>' },
-            { id: 'recentNotificationsList', fallback: '<div class="empty-message"><p>No recent notifications</p></div>' }
-        ];
-        
-        containers.forEach(container => {
-            const element = document.getElementById(container.id);
-            if (element && (element.innerHTML.includes('Loading') || element.innerHTML.includes('...'))) {
-                element.innerHTML = container.fallback;
-                console.log(`🔧 Forced ${container.id} to fallback`);
-            }
-        });
     }
 
     function updatePermissionBasedUI(user) {
@@ -1056,83 +910,6 @@
         // This function can remain empty. Its presence helps prevent bfcache in some browsers.
     });
     // Add this to your main pages to debug navigation issues
-
-    // Navigation setup for dashboard
-    (function() {
-        // Set up navigation links with proper web app URLs
-        function setNavigationLinks(baseUrl) {
-            console.log('🧭 Setting dashboard navigation links with base URL:', baseUrl);
-            document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                var page = a.getAttribute('data-page');
-                var href = page === 'dashboard' ? baseUrl : baseUrl + '?page=' + page;
-                a.href = href;
-                a.dataset.url = href;
-                console.log('🔗 Set link for', page, ':', href);
-            });
-        }
-
-        function setFallbackNavigationLinks() {
-            console.log('🔗 Setting fallback dashboard navigation links');
-            document.querySelectorAll('nav.navigation a').forEach(function(a) {
-                var page = a.getAttribute('data-page');
-                var href = page === 'dashboard' ? 'index.html' : page + '.html';
-                a.href = href;
-                a.dataset.url = href;
-            });
-        }
-
-        // Try to get the web app URL for navigation
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            console.log('🚀 Getting web app URL for dashboard navigation');
-            google.script.run
-                .withSuccessHandler(setNavigationLinks)
-                .withFailureHandler(function(error) {
-                    console.error('❌ Failed to get web app URL for navigation:', error);
-                    setFallbackNavigationLinks();
-                })
-                .getWebAppUrl();
-        } else {
-            console.log('⚠️ Google Apps Script not available, using fallback navigation');
-            setFallbackNavigationLinks();
-        }
-
-        // Navigation click handler
-        function handleDashboardNavigation(link) {
-            var url = link.dataset.url || link.getAttribute('href');
-            if (!url || url === '#') {
-                console.error('❌ No URL found for dashboard navigation link');
-                return false;
-            }
-            
-            console.log('🔗 Dashboard navigating to:', url);
-            
-            try {
-                // Use top level navigation for proper page loads
-                if (window.top !== window) {
-                    window.top.location.href = url;
-                } else {
-                    window.location.href = url;
-                }
-            } catch (e) {
-                console.error('❌ Dashboard navigation error:', e);
-                window.location.href = url;
-            }
-            return false;
-        }
-
-        // Initialize navigation when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🧭 Initializing dashboard navigation click handlers');
-            document.querySelectorAll('nav.navigation a').forEach(function(link) {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    return handleDashboardNavigation(this);
-                });
-            });
-            
-            console.log('✅ Dashboard navigation initialized successfully');
-        });
-    })();
 </script>
 </body>
 </html>
