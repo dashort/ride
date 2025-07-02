@@ -6438,8 +6438,16 @@ function addMobileOptimizations(htmlOutput, user, rider) {
 })();
 </script>`;
     
-const currentContent = htmlOutput.getContent();
-htmlOutput.setContent(currentContent + mobileScript);
+    const currentContent = htmlOutput.getContent();
+    let newContent;
+    if (currentContent.includes('</body>')) {
+      newContent = currentContent.replace('</body>', mobileScript + '</body>');
+    } else if (currentContent.includes('</html>')) {
+      newContent = currentContent.replace('</html>', mobileScript + '</html>');
+    } else {
+      newContent = currentContent + mobileScript;
+    }
+    htmlOutput.setContent(newContent);
     return htmlOutput;
     
   } catch (error) {
