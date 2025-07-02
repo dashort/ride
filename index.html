@@ -472,21 +472,35 @@
 
     function initializeDashboard() {
         console.log('🔄 Initializing dashboard with consolidated data call...');
+        
+        // Immediately set better loading states
+        setDashboardToLoadingState();
+        
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            // Set a timeout to force fallback data if loading takes too long
-            const dashboardTimeout = setTimeout(function() {
-                console.log('⏰ Dashboard loading timeout, forcing fallback data');
-                handleDashboardDataFailure({ message: "Dashboard loading timed out after 10 seconds." });
-            }, 10000); // 10 second timeout
+            // Primary timeout for faster user feedback (3 seconds)
+            const primaryTimeout = setTimeout(function() {
+                console.log('⏰ Primary dashboard timeout (3s), using fallback data');
+                if (dashboardStillLoading()) {
+                    handleDashboardDataFailure({ message: "Dashboard loading timed out after 3 seconds." });
+                }
+            }, 3000);
+            
+            // Secondary timeout as final safety net (6 seconds)
+            const secondaryTimeout = setTimeout(function() {
+                console.log('⏰ Secondary timeout (6s), forcing fallback values');
+                forceDashboardToFallbackState();
+            }, 6000);
             
             google.script.run
                 .withSuccessHandler(function(data) {
-                    clearTimeout(dashboardTimeout);
+                    clearTimeout(primaryTimeout);
+                    clearTimeout(secondaryTimeout);
                     console.log('✅ Dashboard data loaded successfully:', data);
                     handleDashboardDataSuccess(data);
                 })
                 .withFailureHandler(function(error) {
-                    clearTimeout(dashboardTimeout);
+                    clearTimeout(primaryTimeout);
+                    clearTimeout(secondaryTimeout);
                     console.error('❌ Dashboard data loading failed:', error);
                     handleDashboardDataFailure(error);
                 })
@@ -496,15 +510,15 @@
             handleDashboardDataFailure({ message: "Google Apps Script not available." });
         }
         
-        // Additional safety timeout to ensure UI never stays in loading state
+        // Reduced safety timeout to ensure UI never stays in loading state (8 seconds instead of 12)
         setTimeout(function() {
-            console.log('⏰ Safety check: ensuring no elements are still showing loading state');
+            console.log('⏰ Final safety check: ensuring no elements are still showing loading state');
             
             // Check stats elements
             const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
             statsIds.forEach(id => {
                 const element = document.getElementById(id);
-                if (element && (element.textContent === '-' || element.textContent.includes('Loading'))) {
+                if (element && (element.textContent === '-' || element.textContent === '...' || element.textContent.includes('Loading'))) {
                     element.textContent = '0';
                     console.log(`🔧 Fixed loading state for ${id}`);
                 }
@@ -512,7 +526,7 @@
             
             // Check user name element
             const userNameElement = document.getElementById('userName');
-            if (userNameElement && userNameElement.textContent.includes('Loading')) {
+            if (userNameElement && (userNameElement.textContent.includes('Loading') || userNameElement.textContent === '...')) {
                 userNameElement.textContent = 'User';
                 console.log('🔧 Fixed loading state for userName');
             }
@@ -531,7 +545,7 @@
                     console.log(`🔧 Fixed loading state for ${container.id}`);
                 }
             });
-        }, 12000); // 12 second safety check
+        }, 8000); // Reduced from 12 seconds
     }
 
     function handleDashboardDataSuccess(data) {
@@ -592,6 +606,77 @@
         } catch (error) {
             console.log('❌ Error in updateUserInfoSafely:', error);
         }
+    }
+
+    // Helper functions for better loading state management
+    function setDashboardToLoadingState() {
+        // Set user info to loading
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement) {
+            userNameElement.textContent = '...';
+        }
+        
+        // Set stats to loading
+        const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
+        statsIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = '...';
+            }
+        });
+        
+        // Set lists to loading
+        const containers = ['recentRequestsList', 'upcomingAssignmentsList', 'recentNotificationsList'];
+        containers.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.innerHTML = '<div class="loading">...</div>';
+            }
+        });
+    }
+
+    function dashboardStillLoading() {
+        const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
+        return statsIds.some(id => {
+            const element = document.getElementById(id);
+            return element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...');
+        });
+    }
+
+    function forceDashboardToFallbackState() {
+        console.log('🔧 Forcing dashboard to fallback state due to timeout');
+        
+        // Force stats to zero
+        const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
+        statsIds.forEach(id => {
+            const element = document.getElementById(id);
+            if (element && (element.textContent === '-' || element.textContent === '...' || element.textContent === 'Loading...')) {
+                element.textContent = '0';
+                console.log(`🔧 Forced ${id} to zero`);
+            }
+        });
+        
+        // Force user to fallback
+        const userNameElement = document.getElementById('userName');
+        if (userNameElement && (userNameElement.textContent === '...' || userNameElement.textContent.includes('Loading'))) {
+            userNameElement.textContent = 'User';
+            console.log('🔧 Forced userName to fallback');
+        }
+        
+        // Force lists to empty state
+        const containers = [
+            { id: 'recentRequestsList', fallback: '<div class="empty-message"><p>No recent requests</p></div>' },
+            { id: 'upcomingAssignmentsList', fallback: '<div class="empty-message"><p>No upcoming assignments</p></div>' },
+            { id: 'recentNotificationsList', fallback: '<div class="empty-message"><p>No recent notifications</p></div>' }
+        ];
+        
+        containers.forEach(container => {
+            const element = document.getElementById(container.id);
+            if (element && (element.innerHTML.includes('Loading') || element.innerHTML.includes('...'))) {
+                element.innerHTML = container.fallback;
+                console.log(`🔧 Forced ${container.id} to fallback`);
+            }
+        });
     }
 
     function updatePermissionBasedUI(user) {
