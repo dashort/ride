@@ -448,6 +448,30 @@
             }
         }
 
+        /* Navigation hover effects */
+        .nav-button:hover {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
+
+        /* Responsive navigation */
+        @media (max-width: 768px) {
+            .navigation {
+                flex-direction: column !important;
+                align-items: center !important;
+                padding: 0 1rem !important;
+                margin: 1rem auto 1rem auto !important;
+            }
+
+            .nav-button {
+                width: 100% !important;
+                max-width: 300px !important;
+                text-align: center !important;
+            }
+        }
+
         /* Accessibility */
         @media (prefers-reduced-motion: reduce) {
             * {
@@ -484,7 +508,16 @@
         <div class="user-info" id="userInfo">Loading user...</div>
     </div>
 
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
+    <!-- Navigation Menu -->
+    <nav class="navigation" style="display: flex; gap: 1rem; margin: 1rem auto 2rem auto; max-width: 1400px; padding: 0 2rem; flex-wrap: wrap; justify-content: center; position: relative; z-index: 10;">
+        <a href="index.html" class="nav-button" id="nav-dashboard" data-page="dashboard" target="_top" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">📊 Dashboard</a>
+        <a href="requests.html" class="nav-button" id="nav-requests" data-page="requests" target="_top" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">📋 Requests</a>
+        <a href="assignments.html" class="nav-button" id="nav-assignments" data-page="assignments" target="_top" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">🏍️ Assignments</a>
+        <a href="riders.html" class="nav-button" id="nav-riders" data-page="riders" target="_top" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">👥 Riders</a>
+        <a href="rider-availability.html" class="nav-button active" id="nav-availability" data-page="availability" target="_top" style="padding: 0.75rem 1.5rem; background: #3498db; border: none; border-radius: 25px; color: white; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);">🗓️ Availability</a>
+        <a href="notifications.html" class="nav-button" id="nav-notifications" data-page="notifications" target="_top" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">📱 Notifications</a>
+        <a href="reports.html" class="nav-button" id="nav-reports" data-page="reports" target="_top" style="padding: 0.75rem 1.5rem; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 25px; color: #2c3e50; text-decoration: none; font-weight: 600; transition: all 0.3s ease; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;">📊 Reports</a>
+    </nav>
 
     <div class="container">
         <!-- View Mode Toggle -->
@@ -1185,7 +1218,64 @@
                 closeEditModal();
             }
         };
+
+        // Navigation functionality
+        function setupNavigation() {
+            // Set up navigation links
+            function setLinks(base) {
+                document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                    var page = a.getAttribute('data-page');
+                    var href = page === 'dashboard' ? base : base + '?page=' + page;
+                    a.href = href;
+                    a.dataset.url = href;
+                });
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
+            } else {
+                // Fallback for local testing
+                document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                    var page = a.getAttribute('data-page');
+                    var href = page === 'dashboard' ? 'index.html' : page + '.html';
+                    a.href = href;
+                    a.dataset.url = href;
+                });
+            }
+
+            // Navigation click handler
+            function handleNavigation(link) {
+                var url = link.dataset.url || link.getAttribute('href');
+                if (!url || url === '#') return false;
+                
+                try {
+                    if (window.top !== window) {
+                        window.top.location.href = url;
+                    } else {
+                        window.location.href = url;
+                    }
+                } catch (e) {
+                    window.location.href = url;
+                }
+                return false;
+            }
+
+            // Add click handlers to navigation links
+            document.querySelectorAll('nav.navigation a').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    handleNavigation(this);
+                });
+            });
+            
+            console.log('🧭 Navigation initialized for rider availability page');
+        }
+
+        // Initialize navigation when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            setupNavigation();
+        });
+
     </script>
-    <script src="load-navigation.js"></script>
 </body>
 </html>
