@@ -474,11 +474,11 @@ class AvailabilityWidget {
                     window.open(url + '?page=availability', '_blank');
                 })
                 .withFailureHandler(() => {
-                    window.open('rider-availability.html', '_blank');
+                    window.open('enhanced-rider-availability.html', '_blank');
                 })
                 .getWebAppUrl();
         } else {
-            window.open('rider-availability.html', '_blank');
+            window.open('enhanced-rider-availability.html', '_blank');
         }
         this.closeWidget();
     }
@@ -524,7 +524,7 @@ class AvailabilityWidget {
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Only initialize if not on the full availability calendar page
-    if (!window.location.pathname.includes('rider-availability.html')) {
+    if (!window.location.pathname.includes('enhanced-rider-availability.html')) {
         new AvailabilityWidget();
     }
 });
@@ -537,7 +537,7 @@ if (document.readyState === 'loading') {
 }
 
 function initWidget() {
-    if (!window.availabilityWidget && !window.location.pathname.includes('rider-availability.html')) {
+    if (!window.availabilityWidget && !window.location.pathname.includes('enhanced-rider-availability.html')) {
         window.availabilityWidget = new AvailabilityWidget();
     }
 }
