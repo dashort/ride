@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#667eea">
+    <title>🗓️ Smart Availability Calendar - Motorcycle Escort</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/availability-calendar-manifest.json">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="/icon-192x192.png">
+    
+    <!-- External Dependencies -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --dark-color: #2c3e50;
+            --light-bg: #f8f9fa;
+            --border-radius: 12px;
+            --shadow: 0 4px 15px rgba(0,0,0,0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        /* Enhanced Mobile Header with Gesture Hints */
+        .smart-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .smart-header h1 {
+            font-size: 1.5rem;
+            color: var(--dark-color);
+            font-weight: 600;
+        }
+
+        .gesture-hint {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Quick Action Floating Button */
+        .floating-quick-actions {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 200;
+        }
+
+        .fab-main {
+            width: 60px;
+            height: 60px;
+            background: var(--success-color);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: var(--transition);
+        }
+
+        .fab-main:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: none;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .fab-menu.active {
+            display: flex;
+            animation: fabMenuOpen 0.3s ease-out;
+        }
+
+        @keyframes fabMenuOpen {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fab-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 25px;
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: var(--transition);
+            white-space: nowrap;
+        }
+
+        .fab-option:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        /* Gesture-Enhanced Calendar */
+        .calendar-container {
+            background: white;
+            border-radius: var(--border-radius);
+            margin: 1rem;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gesture-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            background: rgba(39, 174, 96, 0.2);
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .swipe-indicator.active {
+            opacity: 1;
+        }
+
+        .swipe-indicator.available {
+            background: rgba(39, 174, 96, 0.3);
+        }
+
+        .swipe-indicator.unavailable {
+            background: rgba(231, 76, 60, 0.3);
+        }
+
+        /* Enhanced Calendar Day Styling */
+        .fc-day {
+            position: relative;
+            transition: var(--transition);
+        }
+
+        .fc-day:hover {
+            background: rgba(102, 126, 234, 0.1) !important;
+        }
+
+        .fc-day.gesture-active {
+            transform: scale(0.95);
+            transition: transform 0.1s ease;
+        }
+
+        /* Voice Input Interface */
+        .voice-interface {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .voice-interface.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .voice-panel {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .voice-visualizer {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+        }
+
+        .voice-visualizer.listening {
+            animation: voicePulse 1s infinite;
+        }
+
+        @keyframes voicePulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 20px rgba(102, 126, 234, 0);
+            }
+        }
+
+        /* Smart Suggestions Panel */
+        .smart-suggestions {
+            background: white;
+            border-radius: var(--border-radius);
+            margin: 1rem;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .suggestion-card {
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: var(--transition);
+        }
+
+        .suggestion-card:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .suggestion-text {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .suggestion-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-suggestion {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-accept {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-dismiss {
+            background: #6c757d;
+            color: white;
+        }
+
+        /* Achievement Notifications */
+        .achievement-toast {
+            position: fixed;
+            top: 100px;
+            right: 1rem;
+            background: var(--success-color);
+            color: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: none;
+            z-index: 500;
+            max-width: 300px;
+        }
+
+        .achievement-toast.show {
+            display: block;
+            animation: slideInRight 0.5s ease;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .achievement-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .gesture-hint {
+                font-size: 0.7rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            .fab-main {
+                width: 56px;
+                height: 56px;
+                font-size: 1.3rem;
+            }
+
+            .floating-quick-actions {
+                bottom: 1rem;
+                right: 1rem;
+            }
+        }
+
+        /* Status Indicators */
+        .status-indicator {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            z-index: 20;
+        }
+
+        .status-available {
+            background: var(--success-color);
+        }
+
+        .status-unavailable {
+            background: var(--danger-color);
+        }
+
+        .status-partial {
+            background: var(--warning-color);
+        }
+
+        /* Loading and Success States */
+        .processing-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .processing-overlay.active {
+            display: flex;
+        }
+
+        .processing-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Smart Header -->
+    <div class="smart-header">
+        <div class="header-content">
+            <h1>🗓️ Smart Availability</h1>
+            <div class="gesture-hint" id="gestureHint">
+                👆 Swipe days to update
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Suggestions Panel -->
+    <div class="smart-suggestions" id="smartSuggestions">
+        <h3>💡 Smart Suggestions</h3>
+        <div id="suggestionsContainer">
+            <!-- Dynamic suggestions will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Enhanced Calendar -->
+    <div class="calendar-container">
+        <div class="gesture-overlay" id="gestureOverlay">
+            <div class="swipe-indicator" id="swipeIndicator"></div>
+        </div>
+        <div id="calendar"></div>
+    </div>
+
+    <!-- Floating Quick Actions -->
+    <div class="floating-quick-actions">
+        <div class="fab-menu" id="fabMenu">
+            <div class="fab-option" onclick="openVoiceInterface()">
+                🎤 Voice Input
+            </div>
+            <div class="fab-option" onclick="quickAvailable()">
+                ✅ Available Today
+            </div>
+            <div class="fab-option" onclick="quickUnavailable()">
+                ❌ Unavailable Today
+            </div>
+            <div class="fab-option" onclick="copyYesterday()">
+                📋 Copy Yesterday
+            </div>
+        </div>
+        <button class="fab-main" id="fabMain" onclick="toggleFabMenu()">
+            ⚡
+        </button>
+    </div>
+
+    <!-- Voice Interface -->
+    <div class="voice-interface" id="voiceInterface">
+        <div class="voice-panel">
+            <div class="voice-visualizer" id="voiceVisualizer">
+                🎤
+            </div>
+            <h3>Voice Commands</h3>
+            <p id="voiceStatus">Say something like "Available tomorrow 9 to 5"</p>
+            <div id="voiceTranscript" style="margin: 1rem 0; font-style: italic; color: #666;"></div>
+            <button onclick="closeVoiceInterface()" style="margin-top: 1rem; padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #6c757d; color: white; cursor: pointer;">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- Achievement Toast -->
+    <div class="achievement-toast" id="achievementToast">
+        <span class="achievement-icon">🏆</span>
+        <span id="achievementText"></span>
+    </div>
+
+    <!-- Processing Overlay -->
+    <div class="processing-overlay" id="processingOverlay">
+        <div class="processing-spinner"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let calendar;
+        let currentUser;
+        let hammerInstance;
+        let speechRecognition;
+        let isVoiceActive = false;
+        let fabMenuOpen = false;
+        let gestureHints = [
+            "👆 Swipe days to update",
+            "🎤 Long press for voice",
+            "👆 Double tap to copy",
+            "↔️ Swipe left/right"
+        ];
+        let currentHintIndex = 0;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCalendar();
+            initializeGestures();
+            initializeVoiceRecognition();
+            loadUserData();
+            loadSmartSuggestions();
+            setupGestureHints();
+            registerServiceWorker();
+        });
+
+        // PWA Service Worker Registration
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/availability-sw.js')
+                    .then(registration => {
+                        console.log('📱 PWA Service Worker registered');
+                    })
+                    .catch(error => {
+                        console.log('Service Worker registration failed:', error);
+                    });
+            }
+        }
+
+        // Initialize Enhanced Calendar
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('calendar');
+            
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek'
+                },
+                selectable: true,
+                selectMirror: true,
+                dayMaxEvents: true,
+                weekends: true,
+                height: 'auto',
+                
+                select: function(info) {
+                    handleDateSelection(info.start, info.end);
+                },
+                
+                eventClick: function(info) {
+                    handleEventClick(info.event);
+                },
+                
+                dayCellDidMount: function(info) {
+                    // Add gesture support to each day cell
+                    setupDayGestures(info.el, info.date);
+                }
+            });
+
+            calendar.render();
+        }
+
+        // Initialize Gesture Recognition
+        function initializeGestures() {
+            const calendarContainer = document.querySelector('.calendar-container');
+            hammerInstance = new Hammer(calendarContainer);
+            
+            // Enable all gestures
+            hammerInstance.get('swipe').set({
+                direction: Hammer.DIRECTION_ALL,
+                threshold: 10,
+                velocity: 0.3
+            });
+            
+            hammerInstance.get('press').set({ time: 500 });
+            hammerInstance.get('tap').set({ taps: 2 });
+
+            // Global gesture handlers
+            hammerInstance.on('press', handleLongPress);
+        }
+
+        // Setup individual day gestures
+        function setupDayGestures(dayEl, date) {
+            const dayHammer = new Hammer(dayEl);
+            
+            dayHammer.get('swipe').set({
+                direction: Hammer.DIRECTION_ALL
+            });
+            
+            dayHammer.on('swipeleft', (e) => {
+                e.preventDefault();
+                handleDaySwipe(date, 'unavailable');
+            });
+            
+            dayHammer.on('swiperight', (e) => {
+                e.preventDefault();
+                handleDaySwipe(date, 'available');
+            });
+            
+            dayHammer.on('swipeup', (e) => {
+                e.preventDefault();
+                handleDaySwipe(date, 'custom');
+            });
+            
+            dayHammer.on('tap', (e) => {
+                if (e.tapCount === 2) {
+                    e.preventDefault();
+                    copyPreviousDay(date);
+                }
+            });
+        }
+
+        // Handle day swipe gestures
+        function handleDaySwipe(date, action) {
+            const dayEl = calendar.el.querySelector(`[data-date="${date.toISOString().split('T')[0]}"]`);
+            
+            // Visual feedback
+            showSwipeIndicator(dayEl, action);
+            
+            // Haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
+            
+            // Process the action
+            switch(action) {
+                case 'available':
+                    setQuickAvailability(date, 'available', '09:00', '17:00');
+                    showAchievementToast('⚡ Quick available set!');
+                    break;
+                case 'unavailable':
+                    setQuickAvailability(date, 'unavailable', '00:00', '23:59');
+                    showAchievementToast('🚫 Marked unavailable');
+                    break;
+                case 'custom':
+                    openCustomTimeEntry(date);
+                    break;
+            }
+        }
+
+        // Show swipe visual feedback
+        function showSwipeIndicator(dayEl, action) {
+            const indicator = document.getElementById('swipeIndicator');
+            const rect = dayEl.getBoundingClientRect();
+            const containerRect = document.querySelector('.calendar-container').getBoundingClientRect();
+            
+            indicator.style.left = (rect.left - containerRect.left) + 'px';
+            indicator.style.top = (rect.top - containerRect.top) + 'px';
+            indicator.style.width = rect.width + 'px';
+            indicator.style.height = rect.height + 'px';
+            
+            indicator.className = `swipe-indicator active ${action}`;
+            
+            setTimeout(() => {
+                indicator.classList.remove('active');
+            }, 300);
+        }
+
+        // Handle long press for voice input
+        function handleLongPress(e) {
+            e.preventDefault();
+            openVoiceInterface();
+            
+            if (navigator.vibrate) {
+                navigator.vibrate([100, 50, 100]);
+            }
+        }
+
+        // Voice Recognition Setup
+        function initializeVoiceRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                speechRecognition = new SpeechRecognition();
+                
+                speechRecognition.continuous = false;
+                speechRecognition.interimResults = true;
+                speechRecognition.lang = 'en-US';
+                
+                speechRecognition.onstart = function() {
+                    isVoiceActive = true;
+                    document.getElementById('voiceVisualizer').classList.add('listening');
+                    document.getElementById('voiceStatus').textContent = 'Listening...';
+                };
+                
+                speechRecognition.onresult = function(event) {
+                    let transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                    
+                    document.getElementById('voiceTranscript').textContent = transcript;
+                    
+                    if (event.results[event.results.length - 1].isFinal) {
+                        processVoiceCommand(transcript);
+                    }
+                };
+                
+                speechRecognition.onerror = function(event) {
+                    document.getElementById('voiceStatus').textContent = 'Error: ' + event.error;
+                };
+                
+                speechRecognition.onend = function() {
+                    isVoiceActive = false;
+                    document.getElementById('voiceVisualizer').classList.remove('listening');
+                };
+            }
+        }
+
+        // Process voice commands
+        function processVoiceCommand(command) {
+            const lowerCommand = command.toLowerCase();
+            
+            // Simple pattern matching for voice commands
+            if (lowerCommand.includes('available') && lowerCommand.includes('today')) {
+                quickAvailable();
+                showAchievementToast('🎤 Voice command executed!');
+            } else if (lowerCommand.includes('unavailable') && lowerCommand.includes('today')) {
+                quickUnavailable();
+                showAchievementToast('🎤 Voice command executed!');
+            } else if (lowerCommand.includes('copy yesterday')) {
+                copyYesterday();
+                showAchievementToast('🎤 Voice command executed!');
+            } else {
+                // More complex parsing could be added here
+                document.getElementById('voiceStatus').textContent = 'Command not recognized. Try: "Available today" or "Unavailable today"';
+                return;
+            }
+            
+            setTimeout(() => {
+                closeVoiceInterface();
+            }, 2000);
+        }
+
+        // Smart Suggestions System
+        function loadSmartSuggestions() {
+            const suggestions = [
+                {
+                    text: "You're usually available Tuesdays 9-5. Set for next month?",
+                    action: () => setRecurringAvailability('tuesday', '09:00', '17:00')
+                },
+                {
+                    text: "Weekend coverage is low. Add Saturday hours?",
+                    action: () => openCustomTimeEntry(getNextSaturday())
+                },
+                {
+                    text: "You've worked 6 days straight. Take Sunday off?",
+                    action: () => setDayUnavailable(getNextSunday())
+                }
+            ];
+            
+            const container = document.getElementById('suggestionsContainer');
+            container.innerHTML = suggestions.map((suggestion, index) => `
+                <div class="suggestion-card">
+                    <div class="suggestion-text">${suggestion.text}</div>
+                    <div class="suggestion-actions">
+                        <button class="btn-suggestion btn-accept" onclick="acceptSuggestion(${index})">
+                            Accept
+                        </button>
+                        <button class="btn-suggestion btn-dismiss" onclick="dismissSuggestion(${index})">
+                            Dismiss
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Quick Actions
+        function quickAvailable() {
+            const today = new Date();
+            setQuickAvailability(today, 'available', '09:00', '17:00');
+        }
+
+        function quickUnavailable() {
+            const today = new Date();
+            setQuickAvailability(today, 'unavailable', '00:00', '23:59');
+        }
+
+        function copyYesterday() {
+            // Implementation would copy previous day's schedule
+            showAchievementToast('📋 Yesterday\'s schedule copied!');
+        }
+
+        function setQuickAvailability(date, status, startTime, endTime) {
+            showProcessing();
+            
+            const data = {
+                date: date.toISOString().split('T')[0],
+                startTime: startTime,
+                endTime: endTime,
+                status: status,
+                riderId: currentUser?.riderId
+            };
+
+            // Simulate API call
+            setTimeout(() => {
+                hideProcessing();
+                updateCalendarEvent(date, status);
+                checkAchievements();
+            }, 1000);
+        }
+
+        // Achievement System
+        function checkAchievements() {
+            // Simple achievement checking
+            const updateStreak = localStorage.getItem('updateStreak') || 0;
+            const newStreak = parseInt(updateStreak) + 1;
+            
+            localStorage.setItem('updateStreak', newStreak);
+            
+            if (newStreak === 7) {
+                showAchievementToast('🔥 7-day streak! Schedule Master!');
+            } else if (newStreak === 30) {
+                showAchievementToast('👑 30-day streak! Availability Legend!');
+            }
+        }
+
+        function showAchievementToast(message) {
+            const toast = document.getElementById('achievementToast');
+            document.getElementById('achievementText').textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // UI Helper Functions
+        function toggleFabMenu() {
+            fabMenuOpen = !fabMenuOpen;
+            const menu = document.getElementById('fabMenu');
+            const main = document.getElementById('fabMain');
+            
+            if (fabMenuOpen) {
+                menu.classList.add('active');
+                main.style.transform = 'rotate(45deg)';
+            } else {
+                menu.classList.remove('active');
+                main.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function openVoiceInterface() {
+            if (speechRecognition) {
+                document.getElementById('voiceInterface').classList.add('active');
+                speechRecognition.start();
+            } else {
+                alert('Voice recognition not supported in this browser');
+            }
+        }
+
+        function closeVoiceInterface() {
+            document.getElementById('voiceInterface').classList.remove('active');
+            if (speechRecognition && isVoiceActive) {
+                speechRecognition.stop();
+            }
+        }
+
+        function showProcessing() {
+            document.getElementById('processingOverlay').classList.add('active');
+        }
+
+        function hideProcessing() {
+            document.getElementById('processingOverlay').classList.remove('active');
+        }
+
+        function setupGestureHints() {
+            setInterval(() => {
+                currentHintIndex = (currentHintIndex + 1) % gestureHints.length;
+                document.getElementById('gestureHint').textContent = gestureHints[currentHintIndex];
+            }, 4000);
+        }
+
+        // User Data Loading
+        function loadUserData() {
+            // Simulate loading current user
+            currentUser = {
+                email: 'rider@example.com',
+                name: 'John Rider',
+                role: 'rider',
+                riderId: 'R001'
+            };
+        }
+
+        // Calendar Event Management
+        function updateCalendarEvent(date, status) {
+            // Remove existing events for the date
+            const events = calendar.getEvents();
+            events.forEach(event => {
+                if (event.start.toDateString() === date.toDateString()) {
+                    event.remove();
+                }
+            });
+            
+            // Add new event
+            const statusColors = {
+                available: '#27ae60',
+                unavailable: '#e74c3c',
+                partial: '#f39c12'
+            };
+            
+            calendar.addEvent({
+                title: status.charAt(0).toUpperCase() + status.slice(1),
+                start: date.toISOString().split('T')[0],
+                allDay: true,
+                backgroundColor: statusColors[status],
+                borderColor: statusColors[status]
+            });
+        }
+
+        // Utility Functions
+        function getNextSaturday() {
+            const today = new Date();
+            const saturday = new Date(today);
+            saturday.setDate(today.getDate() + (6 - today.getDay()));
+            return saturday;
+        }
+
+        function getNextSunday() {
+            const today = new Date();
+            const sunday = new Date(today);
+            sunday.setDate(today.getDate() + (7 - today.getDay()));
+            return sunday;
+        }
+
+        // Event Handlers
+        function handleDateSelection(start, end) {
+            openCustomTimeEntry(start);
+        }
+
+        function handleEventClick(event) {
+            // Handle clicking on existing events
+            console.log('Event clicked:', event);
+        }
+
+        function openCustomTimeEntry(date) {
+            // This would open a modal for custom time entry
+            console.log('Custom time entry for:', date);
+        }
+
+        function acceptSuggestion(index) {
+            console.log('Accepting suggestion:', index);
+            showAchievementToast('✨ Smart suggestion applied!');
+        }
+
+        function dismissSuggestion(index) {
+            console.log('Dismissing suggestion:', index);
+        }
+
+        // Close FAB menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.floating-quick-actions') && fabMenuOpen) {
+                toggleFabMenu();
+            }
+        });
+
+    </script>
+</body>
+</html>
