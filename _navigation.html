@@ -1,29 +1,29 @@
 <nav class="navigation">
-    <a href="index.html" class="nav-button" id="nav-dashboard" data-page="dashboard" target="_top">📊 Dashboard</a>
-    <a href="requests.html" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
-    <a href="assignments.html" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
-    <a href="riders.html" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
-    <a href="rider-availability.html" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
-    <a href="notifications.html" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
-    <a href="reports.html" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
+    <a href="#" class="nav-button" id="nav-dashboard" data-page="dashboard" target="_top">📊 Dashboard</a>
+    <a href="#" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
+    <a href="#" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
+    <a href="#" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
+    <a href="#" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
+    <a href="#" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
+    <a href="#" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
 </nav>
 
 <script>
 (function() {
-    // Set up navigation links
-    function setLinks(base) {
+    // Set up navigation links with proper web app URLs
+    function setLinks(baseUrl) {
+        console.log('🧭 Setting navigation links with base URL:', baseUrl);
         document.querySelectorAll('nav.navigation a').forEach(function(a) {
             var page = a.getAttribute('data-page');
-            var href = page === 'dashboard' ? base : base + '?page=' + page;
+            var href = page === 'dashboard' ? baseUrl : baseUrl + '?page=' + page;
             a.href = href;
             a.dataset.url = href;
+            console.log('🔗 Set link for', page, ':', href);
         });
     }
 
-    if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
-    } else {
-        // Fallback for local testing
+    function setFallbackLinks() {
+        console.log('🔗 Setting fallback navigation links');
         document.querySelectorAll('nav.navigation a').forEach(function(a) {
             var page = a.getAttribute('data-page');
             var href = page === 'dashboard' ? 'index.html' : page + '.html';
@@ -32,18 +32,40 @@
         });
     }
 
+    // Try to get the web app URL
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        console.log('🚀 Getting web app URL from Google Apps Script');
+        google.script.run
+            .withSuccessHandler(setLinks)
+            .withFailureHandler(function(error) {
+                console.error('❌ Failed to get web app URL:', error);
+                setFallbackLinks();
+            })
+            .getWebAppUrl();
+    } else {
+        console.log('⚠️ Google Apps Script not available, using fallback navigation');
+        setFallbackLinks();
+    }
+
     // Navigation click handler
     function handleNavigation(link) {
         var url = link.dataset.url || link.getAttribute('href');
-        if (!url || url === '#') return false;
+        if (!url || url === '#') {
+            console.error('❌ No URL found for navigation link');
+            return false;
+        }
+        
+        console.log('🔗 Navigating to:', url);
         
         try {
+            // Use top level navigation for proper page loads
             if (window.top !== window) {
                 window.top.location.href = url;
             } else {
                 window.location.href = url;
             }
         } catch (e) {
+            console.error('❌ Navigation error:', e);
             window.location.href = url;
         }
         return false;
@@ -51,25 +73,36 @@
 
     // Add click handlers to navigation links
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('🧭 Initializing navigation click handlers');
         document.querySelectorAll('nav.navigation a').forEach(function(link) {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
-                handleNavigation(this);
+                return handleNavigation(this);
             });
         });
         
-        console.log('🧭 Navigation initialized - NO AUTO RELOAD');
+        // Highlight current page
+        var currentPage = new URLSearchParams(window.location.search).get('page') || 'dashboard';
+        var currentLink = document.querySelector(`nav.navigation a[data-page="${currentPage}"]`);
+        if (currentLink) {
+            currentLink.classList.add('active');
+            console.log('✅ Highlighted current page:', currentPage);
+        }
+        
+        console.log('✅ Navigation initialized successfully');
     });
 
-    // CRITICAL: NO PAGESHOW RELOAD - Let browser handle back/forward naturally
-    console.log('📄 Navigation script loaded - back button will work normally');
+    console.log('📄 Navigation script loaded');
 
 })();
 
-// Global navigation function (if needed by other scripts)
-function navigateToPage(url) {
-    if (url && url !== '#') {
-        window.location.href = url;
+// Global navigation function for external use
+function navigateToPage(page) {
+    var link = document.querySelector(`nav.navigation a[data-page="${page}"]`);
+    if (link) {
+        link.click();
+    } else {
+        console.error('❌ Navigation link not found for page:', page);
     }
 }
 </script>

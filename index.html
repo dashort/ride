@@ -355,8 +355,18 @@
         </div>
     </header>
 
+    <!-- Navigation Menu -->
+    <nav class="navigation">
+        <a href="#" class="nav-button active" id="nav-dashboard" data-page="dashboard" target="_top">📊 Dashboard</a>
+        <a href="#" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
+        <a href="#" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
+        <a href="#" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
+        <a href="#" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
+        <a href="#" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
+        <a href="#" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
+    </nav>
+
     <div class="container">
-        <!--NAVIGATION_MENU_PLACEHOLDER-->
 
         <div class="dashboard-grid">
             <!-- Statistics Card -->
@@ -910,6 +920,83 @@
         // This function can remain empty. Its presence helps prevent bfcache in some browsers.
     });
     // Add this to your main pages to debug navigation issues
+
+    // Navigation setup for dashboard
+    (function() {
+        // Set up navigation links with proper web app URLs
+        function setNavigationLinks(baseUrl) {
+            console.log('🧭 Setting dashboard navigation links with base URL:', baseUrl);
+            document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                var page = a.getAttribute('data-page');
+                var href = page === 'dashboard' ? baseUrl : baseUrl + '?page=' + page;
+                a.href = href;
+                a.dataset.url = href;
+                console.log('🔗 Set link for', page, ':', href);
+            });
+        }
+
+        function setFallbackNavigationLinks() {
+            console.log('🔗 Setting fallback dashboard navigation links');
+            document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                var page = a.getAttribute('data-page');
+                var href = page === 'dashboard' ? 'index.html' : page + '.html';
+                a.href = href;
+                a.dataset.url = href;
+            });
+        }
+
+        // Try to get the web app URL for navigation
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            console.log('🚀 Getting web app URL for dashboard navigation');
+            google.script.run
+                .withSuccessHandler(setNavigationLinks)
+                .withFailureHandler(function(error) {
+                    console.error('❌ Failed to get web app URL for navigation:', error);
+                    setFallbackNavigationLinks();
+                })
+                .getWebAppUrl();
+        } else {
+            console.log('⚠️ Google Apps Script not available, using fallback navigation');
+            setFallbackNavigationLinks();
+        }
+
+        // Navigation click handler
+        function handleDashboardNavigation(link) {
+            var url = link.dataset.url || link.getAttribute('href');
+            if (!url || url === '#') {
+                console.error('❌ No URL found for dashboard navigation link');
+                return false;
+            }
+            
+            console.log('🔗 Dashboard navigating to:', url);
+            
+            try {
+                // Use top level navigation for proper page loads
+                if (window.top !== window) {
+                    window.top.location.href = url;
+                } else {
+                    window.location.href = url;
+                }
+            } catch (e) {
+                console.error('❌ Dashboard navigation error:', e);
+                window.location.href = url;
+            }
+            return false;
+        }
+
+        // Initialize navigation when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧭 Initializing dashboard navigation click handlers');
+            document.querySelectorAll('nav.navigation a').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    return handleDashboardNavigation(this);
+                });
+            });
+            
+            console.log('✅ Dashboard navigation initialized successfully');
+        });
+    })();
 </script>
 </body>
 </html>
