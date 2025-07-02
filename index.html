@@ -457,6 +457,20 @@
             checkAndShowNavigation();
         }, 500);
 
+        // Additional navigation check after 2 seconds
+        setTimeout(() => {
+            const anyVisibleNav = document.querySelector('.navigation[style*="display: flex"], .navigation:not([style*="display: none"])');
+            if (!anyVisibleNav) {
+                console.warn('⚠️ No visible navigation found after 2 seconds - forcing fallback');
+                const fallbackNav = document.getElementById('fallback-navigation');
+                if (fallbackNav) {
+                    fallbackNav.style.display = 'flex';
+                    // Show user-friendly message
+                    showMessage('Navigation loaded (fallback mode)', 'info');
+                }
+            }
+        }, 2000);
+
         // Retrieve the web app URL when running inside Apps Script
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             try {
@@ -495,6 +509,10 @@
             if (fallbackNav) {
                 fallbackNav.style.display = 'flex';
                 console.log('✅ Fallback navigation displayed');
+                console.log('📋 Available navigation links:');
+                fallbackNav.querySelectorAll('a').forEach(link => {
+                    console.log(`  - ${link.textContent.trim()}: ${link.href}`);
+                });
                 
                 // Add click handlers to fallback navigation links
                 fallbackNav.querySelectorAll('a').forEach(link => {
@@ -508,7 +526,11 @@
                         }
                     });
                 });
+            } else {
+                console.error('❌ Fallback navigation element not found!');
             }
+        } else {
+            console.log('✅ Server-side navigation is working properly');
         }
     }
 
