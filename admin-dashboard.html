@@ -335,7 +335,153 @@
         </div>
     </header>
 
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
+    <!-- Navigation Menu -->
+    <nav class="navigation">
+        <a href="#" class="nav-button" id="nav-dashboard" data-page="admin-dashboard" target="_top">📊 Admin Dashboard</a>
+        <a href="#" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
+        <a href="#" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
+        <a href="#" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
+        <a href="#" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
+        <a href="#" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
+        <a href="#" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
+        <a href="#" class="nav-button" id="nav-user-management" data-page="user-management" target="_top">👥 User Management</a>
+    </nav>
+
+    <style>
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
+
+        @media (max-width: 768px) {
+            .navigation {
+                flex-direction: column !important;
+                align-items: center !important;
+                padding: 0 1rem !important;
+                margin: 1rem auto 1rem auto !important;
+            }
+
+            .nav-button {
+                width: 100% !important;
+                max-width: 300px !important;
+                text-align: center !important;
+            }
+        }
+    </style>
+
+    <script>
+        (function() {
+            // Set up navigation links with proper web app URLs
+            function setNavigationLinks(baseUrl) {
+                console.log('🧭 Setting admin navigation links with base URL:', baseUrl);
+                document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                    var page = a.getAttribute('data-page');
+                    var href = page === 'admin-dashboard' ? baseUrl : baseUrl + '?page=' + page;
+                    a.href = href;
+                    a.dataset.url = href;
+                    console.log('🔗 Set link for', page, ':', href);
+                });
+            }
+
+            function setFallbackNavigationLinks() {
+                console.log('🔗 Setting fallback admin navigation links');
+                document.querySelectorAll('nav.navigation a').forEach(function(a) {
+                    var page = a.getAttribute('data-page');
+                    var href = page === 'admin-dashboard' ? 'admin-dashboard.html' : page + '.html';
+                    a.href = href;
+                    a.dataset.url = href;
+                });
+            }
+
+            // Try to get the web app URL for navigation
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                console.log('🚀 Getting web app URL for admin navigation');
+                google.script.run
+                    .withSuccessHandler(setNavigationLinks)
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Failed to get web app URL for admin navigation:', error);
+                        setFallbackNavigationLinks();
+                    })
+                    .getWebAppUrl();
+            } else {
+                console.log('⚠️ Google Apps Script not available, using fallback admin navigation');
+                setFallbackNavigationLinks();
+            }
+
+            // Navigation click handler
+            function handleAdminNavigation(link) {
+                var url = link.dataset.url || link.getAttribute('href');
+                if (!url || url === '#') {
+                    console.error('❌ No URL found for admin navigation link');
+                    return false;
+                }
+                
+                console.log('🔗 Admin navigating to:', url);
+                
+                try {
+                    // Use top level navigation for proper page loads
+                    if (window.top !== window) {
+                        window.top.location.href = url;
+                    } else {
+                        window.location.href = url;
+                    }
+                } catch (e) {
+                    console.error('❌ Admin navigation error:', e);
+                    window.location.href = url;
+                }
+                return false;
+            }
+
+            // Initialize navigation when DOM is ready
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('🧭 Initializing admin navigation click handlers');
+                document.querySelectorAll('nav.navigation a').forEach(function(link) {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        return handleAdminNavigation(this);
+                    });
+                });
+                
+                // Highlight current page
+                var currentLink = document.querySelector('nav.navigation a[data-page="admin-dashboard"]');
+                if (currentLink) {
+                    currentLink.classList.add('active');
+                    console.log('✅ Highlighted admin dashboard as current page');
+                }
+                
+                console.log('✅ Admin navigation initialized successfully');
+            });
+        })();
+    </script>
 
     <div class="container">
         <!-- Admin Header -->
@@ -492,6 +638,12 @@
     <script>
         // Initialize admin dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Admin dashboard loading...');
+            
+            // Load user info first
+            loadUserInfo();
+            
+            // Load dashboard data
             loadAdminDashboardData();
             loadRecentActivity();
             loadRecentNotifications();
@@ -500,13 +652,74 @@
             setInterval(loadAdminDashboardData, 30000);
         });
 
+        function loadUserInfo() {
+            console.log('👤 Loading user info...');
+            
+            // Check if user info is available from global scope
+            if (typeof window.currentUser !== 'undefined' && window.currentUser) {
+                updateUserDisplay(window.currentUser);
+                return;
+            }
+            
+            // Try to get user info from Google Apps Script
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(user) {
+                        console.log('✅ User info loaded:', user);
+                        updateUserDisplay(user);
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Error loading user info:', error);
+                        updateUserDisplay({
+                            name: 'Admin User',
+                            email: 'admin@system.com',
+                            role: 'admin'
+                        });
+                    })
+                    .getCurrentUser();
+            } else {
+                console.log('⚠️ Google Apps Script not available, using default user');
+                updateUserDisplay({
+                    name: 'Admin User',
+                    email: 'admin@system.com',
+                    role: 'admin'
+                });
+            }
+        }
+
+        function updateUserDisplay(user) {
+            try {
+                const safeUpdateElement = (id, value) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value;
+                        console.log(`✅ Updated ${id}: ${value}`);
+                    } else {
+                        console.warn(`⚠️ Element ${id} not found`);
+                    }
+                };
+
+                safeUpdateElement('userName', user.name || 'Admin User');
+                safeUpdateElement('userRole', user.role || 'Admin');
+                safeUpdateElement('userAvatar', (user.name || 'A').charAt(0).toUpperCase());
+
+                console.log('✅ User display updated successfully');
+            } catch (error) {
+                console.error('❌ Error updating user display:', error);
+            }
+        }
+
         function loadAdminDashboardData() {
             console.log('📊 Loading admin dashboard data...');
             
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(updateDashboardStats)
-                    .withFailureHandler(handleDashboardError)
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Error loading admin dashboard data:', error);
+                        console.log('⚠️ Falling back to demo data');
+                        updateDashboardStats(getDemoData());
+                    })
                     .getAdminDashboardData();
             } else {
                 console.log('⚠️ Google Apps Script not available, using demo data');
@@ -516,31 +729,64 @@
 
         function updateDashboardStats(data) {
             try {
+                console.log('📊 Updating dashboard stats with data:', data);
+
+                // Update main stats with better error handling
+                const safeUpdate = (id, value) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = (value !== undefined && value !== null) ? value : 0;
+                        console.log(`✅ Updated ${id}: ${value}`);
+                    } else {
+                        console.warn(`⚠️ Element ${id} not found`);
+                    }
+                };
+
                 // Update main stats
-                document.getElementById('totalRequests').textContent = data.totalRequests || 0;
-                document.getElementById('totalRiders').textContent = data.totalRiders || 0;
-                document.getElementById('totalAssignments').textContent = data.totalAssignments || 0;
-                document.getElementById('pendingNotifications').textContent = data.pendingNotifications || 0;
+                safeUpdate('totalRequests', data.totalRequests);
+                safeUpdate('totalRiders', data.totalRiders);
+                safeUpdate('totalAssignments', data.totalAssignments);
+                safeUpdate('pendingNotifications', data.pendingNotifications);
 
                 // Update quick stats
-                document.getElementById('newRequests').textContent = data.newRequests || 0;
-                document.getElementById('todaysEscorts').textContent = data.todaysEscorts || 0;
-                document.getElementById('threeDayEscorts').textContent = data.threeDayEscorts || 0;
-                document.getElementById('unassignedEscorts').textContent = data.unassignedEscorts || 0;
+                safeUpdate('newRequests', data.newRequests);
+                safeUpdate('todaysEscorts', data.todaysEscorts);
+                safeUpdate('threeDayEscorts', data.threeDayEscorts);
+                safeUpdate('unassignedEscorts', data.unassignedEscorts);
 
-                console.log('✅ Dashboard stats updated');
+                console.log('✅ Dashboard stats updated successfully');
             } catch (error) {
                 console.error('❌ Error updating dashboard stats:', error);
+                // Set fallback values on error
+                setFallbackStats();
             }
+        }
+
+        function setFallbackStats() {
+            console.log('🔄 Setting fallback stats');
+            const stats = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications', 
+                          'newRequests', 'todaysEscorts', 'threeDayEscorts', 'unassignedEscorts'];
+            
+            stats.forEach(statId => {
+                const element = document.getElementById(statId);
+                if (element) {
+                    element.textContent = '0';
+                }
+            });
         }
 
         function loadRecentActivity() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(updateRecentActivity)
-                    .withFailureHandler(handleActivityError)
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Error loading recent activity:', error);
+                        console.log('⚠️ Falling back to demo activity');
+                        updateRecentActivity(getDemoActivity());
+                    })
                     .getRecentSystemActivity();
             } else {
+                console.log('⚠️ Google Apps Script not available, using demo activity');
                 updateRecentActivity(getDemoActivity());
             }
         }
@@ -549,9 +795,14 @@
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(updateRecentNotifications)
-                    .withFailureHandler(handleActivityError)
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Error loading recent notifications:', error);
+                        console.log('⚠️ Falling back to demo notifications');
+                        updateRecentNotifications(getDemoNotifications());
+                    })
                     .getNotificationHistory();
             } else {
+                console.log('⚠️ Google Apps Script not available, using demo notifications');
                 updateRecentNotifications(getDemoNotifications());
             }
         }
