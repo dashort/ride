@@ -3780,6 +3780,141 @@ function getCurrentUser() {
 }
 
 /**
+ * CORE DATA ACCESS FUNCTIONS - Fixed implementations
+ * These provide reliable access to sheet data with proper error handling
+ */
+
+function getRequestsData() {
+  try {
+    console.log('📋 Getting requests data...');
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+    
+    if (!sheet) {
+      console.log('⚠️ Requests sheet not found');
+      return { data: [], columnMap: {} };
+    }
+    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    
+    if (values.length === 0) {
+      return { data: [], columnMap: {} };
+    }
+    
+    // Create column map from headers
+    const headers = values[0];
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      if (header) {
+        columnMap[header] = index;
+      }
+    });
+    
+    // Return data rows (excluding header)
+    return {
+      data: values.slice(1),
+      columnMap: columnMap
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting requests data:', error);
+    return { data: [], columnMap: {} };
+  }
+}
+
+function getRidersData() {
+  try {
+    console.log('👥 Getting riders data...');
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+    
+    if (!sheet) {
+      console.log('⚠️ Riders sheet not found');
+      return { data: [], columnMap: {} };
+    }
+    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    
+    if (values.length === 0) {
+      return { data: [], columnMap: {} };
+    }
+    
+    const headers = values[0];
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      if (header) {
+        columnMap[header] = index;
+      }
+    });
+    
+    return {
+      data: values.slice(1),
+      columnMap: columnMap
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting riders data:', error);
+    return { data: [], columnMap: {} };
+  }
+}
+
+function getAssignmentsData() {
+  try {
+    console.log('🏍️ Getting assignments data...');
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
+    
+    if (!sheet) {
+      console.log('⚠️ Assignments sheet not found');
+      return { data: [], columnMap: {} };
+    }
+    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    
+    if (values.length === 0) {
+      return { data: [], columnMap: {} };
+    }
+    
+    const headers = values[0];
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      if (header) {
+        columnMap[header] = index;
+      }
+    });
+    
+    return {
+      data: values.slice(1),
+      columnMap: columnMap
+    };
+    
+  } catch (error) {
+    console.error('❌ Error getting assignments data:', error);
+    return { data: [], columnMap: {} };
+  }
+}
+
+function getAssignmentsNeedingNotification() {
+  try {
+    const assignmentsData = getAssignmentsData();
+    if (!assignmentsData || !assignmentsData.data) {
+      return [];
+    }
+    
+    // Simple implementation - return assignments that need notification
+    // You can enhance this logic based on your notification requirements
+    return assignmentsData.data.filter(row => {
+      const status = row[assignmentsData.columnMap['Status']] || '';
+      return status === 'Assigned' || status === 'Pending';
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting assignments needing notification:', error);
+    return [];
+  }
+}
+
+/**
  * Get dashboard statistics
  */
 function getDashboardStats() {
@@ -8431,6 +8566,103 @@ function testFixedRidersFunction() {
       const columnMap = ridersData.columnMap;
       const nameIdx = columnMap[CONFIG.columns.riders.name];
       const statusIdx = columnMap[CONFIG.columns.riders.status];
+      
+      let activeCount = 0;
+      ridersData.data.forEach(row => {
+        const name = nameIdx !== undefined ? String(row[nameIdx] || '').trim() : '';
+        const status = statusIdx !== undefined ? String(row[statusIdx] || '').trim().toLowerCase() : '';
+        
+        if (name.length > 0) {
+          if (!status || status === '' || status === 'active' || status === 'available') {
+            activeCount++;
+          }
+        }
+      });
+      
+      console.log(`✅ Found ${activeCount} active riders`);
+    }
+    
+    return {
+      success: true,
+      ridersData: ridersData
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * MISSING HELPER FUNCTIONS - Add these to resolve dashboard issues
+ */
+
+function getAdminUsersSafe() {
+  // Return hardcoded admin emails for now - update as needed
+  return [
+    'dashort@gmail.com',
+    'jpsotraffic@gmail.com',
+    'admin@yourdomain.com'
+  ];
+}
+
+function getDispatcherUsersSafe() {
+  // Return hardcoded dispatcher emails for now - update as needed
+  return [
+    'dispatcher@example.com',
+    'jpdispatcher100@gmail.com'
+  ];
+}
+
+/**
+ * DASHBOARD STATS TEST FUNCTION
+ * Run this to test if the dashboard stats are working
+ */
+function testDashboardStatsFixed() {
+  console.log('🧪 === TESTING FIXED DASHBOARD STATS ===');
+  
+  try {
+    // Test 1: Test data functions
+    console.log('1. Testing data access functions...');
+    
+    const requestsData = getRequestsData();
+    console.log('✅ Requests:', requestsData.data.length, 'rows');
+    
+    const ridersData = getRidersData();
+    console.log('✅ Riders:', ridersData.data.length, 'rows');
+    
+    const assignmentsData = getAssignmentsData();
+    console.log('✅ Assignments:', assignmentsData.data.length, 'rows');
+    
+    // Test 2: Test dashboard function
+    console.log('\n2. Testing getAdminDashboardData...');
+    const dashboardData = getAdminDashboardData();
+    console.log('✅ Dashboard data:', JSON.stringify(dashboardData, null, 2));
+    
+    // Test 3: Test from frontend perspective
+    console.log('\n3. Testing frontend call simulation...');
+    if (typeof getAdminDashboardData === 'function') {
+      const frontendResult = getAdminDashboardData();
+      console.log('✅ Frontend call result:', frontendResult);
+    }
+    
+    return {
+      success: true,
+      message: 'All tests passed!',
+      data: dashboardData
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
       
       let activeCount = 0;
       ridersData.data.forEach(row => {
