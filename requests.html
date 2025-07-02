@@ -1078,29 +1078,34 @@
 
         requests.forEach(request => {
             const row = document.createElement('tr');
-
-            const assigned = request.ridersAssigned ?
-                request.ridersAssigned.split(',').map(r => r.trim()).filter(r => r).join(', ') :
-                '';
+            
+            let assigned = '';
+            if (request.ridersAssigned) {
+                assigned = String(request.ridersAssigned)
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0)
+                    .join(', ');
+            }
 
             const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
             const showComplete = escortHasStarted(request.eventDate, request.startTime);
             const actionButton = (request.status !== 'Completed' && request.status !== 'Cancelled' && showComplete) ?
-                `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${request.requestId || ''}')">Complete</button>` : '';
+                `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${escapeJs(request.requestId || '')}')">Complete</button>` : '';
 
             row.innerHTML = `
-                <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
-                <td>${request.eventDate || ''}</td>
-                <td>${request.startTime || ''}</td>
-                <td class="end-time-cell">${request.endTime || ''}</td>
-                <td>${request.requesterName || ''}</td>
-                <td>${request.requestType || ''}</td>
-                <td>${request.startLocation || ''}</td>
-                <td>${request.endLocation || ''}</td>
-                <td style="text-align: center;">${request.ridersNeeded || 0}</td>
-                <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
-                <td>${assigned}</td>
-                <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
+                <td><span class="request-id" onclick="openEditModal('${escapeJs(request.requestId || '')}')">${escapeHtml(request.requestId || '')}</span></td>
+                <td>${escapeHtml(request.eventDate || '')}</td>
+                <td>${escapeHtml(request.startTime || '')}</td>
+                <td class="end-time-cell">${escapeHtml(request.endTime || '')}</td>
+                <td>${escapeHtml(request.requesterName || '')}</td>
+                <td>${escapeHtml(request.requestType || '')}</td>
+                <td>${escapeHtml(request.startLocation || '')}</td>
+                <td>${escapeHtml(request.endLocation || '')}</td>
+                <td style="text-align: center;">${escapeHtml(String(request.ridersNeeded || 0))}</td>
+                <td><span class="status-badge ${statusClass}">${escapeHtml(request.status || 'New')}</span></td>
+                <td>${escapeHtml(assigned)}</td>
+                <td><span class="notes" title="${escapeHtml(request.notes || '')}">${escapeHtml(request.notes || '')}</span></td>
                 <td>${actionButton}</td>
             `;
 
@@ -1707,9 +1712,9 @@
             // Update currently assigned section
             const currentlyAssignedList = document.getElementById('currentAssignedRiders');
             if (assignedRiders.length > 0) {
-                currentlyAssignedList.innerHTML = assignedRiders.map(r => 
-                    `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')"><span style="cursor: pointer;">❌ ${r}</span></li>`
-                ).join('');
+                            currentlyAssignedList.innerHTML = assignedRiders.map(r => 
+                `<li onclick="removeAssignedRider('${escapeJs(r)}')"><span style="cursor: pointer;">❌ ${escapeHtml(r)}</span></li>`
+            ).join('');
             } else {
                 currentlyAssignedList.innerHTML = '<li>None</li>';
             }
@@ -1815,15 +1820,15 @@
             
             return `
                 <div class="rider-assignment-card ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''}" 
-                     data-rider-name="${rider.name.replace(/"/g, '&quot;')}" 
-                     onclick="toggleRiderSelection('${rider.name.replace(/'/g, "\\'")}')">
+                     data-rider-name="${escapeHtml(rider.name)}" 
+                     onclick="toggleRiderSelection('${escapeJs(rider.name)}')">
                     <div class="rider-status-indicator ${availability.toLowerCase()}"></div>
-                    <div class="rider-name" style="font-weight: bold; margin-bottom: 0.5rem;">${rider.name}</div>
+                    <div class="rider-name" style="font-weight: bold; margin-bottom: 0.5rem;">${escapeHtml(rider.name)}</div>
                     <div class="rider-info" style="font-size: 0.9rem; color: #666;">
-                        <div>JP: ${rider.jpNumber || 'N/A'}</div>
-                        <div>📞 ${rider.phone || 'N/A'}</div>
-                        <div>📧 ${rider.email || 'N/A'}</div>
-                        ${isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${availability}</div>` : ''}
+                        <div>JP: ${escapeHtml(rider.jpNumber || 'N/A')}</div>
+                        <div>📞 ${escapeHtml(rider.phone || 'N/A')}</div>
+                        <div>📧 ${escapeHtml(rider.email || 'N/A')}</div>
+                        ${isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${escapeHtml(availability)}</div>` : ''}
                     </div>
                     <div class="selection-indicator" style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem;">
                         ${isSelected ? '✅' : '⬜'}
@@ -1879,7 +1884,7 @@
             const warningDiv = document.createElement('div');
             warningDiv.className = 'availability-warning';
             warningDiv.style.cssText = 'color: #e74c3c; font-weight: bold; margin-top: 0.5rem;';
-            warningDiv.innerHTML = `⚠️ ${availability}`;
+            warningDiv.innerHTML = `⚠️ ${escapeHtml(availability)}`;
             card.querySelector('.rider-info').appendChild(warningDiv);
         }
     }
@@ -1923,7 +1928,7 @@
         const currentlyAssignedList = document.getElementById('currentAssignedRiders');
         if (assignedArray.length > 0) {
             currentlyAssignedList.innerHTML = assignedArray.map(r => 
-                `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')"><span style="cursor: pointer;">❌ ${r}</span></li>`
+                `<li onclick="removeAssignedRider('${escapeJs(r)}')"><span style="cursor: pointer;">❌ ${escapeHtml(r)}</span></li>`
             ).join('');
         } else {
             currentlyAssignedList.innerHTML = '<li>None</li>';
@@ -2071,6 +2076,33 @@
         } else {
             console.log('✅ Server-side navigation is working properly');
         }
+    }
+
+    /**
+     * Escapes HTML special characters to prevent XSS and syntax errors
+     * @param {string} str - The string to escape
+     * @return {string} HTML-escaped string
+     */
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    /**
+     * Escapes JavaScript string literals to prevent syntax errors in attributes
+     * @param {string} str - The string to escape
+     * @return {string} JavaScript-escaped string
+     */
+    function escapeJs(str) {
+        if (!str) return '';
+        return str.replace(/\\/g, '\\\\')
+                  .replace(/'/g, "\\'")
+                  .replace(/"/g, '\\"')
+                  .replace(/\r/g, '\\r')
+                  .replace(/\n/g, '\\n')
+                  .replace(/\t/g, '\\t');
     }
 </script>
 </body>
