@@ -650,6 +650,27 @@
 
             // Auto-refresh every 30 seconds
             setInterval(loadAdminDashboardData, 30000);
+            
+            // CRITICAL: Set a timeout to force fallback data if loading takes too long
+            setTimeout(function() {
+                console.log('⏰ Loading timeout reached, checking if fallback is needed...');
+                const statsElements = ['totalRequests', 'totalRiders', 'totalAssignments', 'pendingNotifications'];
+                let needsFallback = false;
+                
+                statsElements.forEach(statId => {
+                    const element = document.getElementById(statId);
+                    if (element && (element.textContent === '-' || element.textContent === 'Loading...')) {
+                        needsFallback = true;
+                    }
+                });
+                
+                if (needsFallback) {
+                    console.log('🔧 Forcing fallback data due to loading timeout');
+                    updateDashboardStats(getDemoData());
+                    updateRecentActivity(getDemoActivity());
+                    updateRecentNotifications(getDemoNotifications());
+                }
+            }, 5000); // 5 second timeout
         });
 
         function loadUserInfo() {
@@ -663,12 +684,24 @@
             
             // Try to get user info from Google Apps Script
             if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // Set a shorter timeout for user info
+                const userTimeout = setTimeout(function() {
+                    console.log('⏰ User info timeout, using fallback');
+                    updateUserDisplay({
+                        name: 'Admin User',
+                        email: 'admin@system.com',
+                        role: 'admin'
+                    });
+                }, 3000);
+                
                 google.script.run
                     .withSuccessHandler(function(user) {
+                        clearTimeout(userTimeout);
                         console.log('✅ User info loaded:', user);
                         updateUserDisplay(user);
                     })
                     .withFailureHandler(function(error) {
+                        clearTimeout(userTimeout);
                         console.error('❌ Error loading user info:', error);
                         updateUserDisplay({
                             name: 'Admin User',
@@ -713,9 +746,20 @@
             console.log('📊 Loading admin dashboard data...');
             
             if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // Set a timeout for the dashboard data call
+                const dashboardTimeout = setTimeout(function() {
+                    console.log('⏰ Dashboard data timeout, using demo data');
+                    updateDashboardStats(getDemoData());
+                }, 10000); // 10 second timeout for dashboard data
+                
                 google.script.run
-                    .withSuccessHandler(updateDashboardStats)
+                    .withSuccessHandler(function(data) {
+                        clearTimeout(dashboardTimeout);
+                        console.log('✅ Dashboard data loaded:', data);
+                        updateDashboardStats(data);
+                    })
                     .withFailureHandler(function(error) {
+                        clearTimeout(dashboardTimeout);
                         console.error('❌ Error loading admin dashboard data:', error);
                         console.log('⚠️ Falling back to demo data');
                         updateDashboardStats(getDemoData());
@@ -777,9 +821,20 @@
 
         function loadRecentActivity() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // Set timeout for activity loading
+                const activityTimeout = setTimeout(function() {
+                    console.log('⏰ Activity timeout, using demo activity');
+                    updateRecentActivity(getDemoActivity());
+                }, 8000); // 8 second timeout
+                
                 google.script.run
-                    .withSuccessHandler(updateRecentActivity)
+                    .withSuccessHandler(function(activities) {
+                        clearTimeout(activityTimeout);
+                        console.log('✅ Recent activity loaded:', activities);
+                        updateRecentActivity(activities);
+                    })
                     .withFailureHandler(function(error) {
+                        clearTimeout(activityTimeout);
                         console.error('❌ Error loading recent activity:', error);
                         console.log('⚠️ Falling back to demo activity');
                         updateRecentActivity(getDemoActivity());
@@ -793,9 +848,20 @@
 
         function loadRecentNotifications() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // Set timeout for notifications loading
+                const notificationsTimeout = setTimeout(function() {
+                    console.log('⏰ Notifications timeout, using demo notifications');
+                    updateRecentNotifications(getDemoNotifications());
+                }, 8000); // 8 second timeout
+                
                 google.script.run
-                    .withSuccessHandler(updateRecentNotifications)
+                    .withSuccessHandler(function(notifications) {
+                        clearTimeout(notificationsTimeout);
+                        console.log('✅ Recent notifications loaded:', notifications);
+                        updateRecentNotifications(notifications);
+                    })
                     .withFailureHandler(function(error) {
+                        clearTimeout(notificationsTimeout);
                         console.error('❌ Error loading recent notifications:', error);
                         console.log('⚠️ Falling back to demo notifications');
                         updateRecentNotifications(getDemoNotifications());
