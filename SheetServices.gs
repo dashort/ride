@@ -410,53 +410,7 @@ function getAssignmentsData(useCache = true) {
   return data;
 }
 
-/**
- * Retrieves all data from the "Rider Availability" sheet.
- * Ensures the sheet exists with headers before loading data.
- * @param {boolean} [useCache=true] Whether to use cached data.
- * @return {object} Structured sheet data including headers and column map.
- */
-function getRiderAvailabilityData(useCache = true) {
-  const sheetName = CONFIG.sheets.riderAvailability;
-  const headers = Object.values(CONFIG.columns.riderAvailability);
-  getOrCreateSheet(sheetName, headers);
-  return getSheetData(sheetName, useCache);
-}
-
-/**
- * Saves a rider availability entry.
- * Creates the sheet if it does not exist.
- * @param {string|number} riderId Rider identifier.
- * @param {string|Date} date The date of availability.
- * @param {string|Date} startTime Start time of the availability window.
- * @param {string|Date} endTime End time of the availability window.
- * @param {string} status Availability status (e.g. "Available", "Unavailable").
- * @return {object} Result object with success flag and optional error.
- */
-function saveRiderAvailability(riderId, date, startTime, endTime, status) {
-  try {
-    const sheet = getOrCreateSheet(
-      CONFIG.sheets.riderAvailability,
-      Object.values(CONFIG.columns.riderAvailability)
-    );
-
-    const row = [
-      riderId,
-      parseDateString(date) || date,
-      startTime ? parseTimeString(startTime) : '',
-      endTime ? parseTimeString(endTime) : '',
-      status || 'Available'
-    ];
-
-    sheet.appendRow(row);
-    SpreadsheetApp.flush();
-    dataCache.clear('sheet_' + CONFIG.sheets.riderAvailability);
-    return { success: true };
-  } catch (error) {
-    logError('Error in saveRiderAvailability', error);
-    return { success: false, error: error.message };
-  }
-}
+// REMOVED: Duplicate availability functions - use AvailabilityService.gs instead
 
 
 /**
