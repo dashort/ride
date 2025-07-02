@@ -1210,64 +1210,7 @@ function checkRiderTimeConflict(riderName, eventDateStr, startTimeStr) {
   }
 }
 
-/**
- * Checks the rider's availability schedule for a specific datetime.
- * @param {string|number} riderId Rider identifier or name.
- * @param {Date|string} datetime Date and time to check.
- * @return {boolean} True if the rider is available at that time.
- */
-function getRiderAvailabilityForDate(riderId, datetime) {
-  try {
-    if (!riderId || !datetime) return true;
-    const checkDate = datetime instanceof Date ? new Date(datetime) : new Date(datetime);
-    if (isNaN(checkDate.getTime())) return true;
-
-    const availData = getRiderAvailabilityData();
-    if (!availData || !availData.data) return true;
-
-    const cm = availData.columnMap;
-    const idCol = CONFIG.columns.riderAvailability.riderId;
-    const dateCol = CONFIG.columns.riderAvailability.date;
-    const startCol = CONFIG.columns.riderAvailability.startTime;
-    const endCol = CONFIG.columns.riderAvailability.endTime;
-    const statusCol = CONFIG.columns.riderAvailability.status;
-
-    for (let i = 0; i < availData.data.length; i++) {
-      const row = availData.data[i];
-      const rowId = getColumnValue(row, cm, idCol);
-      if (String(rowId).trim() !== String(riderId).trim()) continue;
-
-      let rowDate = getColumnValue(row, cm, dateCol);
-      rowDate = rowDate instanceof Date ? new Date(rowDate) : parseDateString(rowDate);
-      if (!rowDate) continue;
-      rowDate.setHours(0, 0, 0, 0);
-      const cmp = new Date(checkDate); cmp.setHours(0,0,0,0);
-      if (rowDate.getTime() !== cmp.getTime()) continue;
-
-      let start = getColumnValue(row, cm, startCol);
-      let end = getColumnValue(row, cm, endCol);
-      const startDt = start ? parseTimeString(start) : null;
-      const endDt = end ? parseTimeString(end) : null;
-      const checkDt = new Date(checkDate);
-      if (startDt) startDt.setFullYear(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
-      if (endDt) endDt.setFullYear(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate());
-
-      const matchesTime = (!startDt && !endDt) ||
-                          (startDt && !endDt && checkDt >= startDt) ||
-                          (!startDt && endDt && checkDt <= endDt) ||
-                          (startDt && endDt && checkDt >= startDt && checkDt <= endDt);
-
-      if (matchesTime) {
-        const status = String(getColumnValue(row, cm, statusCol) || '').toLowerCase();
-        return status === '' || status === 'available';
-      }
-    }
-    return true;
-  } catch (err) {
-    logError('Error in getRiderAvailabilityForDate', err);
-    return true;
-  }
-}
+// REMOVED: Duplicate function - use checkRiderAvailabilityForAssignment() from AvailabilityService.gs instead
 
 /**
  * Determines overall availability of a rider combining assignments and schedule.
@@ -1282,11 +1225,10 @@ function isRiderAvailable(riderName, dateStr, startTimeStr) {
 
   const rider = getRiderDetails(riderName);
   const riderId = rider ? rider.jpNumber || rider.riderId || rider.id : riderName;
-  const start = parseTimeString(startTimeStr);
-  const date = new Date(dateStr);
-  if (start) start.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
-  const available = getRiderAvailabilityForDate(riderId, start || date);
-  return available;
+  
+  // Use the new AvailabilityService function
+  const availabilityCheck = checkRiderAvailabilityForAssignment(riderId, new Date(dateStr), startTimeStr, startTimeStr);
+  return availabilityCheck.available;
 }
 /**
  * Get rider schedule with formatted dates/times for dashboard display.
@@ -4120,121 +4062,9 @@ function testActiveRidersFix() {
   }
 }
 
-/**
- * Save an availability entry for the current user or specified email.
- * If an entry with the same email, date and start time exists, it will be updated.
- * @param {object} entry Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
- * @return {object} Result object with success boolean and row number.
- */
-function saveUserAvailability(user, entry) { // Added user parameter
-  try {
-    if (!entry) throw new Error('No availability data provided');
+// REMOVED: Duplicate function - use saveRiderAvailabilityData() from AvailabilityService.gs instead
 
-    // const user = getCurrentUser(); // Removed: user is now a parameter
-    const email = entry.email || user.email;
-    const repeat = entry.repeat || 'none';
-    const untilDate = entry.repeatUntil ? new Date(entry.repeatUntil) : new Date(entry.date);
-
-    // Ensure the Availability sheet exists with the expected headers
-    const sheet = getOrCreateSheet(
-      CONFIG.sheets.availability,
-      Object.values(CONFIG.columns.availability)
-    );
-
-    const sheetData = getSheetData(CONFIG.sheets.availability, false);
-    const map = sheetData.columnMap;
-
-    const emailCol = map[CONFIG.columns.availability.email] + 1;
-    const dateCol = map[CONFIG.columns.availability.date] + 1;
-    const startCol = map[CONFIG.columns.availability.startTime] + 1;
-    const endCol = map[CONFIG.columns.availability.endTime] + 1;
-    const notesCol = map[CONFIG.columns.availability.notes] + 1;
-
-    function saveSingle(dateStr) {
-      let targetRow = -1;
-      for (let i = 0; i < sheetData.data.length; i++) {
-        const row = sheetData.data[i];
-        const rowEmail = row[map[CONFIG.columns.availability.email]];
-        const rowDate = row[map[CONFIG.columns.availability.date]];
-        const rowStart = row[map[CONFIG.columns.availability.startTime]];
-        if (String(rowEmail).toLowerCase() === String(email).toLowerCase() &&
-            Utilities.formatDate(new Date(rowDate), CONFIG.system.timezone, 'yyyy-MM-dd') === dateStr &&
-            String(rowStart) === entry.startTime) {
-          targetRow = i + 2; // account for header
-          break;
-        }
-      }
-
-      const rowValues = [email, new Date(dateStr), entry.startTime, entry.endTime, entry.notes || ''];
-
-      if (targetRow > 0) {
-        sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
-      } else {
-        sheet.appendRow(rowValues);
-      }
-    }
-
-    let curDate = new Date(entry.date);
-    const endDate = untilDate;
-    while (curDate <= endDate) {
-      const dateStr = Utilities.formatDate(curDate, CONFIG.system.timezone, 'yyyy-MM-dd');
-      saveSingle(dateStr);
-
-      if (repeat === 'daily') {
-        curDate.setDate(curDate.getDate() + 1);
-      } else if (repeat === 'weekly') {
-        curDate.setDate(curDate.getDate() + 7);
-      } else {
-        break;
-      }
-    }
-
-    clearDataCache();
-    return { success: true };
-  } catch (error) {
-    logError('Error in saveUserAvailability', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Retrieve availability entries for the specified email or current user.
- * @param {string} [email] Optional email address. Defaults to current user.
- * @return {Array<object>} Array of availability objects.
- */
-function getUserAvailability(user, email) { // Added user parameter
-  try {
-    // const user = getCurrentUser(); // Removed: user is now a parameter
-    const targetEmail = email || user.email;
-
-    const sheetData = getSheetData(CONFIG.sheets.availability, true);
-    const map = sheetData.columnMap;
-
-    const results = [];
-    sheetData.data.forEach(row => {
-      const rowEmail = row[map[CONFIG.columns.availability.email]];
-      if (String(rowEmail).toLowerCase() !== String(targetEmail).toLowerCase()) return;
-
-      const dateVal = row[map[CONFIG.columns.availability.date]];
-      results.push({
-        email: rowEmail,
-        date: formatDateForDisplay(new Date(dateVal)),
-        startTime: formatTimeForDisplay(row[map[CONFIG.columns.availability.startTime]]),
-        endTime: formatTimeForDisplay(row[map[CONFIG.columns.availability.endTime]]),
-        notes: row[map[CONFIG.columns.availability.notes]] || ''
-      });
-    });
-
-    results.sort((a, b) => {
-      try { return new Date(a.date) - new Date(b.date); } catch(e) { return 0; }
-    });
-
-    return results;
-  } catch (error) {
-    logError('Error in getUserAvailability', error);
-    return [];
-  }
-}
+// REMOVED: Duplicate function - use getUserAvailabilityForCalendar() from AvailabilityService.gs instead
 
 
 /**
