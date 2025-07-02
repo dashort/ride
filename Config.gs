@@ -15,16 +15,18 @@ let isDebugLoggingInProgress = false;
 /**
  * @description
  * Centralized configuration object for the Motorcycle Escort Management System.
- * Contains sheet names, column mappings, dropdown options, SMS gateways,
- * dashboard layout settings, and system-wide parameters.
- * @type {object}
- */
-/**
- * @description
- * Centralized configuration object for the Motorcycle Escort Management System.
  * Updated for Twilio SMS integration with cleaned up structure.
  */
 const CONFIG = {
+// Performance and Debug Configuration
+  performance: {
+    enableDebugLogging: PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true',
+    enablePerformanceTracking: true,
+    batchSize: 100, // For batch operations
+    maxCacheAge: 30 * 60 * 1000, // 30 minutes instead of 5
+    enableSmartCaching: true
+  },
+
 // Twilio SMS Configuration
   twilio: {
   accountSid: PropertiesService.getScriptProperties().getProperty('TWILIO_ACCOUNT_SID'),
@@ -160,6 +162,40 @@ const CONFIG = {
   }
 };
 
+/**
+ * Optimized logging functions for performance
+ */
+function debugLog(message, ...args) {
+  if (CONFIG.performance.enableDebugLogging) {
+    console.log(`[DEBUG] ${message}`, ...args);
+  }
+}
+
+function performanceLog(message, ...args) {
+  if (CONFIG.performance.enablePerformanceTracking) {
+    console.log(`[PERF] ${message}`, ...args);
+  }
+}
+
+function trackPerformance(operation, fn) {
+  if (!CONFIG.performance.enablePerformanceTracking) {
+    return fn();
+  }
+  
+  const start = Date.now();
+  const result = fn();
+  const duration = Date.now() - start;
+  
+  performanceLog(`${operation}: ${duration}ms`);
+  
+  // Log slow operations
+  if (duration > 1000) {
+    console.warn(`⚠️ Slow operation detected: ${operation} took ${duration}ms`);
+  }
+  
+  return result;
+}
+
 // --- DATA CACHE ---
 class DataCache {
   /**
@@ -170,8 +206,8 @@ class DataCache {
     this.cache = {};
     /** @private @type {Object<string, number>} */
     this.lastUpdate = {};
-    /** @private @type {number} Cache timeout in milliseconds (default: 5 minutes). */
-    this.cacheTimeout = 5 * 60 * 1000;
+    /** @private @type {number} Cache timeout in milliseconds (optimized to 30 minutes). */
+    this.cacheTimeout = CONFIG.performance?.maxCacheAge || (30 * 60 * 1000);
   }
 
   /**
@@ -212,9 +248,82 @@ class DataCache {
       this.lastUpdate = {};
     }
   }
+
+  /**
+   * Get cache statistics
+   */
+  getStats() {
+    const totalKeys = Object.keys(this.cache).length;
+    const totalSize = JSON.stringify(this.cache).length;
+    return { totalKeys, totalSize, cacheTimeout: this.cacheTimeout };
+  }
 }
+
 /**
- * Global instance of the DataCache class for managing in-memory caching of sheet data.
- * @type {DataCache}
+ * Enhanced DataCache with index support for faster lookups
  */
-const dataCache = new DataCache();
+class IndexedDataCache extends DataCache {
+  constructor() {
+    super();
+    this.indexes = new Map(); // Store index maps for O(1) lookups
+  }
+
+  /**
+   * Create an index for faster lookups
+   * @param {string} dataKey The cache key for the data
+   * @param {string} indexKey The index identifier
+   * @param {Function} keyExtractor Function to extract the index key from each row
+   */
+  createIndex(dataKey, indexKey, keyExtractor) {
+    const data = this.get(dataKey);
+    if (!data || !data.data) return;
+
+    const index = new Map();
+    data.data.forEach((row, rowIndex) => {
+      const key = keyExtractor(row, data.columnMap);
+      if (key) {
+        index.set(key, { row, rowIndex });
+      }
+    });
+
+    this.indexes.set(`${dataKey}_${indexKey}`, index);
+    debugLog(`Created index for ${dataKey}.${indexKey} with ${index.size} entries`);
+  }
+
+  /**
+   * Fast lookup using index
+   * @param {string} dataKey The cache key for the data
+   * @param {string} indexKey The index identifier
+   * @param {any} lookupValue The value to find
+   * @return {Object|null} The found row data or null
+   */
+  findByIndex(dataKey, indexKey, lookupValue) {
+    const index = this.indexes.get(`${dataKey}_${indexKey}`);
+    return index ? index.get(lookupValue) : null;
+  }
+
+  /**
+   * Clear cache and associated indexes
+   */
+  clear(key = null) {
+    super.clear(key);
+    if (key) {
+      // Clear related indexes
+      const keysToDelete = [];
+      for (const indexKey of this.indexes.keys()) {
+        if (indexKey.startsWith(key + '_')) {
+          keysToDelete.push(indexKey);
+        }
+      }
+      keysToDelete.forEach(k => this.indexes.delete(k));
+    } else {
+      this.indexes.clear();
+    }
+  }
+}
+
+/**
+ * Global instance of the enhanced DataCache class for managing in-memory caching of sheet data.
+ * @type {IndexedDataCache}
+ */
+const dataCache = new IndexedDataCache();
