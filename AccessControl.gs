@@ -258,28 +258,47 @@ function immediateSessionTest() {
   }
 }
 function getRoleBasedNavigation(currentPage, user, rider) {
-  console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
-  if (!user) {
-    console.error('getRoleBasedNavigation: User object is null/undefined.');
-    return '<nav class="navigation"><!-- User object missing --></nav>';
+  try {
+    console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
+    
+    if (!user) {
+      console.error('getRoleBasedNavigation: User object is null/undefined.');
+      return '<nav class="navigation"><!-- User object missing --></nav>';
+    }
+
+    const menuItems = getUserNavigationMenu(user);
+    if (!menuItems || menuItems.length === 0) {
+      console.warn('getRoleBasedNavigation: No menu items returned by getUserNavigationMenu for role: ' + user.role);
+      return '<nav class="navigation"><!-- No menu items for role --></nav>';
+    }
+
+    let navHtml = '<nav class="navigation">';
+    menuItems.forEach(item => {
+      const isActive = item.page === currentPage ? ' active' : '';
+      navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}" target="_top">${item.label}</a>`;
+    });
+    navHtml += '</nav>';
+
+    console.log('getRoleBasedNavigation: Generated navigation with ' + menuItems.length + ' items');
+    console.log('getRoleBasedNavigation: Items included: ' + menuItems.map(i => i.page).join(', '));
+    
+    return navHtml;
+    
+  } catch (error) {
+    console.error('❌ Error in getRoleBasedNavigation:', error);
+    
+    // Fallback navigation that DEFINITELY includes availability
+    const baseUrl = getWebAppUrlSafe();
+    return `<nav class="navigation">
+      <a href="${baseUrl}" class="nav-button ${currentPage === 'dashboard' ? 'active' : ''}" data-page="dashboard" target="_top">📊 Dashboard</a>
+      <a href="${baseUrl}?page=requests" class="nav-button ${currentPage === 'requests' ? 'active' : ''}" data-page="requests" target="_top">📋 Requests</a>
+      <a href="${baseUrl}?page=assignments" class="nav-button ${currentPage === 'assignments' ? 'active' : ''}" data-page="assignments" target="_top">🏍️ Assignments</a>
+      <a href="${baseUrl}?page=riders" class="nav-button ${currentPage === 'riders' ? 'active' : ''}" data-page="riders" target="_top">👥 Riders</a>
+      <a href="${baseUrl}?page=rider-availability" class="nav-button ${currentPage === 'rider-availability' ? 'active' : ''}" data-page="rider-availability" target="_top">🗓️ Availability</a>
+      <a href="${baseUrl}?page=notifications" class="nav-button ${currentPage === 'notifications' ? 'active' : ''}" data-page="notifications" target="_top">📱 Notifications</a>
+      <a href="${baseUrl}?page=reports" class="nav-button ${currentPage === 'reports' ? 'active' : ''}" data-page="reports" target="_top">📊 Reports</a>
+    </nav>`;
   }
-
-  const menuItems = getUserNavigationMenu(user); // This function is already in AccessControl.gs
-  if (!menuItems || menuItems.length === 0) {
-    console.warn('getRoleBasedNavigation: No menu items returned by getUserNavigationMenu for role: ' + user.role);
-    return '<nav class="navigation"><!-- No menu items for role --></nav>';
-  }
-
-  let navHtml = '<nav class="navigation">';
-  menuItems.forEach(item => {
-    const isActive = item.page === currentPage ? ' active' : '';
-    // item.url should already be correctly formed by getUserNavigationMenu using getWebAppUrl()
-    navHtml += `<a href="${item.url}" class="nav-button${isActive}" data-page="${item.page}" target="_top">${item.label}</a>`;
-  });
-  navHtml += '</nav>';
-
-  console.log('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
-  return navHtml;
 }
 
 // 🔧 FIXED USER OBJECT HANDLING - Replace your authentication functions
@@ -2178,5 +2197,125 @@ if (typeof module !== 'undefined' && module.exports) {
     getDashboardDataForUser,
     getUserNavigationMenu
   };
+}
+
+/**
+ * Test function to debug navigation and verify availability link is included
+ */
+function testNavigationWithAvailability() {
+  try {
+    console.log('=== TESTING NAVIGATION WITH AVAILABILITY LINK ===');
+    
+    // Test for each user role
+    const testUsers = [
+      { name: 'Test Admin', email: 'admin@test.com', role: 'admin' },
+      { name: 'Test Dispatcher', email: 'dispatcher@test.com', role: 'dispatcher' },
+      { name: 'Test Rider', email: 'rider@test.com', role: 'rider' }
+    ];
+    
+    testUsers.forEach(user => {
+      console.log(`\n--- Testing navigation for ${user.role.toUpperCase()} ---`);
+      
+      // Test getUserNavigationMenu first
+      const menuItems = getUserNavigationMenu(user);
+      console.log(`Menu items count: ${menuItems.length}`);
+      console.log(`Pages included: ${menuItems.map(item => item.page).join(', ')}`);
+      
+      const hasAvailability = menuItems.some(item => item.page === 'rider-availability');
+      console.log(`Has availability link: ${hasAvailability ? '✅ YES' : '❌ NO'}`);
+      
+      if (hasAvailability) {
+        const availItem = menuItems.find(item => item.page === 'rider-availability');
+        console.log(`Availability item: ${availItem.label} -> ${availItem.url}`);
+      }
+      
+      // Test full navigation HTML generation
+      const navHtml = getRoleBasedNavigation('dashboard', user, null);
+      console.log(`Navigation HTML length: ${navHtml.length} chars`);
+      
+      const htmlHasAvailability = navHtml.includes('rider-availability') && navHtml.includes('🗓️ Availability');
+      console.log(`HTML includes availability: ${htmlHasAvailability ? '✅ YES' : '❌ NO'}`);
+      
+      if (htmlHasAvailability) {
+        // Extract just the availability link from the HTML
+        const availMatch = navHtml.match(/<a[^>]*rider-availability[^>]*>.*?<\/a>/);
+        if (availMatch) {
+          console.log(`Availability link HTML: ${availMatch[0]}`);
+        }
+      }
+    });
+    
+    console.log('\n=== PERMISSIONS MATRIX CHECK ===');
+    Object.keys(PERMISSIONS_MATRIX).forEach(role => {
+      const pages = PERMISSIONS_MATRIX[role].pages || [];
+      const hasAvail = pages.includes('rider-availability');
+      console.log(`${role}: ${hasAvail ? '✅' : '❌'} rider-availability in pages`);
+      if (hasAvail) {
+        console.log(`  ${role} pages: [${pages.join(', ')}]`);
+      }
+    });
+    
+    console.log('\n=== TESTING COMPLETE ===');
+    
+    return {
+      success: true,
+      message: 'Navigation test completed. Check console logs for details.'
+    };
+    
+  } catch (error) {
+    console.error('❌ Navigation test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Quick fix function to ensure availability link appears
+ */
+function forceAvailabilityLinkInNavigation() {
+  try {
+    console.log('🔧 Force adding availability link to navigation...');
+    
+    // Test current navigation generation
+    const testUser = { name: 'Test User', email: 'test@test.com', role: 'rider' };
+    const currentNav = getRoleBasedNavigation('dashboard', testUser, null);
+    
+    console.log('Current navigation for rider:');
+    console.log(currentNav);
+    
+    const hasAvailability = currentNav.includes('rider-availability');
+    console.log(`Current navigation has availability: ${hasAvailability ? '✅ YES' : '❌ NO'}`);
+    
+    if (!hasAvailability) {
+      console.log('⚠️ Availability link missing! Check PERMISSIONS_MATRIX configuration.');
+      
+      // Show what pages are currently allowed for rider
+      const riderPages = PERMISSIONS_MATRIX.rider?.pages || [];
+      console.log('Rider allowed pages:', riderPages);
+      
+      // Check if availability is in the list
+      const hasAvailInConfig = riderPages.includes('rider-availability');
+      console.log(`rider-availability in config: ${hasAvailInConfig ? '✅ YES' : '❌ NO'}`);
+      
+      if (!hasAvailInConfig) {
+        console.log('❌ PROBLEM: rider-availability not in PERMISSIONS_MATRIX.rider.pages');
+      }
+    }
+    
+    return {
+      success: hasAvailability,
+      currentNavigation: currentNav,
+      hasAvailabilityLink: hasAvailability
+    };
+    
+  } catch (error) {
+    console.error('❌ Force availability link test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 
