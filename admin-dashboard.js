@@ -38,6 +38,22 @@
         function loadUserInfo() {
             console.log('👤 Loading user info...');
             
+            // Check if we're in a local environment
+            const isLocal = window.location.hostname === 'localhost' || 
+                           window.location.protocol === 'file:' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.includes('8080');
+                           
+            if (isLocal) {
+                console.log('🏠 Local environment detected, using demo user');
+                updateUserDisplay({
+                    name: 'Demo Admin',
+                    email: 'admin@demo.com',
+                    role: 'Admin'
+                });
+                return;
+            }
+            
             // Immediately set loading state with better UX
             updateUserDisplay({
                 name: '...',
@@ -113,6 +129,18 @@
 
         function loadAdminDashboardData() {
             console.log('📊 Loading admin dashboard data...');
+            
+            // Check if we're in a local environment
+            const isLocal = window.location.hostname === 'localhost' || 
+                           window.location.protocol === 'file:' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.includes('8080');
+                           
+            if (isLocal) {
+                console.log('🏠 Local environment detected, using demo data immediately');
+                updateDashboardStats(getDemoData());
+                return;
+            }
             
             // Immediately show loading with better UX (dots instead of dashes)
             setStatsToLoadingState();
@@ -202,6 +230,18 @@
         }
 
         function loadRecentActivity() {
+            // Check if we're in a local environment
+            const isLocal = window.location.hostname === 'localhost' || 
+                           window.location.protocol === 'file:' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.includes('8080');
+                           
+            if (isLocal) {
+                console.log('🏠 Local environment detected, using demo activity');
+                updateRecentActivity(getDemoActivity());
+                return;
+            }
+            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 // Set timeout for activity loading
                 const activityTimeout = setTimeout(function() {
@@ -229,6 +269,18 @@
         }
 
         function loadRecentNotifications() {
+            // Check if we're in a local environment
+            const isLocal = window.location.hostname === 'localhost' || 
+                           window.location.protocol === 'file:' ||
+                           window.location.hostname === '127.0.0.1' ||
+                           window.location.hostname.includes('8080');
+                           
+            if (isLocal) {
+                console.log('🏠 Local environment detected, using demo notifications');
+                updateRecentNotifications(getDemoNotifications());
+                return;
+            }
+            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 // Set timeout for notifications loading
                 const notificationsTimeout = setTimeout(function() {

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { border: 1px solid #ccc; margin: 10px 0; padding: 15px; }
+        .error { color: red; }
+        .success { color: green; }
+        .warning { color: orange; }
+        .debug-log { background: #f5f5f5; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard Loading Debug Tool</h1>
+    
+    <div class="debug-section">
+        <h2>Environment Check</h2>
+        <div id="envCheck">Checking environment...</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Google Apps Script Connection</h2>
+        <div id="gasCheck">Checking Google Apps Script...</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Backend Function Test</h2>
+        <button onclick="testBackendFunction()">Test getAdminDashboardData()</button>
+        <div id="backendResult">Click button to test backend function</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Fallback Data Test</h2>
+        <button onclick="testFallbackData()">Test Fallback Data</button>
+        <div id="fallbackResult">Click button to test fallback data</div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Debug Log</h2>
+        <div id="debugLog" class="debug-log">Starting debug session...\n</div>
+    </div>
+
+    <script>
+        // Debug logging function
+        function logDebug(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const debugLog = document.getElementById('debugLog');
+            debugLog.innerHTML += `[${timestamp}] ${message}\n`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+
+        // Environment check
+        function checkEnvironment() {
+            logDebug('🔍 Checking environment...');
+            
+            const isLocal = window.location.hostname === 'localhost' || window.location.protocol === 'file:';
+            const hasGoogleScript = typeof google !== 'undefined' && google.script && google.script.run;
+            
+            let envStatus = '<div>';
+            envStatus += `<p>Location: ${window.location.href}</p>`;
+            envStatus += `<p>Is Local: ${isLocal ? '<span class="warning">Yes</span>' : '<span class="success">No</span>'}</p>`;
+            envStatus += `<p>Google Apps Script Available: ${hasGoogleScript ? '<span class="success">Yes</span>' : '<span class="error">No</span>'}</p>`;
+            envStatus += '</div>';
+            
+            document.getElementById('envCheck').innerHTML = envStatus;
+            
+            logDebug(`Environment: Local=${isLocal}, GAS=${hasGoogleScript}`);
+        }
+
+        // Google Apps Script connection check
+        function checkGoogleAppsScript() {
+            logDebug('🚀 Checking Google Apps Script connection...');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // Test a simple GAS function
+                const timeout = setTimeout(() => {
+                    document.getElementById('gasCheck').innerHTML = '<span class="error">Google Apps Script connection timed out (5 seconds)</span>';
+                    logDebug('❌ GAS connection timeout');
+                }, 5000);
+                
+                try {
+                    google.script.run
+                        .withSuccessHandler(function(url) {
+                            clearTimeout(timeout);
+                            document.getElementById('gasCheck').innerHTML = `<span class="success">Connected successfully</span><br>Web App URL: ${url}`;
+                            logDebug('✅ GAS connection successful');
+                        })
+                        .withFailureHandler(function(error) {
+                            clearTimeout(timeout);
+                            document.getElementById('gasCheck').innerHTML = `<span class="error">Connection failed: ${error.message}</span>`;
+                            logDebug('❌ GAS connection failed: ' + error.message);
+                        })
+                        .getWebAppUrl();
+                } catch (error) {
+                    clearTimeout(timeout);
+                    document.getElementById('gasCheck').innerHTML = `<span class="error">Error calling GAS: ${error.message}</span>`;
+                    logDebug('❌ GAS call error: ' + error.message);
+                }
+            } else {
+                document.getElementById('gasCheck').innerHTML = '<span class="error">Google Apps Script not available</span>';
+                logDebug('❌ Google Apps Script not available');
+            }
+        }
+
+        // Test backend function
+        function testBackendFunction() {
+            logDebug('📊 Testing getAdminDashboardData...');
+            document.getElementById('backendResult').innerHTML = 'Testing backend function...';
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                const timeout = setTimeout(() => {
+                    document.getElementById('backendResult').innerHTML = '<span class="error">Backend function timed out (10 seconds)</span>';
+                    logDebug('❌ Backend function timeout');
+                }, 10000);
+                
+                google.script.run
+                    .withSuccessHandler(function(data) {
+                        clearTimeout(timeout);
+                        const result = `<div class="success">Backend function succeeded!</div><pre>${JSON.stringify(data, null, 2)}</pre>`;
+                        document.getElementById('backendResult').innerHTML = result;
+                        logDebug('✅ Backend function success: ' + JSON.stringify(data));
+                    })
+                    .withFailureHandler(function(error) {
+                        clearTimeout(timeout);
+                        const result = `<div class="error">Backend function failed: ${error.message}</div>`;
+                        document.getElementById('backendResult').innerHTML = result;
+                        logDebug('❌ Backend function failed: ' + error.message);
+                    })
+                    .getAdminDashboardData();
+            } else {
+                document.getElementById('backendResult').innerHTML = '<span class="error">Google Apps Script not available - cannot test backend function</span>';
+                logDebug('❌ Cannot test backend - GAS not available');
+            }
+        }
+
+        // Test fallback data
+        function testFallbackData() {
+            logDebug('🔄 Testing fallback data...');
+            
+            const demoData = {
+                totalRequests: 156,
+                totalRiders: 23,
+                totalAssignments: 89,
+                pendingNotifications: 3,
+                todaysEscorts: 12,
+                threeDayEscorts: 5,
+                unassignedEscorts: 2,
+                newRequests: 4
+            };
+            
+            const result = `<div class="success">Fallback data available!</div><pre>${JSON.stringify(demoData, null, 2)}</pre>`;
+            document.getElementById('fallbackResult').innerHTML = result;
+            logDebug('✅ Fallback data test successful');
+        }
+
+        // Initialize debug tool
+        document.addEventListener('DOMContentLoaded', function() {
+            logDebug('🚀 Dashboard Debug Tool initialized');
+            checkEnvironment();
+            checkGoogleAppsScript();
+        });
+    </script>
+</body>
+</html>
