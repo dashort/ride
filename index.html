@@ -473,14 +473,65 @@
     function initializeDashboard() {
         console.log('🔄 Initializing dashboard with consolidated data call...');
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Set a timeout to force fallback data if loading takes too long
+            const dashboardTimeout = setTimeout(function() {
+                console.log('⏰ Dashboard loading timeout, forcing fallback data');
+                handleDashboardDataFailure({ message: "Dashboard loading timed out after 10 seconds." });
+            }, 10000); // 10 second timeout
+            
             google.script.run
-                .withSuccessHandler(handleDashboardDataSuccess)
-                .withFailureHandler(handleDashboardDataFailure)
+                .withSuccessHandler(function(data) {
+                    clearTimeout(dashboardTimeout);
+                    console.log('✅ Dashboard data loaded successfully:', data);
+                    handleDashboardDataSuccess(data);
+                })
+                .withFailureHandler(function(error) {
+                    clearTimeout(dashboardTimeout);
+                    console.error('❌ Dashboard data loading failed:', error);
+                    handleDashboardDataFailure(error);
+                })
                 .getPageDataForDashboard();
         } else {
             console.log('⚠️ Google Apps Script not available, using fallback data for dashboard.');
             handleDashboardDataFailure({ message: "Google Apps Script not available." });
         }
+        
+        // Additional safety timeout to ensure UI never stays in loading state
+        setTimeout(function() {
+            console.log('⏰ Safety check: ensuring no elements are still showing loading state');
+            
+            // Check stats elements
+            const statsIds = ['activeRiders', 'newRequests', 'todayAssignments', 'weekAssignments'];
+            statsIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element && (element.textContent === '-' || element.textContent.includes('Loading'))) {
+                    element.textContent = '0';
+                    console.log(`🔧 Fixed loading state for ${id}`);
+                }
+            });
+            
+            // Check user name element
+            const userNameElement = document.getElementById('userName');
+            if (userNameElement && userNameElement.textContent.includes('Loading')) {
+                userNameElement.textContent = 'User';
+                console.log('🔧 Fixed loading state for userName');
+            }
+            
+            // Check lists for loading states
+            const containers = [
+                { id: 'recentRequestsList', fallback: '<div class="empty-message"><p>No recent requests</p></div>' },
+                { id: 'upcomingAssignmentsList', fallback: '<div class="empty-message"><p>No upcoming assignments</p></div>' },
+                { id: 'recentNotificationsList', fallback: '<div class="empty-message"><p>No recent notifications</p></div>' }
+            ];
+            
+            containers.forEach(container => {
+                const element = document.getElementById(container.id);
+                if (element && element.innerHTML.includes('Loading')) {
+                    element.innerHTML = container.fallback;
+                    console.log(`🔧 Fixed loading state for ${container.id}`);
+                }
+            });
+        }, 12000); // 12 second safety check
     }
 
     function handleDashboardDataSuccess(data) {
