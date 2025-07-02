@@ -4752,6 +4752,7 @@ function getPageFileNameSafe(pageName, userRole) {
       'requests': 'requests',
       'assignments': 'assignments',
       'riders': 'riders',
+      'availability': 'rider-availability',
       'notifications': 'notifications',
       'reports': 'reports',
       'rider-schedule': 'rider-schedule',
@@ -5045,6 +5046,7 @@ function getPageFileNameSafe(pageName, userRole) {
       'requests': 'requests',
       'assignments': 'assignments',
       'riders': 'riders',
+      'availability': 'rider-availability',
       'notifications': 'notifications',
       'reports': 'reports'
     };
