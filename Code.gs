@@ -1519,7 +1519,10 @@ function _onEdit(e) {
         let requestId = requestIdCell.getValue();
 
         if (!requestId || typeof requestId !== 'string' || !requestId.match(/^[A-L]-\d{2}-\d{2}$/)) {
-          const newId = generateRequestId(sheet);
+          const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+          const eventDateCol = headers.indexOf(CONFIG.columns.requests.eventDate) + 1;
+          const eventDate = eventDateCol > 0 ? sheet.getRange(row, eventDateCol).getValue() : null;
+          const newId = generateRequestId(sheet, eventDate);
           requestIdCell.setValue(newId);
           logActivity(`Generated new Request ID: ${newId} for row ${row}`);
           // A break is needed here to prevent immediate re-triggering, or simply let the next `onEdit` catch it.
