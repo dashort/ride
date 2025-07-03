@@ -1838,9 +1838,9 @@ function createAssignmentRow(assignment, isPast = false) {
   const statusClass = status.toLowerCase().replace(' ', '-');
   const actionButtons = isPast ? '' : `
     <td class="assignment-actions">
-      <a class="btn btn-sm btn-info" title="View Request Details"
+      <a class="btn btn-sm btn-info" title="View Assignment Details"
          href="#"
-         onclick="viewRequestDetails('${requestId}'); return false;">
+         onclick="openAssignment('${requestId}'); return false;">
         👁️ View
       </a>
     </td>
