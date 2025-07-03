@@ -321,12 +321,14 @@ function addRider(riderData) {
     });
 
     // Support common variations of the part time field
-    const normalizedPartTime =
+   const normalizedPartTime =
       normalizedData['part time'] ||
       normalizedData['part-time'] ||
       normalizedData['parttimerider'] ||
       normalizedData['part time rider'] ||
       normalizedData['parttime'];
+
+    const normalizedPlatoon = normalizedData['platoon'];
 
     // Create new row array based on headers
     const newRowArray = headers.map(header => {
@@ -346,6 +348,8 @@ function addRider(riderData) {
           return '';
         case CONFIG.columns.riders.partTime:
           return normalizedPartTime || 'No';
+        case CONFIG.columns.riders.platoon:
+          return normalizedPlatoon || '';
         case CONFIG.columns.riders.certification:
           return riderData[header] || 'Standard';
         default:
@@ -592,6 +596,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
+  rider.platoon = getColumnValue(row, columnMap, CONFIG.columns.riders.platoon) || '';
   let partTimeVal = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
   if (partTimeVal === null || partTimeVal === '') {
     partTimeVal = getColumnValue(row, columnMap, 'Part Time Rider');
@@ -1120,6 +1125,14 @@ function validateRiderData(riderData, isUpdate = false) {
       const validStatuses = CONFIG.options?.riderStatuses || ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'];
       if (!validStatuses.includes(riderData[CONFIG.columns.riders.status])) {
         errors.push(`Status must be one of: ${validStatuses.join(', ')}`);
+      }
+    }
+
+    if (riderData[CONFIG.columns.riders.platoon]) {
+      const platoon = String(riderData[CONFIG.columns.riders.platoon]).trim();
+      const validPlatoons = CONFIG.options?.platoons || ['A', 'B'];
+      if (platoon && !validPlatoons.includes(platoon)) {
+        errors.push('Platoon must be A or B');
       }
     }
     

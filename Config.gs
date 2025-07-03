@@ -83,7 +83,8 @@ const CONFIG = {
       phone: 'Phone Number',
       email: 'Email',
       status: 'Status',
-      partTime: 'Part-Time Rider',  
+      platoon: 'Platoon',
+      partTime: 'Part-Time Rider',
       certification: 'Certification',
       totalAssignments: 'Total Assignments',
       lastAssignmentDate: 'Last Assignment Date'  // Fixed: was 'LastAssignmentDate'
@@ -135,6 +136,7 @@ const CONFIG = {
     requestTypes: ['Wedding', 'Funeral', 'Float Movement', 'VIP', 'Other'],
     requestStatuses: ['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress', 'Completed', 'Cancelled'],
     riderStatuses: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
+    platoons: ['A', 'B'],
     certificationTypes: ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'],
     assignmentStatuses: ['Assigned', 'Confirmed', 'En Route', 'In Progress', 'Completed', 'Cancelled', 'No Show']
   },
