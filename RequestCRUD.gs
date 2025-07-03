@@ -115,9 +115,33 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
       // Batch operation: append row and related operations together
       const batchOperations = [];
       batchOperations.push(() => requestsSheet.appendRow(newRow));
+
+      const formatOperations = [];
+
+      const newRowIndex = requestsSheet.getLastRow() + 1; // row after append
+      const dateCols = [CONFIG.columns.requests.eventDate, CONFIG.columns.requests.date];
+      dateCols.forEach(col => {
+        if (columnMap[col] !== undefined) {
+          const colIndex = columnMap[col] + 1;
+          formatOperations.push(() =>
+            requestsSheet.getRange(newRowIndex, colIndex)
+              .setNumberFormat(CONFIG.system.dateFormat)
+          );
+        }
+      });
+      [CONFIG.columns.requests.startTime, CONFIG.columns.requests.endTime].forEach(col => {
+        if (columnMap[col] !== undefined) {
+          const colIndex = columnMap[col] + 1;
+          formatOperations.push(() =>
+            requestsSheet.getRange(newRowIndex, colIndex)
+              .setNumberFormat(CONFIG.system.timeFormat)
+          );
+        }
+      });
       
       // Execute batch operations
       batchOperations.forEach(operation => operation());
+      formatOperations.forEach(op => op());
       
       // Single flush after all operations
       SpreadsheetApp.flush();
@@ -390,6 +414,7 @@ function updateExistingRequest(requestData) {
 
     // Update individual cells rather than entire row to be more robust
     const updates = [];
+    const formatOperations = [];
 
     // Map form data to sheet columns with proper validation
     const fieldMappings = {
@@ -427,6 +452,10 @@ function updateExistingRequest(requestData) {
                 continue; // Skip this update
               }
             }
+            formatOperations.push(() =>
+              sheet.getRange(sheetRowNumber, columnIndex + 1)
+                .setNumberFormat(CONFIG.system.dateFormat)
+            );
             break;
             
           case CONFIG.columns.requests.startTime:
@@ -438,6 +467,10 @@ function updateExistingRequest(requestData) {
                 continue; // Skip this update
               }
             }
+            formatOperations.push(() =>
+              sheet.getRange(sheetRowNumber, columnIndex + 1)
+                .setNumberFormat(CONFIG.system.timeFormat)
+            );
             break;
             
           case CONFIG.columns.requests.ridersNeeded:
@@ -488,7 +521,8 @@ function updateExistingRequest(requestData) {
         
         // Execute all batch operations
         batchOperations.forEach(operation => operation());
-        
+        formatOperations.forEach(op => op());
+
         // Single flush after all operations
         SpreadsheetApp.flush();
       }
