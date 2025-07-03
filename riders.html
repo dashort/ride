@@ -493,17 +493,6 @@
 
     <!--NAVIGATION_MENU_PLACEHOLDER-->
 
-    <!-- Fallback Navigation - shown if server-side replacement fails -->
-    <nav class="navigation" id="fallback-navigation" style="display: none;">
-        <a href="index.html" class="nav-button" data-page="dashboard">📊 Dashboard</a>
-        <a href="requests.html" class="nav-button" data-page="requests">📋 Requests</a>
-        <a href="assignments.html" class="nav-button" data-page="assignments">🏍️ Assignments</a>
-        <a href="riders.html" class="nav-button active" data-page="riders">👥 Riders</a>
-        <a href="enhanced-rider-availability.html" class="nav-button" data-page="availability">🗓️ Availability</a>
-        <a href="notifications.html" class="nav-button" data-page="notifications">📱 Notifications</a>
-        <a href="reports.html" class="nav-button" data-page="reports">📊 Reports</a>
-    </nav>
-
     <div class="container">
         <div class="riders-header">
             <h2 class="page-title">👥 Rider Management</h2>
@@ -707,25 +696,6 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Riders page loading...');
-
-        // Check navigation and show fallback if needed
-        setTimeout(() => {
-            checkAndShowNavigation();
-        }, 500);
-
-        // Additional navigation check after 2 seconds
-        setTimeout(() => {
-            const anyVisibleNav = document.querySelector('.navigation[style*="display: flex"], .navigation:not([style*="display: none"])');
-            if (!anyVisibleNav) {
-                console.warn('⚠️ No visible navigation found after 2 seconds - forcing fallback');
-                const fallbackNav = document.getElementById('fallback-navigation');
-                if (fallbackNav) {
-                    fallbackNav.style.display = 'flex';
-                    showSuccess('Navigation loaded (fallback mode)');
-                }
-            }
-        }, 2000);
-
         addScheduleLinks();
 
         const params = new URLSearchParams(window.location.search);
@@ -2151,50 +2121,6 @@ function logout() {
     window.location.href = 'https://accounts.google.com/Logout';
   }
 }
-
-    /**
-     * Checks if navigation was properly loaded and shows fallback if needed.
-     */
-    function checkAndShowNavigation() {
-        // Check if the navigation placeholder still exists (wasn't replaced by server)
-        const hasPlaceholder = document.documentElement.innerHTML.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-        
-        // Check if there's already a visible navigation
-        const existingNav = document.querySelector('.navigation:not(#fallback-navigation)');
-        const hasVisibleNav = existingNav && existingNav.offsetParent !== null;
-        
-        console.log('🧭 Navigation check - Placeholder exists:', hasPlaceholder, 'Visible nav exists:', hasVisibleNav);
-        
-        // If placeholder wasn't replaced or no visible navigation, show fallback
-        if (hasPlaceholder || !hasVisibleNav) {
-            const fallbackNav = document.getElementById('fallback-navigation');
-            if (fallbackNav) {
-                fallbackNav.style.display = 'flex';
-                console.log('✅ Fallback navigation displayed on riders page');
-                console.log('📋 Available navigation links:');
-                fallbackNav.querySelectorAll('a').forEach(link => {
-                    console.log(`  - ${link.textContent.trim()}: ${link.href}`);
-                });
-                
-                // Add click handlers to fallback navigation links
-                fallbackNav.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const page = this.getAttribute('data-page');
-                        if (page === 'dashboard') {
-                            window.location.href = 'index.html';
-                        } else {
-                            window.location.href = this.getAttribute('href');
-                        }
-                    });
-                });
-            } else {
-                console.error('❌ Fallback navigation element not found!');
-            }
-        } else {
-            console.log('✅ Server-side navigation is working properly');
-        }
-    }
 </script>
 </body>
 </html>

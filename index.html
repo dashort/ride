@@ -357,17 +357,6 @@
 
     <div class="container">
         <!--NAVIGATION_MENU_PLACEHOLDER-->
-        
-        <!-- Fallback Navigation - shown if server-side replacement fails -->
-        <nav class="navigation" id="fallback-navigation" style="display: none;">
-            <a href="index.html" class="nav-button active" data-page="dashboard">📊 Dashboard</a>
-            <a href="requests.html" class="nav-button" data-page="requests">📋 Requests</a>
-            <a href="assignments.html" class="nav-button" data-page="assignments">🏍️ Assignments</a>
-            <a href="riders.html" class="nav-button" data-page="riders">👥 Riders</a>
-            <a href="enhanced-rider-availability.html" class="nav-button" data-page="availability">🗓️ Availability</a>
-            <a href="notifications.html" class="nav-button" data-page="notifications">📱 Notifications</a>
-            <a href="reports.html" class="nav-button" data-page="reports">📊 Reports</a>
-        </nav>
 
         <div class="dashboard-grid">
             <!-- Statistics Card -->
@@ -419,9 +408,6 @@
                     <button class="action-button" onclick="openAssignments()" id="assignRidersBtn">
                         🏍️ Assign Riders
                     </button>
-                    <button class="action-button" onclick="openRiderAvailability()">
-                        🗓️ Rider Availability
-                    </button>
                     <button class="action-button" onclick="sendBulkNotifications()" id="notificationsBtn">
                         📱 Send Notifications
                     </button>
@@ -452,25 +438,6 @@
     document.addEventListener('DOMContentLoaded', () => {
         console.log('🚀 Dashboard loading...');
 
-        // Check if navigation was properly loaded and show fallback if needed
-        setTimeout(() => {
-            checkAndShowNavigation();
-        }, 500);
-
-        // Additional navigation check after 2 seconds
-        setTimeout(() => {
-            const anyVisibleNav = document.querySelector('.navigation[style*="display: flex"], .navigation:not([style*="display: none"])');
-            if (!anyVisibleNav) {
-                console.warn('⚠️ No visible navigation found after 2 seconds - forcing fallback');
-                const fallbackNav = document.getElementById('fallback-navigation');
-                if (fallbackNav) {
-                    fallbackNav.style.display = 'flex';
-                    // Show user-friendly message
-                    showMessage('Navigation loaded (fallback mode)', 'info');
-                }
-            }
-        }, 2000);
-
         // Retrieve the web app URL when running inside Apps Script
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             try {
@@ -492,47 +459,6 @@
 
         initializeDashboard();
     });
-
-    function checkAndShowNavigation() {
-        // Check if the navigation placeholder still exists (wasn't replaced by server)
-        const hasPlaceholder = document.documentElement.innerHTML.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-        
-        // Check if there's already a visible navigation
-        const existingNav = document.querySelector('.navigation:not(#fallback-navigation)');
-        const hasVisibleNav = existingNav && existingNav.offsetParent !== null;
-        
-        console.log('🧭 Navigation check - Placeholder exists:', hasPlaceholder, 'Visible nav exists:', hasVisibleNav);
-        
-        // If placeholder wasn't replaced or no visible navigation, show fallback
-        if (hasPlaceholder || !hasVisibleNav) {
-            const fallbackNav = document.getElementById('fallback-navigation');
-            if (fallbackNav) {
-                fallbackNav.style.display = 'flex';
-                console.log('✅ Fallback navigation displayed');
-                console.log('📋 Available navigation links:');
-                fallbackNav.querySelectorAll('a').forEach(link => {
-                    console.log(`  - ${link.textContent.trim()}: ${link.href}`);
-                });
-                
-                // Add click handlers to fallback navigation links
-                fallbackNav.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const page = this.getAttribute('data-page');
-                        if (page === 'dashboard') {
-                            window.location.href = 'index.html';
-                        } else {
-                            window.location.href = this.getAttribute('href');
-                        }
-                    });
-                });
-            } else {
-                console.error('❌ Fallback navigation element not found!');
-            }
-        } else {
-            console.log('✅ Server-side navigation is working properly');
-        }
-    }
 
     function initializeDashboard() {
         console.log('🔄 Initializing dashboard with consolidated data call...');
@@ -845,10 +771,6 @@
 
     function openAssignments() {
         navigateTo('assignments');
-    }
-
-    function openRiderAvailability() {
-        window.location.href = 'enhanced-rider-availability.html';
     }
 
     function goToRiders(status) {

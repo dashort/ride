@@ -3,7 +3,6 @@
     <a href="requests.html" class="nav-button" id="nav-requests" data-page="requests" target="_top">📋 Requests</a>
     <a href="assignments.html" class="nav-button" id="nav-assignments" data-page="assignments" target="_top">🏍️ Assignments</a>
     <a href="riders.html" class="nav-button" id="nav-riders" data-page="riders" target="_top">👥 Riders</a>
-    <a href="enhanced-rider-availability.html" class="nav-button" id="nav-availability" data-page="availability" target="_top">🗓️ Availability</a>
     <a href="notifications.html" class="nav-button" id="nav-notifications" data-page="notifications" target="_top">📱 Notifications</a>
     <a href="reports.html" class="nav-button" id="nav-reports" data-page="reports" target="_top">📊 Reports</a>
 </nav>
@@ -11,27 +10,7 @@
 <script>
 (function() {
     // Set up navigation links
-    function applyLocalLinks() {
-        document.querySelectorAll('nav.navigation a').forEach(function(a) {
-            var page = a.getAttribute('data-page');
-            var href;
-            if (page === 'dashboard') {
-                href = 'index.html';
-            } else if (page === 'availability') {
-                href = 'enhanced-rider-availability.html';
-            } else {
-                href = page + '.html';
-            }
-            a.href = href;
-            a.dataset.url = href;
-        });
-    }
-
     function setLinks(base) {
-        if (!base || base === '#') {
-            applyLocalLinks();
-            return;
-        }
         document.querySelectorAll('nav.navigation a').forEach(function(a) {
             var page = a.getAttribute('data-page');
             var href = page === 'dashboard' ? base : base + '?page=' + page;
@@ -41,12 +20,15 @@
     }
 
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(setLinks)
-            .withFailureHandler(applyLocalLinks)
-            .getWebAppUrl();
+        google.script.run.withSuccessHandler(setLinks).getWebAppUrl();
     } else {
         // Fallback for local testing
-        applyLocalLinks();
+        document.querySelectorAll('nav.navigation a').forEach(function(a) {
+            var page = a.getAttribute('data-page');
+            var href = page === 'dashboard' ? 'index.html' : page + '.html';
+            a.href = href;
+            a.dataset.url = href;
+        });
     }
 
     // Navigation click handler
@@ -80,16 +62,6 @@
 
     // CRITICAL: NO PAGESHOW RELOAD - Let browser handle back/forward naturally
     console.log('📄 Navigation script loaded - back button will work normally');
-
-    // Load floating availability widget
-    setTimeout(function() {
-        var script = document.createElement('script');
-        script.src = 'availability-quick-widget.js';
-        script.onerror = function() {
-            console.log('ℹ️ Availability quick widget not available');
-        };
-        document.head.appendChild(script);
-    }, 1000);
 
 })();
 

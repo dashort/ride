@@ -542,8 +542,7 @@
         <h1>🏍️ Escort Requests</h1>
     </header>
 
-    <div class="container">
-        <!--NAVIGATION_MENU_PLACEHOLDER-->
+<!--NAVIGATION_MENU_PLACEHOLDER-->
 
         <div class="filter-row">
             <label><strong>Filter:</strong></label>
@@ -570,8 +569,8 @@
             </select>
         </div>
         <input type="text" id="requestSearch" class="search-box" placeholder="🔍 Search requests...">
-
         <div class="stats" id="statsDisplay">Loading...</div>
+    </div>
     
     <div class="table-container">
         <div id="loadingDiv" class="loading">
@@ -817,17 +816,6 @@
 
 </div>
 
-<!-- Fallback Navigation - shown if server-side replacement fails -->
-<nav class="navigation" id="fallback-navigation" style="display: none;">
-    <a href="index.html" class="nav-button" data-page="dashboard">📊 Dashboard</a>
-    <a href="requests.html" class="nav-button active" data-page="requests">📋 Requests</a>
-    <a href="assignments.html" class="nav-button" data-page="assignments">🏍️ Assignments</a>
-    <a href="riders.html" class="nav-button" data-page="riders">👥 Riders</a>
-    <a href="enhanced-rider-availability.html" class="nav-button" data-page="availability">🗓️ Availability</a>
-    <a href="notifications.html" class="nav-button" data-page="notifications">📱 Notifications</a>
-    <a href="reports.html" class="nav-button" data-page="reports">📊 Reports</a>
-</nav>
-
 <script>
     /**
      * @typedef {object} RequestFull - Detailed request object, assuming structure from form fields.
@@ -872,24 +860,6 @@
      * @listens DOMContentLoaded
      */
     document.addEventListener('DOMContentLoaded', function() {
-        // Check navigation and show fallback if needed
-        setTimeout(() => {
-            checkAndShowNavigation();
-        }, 500);
-
-        // Additional navigation check after 2 seconds
-        setTimeout(() => {
-            const anyVisibleNav = document.querySelector('.navigation[style*="display: flex"], .navigation:not([style*="display: none"])');
-            if (!anyVisibleNav) {
-                console.warn('⚠️ No visible navigation found after 2 seconds - forcing fallback');
-                const fallbackNav = document.getElementById('fallback-navigation');
-                if (fallbackNav) {
-                    fallbackNav.style.display = 'flex';
-                    showToast('Navigation loaded (fallback mode)', 'info');
-                }
-            }
-        }, 2000);
-
         // Check for parameters from both URL and server-injected parameters
         const params = new URLSearchParams(window.location.search);
         let statusParam = params.get('status');
@@ -1078,34 +1048,29 @@
 
         requests.forEach(request => {
             const row = document.createElement('tr');
-            
-            let assigned = '';
-            if (request.ridersAssigned) {
-                assigned = String(request.ridersAssigned)
-                    .split(',')
-                    .map(s => s.trim())
-                    .filter(s => s.length > 0)
-                    .join(', ');
-            }
+
+            const assigned = request.ridersAssigned ?
+                request.ridersAssigned.split(',').map(r => r.trim()).filter(r => r).join(', ') :
+                '';
 
             const statusClass = 'status-' + (request.status || 'new').toLowerCase().replace(/\s+/g, '-');
             const showComplete = escortHasStarted(request.eventDate, request.startTime);
             const actionButton = (request.status !== 'Completed' && request.status !== 'Cancelled' && showComplete) ?
-                `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${escapeJs(request.requestId || '')}')">Complete</button>` : '';
+                `<button class="btn btn-sm btn-success" onclick="openCompleteModal('${request.requestId || ''}')">Complete</button>` : '';
 
             row.innerHTML = `
-                <td><span class="request-id" onclick="openEditModal('${escapeJs(request.requestId || '')}')">${escapeHtml(request.requestId || '')}</span></td>
-                <td>${escapeHtml(request.eventDate || '')}</td>
-                <td>${escapeHtml(request.startTime || '')}</td>
-                <td class="end-time-cell">${escapeHtml(request.endTime || '')}</td>
-                <td>${escapeHtml(request.requesterName || '')}</td>
-                <td>${escapeHtml(request.requestType || '')}</td>
-                <td>${escapeHtml(request.startLocation || '')}</td>
-                <td>${escapeHtml(request.endLocation || '')}</td>
-                <td style="text-align: center;">${escapeHtml(String(request.ridersNeeded || 0))}</td>
-                <td><span class="status-badge ${statusClass}">${escapeHtml(request.status || 'New')}</span></td>
-                <td>${escapeHtml(assigned)}</td>
-                <td><span class="notes" title="${escapeHtml(request.notes || '')}">${escapeHtml(request.notes || '')}</span></td>
+                <td><span class="request-id" onclick="openEditModal('${request.requestId || ''}')">${request.requestId || ''}</span></td>
+                <td>${request.eventDate || ''}</td>
+                <td>${request.startTime || ''}</td>
+                <td class="end-time-cell">${request.endTime || ''}</td>
+                <td>${request.requesterName || ''}</td>
+                <td>${request.requestType || ''}</td>
+                <td>${request.startLocation || ''}</td>
+                <td>${request.endLocation || ''}</td>
+                <td style="text-align: center;">${request.ridersNeeded || 0}</td>
+                <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
+                <td>${assigned}</td>
+                <td><span class="notes" title="${request.notes || ''}">${request.notes || ''}</span></td>
                 <td>${actionButton}</td>
             `;
 
@@ -1712,9 +1677,9 @@
             // Update currently assigned section
             const currentlyAssignedList = document.getElementById('currentAssignedRiders');
             if (assignedRiders.length > 0) {
-                            currentlyAssignedList.innerHTML = assignedRiders.map(r => 
-                `<li onclick="removeAssignedRider('${escapeJs(r)}')"><span style="cursor: pointer;">❌ ${escapeHtml(r)}</span></li>`
-            ).join('');
+                currentlyAssignedList.innerHTML = assignedRiders.map(r => 
+                    `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')"><span style="cursor: pointer;">❌ ${r}</span></li>`
+                ).join('');
             } else {
                 currentlyAssignedList.innerHTML = '<li>None</li>';
             }
@@ -1820,15 +1785,15 @@
             
             return `
                 <div class="rider-assignment-card ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''}" 
-                     data-rider-name="${escapeHtml(rider.name)}" 
-                     onclick="toggleRiderSelection('${escapeJs(rider.name)}')">
+                     data-rider-name="${rider.name.replace(/"/g, '&quot;')}" 
+                     onclick="toggleRiderSelection('${rider.name.replace(/'/g, "\\'")}')">
                     <div class="rider-status-indicator ${availability.toLowerCase()}"></div>
-                    <div class="rider-name" style="font-weight: bold; margin-bottom: 0.5rem;">${escapeHtml(rider.name)}</div>
+                    <div class="rider-name" style="font-weight: bold; margin-bottom: 0.5rem;">${rider.name}</div>
                     <div class="rider-info" style="font-size: 0.9rem; color: #666;">
-                        <div>JP: ${escapeHtml(rider.jpNumber || 'N/A')}</div>
-                        <div>📞 ${escapeHtml(rider.phone || 'N/A')}</div>
-                        <div>📧 ${escapeHtml(rider.email || 'N/A')}</div>
-                        ${isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${escapeHtml(availability)}</div>` : ''}
+                        <div>JP: ${rider.jpNumber || 'N/A'}</div>
+                        <div>📞 ${rider.phone || 'N/A'}</div>
+                        <div>📧 ${rider.email || 'N/A'}</div>
+                        ${isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${availability}</div>` : ''}
                     </div>
                     <div class="selection-indicator" style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem;">
                         ${isSelected ? '✅' : '⬜'}
@@ -1884,7 +1849,7 @@
             const warningDiv = document.createElement('div');
             warningDiv.className = 'availability-warning';
             warningDiv.style.cssText = 'color: #e74c3c; font-weight: bold; margin-top: 0.5rem;';
-            warningDiv.innerHTML = `⚠️ ${escapeHtml(availability)}`;
+            warningDiv.innerHTML = `⚠️ ${availability}`;
             card.querySelector('.rider-info').appendChild(warningDiv);
         }
     }
@@ -1928,7 +1893,7 @@
         const currentlyAssignedList = document.getElementById('currentAssignedRiders');
         if (assignedArray.length > 0) {
             currentlyAssignedList.innerHTML = assignedArray.map(r => 
-                `<li onclick="removeAssignedRider('${escapeJs(r)}')"><span style="cursor: pointer;">❌ ${escapeHtml(r)}</span></li>`
+                `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')"><span style="cursor: pointer;">❌ ${r}</span></li>`
             ).join('');
         } else {
             currentlyAssignedList.innerHTML = '<li>None</li>';
@@ -2032,77 +1997,6 @@
             const currentlyAssignedList = document.getElementById('currentAssignedRiders');
             currentlyAssignedList.innerHTML = '<li>None</li>';
         }
-    }
-
-    /**
-     * Checks if navigation was properly loaded and shows fallback if needed.
-     */
-    function checkAndShowNavigation() {
-        // Check if the navigation placeholder still exists (wasn't replaced by server)
-        const hasPlaceholder = document.documentElement.innerHTML.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-        
-        // Check if there's already a visible navigation
-        const existingNav = document.querySelector('.navigation:not(#fallback-navigation)');
-        const hasVisibleNav = existingNav && existingNav.offsetParent !== null;
-        
-        console.log('🧭 Navigation check - Placeholder exists:', hasPlaceholder, 'Visible nav exists:', hasVisibleNav);
-        
-        // If placeholder wasn't replaced or no visible navigation, show fallback
-        if (hasPlaceholder || !hasVisibleNav) {
-            const fallbackNav = document.getElementById('fallback-navigation');
-            if (fallbackNav) {
-                fallbackNav.style.display = 'flex';
-                console.log('✅ Fallback navigation displayed on requests page');
-                console.log('📋 Available navigation links:');
-                fallbackNav.querySelectorAll('a').forEach(link => {
-                    console.log(`  - ${link.textContent.trim()}: ${link.href}`);
-                });
-                
-                // Add click handlers to fallback navigation links
-                fallbackNav.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const page = this.getAttribute('data-page');
-                        if (page === 'dashboard') {
-                            window.location.href = 'index.html';
-                        } else {
-                            window.location.href = this.getAttribute('href');
-                        }
-                    });
-                });
-            } else {
-                console.error('❌ Fallback navigation element not found!');
-            }
-        } else {
-            console.log('✅ Server-side navigation is working properly');
-        }
-    }
-
-    /**
-     * Escapes HTML special characters to prevent XSS and syntax errors
-     * @param {string} str - The string to escape
-     * @return {string} HTML-escaped string
-     */
-    function escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    /**
-     * Escapes JavaScript string literals to prevent syntax errors in attributes
-     * @param {string} str - The string to escape
-     * @return {string} JavaScript-escaped string
-     */
-    function escapeJs(str) {
-        if (!str) return '';
-        return str.replace(/\\/g, '\\\\')
-                  .replace(/'/g, "\\'")
-                  .replace(/"/g, '\\"')
-                  .replace(/\r/g, '\\r')
-                  .replace(/\n/g, '\\n')
-                  .replace(/\t/g, '\\t');
     }
 </script>
 </body>

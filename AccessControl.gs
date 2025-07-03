@@ -67,7 +67,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: true
     },
     // Pages
-    pages: ['dashboard', 'requests', 'assignments', 'riders', 'availability', 'notifications', 'reports', 'admin-schedule', 'settings']
+    pages: ['dashboard', 'requests', 'assignments', 'riders', 'notifications', 'reports', 'admin-schedule', 'settings']
   },
 
   dispatcher: {
@@ -117,7 +117,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: true
     },
     // Pages
-    pages: ['dashboard', 'requests', 'assignments', 'availability', 'notifications', 'reports']
+    pages: ['dashboard', 'requests', 'assignments', 'notifications', 'reports']
   },
 
   rider: {
@@ -167,7 +167,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: false
     },
     // Pages
-    pages: ['dashboard', 'availability', 'rider-schedule', 'my-assignments', 'my-profile']
+    pages: ['dashboard', 'rider-schedule', 'my-assignments', 'my-profile']
   }
 };
 
@@ -1646,7 +1646,6 @@ function getPageFileNameSafe(pageName, userRole) {
       'requests': 'requests',
       'assignments': 'assignments',
       'riders': 'riders',
-      'availability': 'rider-availability',
       'notifications': 'notifications',
       'reports': 'reports'
     };
@@ -2105,7 +2104,6 @@ function getUserNavigationMenu(user) {
       'requests': '📋 Requests',
       'assignments': '🏍️ Assignments',
       'riders': '👥 Riders',
-      'availability': '🗓️ Availability',
       'notifications': '📱 Notifications',
       'reports': '📊 Reports',
       'rider-schedule': '📅 My Schedule',
