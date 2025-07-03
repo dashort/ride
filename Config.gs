@@ -105,6 +105,8 @@ const CONFIG = {
       notified: 'Notified',
       smsSent: 'SMS Sent',
       emailSent: 'Email Sent',
+      confirmedDate: 'Confirmed Date',
+      confirmationMethod: 'Confirmation Method',
       completedDate: 'Completed Date',
       actualStartTime: 'Actual Start Time',
       actualEndTime: 'Actual End Time',
