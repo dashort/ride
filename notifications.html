@@ -226,10 +226,6 @@
             color: white;
         }
 
-        .btn-reminder {
-            background: #e67e22;
-            color: white;
-        }
 
         .btn-bulk:hover {
             transform: translateY(-2px);
@@ -555,9 +551,6 @@
                     </button>
                     <button class="btn-bulk btn-both" onclick="sendBulkNotifications('Both', 'today')">
                         📨 Notify Today's Assignments
-                    </button>
-                    <button class="btn-bulk btn-reminder" onclick="sendBulkNotifications('Both', 'pending')">
-                        🔔 Send Reminders to Pending
                     </button>
                     <button class="btn-bulk btn-refresh" onclick="refreshNotifications()">
                         🔄 Refresh Data
@@ -1299,9 +1292,6 @@ function convertAssignmentsToNotificationFormat(assignments) {
                             <button class="btn btn-both" onclick="sendIndividualNotification('${assignment.uid}', 'Both')">
                                 📨 Both
                             </button>
-                            <button class="btn" style="background: #f39c12; color: white;" onclick="sendReminder('${assignment.uid}')">
-                                🔔 Reminder
-                            </button>
                         </div>
                     </div>
                 `;
@@ -1429,9 +1419,6 @@ function convertAssignmentsToNotificationFormat(assignments) {
             }
         }
 
-        function sendReminder(assignmentId) {
-            sendIndividualNotification(assignmentId, 'Both');
-        }
 
         function sendToSelected(type) {
             if (app.selectedAssignments.size === 0) {
