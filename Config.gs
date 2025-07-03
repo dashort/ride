@@ -159,7 +159,11 @@ const CONFIG = {
     calendarName: 'Motorcycle Escorts',
     maxRidersPerRequest: 4,
     notificationLeadTime: 24 // hours
-  }
+  },
+
+  // Request ID generation settings
+  requestIdPrefix: 'R',
+  requestIdPadding: 4
 };
 
 /**
