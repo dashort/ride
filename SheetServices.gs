@@ -775,11 +775,14 @@ function updateRequestStatusBasedOnRiders(requestId) {
  * @return {string} The formatted unique request ID (e.g., "A-01-24").
  *                  Returns an error-formatted ID on failure.
  */
-function generateRequestId(sheet) {
+function generateRequestId(sheet, eventDate) {
   try {
-    const now = new Date();
-    const monthIndex = now.getMonth();
-    const year = now.getFullYear().toString().slice(-2);
+    let baseDate = eventDate ? new Date(eventDate) : new Date();
+    if (isNaN(baseDate.getTime())) {
+      baseDate = new Date();
+    }
+    const monthIndex = baseDate.getMonth();
+    const year = baseDate.getFullYear().toString().slice(-2);
     const monthLetter = "ABCDEFGHIJKL".charAt(monthIndex);
     const idPrefix = `${monthLetter}-`;
     const idSuffix = `-${year}`;
@@ -827,6 +830,8 @@ function generateAllMissingRequestIds() {
     }
 
     const data = requestsSheet.getDataRange().getValues();
+    const headers = data[0];
+    const eventDateIdx = headers.indexOf(CONFIG.columns.requests.eventDate);
     let generatedCount = 0;
 
     for (let i = 1; i < data.length; i++) { // Start from row 2 (index 1)
@@ -835,7 +840,8 @@ function generateAllMissingRequestIds() {
       const rowHasData = data[i].slice(1).some(cell => cell !== null && cell !== '');
 
       if (rowHasData && (!currentId || typeof currentId !== 'string' || !currentId.match(/^[A-L]-\d{2}-\d{2}$/))) {
-        const newId = generateRequestId(requestsSheet);
+        const eventDate = eventDateIdx !== -1 ? data[i][eventDateIdx] : null;
+        const newId = generateRequestId(requestsSheet, eventDate);
         requestsSheet.getRange(i + 1, 1).setValue(newId).setNumberFormat('@');
         generatedCount++;
       }

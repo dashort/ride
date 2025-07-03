@@ -47,11 +47,14 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
 
       // --- ID Generation ---
       let newRequestId;
-      if (typeof generateUniqueId === "function") { // generateUniqueId from CoreUtils.gs
+      const eventDateForId = parseDateString(requestData.eventDate);
+      if (typeof generateRequestId === 'function') {
+          newRequestId = generateRequestId(requestsSheet, eventDateForId);
+      } else if (typeof generateUniqueId === "function") { // legacy utility if present
           newRequestId = generateUniqueId(CONFIG.requestIdPrefix, requestsSheet, columnMap[CONFIG.columns.requests.id]);
       } else {
-          debugLog("generateUniqueId function not found. Using fallback ID generation for RequestCRUD.");
-          newRequestId = generateRequestIdFallback_RequestCRUD(requestsSheet, columnMap[CONFIG.columns.requests.id]);
+          debugLog("generateRequestId and generateUniqueId functions not found. Using fallback ID generation for RequestCRUD.");
+          newRequestId = generateRequestIdFallback_RequestCRUD(requestsSheet, columnMap[CONFIG.columns.requests.id], eventDateForId);
       }
       debugLog(`Generated Request ID: ${newRequestId}`);
 
@@ -173,8 +176,15 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
  * @param {number} idColumnIndex The 0-based index of the ID column.
  * @return {string} A new, hopefully unique, request ID (e.g., "R0001").
  */
-function generateRequestIdFallback_RequestCRUD(sheet, idColumnIndex) {
-  const prefix = CONFIG.requestIdPrefix || "R";
+function generateRequestIdFallback_RequestCRUD(sheet, idColumnIndex, eventDate) {
+  let baseDate = eventDate ? new Date(eventDate) : new Date();
+  if (isNaN(baseDate.getTime())) {
+    baseDate = new Date();
+  }
+  const monthLetter = "ABCDEFGHIJKL".charAt(baseDate.getMonth());
+  const yearSuffix = baseDate.getFullYear().toString().slice(-2);
+  const idPrefix = `${monthLetter}-`;
+  const idSuffix = `-${yearSuffix}`;
   let nextIdNumber = 1;
 
   try {
@@ -183,8 +193,11 @@ function generateRequestIdFallback_RequestCRUD(sheet, idColumnIndex) {
       const idRange = sheet.getRange(2, idColumnIndex + 1, lastRow - 1, 1);
       const ids = idRange.getValues().map(row => row[0]);
       const numericIds = ids
-        .filter(id => id && String(id).startsWith(prefix))
-        .map(id => parseInt(String(id).substring(prefix.length)))
+        .filter(id => id && typeof id === 'string' && id.startsWith(idPrefix) && id.endsWith(idSuffix))
+        .map(id => {
+          const match = String(id).match(/^[A-L]-(\d+)-\d{2}$/);
+          return match ? parseInt(match[1], 10) : 0;
+        })
         .filter(num => !isNaN(num));
 
       if (numericIds.length > 0) {
@@ -196,7 +209,7 @@ function generateRequestIdFallback_RequestCRUD(sheet, idColumnIndex) {
     // Fallthrough to use default nextIdNumber = 1
   }
 
-  return `${prefix}${String(nextIdNumber).padStart(CONFIG.requestIdPadding || 4, '0')}`;
+  return `${idPrefix}${String(nextIdNumber).padStart(2, '0')}${idSuffix}`;
 }
 
 /**
