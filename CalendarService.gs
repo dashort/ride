@@ -74,15 +74,19 @@ function postAssignmentsToCalendar() {
 }
 
 /**
- * Creates or updates a calendar event for a single request if it is assigned.
- * Only future events are synced.
+ * Creates or updates a calendar event for a single request.
+ * Originally events were only synced when a request was marked as
+ * "Assigned" which caused new requests to be missing from the calendar.
+ * This function now syncs all requests with a valid future event date
+ * so that they appear on the calendar immediately and are updated as
+ * assignments change.
  * @param {string} requestId The ID of the request to sync.
  * @return {void}
  */
 function syncRequestToCalendar(requestId) {
   try {
     const details = getRequestDetails(requestId);
-    if (!details || details.status !== 'Assigned') return;
+    if (!details) return;
 
     const eventDate = details.eventDate;
     if (!(eventDate instanceof Date)) return;
