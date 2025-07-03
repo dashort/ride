@@ -85,6 +85,9 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.secondaryLocation:   value = requestData.secondaryLocation || ''; break;
             case CONFIG.columns.requests.type:                value = requestData.requestType; break; // Ensure 'type' matches CONFIG
             case CONFIG.columns.requests.ridersNeeded:        value = parseInt(requestData.ridersNeeded); break;
+            case CONFIG.columns.requests.escortFee:
+                value = requestData.escortFee ? parseFloat(requestData.escortFee) : '';
+                break;
             case CONFIG.columns.requests.status:
                 value = (CONFIG.options && CONFIG.options.requestStatuses && CONFIG.options.requestStatuses.length > 0)
                     ? CONFIG.options.requestStatuses[0]
@@ -429,6 +432,7 @@ function updateExistingRequest(requestData) {
       endLocation: CONFIG.columns.requests.endLocation,
       secondaryEndLocation: CONFIG.columns.requests.secondaryLocation,
       ridersNeeded: CONFIG.columns.requests.ridersNeeded,
+      escortFee: CONFIG.columns.requests.escortFee,
       status: CONFIG.columns.requests.status,
       courtesy: CONFIG.columns.requests.courtesy,
       specialRequirements: CONFIG.columns.requests.requirements,
@@ -479,6 +483,13 @@ function updateExistingRequest(requestData) {
               if (isNaN(value) || value <= 0) {
                 throw new Error(`Invalid number of riders needed: ${requestData[formField]}`);
               }
+            }
+            break;
+
+          case CONFIG.columns.requests.escortFee:
+            if (value !== undefined && value !== null && value !== '') {
+              value = parseFloat(value);
+              if (isNaN(value)) value = '';
             }
             break;
             

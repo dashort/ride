@@ -105,6 +105,7 @@ function getEscortDetailsForAssignment(requestIdInput) {
     const requestDetails = {
       id: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.id),
       ridersNeeded: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.ridersNeeded),
+      escortFee: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.escortFee),
       eventDate: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.eventDate),
       startTime: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.startTime),
       endTime: getColumnValue(foundRequestRow, requestColMap, CONFIG.columns.requests.endTime),
@@ -2398,6 +2399,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
           secondaryEndLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
+          escortFee: getColumnValue(row, columnMap, CONFIG.columns.requests.escortFee) || '',
           status: status || 'New',
           specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
