@@ -1816,7 +1816,7 @@ function processSMSResponse(fromNumber, messageBody, messageSid) {
     
     // Update assignment status if needed
     if (statusUpdate) {
-      const updateResult = updateAssignmentStatus(rider.name, statusUpdate);
+      const updateResult = updateAssignmentStatus(rider.name, statusUpdate, 'SMS');
       console.log(`📊 Status update result: ${updateResult.success ? 'Success' : 'Failed'}`);
     }
     
@@ -1891,7 +1891,7 @@ function findRiderByPhone(phoneNumber) {
 /**
  * Update assignment status based on rider response
  */
-function updateAssignmentStatus(riderName, newStatus) {
+function updateAssignmentStatus(riderName, newStatus, method) {
   try {
     console.log(`📊 Updating status for ${riderName} to ${newStatus}`);
     
@@ -1911,6 +1911,17 @@ function updateAssignmentStatus(riderName, newStatus) {
         const statusColIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status] + 1;
         
         sheet.getRange(rowNumber, statusColIndex).setValue(newStatus);
+
+        if (newStatus === 'Confirmed') {
+          const confirmedCol = assignmentsData.columnMap[CONFIG.columns.assignments.confirmedDate];
+          if (confirmedCol !== undefined) {
+            sheet.getRange(rowNumber, confirmedCol + 1).setValue(new Date());
+          }
+          const methodCol = assignmentsData.columnMap[CONFIG.columns.assignments.confirmationMethod];
+          if (methodCol !== undefined && method) {
+            sheet.getRange(rowNumber, methodCol + 1).setValue(method);
+          }
+        }
         
         console.log(`✅ Updated assignment ${assignmentId}: ${riderName} → ${newStatus}`);
         logActivity(`SMS Response: Assignment ${assignmentId} status updated to ${newStatus} for ${riderName}`);
@@ -1923,6 +1934,47 @@ function updateAssignmentStatus(riderName, newStatus) {
   } catch (error) {
     console.error('❌ Error updating assignment status:', error);
     logError('Error updating assignment status', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update assignment status by assignment ID
+ */
+function updateAssignmentStatusById(assignmentId, newStatus, method) {
+  try {
+    const assignmentsData = getAssignmentsData(false);
+    const sheet = assignmentsData.sheet;
+    const rowIndex = assignmentsData.data.findIndex(row =>
+      getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.id) === assignmentId
+    );
+
+    if (rowIndex === -1) {
+      return { success: false, error: 'Assignment not found' };
+    }
+
+    const rowNumber = rowIndex + 2;
+    const statusColIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status] + 1;
+    sheet.getRange(rowNumber, statusColIndex).setValue(newStatus);
+
+    if (newStatus === 'Confirmed') {
+      const confirmedCol = assignmentsData.columnMap[CONFIG.columns.assignments.confirmedDate];
+      if (confirmedCol !== undefined) {
+        sheet.getRange(rowNumber, confirmedCol + 1).setValue(new Date());
+      }
+      const methodCol = assignmentsData.columnMap[CONFIG.columns.assignments.confirmationMethod];
+      if (methodCol !== undefined && method) {
+        sheet.getRange(rowNumber, methodCol + 1).setValue(method);
+      }
+    }
+
+    logActivity(`Assignment ${assignmentId} status updated to ${newStatus}`);
+
+    return { success: true };
+
+  } catch (error) {
+    console.error('❌ Error updating assignment status by ID:', error);
+    logError('Error updating assignment status by ID', error);
     return { success: false, error: error.message };
   }
 }
@@ -2168,10 +2220,10 @@ function handleEmailMessage(fromEmail, messageBody) {
 
     if (cleanBody.includes('confirm') || cleanBody === 'yes' || cleanBody === 'y') {
       action = 'confirm';
-      updateAssignmentStatus(rider.name, 'Confirmed');
+      updateAssignmentStatus(rider.name, 'Confirmed', 'Email');
     } else if (cleanBody.includes('decline') || cleanBody.includes('cancel') || cleanBody === 'no' || cleanBody === 'n') {
       action = 'decline';
-      updateAssignmentStatus(rider.name, 'Declined');
+      updateAssignmentStatus(rider.name, 'Declined', 'Email');
     }
 
     return { action: action, rider: rider.name };

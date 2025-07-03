@@ -469,7 +469,7 @@ function updateAssignmentStatusSecured(user, assignmentId, newStatus, notes = ''
       }
     }
     
-    const result = updateAssignmentStatus(assignmentId, newStatus, notes, user.email);
+    const result = updateAssignmentStatusById(assignmentId, newStatus, 'Web');
     
     logUserAction(user, 'UPDATE_ASSIGNMENT_STATUS', assignmentId, result.success);
     
@@ -3500,6 +3500,8 @@ function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
         case CONFIG.columns.assignments.notified:
         case CONFIG.columns.assignments.smsSent:
         case CONFIG.columns.assignments.emailSent:
+        case CONFIG.columns.assignments.confirmedDate:
+        case CONFIG.columns.assignments.confirmationMethod:
         case CONFIG.columns.assignments.completedDate:
         case CONFIG.columns.assignments.calendarEventId:
           value = '';

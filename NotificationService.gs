@@ -1186,12 +1186,12 @@ function processSMSResponse(fromNumber, messageBody, messageSid) {
     
     if (cleanMessage.includes('confirm') || cleanMessage === 'yes' || cleanMessage === 'y') {
       action = 'confirm';
-      updateAssignmentStatus(rider.name, 'Confirmed');
+      updateAssignmentStatus(rider.name, 'Confirmed', 'SMS');
       autoReply = `✅ Thanks ${rider.name}! Your assignment is confirmed. Safe riding! 🏍️`;
       
     } else if (cleanMessage.includes('decline') || cleanMessage === 'no' || cleanMessage === 'n') {
       action = 'decline';
-      updateAssignmentStatus(rider.name, 'Declined');
+      updateAssignmentStatus(rider.name, 'Declined', 'SMS');
       autoReply = `📝 Thanks for letting us know, ${rider.name}. We'll find another rider.`;
       
     } else if (cleanMessage.includes('info') || cleanMessage.includes('details')) {
@@ -1252,7 +1252,7 @@ function findRiderByPhone(phoneNumber) {
 /**
  * Update assignment status based on rider response
  */
-function updateAssignmentStatus(riderName, newStatus) {
+function updateAssignmentStatus(riderName, newStatus, method) {
   try {
     const assignmentsData = getAssignmentsData();
     const sheet = assignmentsData.sheet;
@@ -1267,7 +1267,18 @@ function updateAssignmentStatus(riderName, newStatus) {
         const statusColIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status] + 1;
         
         sheet.getRange(rowNumber, statusColIndex).setValue(newStatus);
-        
+
+        if (newStatus === 'Confirmed') {
+          const confirmedCol = assignmentsData.columnMap[CONFIG.columns.assignments.confirmedDate];
+          if (confirmedCol !== undefined) {
+            sheet.getRange(rowNumber, confirmedCol + 1).setValue(new Date());
+          }
+          const methodCol = assignmentsData.columnMap[CONFIG.columns.assignments.confirmationMethod];
+          if (methodCol !== undefined && method) {
+            sheet.getRange(rowNumber, methodCol + 1).setValue(method);
+          }
+        }
+
         logActivity(`Assignment status updated: ${riderName} → ${newStatus}`);
         break;
       }
