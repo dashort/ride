@@ -491,3 +491,13 @@ function testServerConnection() {
     return { timestamp: new Date().toISOString(), serverStatus: 'ERROR', error: error.message };
   }
 }
+
+/**
+ * Rounds a duration in hours to the nearest 15 minute increment.
+ * @param {number} hours - Duration in decimal hours
+ * @return {number} Duration rounded to 0.25 hour increments
+ */
+function roundToQuarterHour(hours) {
+  if (typeof hours !== 'number' || isNaN(hours)) return 0;
+  return Math.round(hours * 4) / 4;
+}

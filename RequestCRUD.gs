@@ -648,8 +648,9 @@ function recordActualCompletionTimes(requestId) {
     // Calculate completion time and duration
     const completionTime = new Date();
     let actualDuration = calculateActualDuration(requestType, originalStartTime, originalEndTime);
-    
-    console.log(`Request type: ${requestType}, Calculated duration: ${actualDuration} hours`);
+    const actualDurationRounded = roundToQuarterHour(actualDuration);
+
+    console.log(`Request type: ${requestType}, Calculated duration: ${actualDurationRounded} hours`);
     
     // Update all related assignments
     const updateResults = [];
@@ -700,7 +701,7 @@ function recordActualCompletionTimes(requestId) {
         // Update actual duration
         if (columnMap.hasOwnProperty(CONFIG.columns.assignments.actualDuration)) {
           const actualDurationColumn = columnMap[CONFIG.columns.assignments.actualDuration] + 1;
-          updates.push({ column: actualDurationColumn, value: actualDuration });
+          updates.push({ column: actualDurationColumn, value: roundToQuarterHour(actualDuration) });
         }
         
         // Apply all updates for this assignment
@@ -712,14 +713,15 @@ function recordActualCompletionTimes(requestId) {
           }
         }
         
+        const roundedDuration = roundToQuarterHour(actualDuration);
         updateResults.push({
           rider: riderName,
           success: true,
-          duration: actualDuration,
+          duration: roundedDuration,
           updatedFields: updates.length
         });
-        
-        console.log(`✅ Updated assignment for ${riderName}: ${actualDuration} hours`);
+
+        console.log(`✅ Updated assignment for ${riderName}: ${roundedDuration} hours`);
         
       } catch (assignmentError) {
         console.error(`Error updating assignment at row ${assignmentInfo.rowIndex}:`, assignmentError);
@@ -748,7 +750,7 @@ function recordActualCompletionTimes(requestId) {
       requestId: requestId,
       assignmentsUpdated: successCount,
       assignmentsFailed: failCount,
-      duration: actualDuration,
+      duration: actualDurationRounded,
       requestType: requestType,
       details: updateResults
     };
@@ -793,7 +795,7 @@ function calculateActualDuration(requestType, originalStartTime, originalEndTime
         // Use calculated duration if it's reasonable (between 0.25 and 12 hours)
         if (calculatedDuration >= 0.25 && calculatedDuration <= 12) {
           console.log(`Using calculated duration from original times: ${calculatedDuration} hours`);
-          return Math.round(calculatedDuration * 100) / 100; // Round to 2 decimal places
+          return roundToQuarterHour(calculatedDuration);
         }
       }
     } catch (error) {
@@ -804,7 +806,7 @@ function calculateActualDuration(requestType, originalStartTime, originalEndTime
   // Fall back to type-based estimate
   const estimatedDuration = typeDurations[requestType] || typeDurations['Other'];
   console.log(`Using type-based duration estimate for ${requestType}: ${estimatedDuration} hours`);
-  return estimatedDuration;
+  return roundToQuarterHour(estimatedDuration);
 }
 
 /**
@@ -875,7 +877,7 @@ function manuallyRecordCompletion(requestId, customDuration = null) {
           
           if (columnMap.hasOwnProperty(CONFIG.columns.assignments.actualDuration)) {
             const actualDurationColumn = columnMap[CONFIG.columns.assignments.actualDuration] + 1;
-            assignmentsSheet.getRange(rowIndex, actualDurationColumn).setValue(customDuration);
+            assignmentsSheet.getRange(rowIndex, actualDurationColumn).setValue(roundToQuarterHour(customDuration));
           }
           
           updatedCount++;
@@ -884,12 +886,13 @@ function manuallyRecordCompletion(requestId, customDuration = null) {
       
       SpreadsheetApp.flush();
       
+      const rounded = roundToQuarterHour(customDuration);
       return {
         success: true,
-        message: `Manually recorded completion for ${updatedCount} assignment(s) with ${customDuration} hours`,
+        message: `Manually recorded completion for ${updatedCount} assignment(s) with ${rounded} hours`,
         requestId: requestId,
         assignmentsUpdated: updatedCount,
-        duration: customDuration,
+        duration: rounded,
         method: 'manual'
       };
     } else {
