@@ -2796,14 +2796,14 @@ function generateReportData(filters) {
             
             if (actualDuration && !isNaN(parseFloat(actualDuration))) {
               // Use recorded duration if available
-              hoursToAdd = parseFloat(actualDuration);
+              hoursToAdd = roundToQuarterHour(parseFloat(actualDuration));
               debugLog(`Using recorded duration: ${hoursToAdd} hours for ${assignmentRider}`);
             } else if (actualStart && actualEnd) {
               // Calculate from actual start/end times
               const startTime = parseTimeString(actualStart);
               const endTime = parseTimeString(actualEnd);
               if (startTime && endTime && endTime > startTime) {
-                hoursToAdd = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+                hoursToAdd = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
                 debugLog(`Calculated from actual times: ${hoursToAdd} hours for ${assignmentRider}`);
               }
             } else {
@@ -2887,7 +2887,7 @@ function getRealisticEscortHours(assignment, columnMap) {
         const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
         const estimatedHours = realisticEstimates[requestType] || realisticEstimates['Other'];
         debugLog(`Applied realistic estimate: ${estimatedHours} hours for ${requestType} escort (Request ID: ${requestId})`);
-        return estimatedHours;
+        return roundToQuarterHour(estimatedHours);
       }
     }
   } catch (error) {
@@ -2895,7 +2895,7 @@ function getRealisticEscortHours(assignment, columnMap) {
   }
   
   // Default fallback
-  return realisticEstimates['Other'];
+  return roundToQuarterHour(realisticEstimates['Other']);
 }
 
 /**
@@ -3256,12 +3256,12 @@ function generateRiderActivityReport(startDate, endDate) {
       let hoursToAdd = 0;
       
       if (actualDuration && !isNaN(parseFloat(actualDuration))) {
-        hoursToAdd = parseFloat(actualDuration);
+        hoursToAdd = roundToQuarterHour(parseFloat(actualDuration));
       } else if (actualStart && actualEnd) {
         const startTime = parseTimeString(actualStart);
         const endTime = parseTimeString(actualEnd);
         if (startTime && endTime && endTime > startTime) {
-          hoursToAdd = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+          hoursToAdd = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
         }
       }
       
@@ -3269,7 +3269,7 @@ function generateRiderActivityReport(startDate, endDate) {
       if (hoursToAdd === 0 && eventHasPassed) {
         hoursToAdd = getRealisticEscortHours(row, assignmentsData.columnMap);
       }
-      
+
       riderMap[rider].hours += hoursToAdd;
     });
 
@@ -3381,7 +3381,7 @@ function generateExecutiveSummary(startDate, endDate) {
             if (assignmentRequestId === requestId) {
               const actualDuration = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
               if (actualDuration && !isNaN(parseFloat(actualDuration))) {
-                requestHours += parseFloat(actualDuration);
+                requestHours += roundToQuarterHour(parseFloat(actualDuration));
               } else {
                 // Use realistic estimate for this assignment
                 const requestType = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type);
@@ -3392,7 +3392,7 @@ function generateExecutiveSummary(startDate, endDate) {
                   'Float Movement': 4.0,
                   'Other': 2.0
                 };
-                requestHours += realisticEstimates[requestType] || realisticEstimates['Other'];
+                requestHours += roundToQuarterHour(realisticEstimates[requestType] || realisticEstimates['Other']);
               }
             }
           });
@@ -3407,7 +3407,7 @@ function generateExecutiveSummary(startDate, endDate) {
             'Float Movement': 4.0,
             'Other': 2.0
           };
-          requestHours = realisticEstimates[requestType] || realisticEstimates['Other'];
+          requestHours = roundToQuarterHour(realisticEstimates[requestType] || realisticEstimates['Other']);
         }
         
         totalHours += requestHours;
