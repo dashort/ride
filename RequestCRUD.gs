@@ -82,7 +82,11 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.secondaryLocation:   value = requestData.secondaryLocation || ''; break;
             case CONFIG.columns.requests.type:                value = requestData.requestType; break; // Ensure 'type' matches CONFIG
             case CONFIG.columns.requests.ridersNeeded:        value = parseInt(requestData.ridersNeeded); break;
-            case CONFIG.columns.requests.status:              value = CONFIG.requestStatus.new; break; // Default status
+            case CONFIG.columns.requests.status:
+                value = (CONFIG.options && CONFIG.options.requestStatuses && CONFIG.options.requestStatuses.length > 0)
+                    ? CONFIG.options.requestStatuses[0]
+                    : 'New'; // Default status
+                break;
             case CONFIG.columns.requests.notes:               value = requestData.notes || ''; break;
             case CONFIG.columns.requests.assignedRiders:      value = ''; break; // Initially no riders assigned
             case CONFIG.columns.requests.lastModified:        value = new Date(); break;
