@@ -167,6 +167,24 @@ function syncRequestToCalendar(requestId) {
       }
     }
 
+    // NEW: Search for an event containing the request ID in the description
+    // within a reasonable date range in case the stored ID was lost and the
+    // event moved to a different day.
+    const searchStart = new Date(startDate.getTime());
+    searchStart.setDate(searchStart.getDate() - 7);
+    const searchEnd = new Date(startDate.getTime());
+    searchEnd.setDate(searchEnd.getDate() + 7);
+    if (!event) {
+      const potentialEvents = calendar.getEvents(searchStart, searchEnd);
+      for (let i = 0; i < potentialEvents.length; i++) {
+        const evt = potentialEvents[i];
+        if (evt.getDescription().indexOf(`Request ID: ${requestId}`) !== -1) {
+          event = evt;
+          break;
+        }
+      }
+    }
+
     if (event) {
       event.setTitle(title);
       Utilities.sleep(500); // Throttle to avoid Apps Script service quota errors
@@ -182,12 +200,11 @@ function syncRequestToCalendar(requestId) {
       sheet.getRange(rowIndex, idCol + 1).setValue(event.getId());
     }
 
-    // Remove any duplicate events that may exist for the same request
-    const eventsForDay = calendar.getEventsForDay(startDate);
-    for (var i = 0; i < eventsForDay.length; i++) {
-      var evt = eventsForDay[i];
-      if (evt.getTitle() === title &&
-          evt.getStartTime().getTime() === startDate.getTime() &&
+    // Remove any duplicate events that may exist for the same request.
+    const eventsInRange = calendar.getEvents(searchStart, searchEnd);
+    for (var i = 0; i < eventsInRange.length; i++) {
+      var evt = eventsInRange[i];
+      if (evt.getDescription().indexOf(`Request ID: ${requestId}`) !== -1 &&
           evt.getId() !== event.getId()) {
         try {
           evt.deleteEvent();
