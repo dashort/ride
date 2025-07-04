@@ -408,6 +408,9 @@
                     <button class="action-button" onclick="openAssignments()" id="assignRidersBtn">
                         🏍️ Assign Riders
                     </button>
+                    <button class="action-button" onclick="openRiderAvailability()" id="availabilityBtn">
+                        🗓️ Rider Availability
+                    </button>
                     <button class="action-button" onclick="sendBulkNotifications()" id="notificationsBtn">
                         📱 Send Notifications
                     </button>
@@ -771,6 +774,10 @@
 
     function openAssignments() {
         navigateTo('assignments');
+    }
+
+    function openRiderAvailability() {
+        navigateTo('availability');
     }
 
     function goToRiders(status) {
