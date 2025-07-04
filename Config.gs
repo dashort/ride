@@ -80,6 +80,7 @@ const CONFIG = {
     },
     riders: {
       jpNumber: 'Rider ID',
+      payrollNumber: 'Payroll Number',
       name: 'Full Name',
       phone: 'Phone Number',
       email: 'Email',
