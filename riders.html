@@ -587,6 +587,7 @@
                                 <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
                             </th>
                             <th>Rider ID</th>
+                            <th>Payroll Number</th>
                             <th>Name</th>
                             <th>Phone</th>
                             <th>Email</th>
@@ -626,6 +627,11 @@
                         <div class="form-group">
                             <label for="riderId">Rider ID *</label>
                             <input type="text" id="riderId" name="riderId" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="riderPayroll">Payroll Number</label>
+                            <input type="text" id="riderPayroll" name="riderPayroll" pattern="\d{5,8}" title="5-8 digits">
                         </div>
                         
                         <div class="form-group">
@@ -1077,6 +1083,7 @@ function editRider(riderId) {
   
   // Use the correct field names based on what we found
   document.getElementById('riderId').value = rider.jpNumber || rider['Rider ID'] || '';
+  document.getElementById('riderPayroll').value = rider.payrollNumber || rider['Payroll Number'] || '';
   document.getElementById('riderName').value = rider.name || rider['Full Name'] || '';
   document.getElementById('riderPhone').value = rider.phone || rider['Phone Number'] || '';
   document.getElementById('riderEmail').value = rider.email || rider['Email'] || '';
@@ -1197,6 +1204,7 @@ function saveRider() {
   // Map to your CONFIG column names
   const riderData = {
     'Rider ID': formData.get('riderId'),
+    'Payroll Number': formData.get('riderPayroll'),
     'Full Name': formData.get('riderName'),
     'Phone Number': formData.get('riderPhone'),
     'Email': formData.get('riderEmail'),
@@ -1218,6 +1226,11 @@ function saveRider() {
     
     console.error('❌ Missing required fields:', missingFields);
     showError('Please fill in all required fields: ' + missingFields.join(', '));
+    return;
+  }
+
+  if (riderData['Payroll Number'] && !/^\d{5,8}$/.test(riderData['Payroll Number'])) {
+    showError('Payroll Number must be 5-8 digits');
     return;
   }
   
@@ -1545,6 +1558,7 @@ function renderRidersTable(riders) {
     // Get the rider ID - try multiple field names
     const riderId = rider.jpNumber || rider['Rider ID'] || rider.riderId || `rider-${index}`;
     const riderName = rider.name || rider['Full Name'] || 'Unknown';
+    const payrollNumber = rider.payrollNumber || rider['Payroll Number'] || '';
     const riderPhone = rider.phone || rider['Phone Number'] || '';
     const riderEmail = rider.email || rider['Email'] || '';
     const riderStatus = rider.status || rider['Status'] || 'Active';
@@ -1564,6 +1578,7 @@ function renderRidersTable(riders) {
         <input type="checkbox" class="rider-checkbox" data-rider-id="${riderId}" onchange="updateSelection()">
       </td>
       <td>${riderId}</td>
+      <td>${payrollNumber}</td>
       <td class="rider-name-cell">${riderNameCell}</td>
       <td class="rider-phone-cell">${riderPhone}</td>
       <td>${riderEmail}</td>

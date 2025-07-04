@@ -298,6 +298,14 @@ function addRider(riderData) {
         throw new Error(`Missing required field: ${field}`);
       }
     }
+
+    // Validate payroll number if provided
+    if (riderData[CONFIG.columns.riders.payrollNumber]) {
+      const payroll = String(riderData[CONFIG.columns.riders.payrollNumber]).trim();
+      if (!/^\d{5,8}$/.test(payroll)) {
+        throw new Error('Payroll Number must be 5-8 digits');
+      }
+    }
     
     // Check for duplicate Rider ID
     const existingRider = getRiderDetails(riderData[CONFIG.columns.riders.jpNumber]);
@@ -350,6 +358,8 @@ function addRider(riderData) {
           return normalizedPartTime || 'No';
         case CONFIG.columns.riders.platoon:
           return normalizedPlatoon || '';
+        case CONFIG.columns.riders.payrollNumber:
+          return riderData[header] || '';
         case CONFIG.columns.riders.certification:
           return riderData[header] || 'Standard';
         default:
@@ -394,10 +404,18 @@ function updateRider(riderData) {
     console.log('📝 Updating rider:', JSON.stringify(riderData, null, 2));
     
     const riderIdField = CONFIG.columns.riders.jpNumber;
-    const riderId = riderData[riderIdField];
-    
-    if (!riderId) {
-      throw new Error(`Missing Rider ID (${riderIdField}) in update data`);
+  const riderId = riderData[riderIdField];
+
+  if (!riderId) {
+    throw new Error(`Missing Rider ID (${riderIdField}) in update data`);
+  }
+
+    // Validate payroll number if provided
+    if (riderData[CONFIG.columns.riders.payrollNumber]) {
+      const payroll = String(riderData[CONFIG.columns.riders.payrollNumber]).trim();
+      if (!/^\d{5,8}$/.test(payroll)) {
+        throw new Error('Payroll Number must be 5-8 digits');
+      }
     }
     
     // Fetch current sheet data
@@ -592,6 +610,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   
   // Add convenient access properties using CONFIG column names
   rider.jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber) || '';
+  rider.payrollNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.payrollNumber) || '';
   rider.name = getColumnValue(row, columnMap, CONFIG.columns.riders.name) || '';
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
