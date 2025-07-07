@@ -1361,16 +1361,21 @@ function doGet(e) {
     else if (rider?.status === 'Active') userRole = 'rider';
     else return createUnauthorizedPage(userSession.email, userSession.name);
     
-    const user = {
+  const user = {
       name: userSession.name || rider?.name || 'User',
       email: userSession.email,
       role: userRole,
       avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
     };
     
-    // Page loading
-    let pageName = e.parameter?.page || 'dashboard';
-    let pageFile = pageName;
+  // Page loading
+  let pageName = e.parameter?.page || 'dashboard';
+  let pageFile = pageName;
+
+  const access = checkPageAccessSafe(pageName, user, rider);
+  if (!access.allowed) {
+    return createAccessDeniedPage(access.reason, user);
+  }
     
     if (userRole === 'admin' && pageName === 'dashboard') pageFile = 'admin-dashboard';
     else if (userRole === 'rider' && pageName === 'dashboard') pageFile = 'rider-dashboard';

@@ -28,6 +28,9 @@ const SECURITY_CONFIG = {
   alertOnSuspiciousActivity: true
 };
 
+// Script property key used to invalidate all active sessions
+const SESSION_RESET_KEY = 'SESSION_RESET_EPOCH';
+
 /**
  * Enhanced password validation with comprehensive requirements
  */
@@ -377,8 +380,17 @@ function validateSecureSession() {
       return { valid: false, reason: 'No session found' };
     }
     
-    const session = JSON.parse(sessionData);
-    const now = Date.now();
+  const session = JSON.parse(sessionData);
+  const now = Date.now();
+
+    // Global session reset check
+    const resetEpochStr = PropertiesService.getScriptProperties().getProperty(SESSION_RESET_KEY);
+    const resetEpoch = resetEpochStr ? parseInt(resetEpochStr, 10) : 0;
+    if (resetEpoch && session.created < resetEpoch) {
+      clearSecureSession();
+      logSecurityEvent('SESSION_INVALIDATED', { email: session.email, sessionId: session.id });
+      return { valid: false, reason: 'Session reset by administrator' };
+    }
     
     // Check expiration
     if (session.expires < now) {
@@ -595,6 +607,20 @@ function secureLogout() {
   } catch (error) {
     logSecurityEvent('LOGOUT_ERROR', { error: error.message });
     return { success: false, message: 'Logout error occurred' };
+  }
+}
+
+/**
+ * Invalidate all user sessions by updating the global reset timestamp
+ */
+function resetAllUserSessions() {
+  try {
+    PropertiesService.getScriptProperties().setProperty(SESSION_RESET_KEY, Date.now().toString());
+    logSecurityEvent('ALL_SESSIONS_RESET', { timestamp: new Date().toISOString() });
+    return { success: true };
+  } catch (error) {
+    logSecurityEvent('RESET_ALL_SESSIONS_ERROR', { error: error.message });
+    return { success: false, message: error.message };
   }
 }
 
