@@ -603,7 +603,7 @@ function getAdminDashboardData() {
     }
     
     const result = {
-      totalRequests: requests.length,
+      totalRequests: requests.filter(r => String(r.status || r['Status']).trim() !== 'Completed').length,
       totalRiders: activeRiders,
       totalAssignments: assignments.length,
       pendingNotifications: pendingNotifications,
