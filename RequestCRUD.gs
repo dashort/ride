@@ -86,7 +86,7 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.type:                value = requestData.requestType; break; // Ensure 'type' matches CONFIG
             case CONFIG.columns.requests.ridersNeeded:        value = parseInt(requestData.ridersNeeded); break;
             case CONFIG.columns.requests.escortFee:
-                value = requestData.escortFee ? parseFloat(requestData.escortFee) : '';
+                value = parseCurrencyValue(requestData.escortFee);
                 break;
             case CONFIG.columns.requests.status:
                 value = (CONFIG.options && CONFIG.options.requestStatuses && CONFIG.options.requestStatuses.length > 0)
@@ -349,6 +349,29 @@ function parseDateString(dateInput) {
 }
 
 /**
+ * Parses a currency/string value and returns a float.
+ * Strips any non-numeric characters like $ or commas.
+ * Returns '' if parsing fails or value is empty.
+ *
+ * @param {string|number} value The value to parse.
+ * @return {number|string} Parsed float or empty string.
+ */
+function parseCurrencyValue(value) {
+  if (value === undefined || value === null || value === '') {
+    return '';
+  }
+  if (typeof value === 'number') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9.-]/g, '');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? '' : parsed;
+  }
+  return '';
+}
+
+/**
  * Updates an existing request in the 'Requests' sheet.
  * @param {object} requestData - An object containing the request data to update.
  * @return {object} An object indicating success or failure, with a message.
@@ -487,10 +510,7 @@ function updateExistingRequest(requestData) {
             break;
 
           case CONFIG.columns.requests.escortFee:
-            if (value !== undefined && value !== null && value !== '') {
-              value = parseFloat(value);
-              if (isNaN(value)) value = '';
-            }
+            value = parseCurrencyValue(value);
             break;
             
           case CONFIG.columns.requests.courtesy:
