@@ -5818,14 +5818,29 @@ function authenticateUser() {
       };
     }
     
+    // Safely get user name with fallback
+    let userName = null;
+    try {
+      if (user && typeof user.getName === 'function') {
+        userName = user.getName();
+      }
+    } catch (e) {
+      console.log('⚠️ Cannot get name from user object, using fallback');
+    }
+    
+    // Use rider name or email prefix as fallback
+    if (!userName) {
+      userName = rider?.name || userEmail.split('@')[0];
+    }
+    
     return {
       success: true,
       user: {
-        name: user.getName() || rider?.name,
+        name: userName,
         email: userEmail,
         role: userRole,
         permissions: permissions,
-        avatar: (user.getName() || rider?.name || 'U').charAt(0).toUpperCase()
+        avatar: (userName || 'U').charAt(0).toUpperCase()
       },
       rider: rider
     };

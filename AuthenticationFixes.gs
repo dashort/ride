@@ -459,3 +459,172 @@ function runCompleteAuthSetup() {
     };
   }
 }
+
+/**
+ * TEST AUTHENTICATION SYSTEM AFTER FIXES
+ * Run this to verify the getName() fixes are working
+ */
+function testAuthenticationAfterFixes() {
+  console.log('🧪 === TESTING AUTHENTICATION SYSTEM AFTER FIXES ===');
+  
+  const results = {
+    sessionTest: null,
+    enhancedSessionTest: null,
+    authenticateUserTest: null,
+    authenticateAndAuthorizeTest: null,
+    permissionTest: null,
+    summary: { passed: 0, failed: 0, issues: [] }
+  };
+  
+  // Test 1: Basic session test
+  try {
+    console.log('1. Testing basic session...');
+    const user = Session.getActiveUser();
+    const email = user ? user.getEmail() : 'no-email';
+    
+    results.sessionTest = {
+      success: true,
+      hasUser: !!user,
+      userType: typeof user,
+      email: email,
+      hasGetNameMethod: user && typeof user.getName === 'function'
+    };
+    
+    console.log('✅ Basic session test passed');
+    results.summary.passed++;
+    
+  } catch (e) {
+    results.sessionTest = { success: false, error: e.message };
+    results.summary.failed++;
+    results.summary.issues.push('Basic session test failed: ' + e.message);
+    console.log('❌ Basic session test failed:', e.message);
+  }
+  
+  // Test 2: Enhanced session test
+  try {
+    console.log('2. Testing enhanced session...');
+    const enhancedSession = getEnhancedUserSession();
+    
+    results.enhancedSessionTest = {
+      success: true,
+      hasEmail: enhancedSession.hasEmail,
+      hasName: enhancedSession.hasName,
+      email: enhancedSession.email,
+      name: enhancedSession.name,
+      source: enhancedSession.source
+    };
+    
+    console.log('✅ Enhanced session test passed');
+    results.summary.passed++;
+    
+  } catch (e) {
+    results.enhancedSessionTest = { success: false, error: e.message };
+    results.summary.failed++;
+    results.summary.issues.push('Enhanced session test failed: ' + e.message);
+    console.log('❌ Enhanced session test failed:', e.message);
+  }
+  
+  // Test 3: authenticateUser test
+  try {
+    console.log('3. Testing authenticateUser...');
+    const authResult = authenticateUser();
+    
+    results.authenticateUserTest = {
+      success: authResult.success,
+      userEmail: authResult.user?.email,
+      userName: authResult.user?.name,
+      userRole: authResult.user?.role,
+      error: authResult.error
+    };
+    
+    if (authResult.success) {
+      console.log('✅ authenticateUser test passed');
+      results.summary.passed++;
+    } else {
+      console.log('❌ authenticateUser test failed:', authResult.error);
+      results.summary.failed++;
+      results.summary.issues.push('authenticateUser failed: ' + authResult.error);
+    }
+    
+  } catch (e) {
+    results.authenticateUserTest = { success: false, error: e.message };
+    results.summary.failed++;
+    results.summary.issues.push('authenticateUser test failed: ' + e.message);
+    console.log('❌ authenticateUser test failed:', e.message);
+  }
+  
+  // Test 4: authenticateAndAuthorizeUser test
+  try {
+    console.log('4. Testing authenticateAndAuthorizeUser...');
+    const authResult = authenticateAndAuthorizeUser();
+    
+    results.authenticateAndAuthorizeTest = {
+      success: authResult.success,
+      userEmail: authResult.user?.email,
+      userName: authResult.user?.name,
+      userRole: authResult.user?.role,
+      error: authResult.error
+    };
+    
+    if (authResult.success) {
+      console.log('✅ authenticateAndAuthorizeUser test passed');
+      results.summary.passed++;
+    } else {
+      console.log('❌ authenticateAndAuthorizeUser test failed:', authResult.error);
+      results.summary.failed++;
+      results.summary.issues.push('authenticateAndAuthorizeUser failed: ' + authResult.error);
+    }
+    
+  } catch (e) {
+    results.authenticateAndAuthorizeTest = { success: false, error: e.message };
+    results.summary.failed++;
+    results.summary.issues.push('authenticateAndAuthorizeUser test failed: ' + e.message);
+    console.log('❌ authenticateAndAuthorizeUser test failed:', e.message);
+  }
+  
+  // Test 5: Permission test
+  try {
+    console.log('5. Testing permission system...');
+    const testUser = {
+      role: 'admin',
+      email: 'test@example.com',
+      name: 'Test User'
+    };
+    
+    const hasPerms = hasPermission(testUser, 'assignments', 'assign_any');
+    
+    results.permissionTest = {
+      success: true,
+      hasPermission: hasPerms,
+      testUser: testUser
+    };
+    
+    console.log('✅ Permission test passed');
+    results.summary.passed++;
+    
+  } catch (e) {
+    results.permissionTest = { success: false, error: e.message };
+    results.summary.failed++;
+    results.summary.issues.push('Permission test failed: ' + e.message);
+    console.log('❌ Permission test failed:', e.message);
+  }
+  
+  // Final summary
+  console.log('\n🎯 === TEST RESULTS SUMMARY ===');
+  console.log(`✅ Passed: ${results.summary.passed}`);
+  console.log(`❌ Failed: ${results.summary.failed}`);
+  
+  if (results.summary.issues.length > 0) {
+    console.log('\n🚨 Issues found:');
+    results.summary.issues.forEach((issue, index) => {
+      console.log(`${index + 1}. ${issue}`);
+    });
+  }
+  
+  const overallSuccess = results.summary.failed === 0;
+  console.log(`\n🎯 Overall result: ${overallSuccess ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`);
+  
+  results.overallSuccess = overallSuccess;
+  
+  return results;
+}

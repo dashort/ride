@@ -306,12 +306,21 @@ function getEnhancedUserSession() {
           sessionSource = 'active_user_property';
         }
         
-        // Safe way to get name
+        // Safe way to get name with better error handling
         try {
-          userName = user.getName ? user.getName() : (user.name || '');
+          if (user && typeof user.getName === 'function') {
+            userName = user.getName();
+          } else {
+            userName = user.name || user.displayName || '';
+          }
         } catch (e) {
-          console.log('⚠️ getName() failed, trying alternatives...');
+          console.log('⚠️ getName() failed, using fallback:', e.message);
           userName = user.name || user.displayName || '';
+        }
+        
+        // If still no name, extract from email
+        if (!userName && userEmail) {
+          userName = extractNameFromEmail(userEmail);
         }
       }
     } catch (error) {
@@ -325,8 +334,23 @@ function getEnhancedUserSession() {
         console.log('🔄 Trying Session.getEffectiveUser()...');
         const effectiveUser = Session.getEffectiveUser();
         if (effectiveUser) {
-          userEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
-          userName = effectiveUser.getName ? effectiveUser.getName() : (effectiveUser.name || '');
+          // Safe way to get email from effective user
+          try {
+            userEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
+          } catch (e) {
+            userEmail = effectiveUser.email || '';
+          }
+          
+          // Safe way to get name from effective user
+          try {
+            if (effectiveUser && typeof effectiveUser.getName === 'function') {
+              userName = effectiveUser.getName();
+            } else {
+              userName = effectiveUser.name || effectiveUser.displayName || '';
+            }
+          } catch (e) {
+            userName = effectiveUser.name || effectiveUser.displayName || '';
+          }
           sessionSource = 'effective_user';
         }
       } catch (error) {
