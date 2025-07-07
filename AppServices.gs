@@ -434,7 +434,22 @@ function deleteRequestSecured(user, requestId) {
  */
 function assignRidersToRequestSecured(user, requestId, riderNames) {
   try {
-    if (!hasPermission(user, 'assignments', 'assign_any')) {
+    // Enhanced permission check with debugging
+    console.log('🔒 Checking permission for user:', user.email, 'role:', user.role);
+    
+    let hasAssignPermission = false;
+    try {
+      hasAssignPermission = hasPermission(user, 'assignments', 'assign_any');
+    } catch (permError) {
+      console.error('❌ Permission check failed:', permError);
+      // Temporary fallback - check if user is admin
+      hasAssignPermission = user.role === 'admin' || user.role === 'dispatcher';
+    }
+    
+    console.log('🔒 Permission result:', hasAssignPermission);
+    
+    if (!hasAssignPermission) {
+      console.log('❌ Permission denied for user:', user.email, 'role:', user.role);
       return { success: false, error: 'You do not have permission to assign riders' };
     }
     
