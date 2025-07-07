@@ -796,6 +796,148 @@ function diagnoseAuthenticationIssue() {
     return { error: error.message };
   }
 }
+
+/**
+ * EMERGENCY AUTHENTICATION DEBUG FUNCTIONS
+ * Add these functions to help diagnose and fix the permission issues
+ */
+
+/**
+ * Debug current authentication issue
+ */
+function debugCurrentAuthIssue() {
+  console.log('=== AUTHENTICATION DEBUG ===');
+  
+  // Test 1: Check session
+  try {
+    const user = Session.getActiveUser();
+    const email = user.getEmail();
+    console.log('1. Current session email:', email);
+  } catch (e) {
+    console.log('1. Session error:', e.message);
+  }
+  
+  // Test 2: Check authentication function
+  try {
+    const auth = authenticateAndAuthorizeUser();
+    console.log('2. Auth result:', auth.success ? 'SUCCESS' : 'FAILED');
+    console.log('   User email:', auth.user?.email);
+    console.log('   User role:', auth.user?.role);
+    console.log('   Error:', auth.error || 'none');
+  } catch (e) {
+    console.log('2. Auth function error:', e.message);
+  }
+  
+  // Test 3: Check admin users
+  try {
+    const admins = getAdminUsers();
+    console.log('3. Admin users:', admins);
+  } catch (e) {
+    console.log('3. Admin users error:', e.message);
+  }
+  
+  // Test 4: Check permission function availability
+  try {
+    console.log('4. Permission function types:');
+    console.log('   typeof hasPermission:', typeof hasPermission);
+    console.log('   typeof hasHybridPermission:', typeof hasHybridPermission);
+  } catch (e) {
+    console.log('4. Permission function error:', e.message);
+  }
+  
+  // Test 5: Test permission check
+  try {
+    const testUser = { role: 'admin', email: 'test@example.com' };
+    const hasPerms = hasPermission(testUser, 'assignments', 'assign_any');
+    console.log('5. Permission test result:', hasPerms);
+  } catch (e) {
+    console.log('5. Permission function error:', e.message);
+  }
+  
+  // Test 6: Check Settings sheet
+  try {
+    const settingsResult = diagnoseSettingsSheet();
+    console.log('6. Settings sheet diagnosis:', settingsResult.success ? 'SUCCESS' : 'FAILED');
+    if (settingsResult.adminEmailsInB2B10) {
+      console.log('   Admin emails found:', settingsResult.adminEmailsInB2B10);
+    }
+  } catch (e) {
+    console.log('6. Settings sheet error:', e.message);
+  }
+  
+  return {
+    timestamp: new Date().toISOString(),
+    message: 'Debug completed - check console logs for details'
+  };
+}
+
+/**
+ * Temporary bypass for permission checks (DEBUGGING ONLY)
+ */
+function bypassPermissionCheck() {
+  console.log('⚠️ BYPASSING PERMISSION CHECK - FOR DEBUGGING ONLY');
+  return true;
+}
+
+/**
+ * Clear authentication cache
+ */
+function clearAuthenticationCache() {
+  try {
+    // Clear user properties
+    PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
+    
+    console.log('✅ Authentication cache cleared');
+    return { success: true };
+  } catch (error) {
+    console.log('❌ Error clearing cache:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Force refresh user session and test authentication
+ */
+function forceRefreshAuthentication() {
+  console.log('🔄 Force refreshing authentication...');
+  
+  try {
+    // Step 1: Clear cache
+    const clearResult = clearAuthenticationCache();
+    console.log('Cache clear result:', clearResult);
+    
+    // Step 2: Get fresh session
+    const session = getEnhancedUserSession();
+    console.log('Fresh session:', session);
+    
+    // Step 3: Test authentication
+    const auth = authenticateAndAuthorizeUser();
+    console.log('Auth test result:', auth);
+    
+    // Step 4: Test permission
+    if (auth.success) {
+      const permTest = hasPermission(auth.user, 'assignments', 'assign_any');
+      console.log('Permission test:', permTest);
+    }
+    
+    return {
+      success: true,
+      clearResult,
+      session,
+      auth,
+      message: 'Authentication refresh completed'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in force refresh:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
 /**
  * Clear all authentication cache and force fresh session detection
  */
@@ -2330,7 +2472,6 @@ function sendPendingSMS() { sendBulkByStatus('SMS', 'pending'); }
 function sendPendingEmail() { sendBulkByStatus('Email', 'pending'); }
 /** @return {void} Sends Both SMS and Email for pending assignments (never notified). */
 function sendPendingBoth() { sendBulkByStatus('Both', 'pending'); }
-
 // All assigned requests
 /** @return {void} Sends SMS for all active, assigned requests. */
 function sendAllAssignedSMS() { sendBulkByStatus('SMS', 'assigned'); }

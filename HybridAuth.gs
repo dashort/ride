@@ -314,9 +314,10 @@ function getCurrentUser() {
 }
 
 /**
- * Check if user has specific permission
+ * Check if user has specific permission (Hybrid Auth version)
+ * RENAMED to avoid conflict with AccessControl.gs hasPermission function
  */
-function hasPermission(action, resource) {
+function hasHybridPermission(action, resource) {
   try {
     const userResult = getCurrentUser();
     if (!userResult.success) return false;
