@@ -758,6 +758,32 @@ function extractNameFromEmail(email) {
     return 'User';
   }
 }
+
+/**
+ * Safe wrapper for getting riders data as objects
+ * Converts the result of getRidersData() to an array of objects
+ */
+function getRidersDataSafe() {
+  try {
+    // getRidersData returns {headers,data,columnMap,sheet}
+    if (typeof getRidersData === 'function') {
+      const ridersData = getRidersData();
+      if (ridersData && ridersData.data && ridersData.columnMap) {
+        return ridersData.data.map(row => {
+          const rider = {};
+          for (const [header, idx] of Object.entries(ridersData.columnMap)) {
+            rider[header] = row[idx];
+          }
+          return rider;
+        });
+      }
+    }
+    return [];
+  } catch (error) {
+    console.error('❌ Error in getRidersDataSafe:', error);
+    return [];
+  }
+}
 /**
  * 🔐 COMPLETE AUTHENTICATION FUNCTIONS
  * Add these to your Authentication.js file (or Code.js if you prefer)
