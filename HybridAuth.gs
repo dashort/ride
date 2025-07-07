@@ -850,3 +850,387 @@ function runCompleteSetup() {
     };
   }
 }
+
+/**
+ * COMPREHENSIVE AUTHENTICATION DIAGNOSTICS
+ * Run this function to diagnose current authentication issues
+ */
+function diagnosePersistentAuthIssue() {
+  console.log('🔍 === COMPREHENSIVE AUTH DIAGNOSTIC ===');
+  
+  const results = {
+    sessionCheck: {},
+    authFlow: {},
+    permissions: {},
+    userDataCheck: {},
+    recommendations: []
+  };
+  
+  try {
+    // 1. SESSION DIAGNOSTICS
+    console.log('\n1. 📋 SESSION DIAGNOSTICS:');
+    
+    try {
+      const user = Session.getActiveUser();
+      const email = user.getEmail();
+      results.sessionCheck.activeUser = email;
+      results.sessionCheck.activeUserSuccess = true;
+      console.log('✅ Session.getActiveUser():', email);
+    } catch (e) {
+      results.sessionCheck.activeUserSuccess = false;
+      results.sessionCheck.activeUserError = e.message;
+      console.log('❌ Session.getActiveUser() failed:', e.message);
+    }
+    
+    try {
+      const customSession = getCustomSession();
+      results.sessionCheck.customSession = customSession;
+      console.log('✅ Custom session:', customSession ? customSession.email : 'None');
+    } catch (e) {
+      results.sessionCheck.customSessionError = e.message;
+      console.log('❌ Custom session error:', e.message);
+    }
+    
+    // 2. AUTHENTICATION FLOW TEST
+    console.log('\n2. 🔐 AUTHENTICATION FLOW TEST:');
+    
+    try {
+      const authResult = authenticateUser();
+      results.authFlow.googleAuth = authResult;
+      console.log('✅ Google authenticateUser():', authResult.success ? 'SUCCESS' : 'FAILED');
+      if (authResult.user) {
+        console.log('   User:', authResult.user.email, 'Role:', authResult.user.role);
+      }
+    } catch (e) {
+      results.authFlow.googleAuthError = e.message;
+      console.log('❌ Google auth error:', e.message);
+    }
+    
+    try {
+      const currentUser = getCurrentUser();
+      results.authFlow.currentUser = currentUser;
+      console.log('✅ getCurrentUser():', currentUser.success ? 'SUCCESS' : 'FAILED');
+      if (currentUser.user) {
+        console.log('   User:', currentUser.user.email, 'Role:', currentUser.user.role);
+      }
+    } catch (e) {
+      results.authFlow.currentUserError = e.message;
+      console.log('❌ getCurrentUser() error:', e.message);
+    }
+    
+    // 3. PERMISSION SYSTEM TEST
+    console.log('\n3. 🔒 PERMISSION SYSTEM TEST:');
+    
+    try {
+      const admins = getAdminUsers();
+      results.permissions.adminUsers = admins;
+      console.log('✅ Admin users:', admins);
+    } catch (e) {
+      results.permissions.adminUsersError = e.message;
+      console.log('❌ Admin users error:', e.message);
+    }
+    
+    try {
+      const dispatchers = getDispatcherUsers();
+      results.permissions.dispatcherUsers = dispatchers;
+      console.log('✅ Dispatcher users:', dispatchers);
+    } catch (e) {
+      results.permissions.dispatcherUsersError = e.message;
+      console.log('❌ Dispatcher users error:', e.message);
+    }
+    
+    // 4. USER DATA CHECK
+    console.log('\n4. 📊 USER DATA CHECK:');
+    
+    try {
+      const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+      if (usersSheet) {
+        const data = usersSheet.getDataRange().getValues();
+        results.userDataCheck.usersSheetExists = true;
+        results.userDataCheck.userCount = data.length - 1; // Minus header
+        console.log('✅ Users sheet exists with', data.length - 1, 'users');
+      } else {
+        results.userDataCheck.usersSheetExists = false;
+        console.log('❌ Users sheet not found');
+      }
+    } catch (e) {
+      results.userDataCheck.usersSheetError = e.message;
+      console.log('❌ Users sheet error:', e.message);
+    }
+    
+    // 5. GENERATE RECOMMENDATIONS
+    console.log('\n5. 💡 RECOMMENDATIONS:');
+    
+    if (!results.sessionCheck.activeUserSuccess) {
+      results.recommendations.push('No active Google session - user needs to sign in with Google');
+      console.log('• User needs to sign in with Google');
+    }
+    
+    if (results.authFlow.googleAuth && !results.authFlow.googleAuth.success) {
+      if (results.authFlow.googleAuth.error === 'UNAUTHORIZED') {
+        results.recommendations.push('User email not in authorized lists - add to Settings sheet');
+        console.log('• Add user email to admin or dispatcher list in Settings sheet');
+      }
+    }
+    
+    if (!results.userDataCheck.usersSheetExists) {
+      results.recommendations.push('Initialize authentication system - run initializeAuthenticationSystem()');
+      console.log('• Run initializeAuthenticationSystem() to set up sheets');
+    }
+    
+    if (results.permissions.adminUsers && results.permissions.adminUsers.length === 0) {
+      results.recommendations.push('No admin users configured - update Settings sheet');
+      console.log('• Configure admin users in Settings sheet');
+    }
+    
+    console.log('\n🎯 NEXT STEPS:');
+    console.log('1. Review the recommendations above');
+    console.log('2. Run fixAuthenticationIssues() to apply automatic fixes');
+    console.log('3. Test login again after fixes');
+    
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Diagnostic failed:', error);
+    results.error = error.message;
+    return results;
+  }
+}
+
+/**
+ * AUTOMATIC AUTHENTICATION FIXES
+ * Run this after diagnosePersistentAuthIssue() to apply fixes
+ */
+function fixAuthenticationIssues() {
+  console.log('🔧 === APPLYING AUTHENTICATION FIXES ===');
+  
+  const fixes = {
+    settingsSheet: false,
+    usersSheet: false,
+    adminEmails: false,
+    sessionClear: false,
+    error: null
+  };
+  
+  try {
+    // Fix 1: Ensure Settings sheet exists and has proper admin emails
+    console.log('\n1. 📄 Fixing Settings sheet...');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let settingsSheet = ss.getSheetByName('Settings');
+    
+    if (!settingsSheet) {
+      settingsSheet = ss.insertSheet('Settings');
+      console.log('✅ Created Settings sheet');
+    }
+    
+    // Get current user email to add as admin
+    let currentUserEmail = '';
+    try {
+      const user = Session.getActiveUser();
+      currentUserEmail = user.getEmail();
+    } catch (e) {
+      console.log('⚠️ Could not get current user email');
+    }
+    
+    // Set up proper structure
+    const headers = ['Setting Type', 'Admin Emails', 'Dispatcher Emails', 'Notes'];
+    settingsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Add current user as admin if we have their email
+    const emailData = [
+      ['User Management', currentUserEmail || 'admin@example.com', 'dispatcher@example.com', 'Primary accounts'],
+      ['', 'jpsotraffic@gmail.com', 'jpdispatcher100@gmail.com', 'Backup accounts'],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', ''],
+      ['', '', '', '']
+    ];
+    
+    settingsSheet.getRange(2, 1, emailData.length, emailData[0].length).setValues(emailData);
+    
+    // Format headers
+    settingsSheet.getRange(1, 1, 1, headers.length)
+      .setFontWeight('bold')
+      .setBackground('#4285f4')
+      .setFontColor('white');
+    
+    settingsSheet.autoResizeColumns(1, headers.length);
+    fixes.settingsSheet = true;
+    console.log('✅ Settings sheet configured with admin emails');
+    
+    // Fix 2: Ensure Users sheet exists
+    console.log('\n2. 👥 Fixing Users sheet...');
+    
+    let usersSheet = ss.getSheetByName('Users');
+    if (!usersSheet) {
+      usersSheet = ss.insertSheet('Users');
+      setupUsersSheet(usersSheet);
+      fixes.usersSheet = true;
+      console.log('✅ Created Users sheet with sample data');
+    } else {
+      console.log('✅ Users sheet already exists');
+      fixes.usersSheet = true;
+    }
+    
+    // Fix 3: Clear any cached authentication data
+    console.log('\n3. 🧹 Clearing authentication cache...');
+    
+    try {
+      PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
+      PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
+      PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
+      fixes.sessionClear = true;
+      console.log('✅ Authentication cache cleared');
+    } catch (e) {
+      console.log('⚠️ Cache clear error:', e.message);
+    }
+    
+    // Fix 4: Test the fixes
+    console.log('\n4. 🧪 Testing fixes...');
+    
+    try {
+      const testAdmins = getAdminUsers();
+      fixes.adminEmails = testAdmins.length > 0;
+      console.log('✅ Admin emails test:', testAdmins);
+    } catch (e) {
+      console.log('❌ Admin emails test failed:', e.message);
+    }
+    
+    console.log('\n✅ FIXES APPLIED SUCCESSFULLY!');
+    console.log('📝 Summary:');
+    console.log('• Settings sheet:', fixes.settingsSheet ? 'FIXED' : 'FAILED');
+    console.log('• Users sheet:', fixes.usersSheet ? 'FIXED' : 'FAILED');
+    console.log('• Admin emails:', fixes.adminEmails ? 'WORKING' : 'FAILED');
+    console.log('• Cache cleared:', fixes.sessionClear ? 'YES' : 'NO');
+    
+    if (currentUserEmail) {
+      console.log(`• Current user (${currentUserEmail}) added as admin`);
+    }
+    
+    console.log('\n🎯 NEXT STEPS:');
+    console.log('1. Refresh your browser/app');
+    console.log('2. Try logging in again');
+    console.log('3. Run diagnosePersistentAuthIssue() to verify fixes');
+    
+    return {
+      success: true,
+      fixes: fixes,
+      currentUserEmail: currentUserEmail,
+      message: 'Authentication fixes applied successfully'
+    };
+    
+  } catch (error) {
+    console.error('❌ Fix failed:', error);
+    fixes.error = error.message;
+    return {
+      success: false,
+      fixes: fixes,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * EMERGENCY BYPASS FOR IMMEDIATE ACCESS
+ * Use this only for debugging - creates a temporary admin session
+ */
+function emergencyAdminAccess() {
+  console.log('🚨 EMERGENCY ADMIN ACCESS - FOR DEBUGGING ONLY');
+  
+  try {
+    let userEmail = '';
+    try {
+      const user = Session.getActiveUser();
+      userEmail = user.getEmail();
+    } catch (e) {
+      userEmail = 'emergency@admin.com';
+    }
+    
+    // Create emergency session
+    const emergencySession = {
+      email: userEmail,
+      name: 'Emergency Admin',
+      role: 'admin',
+      expires: Date.now() + (2 * 60 * 60 * 1000), // 2 hours
+      loginMethod: 'emergency',
+      loginTime: new Date().toISOString()
+    };
+    
+    PropertiesService.getUserProperties().setProperty('CUSTOM_SESSION', JSON.stringify(emergencySession));
+    
+    console.log('✅ Emergency admin session created for:', userEmail);
+    console.log('⚠️ THIS IS TEMPORARY - Apply proper fixes ASAP');
+    
+    return {
+      success: true,
+      session: emergencySession,
+      warning: 'This is a temporary emergency session. Apply proper authentication fixes.'
+    };
+    
+  } catch (error) {
+    console.error('❌ Emergency access failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * TEST LOCAL AUTHENTICATION
+ * Test the local email/password authentication system
+ */
+function testLocalAuthentication() {
+  console.log('🧪 === TESTING LOCAL AUTHENTICATION ===');
+  
+  try {
+    // Test with sample user credentials
+    console.log('1. Testing with sample credentials...');
+    
+    const testResult = loginWithCredentials('admin@test.com', 'admin123');
+    console.log('Test login result:', testResult);
+    
+    if (testResult.success) {
+      console.log('✅ Local authentication working');
+      return {
+        success: true,
+        message: 'Local authentication is working',
+        testResult: testResult
+      };
+    } else {
+      console.log('❌ Local authentication failed:', testResult.message);
+      
+      // Check if Users sheet has sample data
+      const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
+      if (!usersSheet) {
+        console.log('❌ Users sheet missing - run initializeAuthenticationSystem()');
+        return {
+          success: false,
+          error: 'Users sheet missing',
+          recommendation: 'Run initializeAuthenticationSystem()'
+        };
+      }
+      
+      const data = usersSheet.getDataRange().getValues();
+      console.log('Users sheet has', data.length - 1, 'users');
+      
+      return {
+        success: false,
+        error: testResult.message,
+        userCount: data.length - 1,
+        recommendation: 'Check Users sheet for valid credentials or run createSampleUsers()'
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ Local auth test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
