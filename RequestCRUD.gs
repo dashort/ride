@@ -1579,7 +1579,16 @@ function testAuthentication() {
     const user = Session.getActiveUser();
     const email = user.getEmail();
     
-    console.log('Current user:', user.getName(), email);
+    // Safe way to get user name
+    let userName = '';
+    try {
+      userName = user.getName ? user.getName() : (user.name || '');
+    } catch (e) {
+      console.log('⚠️ getName() failed, trying alternatives...');
+      userName = user.name || user.displayName || '';
+    }
+    
+    console.log('Current user:', userName, email);
     
     const rider = getRiderByGoogleEmail(email);
     console.log('Rider mapping:', rider);
@@ -1591,7 +1600,7 @@ function testAuthentication() {
     console.log('Dispatcher users:', dispatchers);
     
     return {
-      user: { name: user.getName(), email: email },
+      user: { name: userName, email: email },
       rider: rider,
       admins: admins,
       dispatchers: dispatchers
