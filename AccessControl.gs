@@ -265,38 +265,17 @@ function getEnhancedUserSession() {
   try {
     console.log('🔍 getEnhancedUserSession called from AccessControl.gs');
 
-    // 0) PRIORITIZE SECURE_SESSION if available (from EnhancedSecurity.gs login)
+    // 1) Check custom session used by spreadsheet logins
     try {
-      if (typeof validateSecureSession === 'function') { // Check if EnhancedSecurity.gs is loaded
-        const secureSessionValidation = validateSecureSession();
-        if (secureSessionValidation.valid && secureSessionValidation.session && secureSessionValidation.session.role) {
-          console.log('✅ Found valid SECURE_SESSION for ' + secureSessionValidation.session.email);
-          traceAuthFunction('getEnhancedUserSession', secureSessionValidation.session.email, 'secure_session');
-          return {
-            email: String(secureSessionValidation.session.email || '').trim(),
-            name: String(secureSessionValidation.session.name || '').trim(),
-            role: secureSessionValidation.session.role, // Role from SECURE_SESSION
-            hasEmail: !!secureSessionValidation.session.email,
-            hasName: !!secureSessionValidation.session.name,
-            source: 'secure_session'
-          };
-        }
-      }
-    } catch (err) {
-      console.log('⚠️ Error retrieving SECURE_SESSION: ' + err.message);
-    }
-
-    // 1) Check custom session used by spreadsheet logins (from HybridAuth.gs)
-    try {
-      if (typeof getCustomSession === 'function') { // from HybridAuth.gs
+      if (typeof getCustomSession === 'function') {
         const custom = getCustomSession();
-        if (custom && custom.role) { // Ensure role exists
-          console.log('✅ Found custom session (HybridAuth) for ' + custom.email);
+        if (custom) {
+          console.log('✅ Found custom session for ' + custom.email);
           traceAuthFunction('getEnhancedUserSession', custom.email, 'custom_session');
           return {
             email: String(custom.email || '').trim(),
             name: String(custom.name || '').trim(),
-            role: custom.role, // Role from CUSTOM_SESSION
+            role: custom.role || '',
             hasEmail: !!custom.email,
             hasName: !!custom.name,
             source: 'custom_session'
@@ -304,10 +283,9 @@ function getEnhancedUserSession() {
         }
       }
     } catch (err) {
-      console.log('⚠️ Error retrieving custom_session (HybridAuth): ' + err.message);
+      console.log('⚠️ Error retrieving custom session: ' + err.message);
     }
 
-    // If no session with a role found yet, proceed with Google's active user
     let user = null;
     let userEmail = '';
     let userName = '';
@@ -381,13 +359,13 @@ function getEnhancedUserSession() {
     const enhancedUser = {
       email: userEmail.trim(),
       name: userName.trim() || extractNameFromEmail(userEmail),
-      role: '', // Role is empty here if not found in SECURE_SESSION or CUSTOM_SESSION
+      role: '',
       hasEmail: !!userEmail.trim(),
       hasName: !!userName.trim(),
-      source: sessionSource // Will be 'active_user_getEmail', 'effective_user', etc.
+      source: sessionSource
     };
     
-    console.log(`✅ Enhanced user session (no explicit session role, fallback to email): ${enhancedUser.email} (${enhancedUser.name})`);
+    console.log(`✅ Enhanced user session: ${enhancedUser.email} (${enhancedUser.name})`);
     
     // Cache successful user info (but don't cache jpsotraffic unless it's really the active user)
     if (enhancedUser.hasEmail && sessionSource.includes('active_user')) {
@@ -1383,21 +1361,16 @@ function doGet(e) {
     else if (rider?.status === 'Active') userRole = 'rider';
     else return createUnauthorizedPage(userSession.email, userSession.name);
     
-  const user = {
+    const user = {
       name: userSession.name || rider?.name || 'User',
       email: userSession.email,
       role: userRole,
       avatar: (userSession.name || rider?.name || 'U').charAt(0).toUpperCase()
     };
     
-  // Page loading
-  let pageName = e.parameter?.page || 'dashboard';
-  let pageFile = pageName;
-
-  const access = checkPageAccessSafe(pageName, user, rider);
-  if (!access.allowed) {
-    return createAccessDeniedPage(access.reason, user);
-  }
+    // Page loading
+    let pageName = e.parameter?.page || 'dashboard';
+    let pageFile = pageName;
     
     if (userRole === 'admin' && pageName === 'dashboard') pageFile = 'admin-dashboard';
     else if (userRole === 'rider' && pageName === 'dashboard') pageFile = 'rider-dashboard';

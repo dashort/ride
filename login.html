@@ -22,12 +22,12 @@
 </div>
 <script>
   document.getElementById('loginBtn').addEventListener('click', function(){
-    const email = document.getElementById('email').value.trim();
-    const pw = document.getElementById('password').value;
-    google.script.run.withSuccessHandler(handle).secureLoginWithCredentials(email, pw);
+    const email=document.getElementById('email').value.trim();
+    const pw=document.getElementById('password').value;
+    google.script.run.withSuccessHandler(handle).loginWithCredentials(email,pw);
   });
   document.getElementById('googleBtn').addEventListener('click', function(){
-    google.script.run.withSuccessHandler(handle).secureLoginWithGoogle();
+    google.script.run.withSuccessHandler(handle).loginWithGoogle();
   });
   function handle(res){
     if(res && res.success){

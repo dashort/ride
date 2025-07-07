@@ -4229,13 +4229,7 @@ function doGet(e) {
       
       return handleUserManagementPage(e);
     }
-
-    // General page access check
-    const access = checkPageAccessSafe(pageName, authenticatedUser, rider);
-    if (!access.allowed) {
-      return createAccessDeniedPage(access.reason, authenticatedUser);
-    }
-
+    
     // Load page content (your existing logic)
     const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
     let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
