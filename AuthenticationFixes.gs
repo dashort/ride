@@ -30,7 +30,15 @@ function diagnosePersistentAuthIssue() {
     console.log('1. Checking current user session...');
     const user = Session.getActiveUser();
     const email = user.getEmail();
-    const name = user.getName();
+    
+    // Safe way to get user name
+    let name = '';
+    try {
+      name = user.getName ? user.getName() : (user.name || '');
+    } catch (e) {
+      console.log('⚠️ getName() failed, trying alternatives...');
+      name = user.name || user.displayName || '';
+    }
     
     results.step1_userSession = { 
       success: true, 

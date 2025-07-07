@@ -5818,14 +5818,25 @@ function authenticateUser() {
       };
     }
     
+    // Safe way to get user name
+    let userName = '';
+    try {
+      userName = user.getName ? user.getName() : (user.name || '');
+    } catch (e) {
+      console.log('⚠️ getName() failed, trying alternatives...');
+      userName = user.name || user.displayName || '';
+    }
+    
+    const displayName = userName || rider?.name || 'User';
+    
     return {
       success: true,
       user: {
-        name: user.getName() || rider?.name,
+        name: displayName,
         email: userEmail,
         role: userRole,
         permissions: permissions,
-        avatar: (user.getName() || rider?.name || 'U').charAt(0).toUpperCase()
+        avatar: displayName.charAt(0).toUpperCase()
       },
       rider: rider
     };
