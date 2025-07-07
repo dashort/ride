@@ -582,8 +582,11 @@ function getAdminDashboardData() {
       console.log('⚠️ Error calculating 3 day escorts:', e.message);
     }
 
-    // Calculate active riders
-    const activeRiders = riders.filter(r => r.status === 'Active').length;
+    // Calculate active riders with case-insensitive matching and fallback for missing status
+    const activeRiders = riders.filter(r => {
+      const status = String(r.status || r['Status'] || '').toLowerCase().trim();
+      return status === '' || status === 'active' || status === 'available';
+    }).length;
 
     // Calculate pending assignments
     let pendingAssignments = 0;
