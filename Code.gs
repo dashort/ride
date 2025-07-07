@@ -6877,11 +6877,6 @@ function addNavigationToContent(content, navigationHtml) {
     padding: 1rem 2rem;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     border-radius: 0 0 15px 15px;
-    position: relative;
-    z-index: 1000;
-    max-width: 1200px;
-    width: 100%;
-    text-align: center;
 }
 .nav-button {
     padding: 0.75rem 1.5rem !important;
@@ -6894,35 +6889,35 @@ function addNavigationToContent(content, navigationHtml) {
     transition: all 0.3s ease !important;
     cursor: pointer !important;
     display: inline-block !important;
-    pointer-events: auto !important;
-    user-select: none !important;
-    white-space: nowrap !important;
 }
-
 .nav-button:hover, .nav-button.active {
     background: #3498db !important;
     color: white !important;
     transform: translateY(-2px) !important;
     box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
 }
-
-/* Role-specific styling */
-.role-admin .nav-button { border-left: 3px solid #e74c3c; }
-.role-dispatcher .nav-button { border-left: 3px solid #f39c12; }
-.role-rider .nav-button { border-left: 3px solid #27ae60; }
-
-@media (max-width: 768px) {
-    .navigation {
-        padding: 1rem !important;
-        gap: 0.5rem !important;
-        justify-content: center !important;
-    }
+`;
     
-    .nav-button {
-        padding: 0.5rem 1rem !important;
-        font-size: 0.9rem !important;
+    // Add CSS to head
+    if (content.includes('<head>')) {
+      content = content.replace('<head>', `<head><style>${navCSS}</style>`);
+    } else if (content.includes('<style>')) {
+      content = content.replace('</style>', `${navCSS}</style>`);
+    } else {
+      content = `<style>${navCSS}</style>${content}`;
     }
+  }
+  
+  // Add navigation HTML
+  if (content.includes('<body>')) {
+    content = content.replace('<body>', `<body>${navigationHtml}`);
+  } else {
+    content = `${navigationHtml}${content}`;
+  }
+  
+  return content;
 }
+
 /**
  * STEP 2: Automatic fix based on diagnosis
  */
