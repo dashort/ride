@@ -442,15 +442,35 @@ function assignRidersToRequestSecured(user, requestId, riderNames) {
       hasAssignPermission = hasPermission(user, 'assignments', 'assign_any');
     } catch (permError) {
       console.error('❌ Permission check failed:', permError);
-      // Temporary fallback - check if user is admin
-      hasAssignPermission = user.role === 'admin' || user.role === 'dispatcher';
+      // Enhanced fallback - check multiple conditions
+      if (user.role === 'admin' || user.role === 'dispatcher') {
+        hasAssignPermission = true;
+        console.log('✅ Permission granted via role-based fallback');
+      } else {
+        // Check if user is in emergency session
+        try {
+          const emergencySessionStr = PropertiesService.getUserProperties().getProperty('EMERGENCY_SESSION');
+          if (emergencySessionStr) {
+            const emergencySession = JSON.parse(emergencySessionStr);
+            if (emergencySession.expires > Date.now()) {
+              hasAssignPermission = true;
+              console.log('✅ Permission granted via emergency session');
+            }
+          }
+        } catch (e) {
+          console.log('No emergency session found');
+        }
+      }
     }
     
     console.log('🔒 Permission result:', hasAssignPermission);
     
     if (!hasAssignPermission) {
       console.log('❌ Permission denied for user:', user.email, 'role:', user.role);
-      return { success: false, error: 'You do not have permission to assign riders' };
+      return { 
+        success: false, 
+        error: 'You do not have permission to assign riders. Try running fixAuthenticationIssues() or emergencyAdminAccess() from the script editor.' 
+      };
     }
     
     const result = assignRidersToRequest(requestId, riderNames);
