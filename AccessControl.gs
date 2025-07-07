@@ -1120,7 +1120,8 @@ function getDispatcherUsersFallback() {
   
   // Default dispatcher emails if sheet/range is empty or fails
   return [
-    'dispatcher@yourdomain.com'
+    'dispatcher@yourdomain.com',
+    'jpdispatcher100@gmail.com'  // FIXED: Added the actual dispatcher email
     // Add dispatcher emails here
   ];
 }
@@ -2160,6 +2161,209 @@ function getUserNavigationMenu(user) {
   } catch (error) {
     console.error('❌ Error getting navigation menu:', error);
     return [];
+  }
+}
+
+/**
+ * COMPREHENSIVE DISPATCHER AUTHENTICATION FIX
+ * Run this function to fix the jpdispatcher100@gmail.com login issue
+ */
+function fixDispatcherAuthenticationIssue() {
+  console.log('🔧 === FIXING DISPATCHER AUTHENTICATION ISSUE ===');
+  
+  const results = {
+    settingsSheetCheck: false,
+    dispatcherEmailsFound: false,
+    authenticationTest: false,
+    fixesApplied: [],
+    error: null
+  };
+  
+  try {
+    // Step 1: Check Settings sheet structure
+    console.log('\n1. 📄 Checking Settings sheet...');
+    
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let settingsSheet = ss.getSheetByName('Settings');
+    
+    if (!settingsSheet) {
+      console.log('❌ Settings sheet missing - creating it...');
+      settingsSheet = ss.insertSheet('Settings');
+      results.fixesApplied.push('Created Settings sheet');
+    }
+    
+    // Ensure proper headers
+    const headers = ['Setting Type', 'Admin Emails', 'Dispatcher Emails', 'Notes'];
+    const currentHeaders = settingsSheet.getRange(1, 1, 1, 4).getValues()[0];
+    const headerCheck = headers.every((header, index) => currentHeaders[index] === header);
+    
+    if (!headerCheck) {
+      console.log('🔧 Fixing Settings sheet headers...');
+      settingsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      results.fixesApplied.push('Fixed Settings sheet headers');
+    }
+    
+    results.settingsSheetCheck = true;
+    
+    // Step 2: Ensure dispatcher emails are in Column C
+    console.log('\n2. 📧 Checking dispatcher emails in Column C...');
+    
+    const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
+    const currentDispatchers = dispatcherRange.flat().filter(email => email && email.trim());
+    
+    console.log('Found dispatcher emails:', currentDispatchers);
+    
+    if (!currentDispatchers.includes('jpdispatcher100@gmail.com')) {
+      console.log('🔧 Adding jpdispatcher100@gmail.com to dispatcher list...');
+      
+      // Add the dispatcher email to the first empty cell in C2:C10
+      let added = false;
+      for (let i = 0; i < dispatcherRange.length; i++) {
+        if (!dispatcherRange[i][0] || !dispatcherRange[i][0].trim()) {
+          settingsSheet.getRange(i + 2, 3).setValue('jpdispatcher100@gmail.com');
+          added = true;
+          results.fixesApplied.push('Added jpdispatcher100@gmail.com to Settings sheet');
+          break;
+        }
+      }
+      
+      if (!added) {
+        // If no empty cell, replace the first one
+        settingsSheet.getRange(2, 3).setValue('jpdispatcher100@gmail.com');
+        results.fixesApplied.push('Added jpdispatcher100@gmail.com to Settings sheet (replaced first entry)');
+      }
+    }
+    
+    // Step 3: Test dispatcher email reading
+    console.log('\n3. 🧪 Testing dispatcher email functions...');
+    
+    try {
+      const dispatchers1 = getDispatcherUsers();
+      console.log('getDispatcherUsers() result:', dispatchers1);
+      
+      const dispatchers2 = getDispatcherUsersSafe();
+      console.log('getDispatcherUsersSafe() result:', dispatchers2);
+      
+      if (dispatchers1.includes('jpdispatcher100@gmail.com') || dispatchers2.includes('jpdispatcher100@gmail.com')) {
+        results.dispatcherEmailsFound = true;
+        console.log('✅ Dispatcher email found in function results');
+      } else {
+        console.log('❌ Dispatcher email still not found');
+      }
+      
+    } catch (error) {
+      console.log('❌ Error testing dispatcher functions:', error.message);
+    }
+    
+    // Step 4: Test full authentication for dispatcher
+    console.log('\n4. 🔐 Testing dispatcher authentication...');
+    
+    try {
+      // Simulate dispatcher login by temporarily setting session
+      const originalProps = PropertiesService.getUserProperties().getProperty('CUSTOM_SESSION');
+      
+      // Create test dispatcher session
+      const testSession = {
+        email: 'jpdispatcher100@gmail.com',
+        name: 'JP Dispatcher',
+        role: 'dispatcher',
+        loginMethod: 'test',
+        loginTime: new Date().toISOString()
+      };
+      
+      PropertiesService.getUserProperties().setProperty('CUSTOM_SESSION', JSON.stringify(testSession));
+      
+      // Test authentication
+      const authResult = authenticateAndAuthorizeUser();
+      console.log('Test auth result:', JSON.stringify(authResult, null, 2));
+      
+      if (authResult.success && authResult.user.role === 'dispatcher') {
+        results.authenticationTest = true;
+        console.log('✅ Dispatcher authentication test passed');
+      } else {
+        console.log('❌ Dispatcher authentication test failed');
+      }
+      
+      // Restore original session
+      if (originalProps) {
+        PropertiesService.getUserProperties().setProperty('CUSTOM_SESSION', originalProps);
+      } else {
+        PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
+      }
+      
+    } catch (error) {
+      console.log('❌ Error testing authentication:', error.message);
+    }
+    
+    // Step 5: Summary
+    console.log('\n5. 📊 SUMMARY:');
+    console.log('Settings sheet check:', results.settingsSheetCheck ? '✅ PASS' : '❌ FAIL');
+    console.log('Dispatcher emails found:', results.dispatcherEmailsFound ? '✅ PASS' : '❌ FAIL');
+    console.log('Authentication test:', results.authenticationTest ? '✅ PASS' : '❌ FAIL');
+    console.log('Fixes applied:', results.fixesApplied.length > 0 ? results.fixesApplied : 'None needed');
+    
+    const overallSuccess = results.settingsSheetCheck && results.dispatcherEmailsFound && results.authenticationTest;
+    
+    console.log('\n🎯 NEXT STEPS:');
+    if (overallSuccess) {
+      console.log('✅ Dispatcher authentication should now work!');
+      console.log('1. Try logging in with jpdispatcher100@gmail.com');
+      console.log('2. If still having issues, run emergencyAdminAccess() for temporary access');
+    } else {
+      console.log('❌ Some issues remain. Run diagnosePersistentAuthIssue() for more details');
+    }
+    
+    return {
+      success: overallSuccess,
+      results: results,
+      message: overallSuccess ? 'Dispatcher authentication fixed!' : 'Some issues remain'
+    };
+    
+  } catch (error) {
+    console.error('❌ Fix function failed:', error);
+    results.error = error.message;
+    return {
+      success: false,
+      results: results,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Quick test function for dispatcher authentication
+ */
+function testDispatcherAuthentication() {
+  console.log('🧪 === TESTING DISPATCHER AUTHENTICATION ===');
+  
+  try {
+    // Test 1: Check dispatcher email lists
+    console.log('\n1. Testing dispatcher email functions:');
+    const dispatchers = getDispatcherUsersSafe();
+    console.log('Dispatcher emails:', dispatchers);
+    
+    const hasJpdispatcher = dispatchers.includes('jpdispatcher100@gmail.com');
+    console.log('jpdispatcher100@gmail.com in list:', hasJpdispatcher ? '✅ YES' : '❌ NO');
+    
+    // Test 2: Manual authentication check
+    console.log('\n2. Manual authentication check:');
+    const userSession = { email: 'jpdispatcher100@gmail.com', hasEmail: true, source: 'test' };
+    const isDispatcher = dispatchers.includes(userSession.email);
+    console.log('Is dispatcher according to logic:', isDispatcher ? '✅ YES' : '❌ NO');
+    
+    return {
+      success: hasJpdispatcher && isDispatcher,
+      dispatcherEmails: dispatchers,
+      jpdispatcherInList: hasJpdispatcher,
+      authLogicPasses: isDispatcher
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
