@@ -57,3 +57,14 @@ Access the login form by opening the web app URL with `?action=login`.  Users wh
 are not signed in or authorized will automatically be redirected to this form.
 Their name and role appear in the top‑right corner of each page once signed in.
 
+
+## Email Responses Sheet
+
+Incoming rider email replies are stored in a sheet named `Email_Responses`. If this sheet does not yet exist in your spreadsheet, run the Apps Script function `setupEmailResponsesSheet()` once to create it. The sheet will be initialized with the columns:
+
+```
+Timestamp | From Email | Rider Name | Message Body | Action
+```
+
+After running the setup function, automated email processing will log each response to this sheet and append the raw message text to the rider's assignment notes.
+
