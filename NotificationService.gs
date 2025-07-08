@@ -332,7 +332,7 @@ function sendAssignmentNotification(assignmentId, type) {
     const eventDateColIdx = assignmentsHeaders.indexOf('Event Date');
     const startTimeColIdx = assignmentsHeaders.indexOf('Start Time');
     const startLocationColIdx = assignmentsHeaders.indexOf('Start Location');
-    const endLocationColIdx = assignmentsHeaders.indexOf('End Location');
+    const endLocationColIdx = assignmentsHeaders.indexOf('Second Location');
     const smsColIdx = assignmentsHeaders.indexOf('SMS Sent');
     const emailColIdx = assignmentsHeaders.indexOf('Email Sent');
     const notifiedColIdx = assignmentsHeaders.indexOf('Notified');
@@ -892,8 +892,8 @@ function formatRequestDetails(details) {
   if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
   if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
   if (details.startLocation) parts.push(`Start Location: ${details.startLocation}`);
-  if (details.endLocation) parts.push(`End Location: ${details.endLocation}`);
-  if (details.secondaryLocation) parts.push(`Secondary Location: ${details.secondaryLocation}`);
+  if (details.endLocation) parts.push(`Second Location: ${details.endLocation}`);
+  if (details.secondaryLocation) parts.push(`Final Location: ${details.secondaryLocation}`);
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
