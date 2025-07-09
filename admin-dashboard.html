@@ -723,12 +723,13 @@ function displayEmailResponses(responses) {
         doc.write('<p>No responses available.</p>');
     } else {
         doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
-        doc.write('<tr><th>Timestamp</th><th>From Email</th><th>Rider Name</th><th>Message Body</th><th>Action</th></tr>');
+        doc.write('<tr><th>Timestamp</th><th>From Email</th><th>Rider Name</th><th>Message Body</th><th>Request ID</th><th>Action</th></tr>');
         responses.forEach(function(r) {
             doc.write('<tr><td>' + (r.Timestamp || r.timestamp || '') + '</td>' +
                      '<td>' + (r["From Email"] || r.fromEmail || '') + '</td>' +
                      '<td>' + (r["Rider Name"] || r.riderName || '') + '</td>' +
                      '<td>' + (r["Message Body"] || r.messageBody || '') + '</td>' +
+                     '<td>' + (r["Request ID"] || r.requestId || '') + '</td>' +
                      '<td>' + (r.Action || r.action || '') + '</td></tr>');
         });
         doc.write('</table>');

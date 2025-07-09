@@ -8,6 +8,6 @@ function setupEmailResponsesSheet() {
     'From Email',
     'Rider Name',
     'Message Body',
+    'Request ID',
     'Action'
-  ]);
-}
+  ]);}

@@ -2328,8 +2328,10 @@ function processEmailResponses() {
         if (!msg.isUnread()) return;
         const fromEmail = msg.getFrom().replace(/.*<|>.*/g, '').trim().toLowerCase();
         const body = msg.getPlainBody();
+        const subject = msg.getSubject();
+        const requestId = extractRequestIdFromSubject(subject);
         const result = handleEmailMessage(fromEmail, body);
-        logEmailResponse(fromEmail, body, result);
+        logEmailResponse(fromEmail, body, requestId, result);
         msg.markRead();
       });
     });
@@ -2374,12 +2376,29 @@ function handleEmailMessage(fromEmail, messageBody) {
 }
 
 /**
+ * Extract the request ID from an email subject line.
+ * Expected subject format: "Assignment <assignmentId> - <requestId>".
+ * @param {string} subject The email subject line.
+ * @return {string} The request ID if found, else an empty string.
+ */
+function extractRequestIdFromSubject(subject) {
+  try {
+    if (!subject) return '';
+    const match = subject.match(/Assignment\s+[^-]+-\s*([^\s]+)/i);
+    return match ? match[1].trim() : '';
+  } catch (error) {
+    logError('Error extracting request ID', error);
+    return '';
+  }
+}
+
+/**
  * Log email responses to tracking sheet
  */
-function logEmailResponse(fromEmail, messageBody, result) {
+function logEmailResponse(fromEmail, messageBody, requestId, result) {
   try {
     const sheet = getOrCreateSheet('Email_Responses', [
-      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Action'
+      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Request ID', 'Action'
     ]);
 
     sheet.appendRow([
@@ -2387,6 +2406,7 @@ function logEmailResponse(fromEmail, messageBody, result) {
       fromEmail,
       result.rider || 'Unknown',
       messageBody,
+      requestId || '',
       result.action
     ]);
 
