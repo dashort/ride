@@ -9,7 +9,9 @@
  * @param {object} requestData An object containing all the necessary data for a new request.
  *                             Expected properties: requesterName, requesterContact,
  *                             eventDate, startTime, endTime,
- *                             startLocation, endLocation, secondaryLocation (optional),
+ *                             startLocation (required),
+ *                             secondaryLocation (final location, required),
+ *                             endLocation (second location, optional),
  *                             requestType, ridersNeeded, notes (optional).
  * @param {string} [submittedBy=Session.getActiveUser().getEmail()] The email of the user submitting the request.
  * @return {object} An object indicating success or failure, and including the new request ID or an error message.
@@ -32,7 +34,7 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
       // --- Data Validation ---
       const requiredFields = [
         'requesterName', 'requesterContact',
-        'eventDate', 'startTime', 'startLocation', 'endLocation', 'secondaryLocation',
+        'eventDate', 'startTime', 'startLocation', 'secondaryLocation',
         'requestType', 'ridersNeeded'
       ];
       for (const field of requiredFields) {
@@ -81,7 +83,7 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
             case CONFIG.columns.requests.startTime:           value = parseTimeString(requestData.startTime); break; // Ensure time object or formatted string
             case CONFIG.columns.requests.endTime:             value = requestData.endTime ? parseTimeString(requestData.endTime) : ''; break;
             case CONFIG.columns.requests.startLocation:       value = requestData.startLocation; break;
-            case CONFIG.columns.requests.endLocation:         value = requestData.endLocation; break;
+            case CONFIG.columns.requests.endLocation:         value = requestData.endLocation || ''; break;
             case CONFIG.columns.requests.secondaryLocation:   value = requestData.secondaryLocation || ''; break;
             case CONFIG.columns.requests.type:                value = requestData.requestType; break; // Ensure 'type' matches CONFIG
             case CONFIG.columns.requests.ridersNeeded:        value = parseInt(requestData.ridersNeeded); break;
