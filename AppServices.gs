@@ -2432,7 +2432,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.requests.endTime)) || '',
           startLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.startLocation) || 'Location TBD',
           endLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.endLocation) || '',
-          secondaryEndLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
+          secondaryLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
           escortFee: getColumnValue(row, columnMap, CONFIG.columns.requests.escortFee) || '',
           status: status || 'New',

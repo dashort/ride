@@ -668,13 +668,13 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="editEndLocation">Second Location *</label>
-                                <input type="text" id="editEndLocation" required />
+                                <label for="editEndLocation">Second Location</label>
+                                <input type="text" id="editEndLocation" />
                             </div>
-                            
+
                             <div class="form-group">
-                                <label for="editSecondaryLocation">Final Location</label>
-                                <input type="text" id="editSecondaryLocation" />
+                                <label for="editSecondaryLocation">Final Location *</label>
+                                <input type="text" id="editSecondaryLocation" required />
                             </div>
                             
                             <div class="form-group">
@@ -834,7 +834,7 @@
      * @property {string} [endTime] - Optional time string (HH:MM)
      * @property {string} startLocation
      * @property {string} endLocation
-     * @property {string} [secondaryEndLocation]
+     * @property {string} [secondaryLocation]
      * @property {number} ridersNeeded
      * @property {string} [escortFee]
      * @property {string} status
@@ -1205,7 +1205,7 @@
         document.getElementById('editEndTime').value = formatTimeForInput(request.endTime) || '';
         document.getElementById('editStartLocation').value = request.startLocation || '';
         document.getElementById('editEndLocation').value = request.endLocation || '';
-        document.getElementById('editSecondaryLocation').value = request.secondaryEndLocation || '';
+        document.getElementById('editSecondaryLocation').value = request.secondaryLocation || '';
         document.getElementById('editRidersNeeded').value = request.ridersNeeded || 1;
         document.getElementById('editEscortFee').value = request.escortFee || '';
         document.getElementById('editStatus').value = request.status || 'New';
@@ -1272,7 +1272,7 @@
      * @return {void}
      */
     function saveRequest() {
-        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
+        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editSecondaryLocation', 'editRidersNeeded'];
         for (const fieldId of requiredFields) {
             const field = document.getElementById(fieldId);
             if (!field.value.trim()) {
@@ -1293,7 +1293,7 @@
             endTime: document.getElementById('editEndTime').value,
             startLocation: document.getElementById('editStartLocation').value.trim(),
             endLocation: document.getElementById('editEndLocation').value.trim(),
-            secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
+            secondaryLocation: document.getElementById('editSecondaryLocation').value.trim(),
             ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
             escortFee: document.getElementById('editEscortFee').value,
             status: document.getElementById('editStatus').value,
@@ -1340,7 +1340,7 @@
             return;
         }
 
-        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editEndLocation', 'editRidersNeeded'];
+        const requiredFields = ['editRequesterName', 'editRequestType', 'editEventDate', 'editStartTime', 'editStartLocation', 'editSecondaryLocation', 'editRidersNeeded'];
         for (const fieldId of requiredFields) {
             const field = document.getElementById(fieldId);
             if (!field.value.trim()) {
@@ -1361,7 +1361,7 @@
             endTime: document.getElementById('editEndTime').value,
             startLocation: document.getElementById('editStartLocation').value.trim(),
             endLocation: document.getElementById('editEndLocation').value.trim(),
-            secondaryEndLocation: document.getElementById('editSecondaryLocation').value.trim(),
+            secondaryLocation: document.getElementById('editSecondaryLocation').value.trim(),
             ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
             escortFee: document.getElementById('editEscortFee').value,
             status: 'Completed',
