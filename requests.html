@@ -412,6 +412,31 @@
             margin-left: 10px;
         }
 
+        /* Requester Autocomplete Styles */
+        .requester-autocomplete-dropdown {
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .requester-autocomplete-dropdown .autocomplete-item {
+            transition: background-color 0.2s ease;
+        }
+
+        .requester-autocomplete-dropdown .autocomplete-item:hover {
+            background-color: #f0f8ff !important;
+        }
+
+        .requester-autocomplete-dropdown .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-loading {
+            padding: 12px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+
         .search-box {
             width: 100%;
             padding: 0.75rem;
@@ -627,11 +652,17 @@
                             <div class="form-group">
                                 <label for="editRequesterName">Requester Name *</label>
                                 <input type="text" id="editRequesterName" required />
+                                <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
+                                    💡 Start typing to see previous requesters and auto-fill phone numbers
+                                </small>
                             </div>
                             
                             <div class="form-group">
                                 <label for="editRequesterContact">Requester Phone Number</label>
                                 <input type="text" id="editRequesterContact" />
+                                <small style="color: #666; font-size: 12px; margin-top: 4px; display: block;">
+                                    📞 Will auto-fill if requester found in previous requests
+                                </small>
                             </div>
                             
                             <div class="form-group">
@@ -864,6 +895,12 @@
     let currentUser = null;
 
     /**
+     * Cache for storing unique requesters and their contact information
+     * @type {Map<string, string>}
+     */
+    let requesterLookupCache = new Map();
+
+    /**
      * Initializes the page on DOM content loaded: loads requests and sets up event listeners.
      * @listens DOMContentLoaded
      */
@@ -945,6 +982,208 @@
     });
 
     /**
+     * Builds a cache of unique requesters and their most recent contact information
+     * @param {Array<RequestFull>} requests - Array of all requests
+     */
+    function buildRequesterLookupCache(requests) {
+        requesterLookupCache.clear();
+        
+        // Sort requests by date to get most recent contact info for each requester
+        const sortedRequests = [...requests].sort((a, b) => {
+            const dateA = new Date(a.eventDate || '');
+            const dateB = new Date(b.eventDate || '');
+            return dateB - dateA; // Most recent first
+        });
+
+        sortedRequests.forEach(request => {
+            const name = (request.requesterName || '').trim();
+            const contact = (request.requesterContact || '').trim();
+            
+            if (name && contact && !requesterLookupCache.has(name.toLowerCase())) {
+                requesterLookupCache.set(name.toLowerCase(), {
+                    name: name,
+                    contact: contact,
+                    lastUsed: request.eventDate
+                });
+            }
+        });
+        
+        console.log('📞 Built requester lookup cache with', requesterLookupCache.size, 'unique requesters');
+    }
+
+    /**
+     * Sets up autocomplete functionality for the requester name field
+     * @param {string} inputId - The ID of the input field
+     * @param {string} contactFieldId - The ID of the contact field to populate
+     */
+    function setupRequesterAutocomplete(inputId, contactFieldId) {
+        const input = document.getElementById(inputId);
+        const contactField = document.getElementById(contactFieldId);
+        
+        if (!input || !contactField) {
+            console.warn('Could not find input or contact fields for autocomplete setup');
+            return;
+        }
+
+        // Create autocomplete dropdown
+        const dropdown = document.createElement('div');
+        dropdown.className = 'requester-autocomplete-dropdown';
+        dropdown.style.cssText = `
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        `;
+        
+        // Make input container relative positioned
+        input.parentElement.style.position = 'relative';
+        input.parentElement.appendChild(dropdown);
+
+        let currentSelection = -1;
+
+        // Handle input changes
+        input.addEventListener('input', function() {
+            const value = this.value.toLowerCase().trim();
+            dropdown.innerHTML = '';
+            currentSelection = -1;
+
+            if (value.length < 2) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const matches = Array.from(requesterLookupCache.entries())
+                .filter(([key, data]) => key.includes(value) || data.name.toLowerCase().includes(value))
+                .slice(0, 10); // Limit to 10 results
+
+            if (matches.length === 0) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            matches.forEach(([key, data], index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.style.cssText = `
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #eee;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                `;
+                
+                item.innerHTML = `
+                    <div>
+                        <strong>${data.name}</strong>
+                        <br><small style="color: #666;">${data.contact}</small>
+                    </div>
+                    <small style="color: #999;">Last used: ${data.lastUsed || 'Unknown'}</small>
+                `;
+
+                item.addEventListener('mouseenter', () => {
+                    currentSelection = index;
+                    updateSelection();
+                });
+
+                item.addEventListener('click', () => {
+                    selectRequester(data);
+                });
+
+                dropdown.appendChild(item);
+            });
+
+            dropdown.style.display = 'block';
+            updateSelection();
+        });
+
+        // Handle keyboard navigation
+        input.addEventListener('keydown', function(e) {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentSelection = Math.min(currentSelection + 1, items.length - 1);
+                updateSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentSelection = Math.max(currentSelection - 1, -1);
+                updateSelection();
+            } else if (e.key === 'Enter' && currentSelection >= 0) {
+                e.preventDefault();
+                const selectedData = Array.from(requesterLookupCache.values())[currentSelection];
+                if (selectedData) {
+                    selectRequester(selectedData);
+                }
+            } else if (e.key === 'Escape') {
+                dropdown.style.display = 'none';
+                currentSelection = -1;
+            }
+        });
+
+        function updateSelection() {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                if (index === currentSelection) {
+                    item.style.backgroundColor = '#e3f2fd';
+                } else {
+                    item.style.backgroundColor = 'white';
+                }
+            });
+        }
+
+        function selectRequester(data) {
+            input.value = data.name;
+            contactField.value = data.contact;
+            dropdown.style.display = 'none';
+            currentSelection = -1;
+            
+            // Show confirmation message
+            showToast(`📞 Auto-filled phone number for ${data.name}`, 2000);
+            
+            // Focus next field (request type)
+            const nextField = document.getElementById('editRequestType');
+            if (nextField) {
+                nextField.focus();
+            }
+        }
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!input.parentElement.contains(e.target)) {
+                dropdown.style.display = 'none';
+                currentSelection = -1;
+            }
+        });
+    }
+
+    /**
+     * Looks up and pre-fills contact information for a requester name
+     * @param {string} requesterName - The name to look up
+     * @param {string} contactFieldId - The ID of the contact field to populate
+     */
+    function lookupRequesterContact(requesterName, contactFieldId) {
+        const name = requesterName.trim().toLowerCase();
+        const contactField = document.getElementById(contactFieldId);
+        
+        if (!name || !contactField) return;
+
+        const data = requesterLookupCache.get(name);
+        if (data && !contactField.value.trim()) {
+            contactField.value = data.contact;
+            showToast(`📞 Found previous contact info for ${data.name}`, 2000);
+        }
+    }
+
+    /**
      * Loads page data (user info and requests) from the server based on the selected status filter.
      * Shows loading indicators during the fetch.
      * @return {void}
@@ -958,13 +1197,33 @@
         console.log('📋 Loading page data with filter:', filter, 'hideCompleted:', hideCompleted);
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Load both current view data and all historical data for lookup
             google.script.run
                 .withSuccessHandler(data => handlePageDataSuccess(data, hideCompleted))
                 .withFailureHandler(handlePageDataError)
                 .getPageDataForRequests(filter);
+                
+            // Load all historical requests for lookup cache in parallel
+            google.script.run
+                .withSuccessHandler(buildHistoricalLookupCache)
+                .withFailureHandler(error => console.warn('Could not load historical data for lookup:', error))
+                .getAllRequestsForLookup();
         } else {
             console.log('⚠️ Google Apps Script not available for requests page.');
             handlePageDataError({ message: "Google Apps Script not available." });
+        }
+    }
+
+    /**
+     * Builds lookup cache from all historical requests data
+     * @param {object} result - Server response with all requests data
+     */
+    function buildHistoricalLookupCache(result) {
+        if (result && result.success && result.requests) {
+            console.log('📚 Loading historical data for lookup cache:', result.requests.length, 'total requests');
+            buildRequesterLookupCache(result.requests);
+        } else {
+            console.warn('Could not load historical data for lookup cache:', result);
         }
     }
 
@@ -997,6 +1256,9 @@
             if (hideCompleted) {
                 allRequests = allRequests.filter(r => r.status !== 'Completed');
             }
+
+            // Build the requester lookup cache from all requests data
+            buildRequesterLookupCache(requests || []);
 
             if (allRequests.length === 0) {
                 showNoData();
@@ -1222,6 +1484,11 @@
         document.getElementById('saveChangesBtn').style.display = 'inline-block';
         document.getElementById('completeRequestBtn').style.display = 'none';
         document.getElementById('editRequestModal').style.display = 'block';
+
+        // Set up autocomplete for requester name field after modal is visible
+        setTimeout(() => {
+            setupRequesterAutocomplete('editRequesterName', 'editRequesterContact');
+        }, 100);
     }
 
     /**
@@ -1244,6 +1511,11 @@
         document.getElementById('saveChangesBtn').style.display = 'inline-block';
         document.getElementById('completeRequestBtn').style.display = 'none';
         document.getElementById('editRequestModal').style.display = 'block';
+
+        // Set up autocomplete for requester name field after modal is visible
+        setTimeout(() => {
+            setupRequesterAutocomplete('editRequesterName', 'editRequesterContact');
+        }, 100);
     }
 
     function openCompleteModal(requestId) {
