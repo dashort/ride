@@ -996,8 +996,8 @@
         });
 
         sortedRequests.forEach(request => {
-            const name = (request.requesterName || '').trim();
-            const contact = (request.requesterContact || '').trim();
+            const name = String(request.requesterName || '').trim();
+            const contact = String(request.requesterContact || '').trim();
             
             if (name && contact && !requesterLookupCache.has(name.toLowerCase())) {
                 requesterLookupCache.set(name.toLowerCase(), {
