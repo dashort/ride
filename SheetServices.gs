@@ -48,8 +48,8 @@ function getOrCreateSheet(sheetName, headers = []) {
       sheet.getRange(1, 1, 1, headers.length)
         .setValues([headers])
         .setFontWeight('bold')
-        .setBackground('#f3f3f3')
-        .setFrozenRows(1);
+          .setBackground('#f3f3f3');
+      sheet.setFrozenRows(1);
     }
     logActivity(`Created sheet: ${sheetName}`); // Assumes logActivity is defined
   }
