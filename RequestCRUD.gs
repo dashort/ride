@@ -2473,3 +2473,74 @@ function exportRiderMappings() {
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Gets all requests data specifically for building requester lookup cache.
+ * This function returns all requests regardless of status to enable comprehensive
+ * lookup of previous requesters and their contact information.
+ * @return {object} Result object with success flag and all requests data
+ */
+function getAllRequestsForLookup() {
+  return trackPerformance('getAllRequestsForLookup', () => {
+    try {
+      debugLog('Getting all requests data for lookup cache...');
+      
+      const requestsData = getRequestsData(true); // Use cache for lookup data
+      
+      if (!requestsData || !requestsData.data) {
+        return {
+          success: false,
+          message: 'No requests data available',
+          requests: []
+        };
+      }
+
+      const columnMap = requestsData.columnMap;
+      const requests = requestsData.data.map(row => {
+        const request = {};
+        
+        // Map only the fields needed for lookup functionality
+        request.requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id) || '';
+        request.requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '';
+        request.requesterContact = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '';
+        request.eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate) || '';
+        request.status = getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '';
+        
+        // Format event date for consistent sorting
+        if (request.eventDate) {
+          try {
+            const dateObj = new Date(request.eventDate);
+            if (!isNaN(dateObj.getTime())) {
+              request.eventDate = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD format
+            }
+          } catch (e) {
+            // Keep original value if parsing fails
+          }
+        }
+        
+        return request;
+      }).filter(request => {
+        // Only include requests that have both requester name and contact info
+        return request.requesterName.trim() && request.requesterContact.trim();
+      });
+
+      debugLog(`Returning ${requests.length} requests for lookup cache`);
+      
+      return {
+        success: true,
+        requests: requests,
+        message: `Found ${requests.length} requests with contact information`
+      };
+
+    } catch (error) {
+      debugLog('Error in getAllRequestsForLookup:', error.message, error.stack);
+      logError('Error in getAllRequestsForLookup', error);
+      
+      return {
+        success: false,
+        message: `Failed to get requests for lookup: ${error.message}`,
+        requests: []
+      };
+    }
+  });
+}
