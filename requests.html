@@ -1204,10 +1204,14 @@
                 .getPageDataForRequests(filter);
                 
             // Load all historical requests for lookup cache in parallel
-            google.script.run
-                .withSuccessHandler(buildHistoricalLookupCache)
-                .withFailureHandler(error => console.warn('Could not load historical data for lookup:', error))
-                .getAllRequestsForLookup();
+            try {
+                google.script.run
+                    .withSuccessHandler(buildHistoricalLookupCache)
+                    .withFailureHandler(error => console.warn('Could not load historical data for lookup:', error))
+                    .getAllRequestsForLookup();
+            } catch (err) {
+                console.warn('getAllRequestsForLookup not available:', err);
+            }
         } else {
             console.log('⚠️ Google Apps Script not available for requests page.');
             handlePageDataError({ message: "Google Apps Script not available." });
