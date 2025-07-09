@@ -579,7 +579,7 @@
                                 <div class="detail-icon">📍</div>
                                 <div class="detail-content">
                                     <div class="detail-label">Route</div>
-                                    <div class="detail-value">${request.startLocation || 'Unknown'} → ${request.endLocation || 'Unknown'}</div>
+                                    <div class="detail-value">${request.startLocation || 'Unknown'} → ${request.endLocation || 'Unknown'}${request.secondaryLocation ? ' → ' + request.secondaryLocation : ''}</div>
                                 </div>
                             </div>
                             

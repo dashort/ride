@@ -591,6 +591,7 @@
                         <th>Requester</th>
                         <th>Type</th>
                         <th>Start Location</th>
+                        <th>Second Location</th>
                         <th>Final Location</th>
                         <th>Riders Needed</th>
                         <th>Escort Fee</th>
@@ -668,7 +669,7 @@
                             </div>
                             
                             <div class="form-group">
-                                <label for="editEndLocation">Final Location</label>
+                                <label for="editEndLocation">Second Location</label>
                                 <input type="text" id="editEndLocation" />
                             </div>
 
@@ -759,7 +760,7 @@
                             <strong>Start Location:</strong> <span id="assignmentStartLocation"></span>
                         </div>
                         <div>
-                            <strong>Final Location:</strong> <span id="assignmentEndLocation"></span>
+                            <strong>Second Location:</strong> <span id="assignmentEndLocation"></span>
                         </div>
                     </div>
                 </div>
@@ -1074,6 +1075,7 @@
                 <td>${request.requestType || ''}</td>
                 <td>${request.startLocation || ''}</td>
                 <td>${request.endLocation || ''}</td>
+                <td>${request.secondaryLocation || ''}</td>
                 <td style="text-align: center;">${request.ridersNeeded || 0}</td>
                 <td style="text-align: center;">${request.escortFee || ''}</td>
                 <td><span class="status-badge ${statusClass}">${request.status || 'New'}</span></td>
@@ -1138,6 +1140,7 @@
                 String(r.requestType).toLowerCase().includes(term) ||
                 String(r.startLocation).toLowerCase().includes(term) ||
                 String(r.endLocation).toLowerCase().includes(term) ||
+                String(r.secondaryLocation).toLowerCase().includes(term) ||
                 (r.ridersAssigned && r.ridersAssigned.toLowerCase().includes(term))
             );
         }
@@ -1588,7 +1591,7 @@
         }
 
         const headers = ['Request ID', 'Event Date', 'Start Time', 'End Time', 'Requester', 'Type',
-                   'Start Location', 'Final Location', 'Riders Needed', 'Escort Fee', 'Status', 'Assigned', 'Notes'];
+                   'Start Location', 'Second Location', 'Final Location', 'Riders Needed', 'Escort Fee', 'Status', 'Assigned', 'Notes'];
 
         const csvRows = [headers.join(',')];
 
@@ -1602,6 +1605,7 @@
                 req.requestType || '',
                 req.startLocation || '',
                 req.endLocation || '',
+                req.secondaryLocation || '',
                 req.ridersNeeded || '',
                 req.escortFee || '',
                 req.status || '',
