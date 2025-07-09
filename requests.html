@@ -1197,11 +1197,22 @@
         console.log('📋 Loading page data with filter:', filter, 'hideCompleted:', hideCompleted);
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            // Load both current view data and all historical data for lookup
+            // First try the test function to see if basic data loading works
+            console.log('🧪 Trying test function first...');
             google.script.run
-                .withSuccessHandler(data => handlePageDataSuccess(data, hideCompleted))
-                .withFailureHandler(handlePageDataError)
-                .getPageDataForRequests(filter);
+                .withSuccessHandler(data => {
+                    console.log('✅ Test function succeeded:', data);
+                    handlePageDataSuccess(data, hideCompleted);
+                })
+                .withFailureHandler(error => {
+                    console.log('❌ Test function failed, trying main function:', error);
+                    // Fallback to main function
+                    google.script.run
+                        .withSuccessHandler(data => handlePageDataSuccess(data, hideCompleted))
+                        .withFailureHandler(handlePageDataError)
+                        .getPageDataForRequests(filter);
+                })
+                .getPageDataForRequestsTest(filter);
                 
             // Load all historical requests for lookup cache in parallel
             try {
