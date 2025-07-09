@@ -32,7 +32,7 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
       // --- Data Validation ---
       const requiredFields = [
         'requesterName', 'requesterContact',
-        'eventDate', 'startTime', 'startLocation', 'endLocation',
+        'eventDate', 'startTime', 'startLocation', 'endLocation', 'secondaryLocation',
         'requestType', 'ridersNeeded'
       ];
       for (const field of requiredFields) {
@@ -453,7 +453,7 @@ function updateExistingRequest(requestData) {
       endTime: CONFIG.columns.requests.endTime,
       startLocation: CONFIG.columns.requests.startLocation,
       endLocation: CONFIG.columns.requests.endLocation,
-      secondaryEndLocation: CONFIG.columns.requests.secondaryLocation,
+      secondaryLocation: CONFIG.columns.requests.secondaryLocation,
       ridersNeeded: CONFIG.columns.requests.ridersNeeded,
       escortFee: CONFIG.columns.requests.escortFee,
       status: CONFIG.columns.requests.status,
