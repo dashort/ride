@@ -5975,9 +5975,9 @@ function getPageFileName(pageName, userRole) {
       'rider-schedule': 'rider-schedule',
       'my-assignments': 'rider-assignments'
     },
-    dispatcher: {
-      'dashboard': 'dispatcher-dashboard'
-    },
+    // dispatcher: {
+    //   'dashboard': 'dispatcher-dashboard'  // File doesn't exist - use default instead
+    // },
     admin: {
       'dashboard': 'admin-dashboard'
     }
