@@ -3362,6 +3362,16 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 
     // Update the request with assigned rider names
     updateRequestWithAssignedRiders(requestId, assignedRiderNames);
+
+    // Ensure status reflects new assignments
+    if (typeof updateRequestStatusBasedOnRiders === 'function') {
+      try {
+        updateRequestStatusBasedOnRiders(requestId);
+      } catch (statusError) {
+        logError(`Failed to auto-update status for ${requestId}`, statusError);
+      }
+    }
+
     if (usePriority !== false) {
       updateAssignmentRotation(assignedRiderNames);
     }
