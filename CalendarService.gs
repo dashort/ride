@@ -85,7 +85,7 @@ function postAssignmentsToCalendar() {
  */
 function syncRequestToCalendar(requestId) {
   try {
-    const details = getRequestDetails(requestId);
+    const details = getRequestDetails(requestId, false);
     if (!details) return;
 
     const eventDate = details.eventDate;
