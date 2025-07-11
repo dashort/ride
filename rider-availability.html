@@ -735,19 +735,35 @@
         }
 
         function handleUserLoaded(result) {
+            console.log('User loaded result:', result);
+            
             if (result.success && result.user) {
                 currentUser = result.user;
+                
+                // Defensive programming - ensure properties exist with fallbacks
+                const userName = currentUser.name || currentUser.email?.split('@')[0] || 'User';
+                const userRole = currentUser.role || 'guest';
+                
                 document.getElementById('userInfo').textContent = 
-                    `${currentUser.name} (${currentUser.role})`;
+                    `Welcome, ${userName} (${userRole})`;
                 
                 // Show admin view toggle if user has admin permissions
-                if (currentUser.role === 'admin' || currentUser.role === 'dispatcher') {
+                if (userRole === 'admin' || userRole === 'dispatcher') {
                     document.getElementById('allRidersBtn').style.display = 'block';
                 }
 
                 loadMyAvailability();
             } else {
-                showMessage('Failed to load user information', 'error');
+                // Handle authentication failure gracefully
+                currentUser = {
+                    email: 'unknown@example.com',
+                    name: 'Guest User',
+                    role: 'guest',
+                    riderId: null
+                };
+                
+                document.getElementById('userInfo').textContent = 'Guest User (guest)';
+                showMessage('Authentication required. Please sign in with your Google account.', 'error');
             }
         }
 

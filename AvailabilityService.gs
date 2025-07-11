@@ -17,36 +17,57 @@ function getCurrentUserForAvailability() {
       return { success: false, error: 'User not authenticated' };
     }
 
+    // Ensure user has proper name and role with fallbacks
+    const userName = user.name || extractNameFromEmail(user.email) || 'User';
+    const userRole = user.role || 'guest';
+    const userEmail = user.email || 'unknown@example.com';
+
     // Get rider ID if user is a rider
     let riderId = null;
-    if (user.role === 'rider') {
-      // Try to find rider ID from riders sheet
-      const ridersData = getRidersData();
-      const emailCol = CONFIG.columns.riders.email;
-      const idCol = CONFIG.columns.riders.jpNumber;
-      
-      for (let row of ridersData.data) {
-        const riderEmail = getColumnValue(row, ridersData.columnMap, emailCol);
-        if (riderEmail && riderEmail.toLowerCase() === user.email.toLowerCase()) {
-          riderId = getColumnValue(row, ridersData.columnMap, idCol);
-          break;
+    if (userRole === 'rider') {
+      try {
+        // Try to find rider ID from riders sheet
+        const ridersData = getRidersData();
+        const emailCol = CONFIG.columns.riders.email;
+        const idCol = CONFIG.columns.riders.jpNumber;
+        
+        for (let row of ridersData.data) {
+          const riderEmail = getColumnValue(row, ridersData.columnMap, emailCol);
+          if (riderEmail && riderEmail.toLowerCase() === userEmail.toLowerCase()) {
+            riderId = getColumnValue(row, ridersData.columnMap, idCol);
+            break;
+          }
         }
+      } catch (riderError) {
+        console.error('Error getting rider ID:', riderError);
       }
     }
+
+    console.log(`User for availability: ${userName} (${userRole}), Email: ${userEmail}`);
 
     return {
       success: true,
       user: {
-        email: user.email,
-        name: user.name,
-        role: user.role,
+        email: userEmail,
+        name: userName,
+        role: userRole,
         riderId: riderId,
         permissions: user.permissions || []
       }
     };
   } catch (error) {
     console.error('Error getting current user for availability:', error);
-    return { success: false, error: 'Failed to load user information' };
+    return { 
+      success: false, 
+      error: 'Failed to load user information',
+      user: {
+        email: 'unknown@example.com',
+        name: 'Guest User',
+        role: 'guest',
+        riderId: null,
+        permissions: []
+      }
+    };
   }
 }
 
@@ -832,5 +853,176 @@ function getPageDataForMobileRiderView(filter = 'All') {
     console.error('Error in getPageDataForMobileRiderView:', error);
     logError('Error in getPageDataForMobileRiderView', error);
     return { success: false, error: 'Failed to load mobile data' };
+  }
+}
+
+/**
+ * Verify user mapping and provide diagnostic information
+ * @param {string} email User email (optional, defaults to current user)
+ * @return {object} Mapping status and details
+ */
+function verifyUserMapping(email) {
+  try {
+    // Get current user email if not provided
+    if (!email) {
+      const currentUser = Session.getActiveUser();
+      email = currentUser.getEmail();
+    }
+    
+    console.log(`Verifying user mapping for: ${email}`);
+    
+    // Check admin users
+    const adminUsers = getAdminUsersSafe();
+    const isAdmin = adminUsers.includes(email);
+    
+    // Check dispatcher users
+    const dispatcherUsers = getDispatcherUsersSafe();
+    const isDispatcher = dispatcherUsers.includes(email);
+    
+    // Check rider mapping
+    const rider = getRiderByGoogleEmailSafe(email);
+    const isRider = rider && rider.status === 'Active';
+    
+    // Determine role
+    let role = 'unauthorized';
+    if (isAdmin) role = 'admin';
+    else if (isDispatcher) role = 'dispatcher';
+    else if (isRider) role = 'rider';
+    
+    console.log(`User mapping result: ${email} -> ${role}`);
+    
+    return {
+      success: true,
+      email: email,
+      isAdmin: isAdmin,
+      isDispatcher: isDispatcher,
+      isRider: isRider,
+      role: role,
+      riderData: rider,
+      adminList: adminUsers,
+      dispatcherList: dispatcherUsers,
+      message: `User ${email} is mapped as: ${role}`
+    };
+    
+  } catch (error) {
+    console.error('Error verifying user mapping:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Extract name from email address as fallback
+ * @param {string} email Email address
+ * @return {string} Extracted name
+ */
+function extractNameFromEmail(email) {
+  if (!email) return 'User';
+  
+  try {
+    // Get part before @
+    const localPart = email.split('@')[0];
+    
+    // Split by dots or underscores and capitalize
+    const nameParts = localPart.split(/[._]/).map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+    );
+    
+    return nameParts.join(' ');
+  } catch (error) {
+    return 'User';
+  }
+}
+
+/**
+ * Run comprehensive diagnostics for availability dashboard authentication
+ * @return {object} Complete diagnostic results
+ */
+function diagnoseAvailabilityAuth() {
+  console.log('🔍 Running availability authentication diagnostics...');
+  
+  const results = {
+    timestamp: new Date().toISOString(),
+    tests: {}
+  };
+  
+  try {
+    // Test 1: Current session
+    try {
+      const sessionUser = Session.getActiveUser();
+      const sessionEmail = sessionUser.getEmail();
+      results.tests.session = {
+        success: true,
+        email: sessionEmail,
+        message: `Session active for: ${sessionEmail}`
+      };
+    } catch (e) {
+      results.tests.session = {
+        success: false,
+        error: e.message
+      };
+    }
+    
+    // Test 2: getCurrentUser function
+    try {
+      const currentUser = getCurrentUser();
+      results.tests.getCurrentUser = {
+        success: !!currentUser,
+        user: currentUser,
+        message: currentUser ? `Got user: ${currentUser.email} (${currentUser.role})` : 'No user returned'
+      };
+    } catch (e) {
+      results.tests.getCurrentUser = {
+        success: false,
+        error: e.message
+      };
+    }
+    
+    // Test 3: getCurrentUserForAvailability function
+    try {
+      const availUser = getCurrentUserForAvailability();
+      results.tests.getCurrentUserForAvailability = {
+        success: availUser.success,
+        result: availUser,
+        message: availUser.success ? `Got user: ${availUser.user.name} (${availUser.user.role})` : availUser.error
+      };
+    } catch (e) {
+      results.tests.getCurrentUserForAvailability = {
+        success: false,
+        error: e.message
+      };
+    }
+    
+    // Test 4: User mapping verification
+    try {
+      const mapping = verifyUserMapping();
+      results.tests.userMapping = mapping;
+    } catch (e) {
+      results.tests.userMapping = {
+        success: false,
+        error: e.message
+      };
+    }
+    
+    // Generate summary
+    const passedTests = Object.values(results.tests).filter(test => test.success).length;
+    const totalTests = Object.keys(results.tests).length;
+    
+    results.summary = {
+      totalTests: totalTests,
+      passedTests: passedTests,
+      failedTests: totalTests - passedTests,
+      status: passedTests === totalTests ? 'ALL_PASS' : 'SOME_FAILED'
+    };
+    
+    console.log(`✅ Diagnostics complete: ${passedTests}/${totalTests} tests passed`);
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Diagnostics failed:', error);
+    results.error = error.message;
+    return results;
   }
 }
