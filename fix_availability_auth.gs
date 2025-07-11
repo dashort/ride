@@ -64,54 +64,69 @@ function testAvailabilityAuth() {
 }
 
 /**
- * Fix function to add current user to admin list (if needed)
- * Run this if your email is not in the admin list
+ * Show user mapping status and provide manual mapping instructions
+ * This tells you what role the user should have and where to map them
  */
-function addCurrentUserToAdminList() {
+function showUserMappingInstructions() {
   try {
     const currentEmail = Session.getActiveUser().getEmail();
-    console.log(`Adding ${currentEmail} to admin list...`);
+    console.log(`\n🔍 User Mapping Analysis for: ${currentEmail}`);
     
-    // Get Settings sheet
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
-    if (!settingsSheet) {
-      console.log('❌ Settings sheet not found');
-      return { success: false, error: 'Settings sheet not found' };
+    // Check current mappings
+    const adminUsers = getAdminUsersSafe();
+    const dispatcherUsers = getDispatcherUsersSafe();
+    const rider = getRiderByGoogleEmailSafe(currentEmail);
+    
+    const isAdmin = adminUsers.includes(currentEmail);
+    const isDispatcher = dispatcherUsers.includes(currentEmail);
+    const isRider = rider && rider.status === 'Active';
+    
+    console.log('\n📋 Current Role Status:');
+    console.log(`   ✓ Admin: ${isAdmin ? 'YES' : 'NO'}`);
+    console.log(`   ✓ Dispatcher: ${isDispatcher ? 'YES' : 'NO'}`);
+    console.log(`   ✓ Rider: ${isRider ? 'YES' : 'NO'}`);
+    
+    if (!isAdmin && !isDispatcher && !isRider) {
+      console.log('\n⚠️ USER NOT MAPPED TO ANY ROLE');
+      console.log('\n🔧 TO FIX, CHOOSE ONE OF THESE OPTIONS:');
+      console.log('\n1. 👑 IF USER SHOULD BE AN ADMIN:');
+      console.log('   - Open your Google Spreadsheet');
+      console.log('   - Go to the "Settings" sheet');
+      console.log(`   - Add "${currentEmail}" to an empty cell in column B (Admin Emails)`);
+      
+      console.log('\n2. 📋 IF USER SHOULD BE A DISPATCHER:');
+      console.log('   - Open your Google Spreadsheet');
+      console.log('   - Go to the "Settings" sheet');
+      console.log(`   - Add "${currentEmail}" to an empty cell in column C (Dispatcher Emails)`);
+      
+      console.log('\n3. 🏍️ IF USER SHOULD BE A RIDER:');
+      console.log('   - Open your Google Spreadsheet');
+      console.log('   - Go to the "Riders" sheet');
+      console.log(`   - Find the row with your rider information`);
+      console.log(`   - Add "${currentEmail}" to the "Google Email" column for your rider record`);
+      console.log('   - Ensure the "Status" column is set to "Active"');
+      
+      console.log('\n4. 🚫 IF USER SHOULD NOT HAVE ACCESS:');
+      console.log('   - No action needed - user will remain unauthorized');
+    } else {
+      console.log('\n✅ USER IS PROPERLY MAPPED');
+      if (isAdmin) console.log('   Role: Admin');
+      if (isDispatcher) console.log('   Role: Dispatcher');
+      if (isRider) console.log(`   Role: Rider (${rider.name || rider.id})`);
     }
-    
-    // Find first empty row in admin email column (B column)
-    const adminRange = settingsSheet.getRange('B2:B20');
-    const adminValues = adminRange.getValues();
-    
-    let emptyRow = -1;
-    for (let i = 0; i < adminValues.length; i++) {
-      if (!adminValues[i][0] || adminValues[i][0].trim() === '') {
-        emptyRow = i + 2; // +2 because we start from B2
-        break;
-      }
-    }
-    
-    if (emptyRow === -1) {
-      console.log('❌ No empty rows found in admin email column');
-      return { success: false, error: 'No empty rows found in admin email column' };
-    }
-    
-    // Add current user email to admin list
-    settingsSheet.getRange(`B${emptyRow}`).setValue(currentEmail);
-    
-    console.log(`✅ Added ${currentEmail} to admin list at row ${emptyRow}`);
-    
-    // Test the fix
-    const testResult = testAvailabilityAuth();
     
     return {
       success: true,
-      message: `Added ${currentEmail} to admin list`,
-      testResult: testResult
+      userEmail: currentEmail,
+      isAdmin: isAdmin,
+      isDispatcher: isDispatcher,
+      isRider: isRider,
+      needsMapping: !isAdmin && !isDispatcher && !isRider,
+      riderData: rider
     };
     
   } catch (error) {
-    console.error('❌ Error adding user to admin list:', error);
+    console.error('❌ Error analyzing user mapping:', error);
     return {
       success: false,
       error: error.message
@@ -120,158 +135,187 @@ function addCurrentUserToAdminList() {
 }
 
 /**
- * Complete diagnostic and fix function
- * This will identify and attempt to fix common authentication issues
+ * Check if current user is properly mapped and provide specific guidance
  */
-function diagnoseAndFixAuth() {
-  console.log('🔍 Running comprehensive authentication diagnosis and fix...');
+function diagnoseUserRole() {
+  console.log('🔍 Running user role diagnosis...');
+  
+  const mappingInfo = showUserMappingInstructions();
+  
+  if (!mappingInfo.success) {
+    return mappingInfo;
+  }
+  
+  if (mappingInfo.needsMapping) {
+    console.log('\n❌ ISSUE FOUND: User not mapped to any role');
+    console.log('📝 ACTION REQUIRED: Follow the instructions above to map the user to appropriate role');
+    
+    return {
+      issue: 'USER_NOT_MAPPED',
+      solution: 'Map user to appropriate role in Settings or Riders sheet',
+      mappingInfo: mappingInfo
+    };
+  } else {
+    console.log('\n✅ User role mapping is correct');
+    
+    // Test if the mapping is working in the authentication system
+    const authTest = getCurrentUserForAvailability();
+    
+    if (authTest.success && authTest.user && authTest.user.name && authTest.user.role) {
+      console.log('✅ Authentication is working correctly');
+      return {
+        issue: 'NONE',
+        solution: 'System is working correctly',
+        authResult: authTest
+      };
+    } else {
+      console.log('⚠️ User is mapped but authentication still failing');
+      return {
+        issue: 'AUTH_SYSTEM_ERROR',
+        solution: 'User mapping is correct but authentication system has other issues',
+        mappingInfo: mappingInfo,
+        authResult: authTest
+      };
+    }
+  }
+}
+
+/**
+ * Verify Settings sheet structure and admin/dispatcher lists
+ */
+function verifySettingsSheet() {
+  try {
+    console.log('📊 Verifying Settings sheet structure...');
+    
+    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
+    if (!settingsSheet) {
+      console.log('❌ Settings sheet not found');
+      return {
+        success: false,
+        error: 'Settings sheet not found',
+        solution: 'Create a sheet named "Settings" with admin emails in column B and dispatcher emails in column C'
+      };
+    }
+    
+    // Check admin emails (column B)
+    const adminRange = settingsSheet.getRange('B2:B20');
+    const adminValues = adminRange.getValues().flat().filter(email => email && email.trim());
+    
+    // Check dispatcher emails (column C)  
+    const dispatcherRange = settingsSheet.getRange('C2:C20');
+    const dispatcherValues = dispatcherRange.getValues().flat().filter(email => email && email.trim());
+    
+    console.log('📧 Admin emails found:', adminValues);
+    console.log('📧 Dispatcher emails found:', dispatcherValues);
+    
+    return {
+      success: true,
+      adminEmails: adminValues,
+      dispatcherEmails: dispatcherValues,
+      hasAdmins: adminValues.length > 0,
+      hasDispatchers: dispatcherValues.length > 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Error verifying Settings sheet:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Complete diagnostic - identifies the exact issue and provides solution
+ */
+function completeAuthDiagnostic() {
+  console.log('� Running complete authentication diagnostic...');
   
   const results = {
     timestamp: new Date().toISOString(),
-    steps: []
+    tests: {}
   };
   
   try {
-    // Step 1: Test basic authentication
-    console.log('\n📋 Step 1: Testing basic authentication...');
+    // Test 1: Settings sheet verification
+    console.log('\n📋 Step 1: Verifying Settings sheet...');
+    const settingsTest = verifySettingsSheet();
+    results.tests.settings = settingsTest;
+    
+    // Test 2: User role diagnosis
+    console.log('\n📋 Step 2: Diagnosing user role...');
+    const roleTest = diagnoseUserRole();
+    results.tests.userRole = roleTest;
+    
+    // Test 3: Authentication function test
+    console.log('\n📋 Step 3: Testing authentication functions...');
     const authTest = testAvailabilityAuth();
-    results.steps.push({
-      step: 'auth_test',
-      success: authTest.success,
-      result: authTest
-    });
+    results.tests.authentication = authTest;
     
-    if (!authTest.success) {
-      console.log('❌ Basic authentication failed');
-      return results;
+    // Generate recommendations
+    console.log('\n📝 DIAGNOSTIC SUMMARY:');
+    
+    if (roleTest.issue === 'USER_NOT_MAPPED') {
+      console.log('❌ ISSUE: User is not mapped to any role');
+      console.log('🔧 SOLUTION: Map the user to the appropriate role (see instructions above)');
+      results.recommendation = 'MAP_USER_TO_ROLE';
+    } else if (roleTest.issue === 'AUTH_SYSTEM_ERROR') {
+      console.log('⚠️ ISSUE: User mapping is correct but authentication system has problems');
+      console.log('🔧 SOLUTION: Check authentication system functions');
+      results.recommendation = 'CHECK_AUTH_SYSTEM';
+    } else if (roleTest.issue === 'NONE') {
+      console.log('✅ RESULT: System is working correctly');
+      results.recommendation = 'NO_ACTION_NEEDED';
     }
-    
-    // Step 2: Check if user has proper role
-    console.log('\n📋 Step 2: Checking user role assignment...');
-    const userEmail = authTest.sessionEmail;
-    const hasRole = authTest.adminUsers.includes(userEmail) || 
-                   authTest.dispatcherUsers.includes(userEmail) || 
-                   (authTest.rider && authTest.rider.status === 'Active');
-    
-    results.steps.push({
-      step: 'role_check',
-      success: hasRole,
-      userEmail: userEmail,
-      hasRole: hasRole,
-      roleType: authTest.adminUsers.includes(userEmail) ? 'admin' : 
-                (authTest.dispatcherUsers.includes(userEmail) ? 'dispatcher' : 
-                (authTest.rider ? 'rider' : 'none'))
-    });
-    
-    if (!hasRole) {
-      console.log('⚠️ User has no assigned role. Attempting to add to admin list...');
-      const addResult = addCurrentUserToAdminList();
-      results.steps.push({
-        step: 'add_to_admin',
-        success: addResult.success,
-        result: addResult
-      });
-    }
-    
-    // Step 3: Test getCurrentUserForAvailability again
-    console.log('\n📋 Step 3: Testing fixed authentication...');
-    const finalTest = getCurrentUserForAvailability();
-    results.steps.push({
-      step: 'final_test',
-      success: finalTest.success,
-      result: finalTest
-    });
-    
-    // Generate summary
-    const successfulSteps = results.steps.filter(step => step.success).length;
-    results.summary = {
-      totalSteps: results.steps.length,
-      successfulSteps: successfulSteps,
-      status: successfulSteps === results.steps.length ? 'ALL_FIXED' : 'NEEDS_MANUAL_FIX',
-      message: successfulSteps === results.steps.length ? 
-               'All authentication issues fixed!' : 
-               'Some issues remain - check the logs and fix manually'
-    };
-    
-    console.log(`\n✅ Diagnosis complete: ${results.summary.message}`);
     
     return results;
     
   } catch (error) {
-    console.error('❌ Diagnosis failed:', error);
+    console.error('❌ Diagnostic failed:', error);
     results.error = error.message;
     return results;
   }
 }
 
 /**
- * Quick fix function - run this to immediately resolve the undefined issue
+ * Updated instructions that don't automatically grant admin access
  */
-function quickFixUndefinedWelcome() {
-  console.log('🚀 Applying quick fix for undefined welcome message...');
-  
-  try {
-    // Test current state
-    const currentState = getCurrentUserForAvailability();
-    console.log('Current state:', JSON.stringify(currentState));
-    
-    if (currentState.success && currentState.user && currentState.user.name && currentState.user.role) {
-      console.log('✅ User authentication is working correctly!');
-      console.log(`   User: ${currentState.user.name} (${currentState.user.role})`);
-      return {
-        success: true,
-        message: 'Authentication is working correctly',
-        user: currentState.user
-      };
-    }
-    
-    // If we get here, there's an issue - run the full diagnostic
-    console.log('⚠️ Issues detected, running full diagnostic...');
-    return diagnoseAndFixAuth();
-    
-  } catch (error) {
-    console.error('❌ Quick fix failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * Instructions for the user
- */
-function showInstructions() {
+function showSecureInstructions() {
   const instructions = `
-🔧 RIDER AVAILABILITY AUTHENTICATION FIX INSTRUCTIONS
+🔧 RIDER AVAILABILITY AUTHENTICATION DIAGNOSTIC INSTRUCTIONS
 
 To fix the "welcome: undefined (undefined)" issue:
 
-1. Run 'quickFixUndefinedWelcome()' first
-   - This will diagnose and attempt to fix the issue automatically
+1. Run 'completeAuthDiagnostic()' first
+   - This will identify exactly what's wrong and provide specific guidance
 
-2. If that doesn't work, run 'testAvailabilityAuth()' 
-   - This will show you exactly what's happening with authentication
+2. Based on the results, manually map the user to the correct role:
 
-3. If your email is not in the admin/dispatcher lists, run 'addCurrentUserToAdminList()'
-   - This will add your email to the admin users list
+   👑 FOR ADMIN ACCESS:
+   - Open your Google Spreadsheet → Settings sheet
+   - Add user's email to column B (Admin Emails)
+   
+   📋 FOR DISPATCHER ACCESS:
+   - Open your Google Spreadsheet → Settings sheet  
+   - Add user's email to column C (Dispatcher Emails)
+   
+   🏍️ FOR RIDER ACCESS:
+   - Open your Google Spreadsheet → Riders sheet
+   - Find the rider's row and add their Google email to "Google Email" column
+   - Ensure "Status" is set to "Active"
 
-4. After making changes, reload the rider availability page to test
+3. After mapping, reload the rider availability page to test
 
-The fixes include:
-- Adding fallback values for undefined user properties
-- Ensuring proper role assignment
-- Adding diagnostic functions to identify issues
-- Improving error handling in the authentication chain
+DO NOT run functions that automatically grant admin access!
 
-Common issues:
-- User email not in Settings sheet admin/dispatcher lists
-- Google email not linked to rider record
-- Session authentication failing
-- Role mapping not working correctly
+Common issues and solutions:
+- User not in any role lists → Map to appropriate role manually
+- Settings sheet missing → Create Settings sheet with proper structure
+- Rider Google email not linked → Add Google email to Riders sheet
+- Authentication system errors → Run diagnostic for specific guidance
 
-After running the fixes, the welcome message should show:
-"Welcome, [Your Name] ([Your Role])" instead of "undefined (undefined)"
+The frontend has been updated with fallback values, so even if authentication 
+has issues, it will show meaningful information instead of "undefined (undefined)".
 `;
   
   console.log(instructions);
