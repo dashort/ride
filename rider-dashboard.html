@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>🏍️ Rider Dashboard - Motorcycle Escort Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .mobile-header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .mobile-header h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .user-info {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Navigation styles */
+        .navigation {
+            display: flex !important;
+            gap: 1rem !important;
+            margin: 1rem auto 2rem auto !important;
+            max-width: 1400px !important;
+            padding: 0 2rem !important;
+            flex-wrap: wrap !important;
+            justify-content: center !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+
+        .nav-button {
+            padding: 0.75rem 1.5rem !important;
+            background: rgba(255, 255, 255, 0.9) !important;
+            border: none !important;
+            border-radius: 25px !important;
+            color: #2c3e50 !important;
+            text-decoration: none !important;
+            font-weight: 600 !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+
+        .nav-button:hover, .nav-button.active {
+            background: #3498db !important;
+            color: white !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        }
+
+        /* Dashboard Sections */
+        .dashboard-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #f8f9fa;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+
+        .section-toggle {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .section-toggle:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .section-toggle.collapsed {
+            background: #95a5a6;
+        }
+
+        .section-content {
+            display: block;
+            transition: all 0.3s ease;
+        }
+
+        .section-content.collapsed {
+            display: none;
+        }
+
+        /* Assignment Styles */
+        .assignment-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #3498db;
+            transition: all 0.2s ease;
+        }
+
+        .assignment-item:hover {
+            background: #e9ecef;
+            transform: translateX(4px);
+        }
+
+        .assignment-item.urgent {
+            border-left-color: #e74c3c;
+            background: #fff5f5;
+        }
+
+        .assignment-item.confirmed {
+            border-left-color: #27ae60;
+            background: #f0fff4;
+        }
+
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .assignment-time {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .assignment-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-confirmed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-urgent {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .assignment-details {
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .assignment-location {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .no-assignments {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 2rem;
+        }
+
+        /* Calendar Container */
+        .calendar-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            min-height: 400px;
+        }
+
+        /* Quick Action Panel */
+        .quick-actions {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .quick-actions h4 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+            font-size: 1rem;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            border-left: 4px solid #3498db;
+        }
+
+        .action-card.available {
+            border-left-color: #27ae60;
+        }
+
+        .action-card.unavailable {
+            border-left-color: #e74c3c;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .form-row input,
+        .form-row select,
+        .form-row textarea {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-row input:focus,
+        .form-row select:focus,
+        .form-row textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover, .btn-primary:active {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        /* FullCalendar Customization */
+        .fc {
+            font-size: 0.9rem;
+        }
+
+        .fc-event {
+            border: none !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            padding: 2px 4px !important;
+        }
+
+        .fc-event.available {
+            background: #27ae60 !important;
+            color: white !important;
+        }
+
+        .fc-event.busy {
+            background: #f39c12 !important;
+            color: white !important;
+        }
+
+        .fc-event.unavailable {
+            background: #e74c3c !important;
+            color: white !important;
+        }
+
+        /* Loading States */
+        .loading-state {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+
+        .loading-spinner {
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Message Styles */
+        .message {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-row input,
+            .form-row select,
+            .form-row textarea {
+                min-width: unset;
+            }
+
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .navigation {
+                flex-direction: column !important;
+                align-items: center !important;
+                padding: 0 1rem !important;
+                margin: 1rem auto 1rem auto !important;
+            }
+
+            .nav-button {
+                width: 100% !important;
+                max-width: 300px !important;
+                text-align: center !important;
+            }
+
+            .assignment-header {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .section-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+        }
+
+        /* Summary Stats */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            border-left: 4px solid #3498db;
+        }
+
+        .stat-card.assignments {
+            border-left-color: #3498db;
+        }
+
+        .stat-card.availability {
+            border-left-color: #27ae60;
+        }
+
+        .stat-card.completed {
+            border-left-color: #9b59b6;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-header">
+        <h1>🏍️ Rider Dashboard</h1>
+        <div class="user-info" id="userInfo">Loading user information...</div>
+    </div>
+
+    <!-- Navigation -->
+    <div id="navigation-container"></div>
+
+    <div class="container">
+        <!-- Summary Statistics -->
+        <div class="summary-stats">
+            <div class="stat-card assignments">
+                <div class="stat-number" id="activeAssignments">-</div>
+                <div class="stat-label">Active Assignments</div>
+            </div>
+            <div class="stat-card availability">
+                <div class="stat-number" id="availableHours">-</div>
+                <div class="stat-label">Hours Available This Week</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-number" id="completedThisMonth">-</div>
+                <div class="stat-label">Completed This Month</div>
+            </div>
+        </div>
+
+        <!-- Message Container -->
+        <div id="messageContainer"></div>
+
+        <!-- My Escort Assignments Section -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2 class="section-title">🏍️ My Escort Assignments</h2>
+                <button class="section-toggle" id="assignmentsToggle" onclick="toggleSection('assignments')">Hide</button>
+            </div>
+            <div class="section-content" id="assignmentsContent">
+                <div id="assignmentsList" class="loading-state">
+                    <div class="loading-spinner"></div>
+                    Loading your assignments...
+                </div>
+            </div>
+        </div>
+
+        <!-- My Availability Calendar Section -->
+        <div class="dashboard-section">
+            <div class="section-header">
+                <h2 class="section-title">🗓️ My Availability Calendar</h2>
+                <button class="section-toggle" id="calendarToggle" onclick="toggleSection('calendar')">Hide</button>
+            </div>
+            <div class="section-content" id="calendarContent">
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h4>Quick Availability Actions</h4>
+                    <div class="action-grid">
+                        <div class="action-card available">
+                            <h4>Mark Available</h4>
+                            <div class="form-row">
+                                <input type="date" id="availableDate" placeholder="Date">
+                                <input type="time" id="availableStart" placeholder="Start Time">
+                                <input type="time" id="availableEnd" placeholder="End Time">
+                            </div>
+                            <button class="btn btn-success btn-full" onclick="setQuickAvailability('available')">
+                                ✅ Set Available
+                            </button>
+                        </div>
+                        <div class="action-card unavailable">
+                            <h4>Mark Unavailable</h4>
+                            <div class="form-row">
+                                <input type="date" id="unavailableDate" placeholder="Date">
+                                <input type="time" id="unavailableStart" placeholder="Start Time">
+                                <input type="time" id="unavailableEnd" placeholder="End Time">
+                            </div>
+                            <div class="form-row">
+                                <textarea id="unavailableReason" placeholder="Reason (optional)" rows="2"></textarea>
+                            </div>
+                            <button class="btn btn-danger btn-full" onclick="setQuickAvailability('unavailable')">
+                                ❌ Set Unavailable
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calendar -->
+                <div class="calendar-container">
+                    <div id="riderCalendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+        // Global variables
+        let currentUser = null;
+        let riderCalendar = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeUser();
+            loadDashboardData();
+            initializeCalendar();
+            setDefaultDates();
+        });
+
+        // User initialization
+        function initializeUser() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run.withSuccessHandler(handleUserLoaded).getCurrentUser();
+            } else {
+                // Development fallback
+                handleUserLoaded({
+                    name: 'Demo Rider',
+                    email: 'rider@example.com',
+                    riderId: 'R001',
+                    role: 'rider'
+                });
+            }
+        }
+
+        function handleUserLoaded(user) {
+            currentUser = user;
+            document.getElementById('userInfo').textContent = `Welcome, ${user.name} (${user.riderId})`;
+        }
+
+        // Load dashboard statistics and assignments
+        function loadDashboardData() {
+            loadAssignments();
+            loadAvailabilityStats();
+        }
+
+        function loadAssignments() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(displayAssignments)
+                    .withFailureHandler(handleAssignmentsError)
+                    .getRiderAssignments();
+            } else {
+                // Development fallback
+                displayAssignments([
+                    {
+                        id: '1',
+                        eventDate: '2024-01-15',
+                        startTime: '09:00',
+                        endTime: '11:00',
+                        startLocation: 'Downtown Medical Center',
+                        endLocation: 'Memorial Hospital',
+                        status: 'Confirmed',
+                        priority: 'normal',
+                        notes: 'Patient transport - cardiac appointment'
+                    },
+                    {
+                        id: '2',
+                        eventDate: '2024-01-16',
+                        startTime: '14:00',
+                        endTime: '15:30',
+                        startLocation: 'City Hall',
+                        endLocation: 'Convention Center',
+                        status: 'Pending',
+                        priority: 'urgent',
+                        notes: 'VIP escort service'
+                    }
+                ]);
+            }
+        }
+
+        function displayAssignments(assignments) {
+            const container = document.getElementById('assignmentsList');
+            
+            // Update stats
+            document.getElementById('activeAssignments').textContent = assignments.length;
+            
+            if (!assignments || assignments.length === 0) {
+                container.innerHTML = '<div class="no-assignments">🎉 No upcoming escort assignments. Check your availability calendar to make yourself available for new assignments.</div>';
+                return;
+            }
+
+            container.innerHTML = assignments.map(function(assignment) {
+                const statusClass = assignment.status.toLowerCase().replace(' ', '-');
+                const priorityClass = assignment.priority === 'urgent' ? 'urgent' : 
+                                   assignment.status === 'Confirmed' ? 'confirmed' : '';
+                
+                return `
+                    <div class="assignment-item ${priorityClass}">
+                        <div class="assignment-header">
+                            <div class="assignment-time">
+                                📅 ${assignment.eventDate} • ${assignment.startTime} - ${assignment.endTime}
+                            </div>
+                            <div class="assignment-status status-${statusClass}">
+                                ${assignment.status}
+                            </div>
+                        </div>
+                        <div class="assignment-details">
+                            <div class="assignment-location">
+                                📍 From: ${assignment.startLocation}
+                            </div>
+                            <div class="assignment-location">
+                                📍 To: ${assignment.endLocation}
+                            </div>
+                            ${assignment.notes ? `<div style="margin-top: 0.5rem; font-style: italic;">💬 ${assignment.notes}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function handleAssignmentsError(error) {
+            console.error('Error loading assignments:', error);
+            document.getElementById('assignmentsList').innerHTML = 
+                '<div class="no-assignments">❌ Error loading assignments. Please refresh the page.</div>';
+        }
+
+        function loadAvailabilityStats() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(updateAvailabilityStats)
+                    .withFailureHandler(handleStatsError)
+                    .getRiderAvailabilityStats();
+            } else {
+                // Development fallback
+                updateAvailabilityStats({
+                    weeklyAvailableHours: 32,
+                    monthlyCompleted: 8
+                });
+            }
+        }
+
+        function updateAvailabilityStats(stats) {
+            document.getElementById('availableHours').textContent = stats.weeklyAvailableHours || '0';
+            document.getElementById('completedThisMonth').textContent = stats.monthlyCompleted || '0';
+        }
+
+        function handleStatsError(error) {
+            console.error('Error loading stats:', error);
+            document.getElementById('availableHours').textContent = '-';
+            document.getElementById('completedThisMonth').textContent = '-';
+        }
+
+        // Calendar initialization
+        function initializeCalendar() {
+            const calendarEl = document.getElementById('riderCalendar');
+            riderCalendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                height: 'auto',
+                selectable: true,
+                selectMirror: true,
+                editable: true,
+                dayMaxEvents: true,
+                select: function(info) {
+                    createNewAvailability(info.start, info.end);
+                    riderCalendar.unselect();
+                },
+                eventClick: function(info) {
+                    editAvailabilityEvent(info.event);
+                },
+                eventDidMount: function(info) {
+                    // Add custom styling based on event type
+                    const status = info.event.extendedProps.status;
+                    if (status) {
+                        info.el.classList.add(status);
+                    }
+                }
+            });
+
+            riderCalendar.render();
+            loadMyAvailability();
+        }
+
+        // Load rider's availability
+        function loadMyAvailability() {
+            if (!currentUser) return;
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleMyAvailabilityLoaded)
+                    .withFailureHandler(handleAvailabilityError)
+                    .getUserAvailabilityForCalendar(currentUser.email);
+            } else {
+                // Development fallback
+                handleMyAvailabilityLoaded([
+                    {
+                        id: '1',
+                        title: 'Available',
+                        start: new Date().toISOString().split('T')[0] + 'T09:00:00',
+                        end: new Date().toISOString().split('T')[0] + 'T17:00:00',
+                        status: 'available'
+                    }
+                ]);
+            }
+        }
+
+        function handleMyAvailabilityLoaded(events) {
+            riderCalendar.removeAllEvents();
+            events.forEach(event => {
+                riderCalendar.addEvent({
+                    id: event.id,
+                    title: event.title || getStatusTitle(event.status),
+                    start: event.start,
+                    end: event.end,
+                    extendedProps: {
+                        status: event.status,
+                        notes: event.notes,
+                        riderId: event.riderId
+                    }
+                });
+            });
+        }
+
+        function handleAvailabilityError(error) {
+            console.error('Availability error:', error);
+            showMessage('Error loading availability data', 'error');
+        }
+
+        // Quick availability actions
+        function setQuickAvailability(status) {
+            const isAvailable = status === 'available';
+            const dateInput = document.getElementById(isAvailable ? 'availableDate' : 'unavailableDate');
+            const startInput = document.getElementById(isAvailable ? 'availableStart' : 'unavailableStart');
+            const endInput = document.getElementById(isAvailable ? 'availableEnd' : 'unavailableEnd');
+            const reasonInput = document.getElementById('unavailableReason');
+
+            if (!dateInput.value || !startInput.value || !endInput.value) {
+                showMessage('Please fill in all required fields', 'error');
+                return;
+            }
+
+            const availabilityData = {
+                date: dateInput.value,
+                startTime: startInput.value,
+                endTime: endInput.value,
+                status: status,
+                notes: isAvailable ? '' : (reasonInput ? reasonInput.value : ''),
+                riderId: currentUser?.riderId
+            };
+
+            saveAvailability(availabilityData);
+        }
+
+        function saveAvailability(data) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleAvailabilitySaved)
+                    .withFailureHandler(handleSaveError)
+                    .saveRiderAvailabilityData(data);
+            } else {
+                handleAvailabilitySaved({ success: true, message: 'Availability saved (demo)' });
+            }
+        }
+
+        function handleAvailabilitySaved(result) {
+            if (result.success) {
+                showMessage(result.message || 'Availability saved successfully!', 'success');
+                clearQuickActionForms();
+                loadMyAvailability();
+                loadAvailabilityStats(); // Refresh stats
+            } else {
+                showMessage(result.error || 'Failed to save availability', 'error');
+            }
+        }
+
+        function handleSaveError(error) {
+            console.error('Save error:', error);
+            showMessage('Error saving availability', 'error');
+        }
+
+        // Create new availability from calendar selection
+        function createNewAvailability(start, end) {
+            const startDate = start.toISOString().split('T')[0];
+            const startTime = start.toTimeString().slice(0, 5);
+            const endTime = end ? end.toTimeString().slice(0, 5) : '';
+
+            document.getElementById('availableDate').value = startDate;
+            document.getElementById('availableStart').value = startTime;
+            document.getElementById('availableEnd').value = endTime;
+
+            // Scroll to quick actions
+            document.querySelector('.quick-actions').scrollIntoView({ behavior: 'smooth' });
+            showMessage('Selected time slot filled in the availability form below', 'success');
+        }
+
+        function editAvailabilityEvent(event) {
+            if (confirm(`Edit availability for ${event.start.toLocaleDateString()}?\n\nCurrent: ${event.title}\nTime: ${event.start.toLocaleTimeString()} - ${event.end?.toLocaleTimeString() || 'End of day'}`)) {
+                // Pre-fill form with event data
+                document.getElementById('availableDate').value = event.start.toISOString().split('T')[0];
+                document.getElementById('availableStart').value = event.start.toTimeString().slice(0, 5);
+                document.getElementById('availableEnd').value = event.end ? event.end.toTimeString().slice(0, 5) : '';
+                
+                // Scroll to form
+                document.querySelector('.quick-actions').scrollIntoView({ behavior: 'smooth' });
+                showMessage('Event details loaded into form. Make changes and save.', 'success');
+            }
+        }
+
+        // Utility functions
+        function setDefaultDates() {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+
+            // Set default dates for quick actions
+            document.getElementById('availableDate').value = todayString;
+            document.getElementById('unavailableDate').value = todayString;
+
+            // Set default times
+            document.getElementById('availableStart').value = '09:00';
+            document.getElementById('availableEnd').value = '17:00';
+            document.getElementById('unavailableStart').value = '09:00';
+            document.getElementById('unavailableEnd').value = '17:00';
+        }
+
+        function clearQuickActionForms() {
+            document.getElementById('availableDate').value = '';
+            document.getElementById('availableStart').value = '';
+            document.getElementById('availableEnd').value = '';
+            document.getElementById('unavailableDate').value = '';
+            document.getElementById('unavailableStart').value = '';
+            document.getElementById('unavailableEnd').value = '';
+            document.getElementById('unavailableReason').value = '';
+            setDefaultDates();
+        }
+
+        function getStatusTitle(status) {
+            switch (status) {
+                case 'available': return 'Available';
+                case 'unavailable': return 'Unavailable';
+                case 'busy': return 'Busy/Assigned';
+                default: return 'Unknown';
+            }
+        }
+
+        function showMessage(message, type) {
+            const container = document.getElementById('messageContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = message;
+            
+            container.innerHTML = '';
+            container.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        // Section toggle functionality
+        function toggleSection(sectionName) {
+            const content = document.getElementById(sectionName + 'Content');
+            const toggle = document.getElementById(sectionName + 'Toggle');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                toggle.textContent = 'Hide';
+                toggle.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                toggle.textContent = 'Show';
+                toggle.classList.add('collapsed');
+            }
+        }
+    </script>
+    <script src="load-navigation.js"></script>
+</body>
+</html>
