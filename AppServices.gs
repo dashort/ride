@@ -3400,11 +3400,12 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 /**
  * Gets details for a specific request by ID.
  * @param {string} requestId - The request ID to look up.
+ * @param {boolean} [useCache=true] - Whether to use cached request data.
  * @return {object|null} Request details object or null if not found.
  */
-function getRequestDetails(requestId) {
+function getRequestDetails(requestId, useCache = true) {
   try {
-    const requestsData = getRequestsData();
+    const requestsData = getRequestsData(useCache);
     if (!requestsData || !requestsData.data) {
       return null;
     }
@@ -3683,6 +3684,10 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     }
 
     console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
+
+    if (typeof clearRequestsCache === 'function') {
+      clearRequestsCache();
+    }
 
     if (typeof syncRequestToCalendar === 'function') {
       try {
