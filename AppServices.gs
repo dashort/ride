@@ -4177,17 +4177,30 @@ function testActiveRidersFix() {
 /**
  * Save an availability entry for the current user or specified email.
  * If an entry with the same email, date and start time exists, it will be updated.
- * @param {object} entry Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
+ * @param {object} userOrEntry Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
+ * @param {object} entry (Optional) Object containing date (YYYY-MM-DD), startTime, endTime, notes, and optional email.
  * @return {object} Result object with success boolean and row number.
  */
-function saveUserAvailability(user, entry) { // Added user parameter
+function saveUserAvailability(userOrEntry, entry) { // Added user parameter
   try {
-    if (!entry) throw new Error('No availability data provided');
+    // Handle backward compatibility: if only one parameter is passed, treat it as entry
+    let user, actualEntry;
+    
+    if (arguments.length === 1) {
+      // Legacy call: saveUserAvailability(entry)
+      actualEntry = userOrEntry;
+      user = getCurrentUser();
+    } else {
+      // New call: saveUserAvailability(user, entry)
+      user = userOrEntry;
+      actualEntry = entry;
+    }
+    
+    if (!actualEntry) throw new Error('No availability data provided');
 
-    // const user = getCurrentUser(); // Removed: user is now a parameter
-    const email = entry.email || user.email;
-    const repeat = entry.repeat || 'none';
-    const untilDate = entry.repeatUntil ? new Date(entry.repeatUntil) : new Date(entry.date);
+    const email = actualEntry.email || user.email;
+    const repeat = actualEntry.repeat || 'none';
+    const untilDate = actualEntry.repeatUntil ? new Date(actualEntry.repeatUntil) : new Date(actualEntry.date);
 
     // Ensure the Availability sheet exists with the expected headers
     const sheet = getOrCreateSheet(
@@ -4213,13 +4226,13 @@ function saveUserAvailability(user, entry) { // Added user parameter
         const rowStart = row[map[CONFIG.columns.availability.startTime]];
         if (String(rowEmail).toLowerCase() === String(email).toLowerCase() &&
             Utilities.formatDate(new Date(rowDate), CONFIG.system.timezone, 'yyyy-MM-dd') === dateStr &&
-            String(rowStart) === entry.startTime) {
+            String(rowStart) === actualEntry.startTime) {
           targetRow = i + 2; // account for header
           break;
         }
       }
 
-      const rowValues = [email, new Date(dateStr), entry.startTime, entry.endTime, entry.notes || ''];
+      const rowValues = [email, new Date(dateStr), actualEntry.startTime, actualEntry.endTime, actualEntry.notes || ''];
 
       if (targetRow > 0) {
         sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
@@ -4228,7 +4241,7 @@ function saveUserAvailability(user, entry) { // Added user parameter
       }
     }
 
-    let curDate = new Date(entry.date);
+    let curDate = new Date(actualEntry.date);
     const endDate = untilDate;
     while (curDate <= endDate) {
       const dateStr = Utilities.formatDate(curDate, CONFIG.system.timezone, 'yyyy-MM-dd');
