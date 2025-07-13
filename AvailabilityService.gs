@@ -73,6 +73,7 @@ function getUserAvailabilityForCalendar(email) {
     const dateCol = CONFIG.columns.availability.date;
     const startCol = CONFIG.columns.availability.startTime;
     const endCol = CONFIG.columns.availability.endTime;
+    const statusCol = CONFIG.columns.availability.status;
     const notesCol = CONFIG.columns.availability.notes;
 
     for (let i = 0; i < sheetData.data.length; i++) {
@@ -83,6 +84,7 @@ function getUserAvailabilityForCalendar(email) {
         const date = getColumnValue(row, sheetData.columnMap, dateCol);
         const startTime = getColumnValue(row, sheetData.columnMap, startCol);
         const endTime = getColumnValue(row, sheetData.columnMap, endCol);
+        const status = getColumnValue(row, sheetData.columnMap, statusCol) || 'available';
         const notes = getColumnValue(row, sheetData.columnMap, notesCol) || '';
 
         if (date && startTime && endTime) {
@@ -90,15 +92,7 @@ function getUserAvailabilityForCalendar(email) {
           const startDateTime = combineDateAndTime(eventDate, startTime);
           const endDateTime = combineDateAndTime(eventDate, endTime);
 
-          // Determine status from notes or default to available
-          let status = 'available';
-          if (notes.toLowerCase().includes('unavailable') || notes.toLowerCase().includes('busy')) {
-            status = 'unavailable';
-          } else if (notes.toLowerCase().includes('assigned') || notes.toLowerCase().includes('escort')) {
-            status = 'busy';
-          }
-
-          events.push({
+          const eventData = {
             id: `avail_${i}`,
             title: getEventTitle(status, notes),
             start: startDateTime.toISOString(),
@@ -106,7 +100,10 @@ function getUserAvailabilityForCalendar(email) {
             status: status,
             notes: notes,
             riderId: getUserRiderId(email)
-          });
+          };
+          
+          console.log(`Creating event for ${email} on ${date}:`, eventData);
+          events.push(eventData);
         }
       }
     }

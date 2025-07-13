@@ -759,16 +759,37 @@
             
             google.script.run
                 .withSuccessHandler(function(events) {
+                    console.log('Raw events from backend:', events);
                     if (events && events.length > 0) {
                         // Clear existing events
                         calendar.removeAllEvents();
                         
-                        // Add events to calendar
-                        events.forEach(event => {
-                            calendar.addEvent(event);
+                        // Add events to calendar with proper styling
+                        events.forEach((event, index) => {
+                            const statusColors = {
+                                available: '#27ae60',
+                                unavailable: '#e74c3c',
+                                partial: '#f39c12',
+                                busy: '#e67e22'
+                            };
+                            
+                            // Ensure event has proper color based on status
+                            const eventWithColors = {
+                                ...event,
+                                backgroundColor: statusColors[event.status] || statusColors.available,
+                                borderColor: statusColors[event.status] || statusColors.available,
+                                textColor: 'white'
+                            };
+                            
+                            console.log(`Adding event ${index + 1}:`, eventWithColors);
+                            calendar.addEvent(eventWithColors);
                         });
                         
-                        console.log('Loaded', events.length, 'availability events');
+                        console.log('✅ Loaded', events.length, 'availability events');
+                        showNotification(`📅 Loaded ${events.length} availability entries`, 'success');
+                    } else {
+                        console.log('No availability events found');
+                        showNotification('ℹ️ No availability data found', 'info');
                     }
                 })
                 .withFailureHandler(function(error) {
@@ -1170,8 +1191,13 @@ function setMaintenanceDay() {
                 if (response && response.success) {
                     // Update the calendar display
                     calendar.addEvent(eventData);
-                    showNotification('✅ Saved to Google Sheet successfully!', 'success');
-                    console.log('Calendar event added successfully');
+
+                    showNotification('✅ Saved to Google Sheet!', 'success');
+                    // Refresh calendar data to show the latest saved state
+                    setTimeout(() => {
+                        loadAvailabilityData();
+                    }, 1000);
+
                 } else {
                     const errorMsg = response ? response.error : 'Unknown error - no response received';
                     showNotification('❌ Save failed: ' + errorMsg, 'error');
@@ -1409,7 +1435,12 @@ function setMaintenanceDay() {
                                 }
                             });
                             
-                            console.log('Modal save: Calendar event added successfully');
+
+                            // Refresh calendar data to show the latest saved state
+                            setTimeout(() => {
+                                loadAvailabilityData();
+                            }, 1000);
+
                             
                         } else {
                             const errorMsg = response ? response.error : 'Unknown error - no response received';
@@ -1587,7 +1618,12 @@ function setMaintenanceDay() {
                             }
                         });
                         
-                        console.log('Quick save: Calendar event added successfully');
+
+                        // Refresh calendar data to show the latest saved state
+                        setTimeout(() => {
+                            loadAvailabilityData();
+                        }, 1000);
+
                         
                     } else {
                         const errorMsg = response ? response.error : 'Unknown error - no response received';
