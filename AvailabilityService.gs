@@ -269,15 +269,15 @@ function saveAvailabilityEntry(availabilityData) {
       return { success: false, error: 'Invalid availability data' };
     }
     
-    // Get the spreadsheet and sheet
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet = spreadsheet.getSheetByName('Rider Availability');
+    // Ensure availability sheet exists with proper headers
+    ensureAvailabilitySheet();
     
-    // Create sheet if it doesn't exist
+    // Get the spreadsheet and sheet using CONFIG
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(CONFIG.sheets.availability);
+    
     if (!sheet) {
-      sheet = spreadsheet.insertSheet('Rider Availability');
-      // Add headers
-      sheet.appendRow(['Email', 'Date', 'Start Time', 'End Time', 'Status', 'Notes', 'Created', 'Updated']);
+      return { success: false, error: 'Could not access availability sheet' };
     }
     
     // Get all data from sheet
@@ -322,6 +322,9 @@ function saveAvailabilityEntry(availabilityData) {
       console.log('SHEET MODIFIED: New row added');
     }
     
+    // Clear cache to force refresh
+    dataCache.clear('sheet_' + CONFIG.sheets.availability);
+    
     return {
       success: true,
       id: `${availabilityData.email}-${availabilityData.date}`,
@@ -344,12 +347,15 @@ function deleteAvailabilityEntry(email, date) {
   try {
     console.log(`Deleting from sheet: ${email} on ${date}`);
     
-    // Get the spreadsheet and sheet
+    // Ensure availability sheet exists
+    ensureAvailabilitySheet();
+    
+    // Get the spreadsheet and sheet using CONFIG
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('Rider Availability');
+    const sheet = spreadsheet.getSheetByName(CONFIG.sheets.availability);
     
     if (!sheet) {
-      return { success: false, error: 'Rider Availability sheet not found' };
+      return { success: false, error: 'Availability sheet not found' };
     }
     
     // Get all data from sheet
@@ -366,6 +372,9 @@ function deleteAvailabilityEntry(email, date) {
         // DELETE THE ROW - This is where we modify the sheet
         sheet.deleteRow(i + 1); // Convert to 1-based index for sheet operations
         console.log('SHEET MODIFIED: Row ' + (i + 1) + ' deleted');
+        
+        // Clear cache to force refresh
+        dataCache.clear('sheet_' + CONFIG.sheets.availability);
         
         return {
           success: true,

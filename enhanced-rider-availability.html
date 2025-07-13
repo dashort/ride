@@ -1120,6 +1120,12 @@ function setMaintenanceDay() {
         // Save calendar event to backend
 async function addCalendarEvent(eventData) {
     try {
+        // Check if user is loaded
+        if (!currentUser || !currentUser.email) {
+            showNotification('❌ Please wait for user data to load', 'error');
+            return;
+        }
+        
         showNotification('Saving to sheet...', 'info');
         
         const availabilityData = {
@@ -1131,23 +1137,30 @@ async function addCalendarEvent(eventData) {
             notes: eventData.title
         };
 
+        // Log the data being saved for debugging
+        console.log('Saving availability data:', availabilityData);
+
         // THIS IS WHERE THE FRONTEND CALLS THE BACKEND TO WRITE TO SHEET
         google.script.run
             .withSuccessHandler(function(response) {
+                console.log('Save response:', response);
                 if (response.success) {
                     calendar.addEvent(eventData);
                     showNotification('✅ Saved to Google Sheet!', 'success');
                 } else {
                     showNotification('❌ Sheet save failed: ' + response.error, 'error');
+                    console.error('Save failed:', response);
                 }
             })
             .withFailureHandler(function(error) {
                 showNotification('❌ Could not save to sheet: ' + error, 'error');
+                console.error('Save error:', error);
             })
             .saveAvailabilityEntry(availabilityData);  // <-- THIS CALLS THE SHEET WRITE FUNCTION
 
     } catch (error) {
         showNotification('❌ Error saving to sheet', 'error');
+        console.error('Unexpected error:', error);
     }
 }
         function updateCalendarEvent(date, status) {
@@ -1265,6 +1278,12 @@ async function addCalendarEvent(eventData) {
             
             // Save availability function
             window.saveAvailability = function(dateStr) {
+                // Check if user is loaded
+                if (!currentUser || !currentUser.email) {
+                    showNotification('❌ Please wait for user data to load', 'error');
+                    return;
+                }
+                
                 const status = document.getElementById('statusSelect').value;
                 const startTime = document.getElementById('startTime').value;
                 const endTime = document.getElementById('endTime').value;
@@ -1279,9 +1298,13 @@ async function addCalendarEvent(eventData) {
                     notes: notes
                 };
                 
+                // Log the data being saved for debugging
+                console.log('Saving availability data from modal:', availabilityData);
+                
                 // Call the backend save function
                 google.script.run
                     .withSuccessHandler(function(response) {
+                        console.log('Modal save response:', response);
                         if (response.success) {
                             showNotification('✅ Availability saved successfully!', 'success');
                             
@@ -1315,10 +1338,12 @@ async function addCalendarEvent(eventData) {
                             
                         } else {
                             showNotification('❌ Failed to save: ' + response.error, 'error');
+                            console.error('Modal save failed:', response);
                         }
                     })
                     .withFailureHandler(function(error) {
                         showNotification('❌ Error saving availability: ' + error, 'error');
+                        console.error('Modal save error:', error);
                     })
                     .saveAvailabilityEntry(availabilityData);
                 
@@ -1392,8 +1417,18 @@ async function addCalendarEvent(eventData) {
         }
 
         function saveQuickAvailability(availabilityData, status) {
+            // Check if user is loaded
+            if (!currentUser || !currentUser.email) {
+                showNotification('❌ Please wait for user data to load', 'error');
+                return;
+            }
+            
+            // Log the data being saved for debugging
+            console.log('Saving quick availability data:', availabilityData);
+            
             google.script.run
                 .withSuccessHandler(function(response) {
+                    console.log('Quick save response:', response);
                     if (response.success) {
                         showNotification('✅ Quick availability set!', 'success');
                         
@@ -1427,10 +1462,12 @@ async function addCalendarEvent(eventData) {
                         
                     } else {
                         showNotification('❌ Failed to save: ' + response.error, 'error');
+                        console.error('Quick save failed:', response);
                     }
                 })
                 .withFailureHandler(function(error) {
                     showNotification('❌ Error saving availability: ' + error, 'error');
+                    console.error('Quick save error:', error);
                 })
                 .saveAvailabilityEntry(availabilityData);
         }
