@@ -16,7 +16,6 @@
     
     <!-- External Dependencies -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     
     <style>
@@ -48,7 +47,7 @@
             line-height: 1.4;
         }
 
-        /* Enhanced Mobile Header with Gesture Hints */
+        /* Enhanced Header */
         .smart-header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -74,65 +73,109 @@
             font-weight: 600;
         }
 
-        .gesture-hint {
-            background: var(--primary-color);
-            color: white;
+        .profile-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .profile-dropdown {
             padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            border: 2px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            background: white;
+            color: var(--dark-color);
             font-weight: 600;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        /* Quick Action Floating Button */
-        .floating-quick-actions {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
-            z-index: 200;
-        }
-
-        .fab-main {
-            width: 60px;
-            height: 60px;
-            background: var(--success-color);
-            border: none;
-            border-radius: 50%;
-            color: white;
-            font-size: 1.5rem;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             transition: var(--transition);
         }
 
-        .fab-main:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+        .profile-dropdown:hover {
+            background: var(--primary-color);
+            color: white;
         }
 
-        .fab-menu {
-            position: absolute;
-            bottom: 70px;
-            right: 0;
-            display: none;
-            flex-direction: column;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Quick Actions Panel */
+        .quick-actions {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .quick-actions h3 {
+            color: var(--dark-color);
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1rem;
         }
 
-        .fab-menu.active {
-            display: flex;
-            animation: fabMenuOpen 0.3s ease-out;
+        .action-card {
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 2px solid transparent;
         }
 
-        @keyframes fabMenuOpen {
+        .action-card:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .action-card.success {
+            border-color: var(--success-color);
+        }
+
+        .action-card.warning {
+            border-color: var(--warning-color);
+        }
+
+        .action-card.danger {
+            border-color: var(--danger-color);
+        }
+
+        .action-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        /* Profile Management Panel */
+        .profile-panel {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+
+        .profile-panel.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(-10px);
             }
             to {
                 opacity: 1;
@@ -140,230 +183,376 @@
             }
         }
 
-        .fab-option {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: white;
-            padding: 0.75rem 1rem;
-            border-radius: 25px;
-            box-shadow: var(--shadow);
-            cursor: pointer;
-            transition: var(--transition);
-            white-space: nowrap;
-        }
-
-        .fab-option:hover {
-            transform: translateX(-5px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-        }
-
-        /* Gesture-Enhanced Calendar */
-        .calendar-container {
-            background: white;
-            border-radius: var(--border-radius);
-            margin: 1rem;
-            padding: 1rem;
-            box-shadow: var(--shadow);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .gesture-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        .swipe-indicator {
-            position: absolute;
-            background: rgba(39, 174, 96, 0.2);
-            border-radius: 8px;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-        }
-
-        .swipe-indicator.active {
-            opacity: 1;
-        }
-
-        .swipe-indicator.available {
-            background: rgba(39, 174, 96, 0.3);
-        }
-
-        .swipe-indicator.unavailable {
-            background: rgba(231, 76, 60, 0.3);
-        }
-
-        /* Enhanced Calendar Day Styling */
-        .fc-day {
-            position: relative;
-            transition: var(--transition);
-        }
-
-        .fc-day:hover {
-            background: rgba(102, 126, 234, 0.1) !important;
-        }
-
-        .fc-day.gesture-active {
-            transform: scale(0.95);
-            transition: transform 0.1s ease;
-        }
-
-        /* Voice Input Interface */
-        .voice-interface {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .voice-interface.active {
-            display: flex;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .voice-panel {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 2rem;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        .voice-visualizer {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            margin: 0 auto 1rem;
-            background: var(--primary-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 2rem;
-        }
-
-        .voice-visualizer.listening {
-            animation: voicePulse 1s infinite;
-        }
-
-        @keyframes voicePulse {
-            0%, 100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
-            }
-            50% {
-                transform: scale(1.1);
-                box-shadow: 0 0 0 20px rgba(102, 126, 234, 0);
-            }
-        }
-
-        /* Smart Suggestions Panel */
-        .smart-suggestions {
-            background: white;
-            border-radius: var(--border-radius);
-            margin: 1rem;
-            padding: 1rem;
-            box-shadow: var(--shadow);
-        }
-
-        .suggestion-card {
-            background: var(--light-bg);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
+        .profile-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: var(--transition);
+            margin-bottom: 1.5rem;
         }
 
-        .suggestion-card:hover {
-            background: #e9ecef;
-            transform: translateX(5px);
+        .profile-header h3 {
+            color: var(--dark-color);
+            font-size: 1.2rem;
         }
 
-        .suggestion-text {
-            flex: 1;
-            font-weight: 500;
-        }
-
-        .suggestion-actions {
+        .profile-actions {
             display: flex;
             gap: 0.5rem;
         }
 
-        .btn-suggestion {
+        .btn {
             padding: 0.5rem 1rem;
             border: none;
             border-radius: 6px;
-            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
             transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .btn-accept {
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-success {
             background: var(--success-color);
             color: white;
         }
 
-        .btn-dismiss {
+        .btn-warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-secondary {
             background: #6c757d;
             color: white;
         }
 
-        /* Achievement Notifications */
-        .achievement-toast {
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Saved Profiles */
+        .saved-profiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-card {
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .profile-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .profile-card.active {
+            border-color: var(--success-color);
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .profile-name {
+            font-weight: 600;
+            color: var(--dark-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-description {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .profile-card-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        /* Weekly Template Builder */
+        .template-builder {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+        }
+
+        .template-builder h3 {
+            color: var(--dark-color);
+            margin-bottom: 1rem;
+        }
+
+        .time-blocks {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .time-block {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: grab;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            border: 2px solid transparent;
+        }
+
+        .time-block:active {
+            cursor: grabbing;
+        }
+
+        .time-block.available {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .time-block.unavailable {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .time-block.maintenance {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .time-block.personal {
+            background: #9b59b6;
+            color: white;
+        }
+
+        .weekly-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+            gap: 1px;
+            background: #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .time-header {
+            background: var(--dark-color);
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .day-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .time-slot {
+            background: white;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--dark-color);
+            border: 2px dashed transparent;
+            transition: var(--transition);
+            cursor: pointer;
+        }
+
+        .time-slot:hover {
+            background: var(--light-bg);
+        }
+
+        .time-slot.drag-over {
+            border-color: var(--primary-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .time-slot.has-content {
+            border: none;
+            color: white;
+            font-weight: 600;
+        }
+
+        .time-slot.available {
+            background: var(--success-color);
+        }
+
+        .time-slot.unavailable {
+            background: var(--danger-color);
+        }
+
+        .time-slot.maintenance {
+            background: var(--warning-color);
+        }
+
+        .time-slot.personal {
+            background: #9b59b6;
+        }
+
+        /* Calendar Container */
+        .calendar-container {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: var(--shadow);
+            min-height: 400px;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            color: var(--dark-color);
+            font-size: 1.3rem;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #999;
+            transition: var(--transition);
+        }
+
+        .close-btn:hover {
+            color: var(--danger-color);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        /* Notification System */
+        .notification {
             position: fixed;
             top: 100px;
             right: 1rem;
-            background: var(--success-color);
-            color: white;
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            display: none;
-            z-index: 500;
-            max-width: 300px;
+            color: white;
+            font-weight: 600;
+            z-index: 1100;
+            transform: translateX(100%);
+            transition: var(--transition);
         }
 
-        .achievement-toast.show {
-            display: block;
-            animation: slideInRight 0.5s ease;
+        .notification.show {
+            transform: translateX(0);
         }
 
-        @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        .notification.success {
+            background: var(--success-color);
         }
 
-        .achievement-icon {
-            font-size: 1.5rem;
-            margin-right: 0.5rem;
+        .notification.error {
+            background: var(--danger-color);
+        }
+
+        .notification.warning {
+            background: var(--warning-color);
+        }
+
+        .notification.info {
+            background: var(--primary-color);
         }
 
         /* Responsive Design */
@@ -373,69 +562,41 @@
                 gap: 0.5rem;
             }
 
-            .gesture-hint {
-                font-size: 0.7rem;
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .saved-profiles {
+                grid-template-columns: 1fr;
+            }
+
+            .weekly-grid {
+                grid-template-columns: 60px repeat(7, 1fr);
+            }
+
+            .time-blocks {
+                justify-content: center;
+            }
+
+            .time-block {
+                font-size: 0.8rem;
                 padding: 0.4rem 0.8rem;
             }
-
-            .fab-main {
-                width: 56px;
-                height: 56px;
-                font-size: 1.3rem;
-            }
-
-            .floating-quick-actions {
-                bottom: 1rem;
-                right: 1rem;
-            }
         }
 
-        /* Status Indicators */
-        .status-indicator {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            z-index: 20;
-        }
-
-        .status-available {
-            background: var(--success-color);
-        }
-
-        .status-unavailable {
-            background: var(--danger-color);
-        }
-
-        .status-partial {
-            background: var(--warning-color);
-        }
-
-        /* Loading and Success States */
-        .processing-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
+        /* Loading States */
+        .loading {
+            display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 2000;
+            min-height: 200px;
         }
 
-        .processing-overlay.active {
-            display: flex;
-        }
-
-        .processing-spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--light-bg);
+            border-top: 4px solid var(--primary-color);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -445,655 +606,780 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* Navigation styles for fallback navigation */
-        .navigation {
-            display: flex !important;
-            gap: 1rem !important;
-            margin: 1rem auto 2rem auto !important;
-            max-width: 1400px !important;
-            padding: 0 2rem !important;
-            flex-wrap: wrap !important;
-            justify-content: center !important;
-            position: relative !important;
-            z-index: 10 !important;
+        /* Accessibility */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
-        .nav-button {
-            padding: 0.75rem 1.5rem !important;
-            background: rgba(255, 255, 255, 0.9) !important;
-            border: none !important;
-            border-radius: 25px !important;
-            color: #2c3e50 !important;
-            text-decoration: none !important;
-            font-weight: 600 !important;
-            transition: all 0.3s ease !important;
-            cursor: pointer !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        .nav-button:hover, .nav-button.active {
-            background: #3498db !important;
-            color: white !important;
-            transform: translateY(-2px) !important;
-            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+        /* Focus indicators */
+        .btn:focus,
+        .time-slot:focus,
+        .profile-card:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
         }
     </style>
 </head>
 <body>
-    <!-- Smart Header -->
+    <!-- Header -->
     <div class="smart-header">
         <div class="header-content">
-            <h1>🗓️ Smart Availability</h1>
-            <div class="gesture-hint" id="gestureHint">
-                👆 Swipe days to update
+            <h1>🗓️ Availability Calendar</h1>
+            <div class="profile-selector">
+                <select class="profile-dropdown" id="currentProfile">
+                    <option value="">Select Profile</option>
+                </select>
+                <button class="btn btn-primary" onclick="toggleProfilePanel()">
+                    📝 Manage Profiles
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Navigation -->
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
-    
-    <!-- Fallback Navigation - shown if server-side replacement fails -->
-    <nav class="navigation" id="fallback-navigation" style="display: none;">
-        <a href="index.html" class="nav-button" data-page="dashboard">📊 Dashboard</a>
-        <a href="requests.html" class="nav-button" data-page="requests">📋 Requests</a>
-        <a href="assignments.html" class="nav-button" data-page="assignments">🏍️ Assignments</a>
-        <a href="riders.html" class="nav-button" data-page="riders">👥 Riders</a>
-        <a href="enhanced-rider-availability.html" class="nav-button active" data-page="availability">🗓️ Availability</a>
-        <a href="notifications.html" class="nav-button" data-page="notifications">📱 Notifications</a>
-        <a href="reports.html" class="nav-button" data-page="reports">📊 Reports</a>
-    </nav>
+    <div class="container">
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h3>⚡ Quick Actions</h3>
+            <div class="action-grid">
+                <div class="action-card success" onclick="setAvailableToday()">
+                    <span class="action-icon">✅</span>
+                    <div>Available Today</div>
+                </div>
+                <div class="action-card danger" onclick="setUnavailableToday()">
+                    <span class="action-icon">❌</span>
+                    <div>Unavailable Today</div>
+                </div>
+                <div class="action-card warning" onclick="setMaintenanceDay()">
+                    <span class="action-icon">🔧</span>
+                    <div>Maintenance Day</div>
+                </div>
+                <div class="action-card" onclick="openTemplateBuilder()">
+                    <span class="action-icon">🎨</span>
+                    <div>Build Schedule</div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Smart Suggestions Panel -->
-    <div class="smart-suggestions" id="smartSuggestions">
-        <h3>💡 Smart Suggestions</h3>
-        <div id="suggestionsContainer">
-            <!-- Dynamic suggestions will be loaded here -->
+        <!-- Profile Management Panel -->
+        <div class="profile-panel" id="profilePanel">
+            <div class="profile-header">
+                <h3>👤 Saved Profiles</h3>
+                <div class="profile-actions">
+                    <button class="btn btn-success" onclick="createNewProfile()">
+                        ➕ New Profile
+                    </button>
+                    <button class="btn btn-secondary" onclick="toggleProfilePanel()">
+                        ❌ Close
+                    </button>
+                </div>
+            </div>
+            
+            <div class="saved-profiles" id="savedProfiles">
+                <!-- Profiles will be populated here -->
+            </div>
+        </div>
+
+        <!-- Weekly Template Builder -->
+        <div class="template-builder">
+            <h3>📅 Weekly Schedule Builder</h3>
+            <p style="margin-bottom: 1rem; color: #666;">
+                Drag and drop time blocks onto the schedule to create your weekly availability pattern.
+            </p>
+            
+            <div class="time-blocks">
+                <div class="time-block available" draggable="true" data-type="available">
+                    ✅ Available
+                </div>
+                <div class="time-block unavailable" draggable="true" data-type="unavailable">
+                    ❌ Unavailable
+                </div>
+                <div class="time-block maintenance" draggable="true" data-type="maintenance">
+                    🔧 Maintenance
+                </div>
+                <div class="time-block personal" draggable="true" data-type="personal">
+                    🏠 Personal
+                </div>
+            </div>
+
+            <div class="weekly-grid" id="weeklyGrid">
+                <div class="time-header">Time</div>
+                <div class="day-header">Monday</div>
+                <div class="day-header">Tuesday</div>
+                <div class="day-header">Wednesday</div>
+                <div class="day-header">Thursday</div>
+                <div class="day-header">Friday</div>
+                <div class="day-header">Saturday</div>
+                <div class="day-header">Sunday</div>
+            </div>
+
+            <div style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button class="btn btn-success" onclick="saveCurrentSchedule()">
+                    💾 Save as Profile
+                </button>
+                <button class="btn btn-primary" onclick="applyScheduleToCalendar()">
+                    📅 Apply to Calendar
+                </button>
+                <button class="btn btn-warning" onclick="clearSchedule()">
+                    🗑️ Clear Schedule
+                </button>
+            </div>
+        </div>
+
+        <!-- Calendar Container -->
+        <div class="calendar-container">
+            <div id="calendar"></div>
         </div>
     </div>
 
-    <!-- Enhanced Calendar -->
-    <div class="calendar-container">
-        <div class="gesture-overlay" id="gestureOverlay">
-            <div class="swipe-indicator" id="swipeIndicator"></div>
-        </div>
-        <div id="calendar"></div>
-    </div>
-
-    <!-- Floating Quick Actions -->
-    <div class="floating-quick-actions">
-        <div class="fab-menu" id="fabMenu">
-            <div class="fab-option" onclick="openVoiceInterface()">
-                🎤 Voice Input
+    <!-- Profile Creation Modal -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New Profile</h3>
+                <button class="close-btn" onclick="closeModal('profileModal')">&times;</button>
             </div>
-            <div class="fab-option" onclick="quickAvailable()">
-                ✅ Available Today
-            </div>
-            <div class="fab-option" onclick="quickUnavailable()">
-                ❌ Unavailable Today
-            </div>
-            <div class="fab-option" onclick="copyYesterday()">
-                📋 Copy Yesterday
-            </div>
-        </div>
-        <button class="fab-main" id="fabMain" onclick="toggleFabMenu()">
-            ⚡
-        </button>
-    </div>
-
-    <!-- Voice Interface -->
-    <div class="voice-interface" id="voiceInterface">
-        <div class="voice-panel">
-            <div class="voice-visualizer" id="voiceVisualizer">
-                🎤
-            </div>
-            <h3>Voice Commands</h3>
-            <p id="voiceStatus">Say something like "Available tomorrow 9 to 5"</p>
-            <div id="voiceTranscript" style="margin: 1rem 0; font-style: italic; color: #666;"></div>
-            <button onclick="closeVoiceInterface()" style="margin-top: 1rem; padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #6c757d; color: white; cursor: pointer;">
-                Cancel
-            </button>
+            <form id="profileForm">
+                <div class="form-group">
+                    <label for="profileName">Profile Name</label>
+                    <input type="text" id="profileName" placeholder="e.g., Regular Week, Summer Schedule" required>
+                </div>
+                <div class="form-group">
+                    <label for="profileDescription">Description</label>
+                    <textarea id="profileDescription" placeholder="Brief description of this schedule pattern..." rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="profileType">Profile Type</label>
+                    <select id="profileType">
+                        <option value="weekly">Weekly Pattern</option>
+                        <option value="monthly">Monthly Pattern</option>
+                        <option value="seasonal">Seasonal Pattern</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-success">💾 Save Profile</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('profileModal')">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
 
-    <!-- Achievement Toast -->
-    <div class="achievement-toast" id="achievementToast">
-        <span class="achievement-icon">🏆</span>
-        <span id="achievementText"></span>
-    </div>
-
-    <!-- Processing Overlay -->
-    <div class="processing-overlay" id="processingOverlay">
-        <div class="processing-spinner"></div>
-    </div>
+    <!-- Notification Container -->
+    <div class="notification" id="notification"></div>
 
     <script>
         // Global variables
-        let calendar;
-        let currentUser;
-        let hammerInstance;
-        let speechRecognition;
-        let isVoiceActive = false;
-        let fabMenuOpen = false;
-        let gestureHints = [
-            "👆 Swipe days to update",
-            "🎤 Long press for voice",
-            "👆 Double tap to copy",
-            "↔️ Swipe left/right"
+        let calendar = null;
+        let currentUser = null;
+        let weeklySchedule = {};
+        let savedProfiles = [];
+        let currentProfileData = null;
+
+        // Time slots for the weekly grid
+        const timeSlots = [
+            '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
+            '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
+            '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
         ];
-        let currentHintIndex = 0;
+
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
         // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            // Check and show navigation fallback if needed
-            setTimeout(function() {
-                checkAndShowNavigation();
-            }, 500);
-
-            // Additional navigation check after 2 seconds
-            setTimeout(function() {
-                var anyVisibleNav = document.querySelector('.navigation[style*="display: flex"], .navigation:not([style*="display: none"])');
-                if (!anyVisibleNav) {
-                    console.warn('⚠️ No visible navigation found after 2 seconds - forcing fallback');
-                    var fallbackNav = document.getElementById('fallback-navigation');
-                    if (fallbackNav) {
-                        fallbackNav.style.display = 'flex';
-                    }
-                }
-            }, 2000);
-
-            initializeCalendar();
-            initializeGestures();
-            initializeVoiceRecognition();
-            loadUserData();
-            loadSmartSuggestions();
-            setupGestureHints();
-            registerServiceWorker();
+            initializeApp();
         });
 
-        function checkAndShowNavigation() {
-            // Check if the navigation placeholder still exists (wasn't replaced by server)
-            var hasPlaceholder = document.documentElement.innerHTML.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-            
-            // Check if there's already a visible navigation
-            var existingNav = document.querySelector('.navigation:not(#fallback-navigation)');
-            var hasVisibleNav = existingNav && existingNav.offsetParent !== null;
-            
-            console.log('🧭 Navigation check - Placeholder exists:', hasPlaceholder, 'Visible nav exists:', hasVisibleNav);
-            
-            // If placeholder wasn't replaced or no visible navigation, show fallback
-            if (hasPlaceholder || !hasVisibleNav) {
-                var fallbackNav = document.getElementById('fallback-navigation');
-                if (fallbackNav) {
-                    fallbackNav.style.display = 'flex';
-                    console.log('✅ Fallback navigation displayed');
-                    console.log('📋 Available navigation links:');
-                    fallbackNav.querySelectorAll('a').forEach(function(link) {
-                        console.log('  - ' + link.textContent.trim() + ': ' + link.href);
-                    });
-                    
-                    // Add click handlers to fallback navigation links
-                    fallbackNav.querySelectorAll('a').forEach(function(link) {
-                        link.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            var page = this.getAttribute('data-page');
-                            if (page === 'dashboard') {
-                                window.location.href = 'index.html';
-                            } else {
-                                window.location.href = this.getAttribute('href');
-                            }
-                        });
-                    });
-                } else {
-                    console.error('❌ Fallback navigation element not found!');
+        async function initializeApp() {
+            try {
+                // Get current user
+                currentUser = await getCurrentUserInfo();
+                if (!currentUser) {
+                    showNotification('Please log in to access your availability calendar', 'error');
+                    return;
                 }
-            } else {
-                console.log('✅ Server-side navigation is working properly');
+
+                // Initialize calendar
+                initializeCalendar();
+                
+                // Build weekly grid
+                buildWeeklyGrid();
+                
+                // Load saved profiles
+                loadSavedProfiles();
+                
+                // Setup drag and drop
+                setupDragAndDrop();
+                
+                showNotification('Welcome to your availability calendar!', 'success');
+            } catch (error) {
+                console.error('Error initializing app:', error);
+                showNotification('Error loading calendar. Please refresh the page.', 'error');
             }
         }
 
-        // PWA Service Worker Registration
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/availability-sw.js')
-                    .then(registration => {
-                        console.log('📱 PWA Service Worker registered');
-                    })
-                    .catch(error => {
-                        console.log('Service Worker registration failed:', error);
-                    });
-            }
-        }
-
-        // Initialize Enhanced Calendar
         function initializeCalendar() {
             const calendarEl = document.getElementById('calendar');
-            
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek'
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
                 },
                 selectable: true,
                 selectMirror: true,
                 dayMaxEvents: true,
                 weekends: true,
-                height: 'auto',
-                
-                select: function(info) {
-                    handleDateSelection(info.start, info.end);
-                },
-                
-                eventClick: function(info) {
-                    handleEventClick(info.event);
-                },
-                
-                dayCellDidMount: function(info) {
-                    // Add gesture support to each day cell
-                    setupDayGestures(info.el, info.date);
+                eventClick: handleEventClick,
+                dateClick: handleDateClick,
+                select: handleDateSelect,
+                events: [],
+                eventClassNames: function(info) {
+                    return ['fc-event-' + info.event.extendedProps.status];
                 }
             });
-
             calendar.render();
+            loadCalendarEvents();
         }
 
-        // Initialize Gesture Recognition
-        function initializeGestures() {
-            const calendarContainer = document.querySelector('.calendar-container');
-            hammerInstance = new Hammer(calendarContainer);
+        function buildWeeklyGrid() {
+            const grid = document.getElementById('weeklyGrid');
             
-            // Enable all gestures
-            hammerInstance.get('swipe').set({
-                direction: Hammer.DIRECTION_ALL,
-                threshold: 10,
-                velocity: 0.3
-            });
+            // Clear existing content except headers
+            const headers = grid.querySelectorAll('.time-header, .day-header');
+            grid.innerHTML = '';
+            headers.forEach(header => grid.appendChild(header));
             
-            hammerInstance.get('press').set({ time: 500 });
-            hammerInstance.get('tap').set({ taps: 2 });
-
-            // Global gesture handlers
-            hammerInstance.on('press', handleLongPress);
-        }
-
-        // Setup individual day gestures
-        function setupDayGestures(dayEl, date) {
-            const dayHammer = new Hammer(dayEl);
-            
-            dayHammer.get('swipe').set({
-                direction: Hammer.DIRECTION_ALL
-            });
-            
-            dayHammer.on('swipeleft', (e) => {
-                e.preventDefault();
-                handleDaySwipe(date, 'unavailable');
-            });
-            
-            dayHammer.on('swiperight', (e) => {
-                e.preventDefault();
-                handleDaySwipe(date, 'available');
-            });
-            
-            dayHammer.on('swipeup', (e) => {
-                e.preventDefault();
-                handleDaySwipe(date, 'custom');
-            });
-            
-            dayHammer.on('tap', (e) => {
-                if (e.tapCount === 2) {
-                    e.preventDefault();
-                    copyPreviousDay(date);
-                }
+            // Add time slots
+            timeSlots.forEach(time => {
+                // Time label
+                const timeLabel = document.createElement('div');
+                timeLabel.className = 'time-header';
+                timeLabel.textContent = time;
+                grid.appendChild(timeLabel);
+                
+                // Day slots
+                days.forEach((day, dayIndex) => {
+                    const slot = document.createElement('div');
+                    slot.className = 'time-slot';
+                    slot.dataset.time = time;
+                    slot.dataset.day = day;
+                    slot.dataset.slotId = `${dayIndex}-${time}`;
+                    slot.innerHTML = '<span class="sr-only">Click to set availability</span>';
+                    grid.appendChild(slot);
+                });
             });
         }
 
-        // Handle day swipe gestures
-        function handleDaySwipe(date, action) {
-            const dayEl = calendar.el.querySelector(`[data-date="${date.toISOString().split('T')[0]}"]`);
+        function setupDragAndDrop() {
+            const timeBlocks = document.querySelectorAll('.time-block');
+            const timeSlots = document.querySelectorAll('.time-slot');
             
-            // Visual feedback
-            showSwipeIndicator(dayEl, action);
+            // Setup draggable blocks
+            timeBlocks.forEach(block => {
+                block.addEventListener('dragstart', handleDragStart);
+                block.addEventListener('dragend', handleDragEnd);
+            });
             
-            // Haptic feedback
-            if (navigator.vibrate) {
-                navigator.vibrate(50);
-            }
-            
-            // Process the action
-            switch(action) {
-                case 'available':
-                    setQuickAvailability(date, 'available', '09:00', '17:00');
-                    showAchievementToast('⚡ Quick available set!');
-                    break;
-                case 'unavailable':
-                    setQuickAvailability(date, 'unavailable', '00:00', '23:59');
-                    showAchievementToast('🚫 Marked unavailable');
-                    break;
-                case 'custom':
-                    openCustomTimeEntry(date);
-                    break;
-            }
+            // Setup drop zones
+            timeSlots.forEach(slot => {
+                slot.addEventListener('dragover', handleDragOver);
+                slot.addEventListener('drop', handleDrop);
+                slot.addEventListener('dragleave', handleDragLeave);
+                slot.addEventListener('click', handleSlotClick);
+            });
         }
 
-        // Show swipe visual feedback
-        function showSwipeIndicator(dayEl, action) {
-            const indicator = document.getElementById('swipeIndicator');
-            const rect = dayEl.getBoundingClientRect();
-            const containerRect = document.querySelector('.calendar-container').getBoundingClientRect();
-            
-            indicator.style.left = (rect.left - containerRect.left) + 'px';
-            indicator.style.top = (rect.top - containerRect.top) + 'px';
-            indicator.style.width = rect.width + 'px';
-            indicator.style.height = rect.height + 'px';
-            
-            indicator.className = `swipe-indicator active ${action}`;
-            
-            setTimeout(() => {
-                indicator.classList.remove('active');
-            }, 300);
+        function handleDragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.type);
+            e.target.style.opacity = '0.5';
         }
 
-        // Handle long press for voice input
-        function handleLongPress(e) {
+        function handleDragEnd(e) {
+            e.target.style.opacity = '1';
+        }
+
+        function handleDragOver(e) {
             e.preventDefault();
-            openVoiceInterface();
-            
-            if (navigator.vibrate) {
-                navigator.vibrate([100, 50, 100]);
-            }
+            e.target.classList.add('drag-over');
         }
 
-        // Voice Recognition Setup
-        function initializeVoiceRecognition() {
-            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                speechRecognition = new SpeechRecognition();
-                
-                speechRecognition.continuous = false;
-                speechRecognition.interimResults = true;
-                speechRecognition.lang = 'en-US';
-                
-                speechRecognition.onstart = function() {
-                    isVoiceActive = true;
-                    document.getElementById('voiceVisualizer').classList.add('listening');
-                    document.getElementById('voiceStatus').textContent = 'Listening...';
-                };
-                
-                speechRecognition.onresult = function(event) {
-                    let transcript = '';
-                    for (let i = event.resultIndex; i < event.results.length; i++) {
-                        transcript += event.results[i][0].transcript;
-                    }
-                    
-                    document.getElementById('voiceTranscript').textContent = transcript;
-                    
-                    if (event.results[event.results.length - 1].isFinal) {
-                        processVoiceCommand(transcript);
-                    }
-                };
-                
-                speechRecognition.onerror = function(event) {
-                    document.getElementById('voiceStatus').textContent = 'Error: ' + event.error;
-                };
-                
-                speechRecognition.onend = function() {
-                    isVoiceActive = false;
-                    document.getElementById('voiceVisualizer').classList.remove('listening');
-                };
-            }
+        function handleDragLeave(e) {
+            e.target.classList.remove('drag-over');
         }
 
-        // Process voice commands
-        function processVoiceCommand(command) {
-            const lowerCommand = command.toLowerCase();
+        function handleDrop(e) {
+            e.preventDefault();
+            e.target.classList.remove('drag-over');
             
-            // Simple pattern matching for voice commands
-            if (lowerCommand.includes('available') && lowerCommand.includes('today')) {
-                quickAvailable();
-                showAchievementToast('🎤 Voice command executed!');
-            } else if (lowerCommand.includes('unavailable') && lowerCommand.includes('today')) {
-                quickUnavailable();
-                showAchievementToast('🎤 Voice command executed!');
-            } else if (lowerCommand.includes('copy yesterday')) {
-                copyYesterday();
-                showAchievementToast('🎤 Voice command executed!');
+            const blockType = e.dataTransfer.getData('text/plain');
+            const slotId = e.target.dataset.slotId;
+            
+            setSlotStatus(e.target, blockType, slotId);
+        }
+
+        function handleSlotClick(e) {
+            const slot = e.target;
+            const slotId = slot.dataset.slotId;
+            
+            // Cycle through statuses
+            const currentStatus = weeklySchedule[slotId]?.type || '';
+            const statusCycle = ['available', 'unavailable', 'maintenance', 'personal', ''];
+            const currentIndex = statusCycle.indexOf(currentStatus);
+            const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
+            
+            if (nextStatus) {
+                setSlotStatus(slot, nextStatus, slotId);
             } else {
-                // More complex parsing could be added here
-                document.getElementById('voiceStatus').textContent = 'Command not recognized. Try: "Available today" or "Unavailable today"';
+                clearSlot(slot, slotId);
+            }
+        }
+
+        function setSlotStatus(slot, type, slotId) {
+            // Clear previous status
+            slot.className = 'time-slot has-content ' + type;
+            
+            // Update schedule data
+            weeklySchedule[slotId] = {
+                type: type,
+                time: slot.dataset.time,
+                day: slot.dataset.day
+            };
+            
+            // Update display
+            const typeLabels = {
+                available: '✅ Available',
+                unavailable: '❌ Unavailable',
+                maintenance: '🔧 Maintenance',
+                personal: '🏠 Personal'
+            };
+            
+            slot.textContent = typeLabels[type] || '';
+        }
+
+        function clearSlot(slot, slotId) {
+            slot.className = 'time-slot';
+            slot.innerHTML = '<span class="sr-only">Click to set availability</span>';
+            delete weeklySchedule[slotId];
+        }
+
+        function clearSchedule() {
+            if (confirm('Are you sure you want to clear the entire schedule?')) {
+                weeklySchedule = {};
+                document.querySelectorAll('.time-slot').forEach(slot => {
+                    slot.className = 'time-slot';
+                    slot.innerHTML = '<span class="sr-only">Click to set availability</span>';
+                });
+                showNotification('Schedule cleared', 'info');
+            }
+        }
+
+        function saveCurrentSchedule() {
+            if (Object.keys(weeklySchedule).length === 0) {
+                showNotification('Please create a schedule first', 'warning');
                 return;
             }
             
-            setTimeout(() => {
-                closeVoiceInterface();
-            }, 2000);
+            currentProfileData = { ...weeklySchedule };
+            openModal('profileModal');
         }
 
-        // Smart Suggestions System
-        function loadSmartSuggestions() {
-            const suggestions = [
-                {
-                    text: "You're usually available Tuesdays 9-5. Set for next month?",
-                    action: () => setRecurringAvailability('tuesday', '09:00', '17:00')
-                },
-                {
-                    text: "Weekend coverage is low. Add Saturday hours?",
-                    action: () => openCustomTimeEntry(getNextSaturday())
-                },
-                {
-                    text: "You've worked 6 days straight. Take Sunday off?",
-                    action: () => setDayUnavailable(getNextSunday())
-                }
-            ];
+        function applyScheduleToCalendar() {
+            if (Object.keys(weeklySchedule).length === 0) {
+                showNotification('Please create a schedule first', 'warning');
+                return;
+            }
             
-            const container = document.getElementById('suggestionsContainer');
-            container.innerHTML = suggestions.map((suggestion, index) => `
-                <div class="suggestion-card">
-                    <div class="suggestion-text">${suggestion.text}</div>
-                    <div class="suggestion-actions">
-                        <button class="btn-suggestion btn-accept" onclick="acceptSuggestion(${index})">
-                            Accept
-                        </button>
-                        <button class="btn-suggestion btn-dismiss" onclick="dismissSuggestion(${index})">
-                            Dismiss
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+            // Convert weekly schedule to calendar events
+            const events = [];
+            const today = new Date();
+            const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1));
+            
+            Object.values(weeklySchedule).forEach(schedule => {
+                const dayIndex = days.indexOf(schedule.day);
+                const eventDate = new Date(startOfWeek);
+                eventDate.setDate(startOfWeek.getDate() + dayIndex);
+                
+                events.push({
+                    title: getStatusLabel(schedule.type),
+                    start: eventDate,
+                    allDay: true,
+                    extendedProps: {
+                        status: schedule.type
+                    }
+                });
+            });
+            
+            // Add events to calendar
+            events.forEach(event => {
+                calendar.addEvent(event);
+            });
+            
+            showNotification('Schedule applied to calendar!', 'success');
         }
+
+        function getStatusLabel(type) {
+            const labels = {
+                available: 'Available',
+                unavailable: 'Unavailable',
+                maintenance: 'Maintenance',
+                personal: 'Personal Time'
+            };
+            return labels[type] || type;
+        }
+
+        // Profile Management Functions
+        function toggleProfilePanel() {
+            const panel = document.getElementById('profilePanel');
+            panel.classList.toggle('active');
+        }
+
+        function createNewProfile() {
+            currentProfileData = { ...weeklySchedule };
+            openModal('profileModal');
+        }
+
+        function loadSavedProfiles() {
+            const profiles = JSON.parse(localStorage.getItem('availabilityProfiles') || '[]');
+            savedProfiles = profiles;
+            renderSavedProfiles();
+            updateProfileDropdown();
+        }
+
+        function renderSavedProfiles() {
+            const container = document.getElementById('savedProfiles');
+            container.innerHTML = '';
+            
+            if (savedProfiles.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No saved profiles yet. Create your first profile using the schedule builder!</p>';
+                return;
+            }
+            
+            savedProfiles.forEach((profile, index) => {
+                const profileCard = document.createElement('div');
+                profileCard.className = 'profile-card';
+                profileCard.innerHTML = `
+                    <div class="profile-name">${profile.name}</div>
+                    <div class="profile-description">${profile.description || 'No description'}</div>
+                    <div class="profile-stats">
+                        <span>Type: ${profile.type}</span>
+                        <span>Created: ${new Date(profile.created).toLocaleDateString()}</span>
+                    </div>
+                    <div class="profile-card-actions">
+                        <button class="btn btn-sm btn-primary" onclick="loadProfile(${index})">Load</button>
+                        <button class="btn btn-sm btn-warning" onclick="editProfile(${index})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteProfile(${index})">Delete</button>
+                    </div>
+                `;
+                container.appendChild(profileCard);
+            });
+        }
+
+        function updateProfileDropdown() {
+            const dropdown = document.getElementById('currentProfile');
+            dropdown.innerHTML = '<option value="">Select Profile</option>';
+            
+            savedProfiles.forEach((profile, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = profile.name;
+                dropdown.appendChild(option);
+            });
+        }
+
+        function loadProfile(index) {
+            const profile = savedProfiles[index];
+            if (!profile) return;
+            
+            weeklySchedule = { ...profile.schedule };
+            
+            // Update UI
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                const slotId = slot.dataset.slotId;
+                if (weeklySchedule[slotId]) {
+                    setSlotStatus(slot, weeklySchedule[slotId].type, slotId);
+                } else {
+                    clearSlot(slot, slotId);
+                }
+            });
+            
+            // Update dropdown
+            document.getElementById('currentProfile').value = index;
+            
+            showNotification(`Profile "${profile.name}" loaded`, 'success');
+        }
+
+        function editProfile(index) {
+            const profile = savedProfiles[index];
+            if (!profile) return;
+            
+            document.getElementById('profileName').value = profile.name;
+            document.getElementById('profileDescription').value = profile.description || '';
+            document.getElementById('profileType').value = profile.type;
+            
+            currentProfileData = { ...profile.schedule };
+            openModal('profileModal');
+            
+            // Set form to edit mode
+            document.getElementById('profileForm').dataset.editIndex = index;
+        }
+
+        function deleteProfile(index) {
+            const profile = savedProfiles[index];
+            if (!profile) return;
+            
+            if (confirm(`Are you sure you want to delete "${profile.name}"?`)) {
+                savedProfiles.splice(index, 1);
+                localStorage.setItem('availabilityProfiles', JSON.stringify(savedProfiles));
+                renderSavedProfiles();
+                updateProfileDropdown();
+                showNotification('Profile deleted', 'info');
+            }
+        }
+
+        // Modal Functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            
+            // Reset form
+            if (modalId === 'profileModal') {
+                document.getElementById('profileForm').reset();
+                delete document.getElementById('profileForm').dataset.editIndex;
+            }
+        }
+
+        // Form Handling
+        document.getElementById('profileForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('profileName').value;
+            const description = document.getElementById('profileDescription').value;
+            const type = document.getElementById('profileType').value;
+            const editIndex = this.dataset.editIndex;
+            
+            if (!name) {
+                showNotification('Please enter a profile name', 'error');
+                return;
+            }
+            
+            if (!currentProfileData || Object.keys(currentProfileData).length === 0) {
+                showNotification('Please create a schedule first', 'warning');
+                return;
+            }
+            
+            const profile = {
+                name: name,
+                description: description,
+                type: type,
+                schedule: { ...currentProfileData },
+                created: editIndex ? savedProfiles[editIndex].created : new Date().toISOString(),
+                updated: new Date().toISOString()
+            };
+            
+            if (editIndex !== undefined) {
+                // Edit existing profile
+                savedProfiles[editIndex] = profile;
+                showNotification(`Profile "${name}" updated`, 'success');
+            } else {
+                // Add new profile
+                savedProfiles.push(profile);
+                showNotification(`Profile "${name}" created`, 'success');
+            }
+            
+            localStorage.setItem('availabilityProfiles', JSON.stringify(savedProfiles));
+            renderSavedProfiles();
+            updateProfileDropdown();
+            closeModal('profileModal');
+        });
 
         // Quick Actions
-        function quickAvailable() {
+        function setAvailableToday() {
             const today = new Date();
-            setQuickAvailability(today, 'available', '09:00', '17:00');
-        }
-
-        function quickUnavailable() {
-            const today = new Date();
-            setQuickAvailability(today, 'unavailable', '00:00', '23:59');
-        }
-
-        function copyYesterday() {
-            // Implementation would copy previous day's schedule
-            showAchievementToast('📋 Yesterday\'s schedule copied!');
-        }
-
-        function setQuickAvailability(date, status, startTime, endTime) {
-            showProcessing();
-            
-            const data = {
-                date: date.toISOString().split('T')[0],
-                startTime: startTime,
-                endTime: endTime,
-                status: status,
-                riderId: currentUser?.riderId
+            const event = {
+                title: 'Available',
+                start: today,
+                allDay: true,
+                extendedProps: { status: 'available' }
             };
+            calendar.addEvent(event);
+            showNotification('Marked as available today', 'success');
+        }
 
-            // Simulate API call
+        function setUnavailableToday() {
+            const today = new Date();
+            const event = {
+                title: 'Unavailable',
+                start: today,
+                allDay: true,
+                extendedProps: { status: 'unavailable' }
+            };
+            calendar.addEvent(event);
+            showNotification('Marked as unavailable today', 'info');
+        }
+
+        function setMaintenanceDay() {
+            const today = new Date();
+            const event = {
+                title: 'Maintenance',
+                start: today,
+                allDay: true,
+                extendedProps: { status: 'maintenance' }
+            };
+            calendar.addEvent(event);
+            showNotification('Marked as maintenance day', 'warning');
+        }
+
+        function openTemplateBuilder() {
+            document.querySelector('.template-builder').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Calendar Event Handlers
+        function handleEventClick(info) {
+            if (confirm(`Delete "${info.event.title}"?`)) {
+                info.event.remove();
+                showNotification('Event deleted', 'info');
+            }
+        }
+
+        function handleDateClick(info) {
+            const status = prompt('Set availability status:\n1. Available\n2. Unavailable\n3. Maintenance\n4. Personal', '1');
+            
+            const statusMap = {
+                '1': { title: 'Available', status: 'available' },
+                '2': { title: 'Unavailable', status: 'unavailable' },
+                '3': { title: 'Maintenance', status: 'maintenance' },
+                '4': { title: 'Personal Time', status: 'personal' }
+            };
+            
+            if (statusMap[status]) {
+                const event = {
+                    title: statusMap[status].title,
+                    start: info.date,
+                    allDay: true,
+                    extendedProps: { status: statusMap[status].status }
+                };
+                calendar.addEvent(event);
+                showNotification(`Added ${statusMap[status].title}`, 'success');
+            }
+        }
+
+        function handleDateSelect(info) {
+            const title = prompt('Enter availability status:');
+            if (title) {
+                const event = {
+                    title: title,
+                    start: info.start,
+                    end: info.end,
+                    allDay: info.allDay,
+                    extendedProps: { status: 'available' }
+                };
+                calendar.addEvent(event);
+                showNotification('Event added', 'success');
+            }
+            calendar.unselect();
+        }
+
+        // API Functions
+        async function getCurrentUserInfo() {
+            try {
+                const response = await google.script.run
+                    .withSuccessHandler(function(result) {
+                        if (result.success) {
+                            return result.user;
+                        } else {
+                            throw new Error(result.error);
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        throw new Error(error);
+                    })
+                    .getCurrentUserForAvailability();
+                
+                return response;
+            } catch (error) {
+                console.error('Error getting user info:', error);
+                return null;
+            }
+        }
+
+        async function loadCalendarEvents() {
+            try {
+                const events = await google.script.run
+                    .withSuccessHandler(function(result) {
+                        return result || [];
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading events:', error);
+                        return [];
+                    })
+                    .getUserAvailabilityForCalendar(currentUser.email);
+                
+                // Add events to calendar
+                events.forEach(event => {
+                    calendar.addEvent(event);
+                });
+            } catch (error) {
+                console.error('Error loading calendar events:', error);
+            }
+        }
+
+        // Notification System
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
             setTimeout(() => {
-                hideProcessing();
-                updateCalendarEvent(date, status);
-                checkAchievements();
-            }, 1000);
-        }
-
-        // Achievement System
-        function checkAchievements() {
-            // Simple achievement checking
-            const updateStreak = localStorage.getItem('updateStreak') || 0;
-            const newStreak = parseInt(updateStreak) + 1;
-            
-            localStorage.setItem('updateStreak', newStreak);
-            
-            if (newStreak === 7) {
-                showAchievementToast('🔥 7-day streak! Schedule Master!');
-            } else if (newStreak === 30) {
-                showAchievementToast('👑 30-day streak! Availability Legend!');
-            }
-        }
-
-        function showAchievementToast(message) {
-            const toast = document.getElementById('achievementToast');
-            document.getElementById('achievementText').textContent = message;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        // UI Helper Functions
-        function toggleFabMenu() {
-            fabMenuOpen = !fabMenuOpen;
-            const menu = document.getElementById('fabMenu');
-            const main = document.getElementById('fabMain');
-            
-            if (fabMenuOpen) {
-                menu.classList.add('active');
-                main.style.transform = 'rotate(45deg)';
-            } else {
-                menu.classList.remove('active');
-                main.style.transform = 'rotate(0deg)';
-            }
-        }
-
-        function openVoiceInterface() {
-            if (speechRecognition) {
-                document.getElementById('voiceInterface').classList.add('active');
-                speechRecognition.start();
-            } else {
-                alert('Voice recognition not supported in this browser');
-            }
-        }
-
-        function closeVoiceInterface() {
-            document.getElementById('voiceInterface').classList.remove('active');
-            if (speechRecognition && isVoiceActive) {
-                speechRecognition.stop();
-            }
-        }
-
-        function showProcessing() {
-            document.getElementById('processingOverlay').classList.add('active');
-        }
-
-        function hideProcessing() {
-            document.getElementById('processingOverlay').classList.remove('active');
-        }
-
-        function setupGestureHints() {
-            setInterval(() => {
-                currentHintIndex = (currentHintIndex + 1) % gestureHints.length;
-                document.getElementById('gestureHint').textContent = gestureHints[currentHintIndex];
+                notification.classList.remove('show');
             }, 4000);
         }
 
-        // User Data Loading
-        function loadUserData() {
-            // Simulate loading current user
-            currentUser = {
-                email: 'rider@example.com',
-                name: 'John Rider',
-                role: 'rider',
-                riderId: 'R001'
-            };
-        }
-
-        // Calendar Event Management
-        function updateCalendarEvent(date, status) {
-            // Remove existing events for the date
-            const events = calendar.getEvents();
-            events.forEach(event => {
-                if (event.start.toDateString() === date.toDateString()) {
-                    event.remove();
-                }
-            });
-            
-            // Add new event
-            const statusColors = {
-                available: '#27ae60',
-                unavailable: '#e74c3c',
-                partial: '#f39c12'
-            };
-            
-            calendar.addEvent({
-                title: status.charAt(0).toUpperCase() + status.slice(1),
-                start: date.toISOString().split('T')[0],
-                allDay: true,
-                backgroundColor: statusColors[status],
-                borderColor: statusColors[status]
-            });
-        }
-
-        // Utility Functions
-        function getNextSaturday() {
-            const today = new Date();
-            const saturday = new Date(today);
-            saturday.setDate(today.getDate() + (6 - today.getDay()));
-            return saturday;
-        }
-
-        function getNextSunday() {
-            const today = new Date();
-            const sunday = new Date(today);
-            sunday.setDate(today.getDate() + (7 - today.getDay()));
-            return sunday;
-        }
-
-        // Event Handlers
-        function handleDateSelection(start, end) {
-            openCustomTimeEntry(start);
-        }
-
-        function handleEventClick(event) {
-            // Handle clicking on existing events
-            console.log('Event clicked:', event);
-        }
-
-        function openCustomTimeEntry(date) {
-            // This would open a modal for custom time entry
-            console.log('Custom time entry for:', date);
-        }
-
-        function acceptSuggestion(index) {
-            console.log('Accepting suggestion:', index);
-            showAchievementToast('✨ Smart suggestion applied!');
-        }
-
-        function dismissSuggestion(index) {
-            console.log('Dismissing suggestion:', index);
-        }
-
-        // Close FAB menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.floating-quick-actions') && fabMenuOpen) {
-                toggleFabMenu();
+        // Profile dropdown handler
+        document.getElementById('currentProfile').addEventListener('change', function(e) {
+            const index = e.target.value;
+            if (index !== '') {
+                loadProfile(parseInt(index));
             }
         });
 
+        // Close modals when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('active');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 's':
+                        e.preventDefault();
+                        saveCurrentSchedule();
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        createNewProfile();
+                        break;
+                    case 'p':
+                        e.preventDefault();
+                        toggleProfilePanel();
+                        break;
+                }
+            }
+        });
     </script>
 </body>
 </html>

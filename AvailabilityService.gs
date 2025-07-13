@@ -2,7 +2,7 @@
  * @fileoverview
  * Availability Service for the Motorcycle Escort Management System
  * Handles individual rider availability calendars with enhanced features
- * including recurring schedules, status management, and admin views.
+ * including recurring schedules, status management, admin views, and saved profiles.
  */
 
 /**
@@ -51,73 +51,620 @@ function getCurrentUserForAvailability() {
 }
 
 /**
- * Gets availability data for a specific user's calendar
+ * Saves a weekly availability profile for a user
  * @param {string} email User email
- * @return {Array} Array of calendar events
+ * @param {object} profileData Profile data including name, description, type, and schedule
+ * @return {object} Success status and profile ID
  */
-function getUserAvailabilityForCalendar(email) {
+function saveAvailabilityProfile(email, profileData) {
   try {
-    console.log(`Getting availability for user: ${email}`);
+    console.log(`Saving availability profile for ${email}:`, profileData);
+    
+    // Validate input
+    if (!email || !profileData || !profileData.name) {
+      return { success: false, error: 'Invalid profile data' };
+    }
+    
+    // Ensure profiles sheet exists
+    ensureProfilesSheet();
+    
+    const profileId = Utilities.getUuid();
+    const timestamp = new Date().toISOString();
+    
+    // Prepare profile data
+    const profile = {
+      id: profileId,
+      email: email,
+      name: profileData.name,
+      description: profileData.description || '',
+      type: profileData.type || 'weekly',
+      schedule: JSON.stringify(profileData.schedule),
+      created: timestamp,
+      updated: timestamp,
+      isActive: true
+    };
+    
+    // Save to sheet
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Availability Profiles');
+    const headers = ['ID', 'Email', 'Name', 'Description', 'Type', 'Schedule', 'Created', 'Updated', 'Active'];
+    
+    // Check if headers exist
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(headers);
+    }
+    
+    // Add profile row
+    sheet.appendRow([
+      profile.id,
+      profile.email,
+      profile.name,
+      profile.description,
+      profile.type,
+      profile.schedule,
+      profile.created,
+      profile.updated,
+      profile.isActive
+    ]);
+    
+    console.log(`Profile saved successfully with ID: ${profileId}`);
+    
+    return {
+      success: true,
+      profileId: profileId,
+      message: 'Profile saved successfully'
+    };
+    
+  } catch (error) {
+    console.error('Error saving availability profile:', error);
+    return { success: false, error: 'Failed to save profile' };
+  }
+}
+
+/**
+ * Gets all availability profiles for a user
+ * @param {string} email User email
+ * @return {Array} Array of user profiles
+ */
+function getUserAvailabilityProfiles(email) {
+  try {
+    console.log(`Getting availability profiles for: ${email}`);
+    
+    ensureProfilesSheet();
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Availability Profiles');
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return [];
+    }
+    
+    const headers = data[0];
+    const profiles = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const profileEmail = row[headers.indexOf('Email')];
+      const isActive = row[headers.indexOf('Active')];
+      
+      if (profileEmail && profileEmail.toLowerCase() === email.toLowerCase() && isActive) {
+        const scheduleData = row[headers.indexOf('Schedule')];
+        let schedule = {};
+        
+        try {
+          schedule = JSON.parse(scheduleData);
+        } catch (e) {
+          console.error('Error parsing schedule data:', e);
+          schedule = {};
+        }
+        
+        profiles.push({
+          id: row[headers.indexOf('ID')],
+          name: row[headers.indexOf('Name')],
+          description: row[headers.indexOf('Description')],
+          type: row[headers.indexOf('Type')],
+          schedule: schedule,
+          created: row[headers.indexOf('Created')],
+          updated: row[headers.indexOf('Updated')]
+        });
+      }
+    }
+    
+    return profiles;
+    
+  } catch (error) {
+    console.error('Error getting user availability profiles:', error);
+    return [];
+  }
+}
+
+/**
+ * Updates an existing availability profile
+ * @param {string} profileId Profile ID to update
+ * @param {string} email User email
+ * @param {object} profileData Updated profile data
+ * @return {object} Success status
+ */
+function updateAvailabilityProfile(profileId, email, profileData) {
+  try {
+    console.log(`Updating availability profile ${profileId} for ${email}`);
+    
+    ensureProfilesSheet();
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Availability Profiles');
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return { success: false, error: 'Profile not found' };
+    }
+    
+    const headers = data[0];
+    const idCol = headers.indexOf('ID') + 1;
+    const emailCol = headers.indexOf('Email') + 1;
+    
+    for (let i = 2; i <= data.length; i++) {
+      const row = data[i - 1];
+      
+      if (row[headers.indexOf('ID')] === profileId && 
+          row[headers.indexOf('Email')].toLowerCase() === email.toLowerCase()) {
+        
+        // Update the row
+        sheet.getRange(i, headers.indexOf('Name') + 1).setValue(profileData.name);
+        sheet.getRange(i, headers.indexOf('Description') + 1).setValue(profileData.description || '');
+        sheet.getRange(i, headers.indexOf('Type') + 1).setValue(profileData.type || 'weekly');
+        sheet.getRange(i, headers.indexOf('Schedule') + 1).setValue(JSON.stringify(profileData.schedule));
+        sheet.getRange(i, headers.indexOf('Updated') + 1).setValue(new Date().toISOString());
+        
+        return {
+          success: true,
+          message: 'Profile updated successfully'
+        };
+      }
+    }
+    
+    return { success: false, error: 'Profile not found' };
+    
+  } catch (error) {
+    console.error('Error updating availability profile:', error);
+    return { success: false, error: 'Failed to update profile' };
+  }
+}
+
+/**
+ * Deletes an availability profile
+ * @param {string} profileId Profile ID to delete
+ * @param {string} email User email
+ * @return {object} Success status
+ */
+function deleteAvailabilityProfile(profileId, email) {
+  try {
+    console.log(`Deleting availability profile ${profileId} for ${email}`);
+    
+    ensureProfilesSheet();
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Availability Profiles');
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      return { success: false, error: 'Profile not found' };
+    }
+    
+    const headers = data[0];
+    
+    for (let i = 2; i <= data.length; i++) {
+      const row = data[i - 1];
+      
+      if (row[headers.indexOf('ID')] === profileId && 
+          row[headers.indexOf('Email')].toLowerCase() === email.toLowerCase()) {
+        
+        // Mark as inactive instead of deleting
+        sheet.getRange(i, headers.indexOf('Active') + 1).setValue(false);
+        sheet.getRange(i, headers.indexOf('Updated') + 1).setValue(new Date().toISOString());
+        
+        return {
+          success: true,
+          message: 'Profile deleted successfully'
+        };
+      }
+    }
+    
+    return { success: false, error: 'Profile not found' };
+    
+  } catch (error) {
+    console.error('Error deleting availability profile:', error);
+    return { success: false, error: 'Failed to delete profile' };
+  }
+}
+
+/**
+ * Applies a saved profile to create actual availability entries
+ * @param {string} email User email
+ * @param {string} profileId Profile ID to apply
+ * @param {Date} startDate Start date for applying the profile
+ * @param {number} weeks Number of weeks to apply (default: 4)
+ * @return {object} Success status
+ */
+function applyAvailabilityProfile(email, profileId, startDate, weeks = 4) {
+  try {
+    console.log(`Applying availability profile ${profileId} for ${email} starting ${startDate}`);
+    
+    // Get the profile
+    const profiles = getUserAvailabilityProfiles(email);
+    const profile = profiles.find(p => p.id === profileId);
+    
+    if (!profile) {
+      return { success: false, error: 'Profile not found' };
+    }
     
     // Ensure availability sheet exists
     ensureAvailabilitySheet();
     
-    const sheetData = getSheetData(CONFIG.sheets.availability, false);
-    if (!sheetData || !sheetData.data) {
-      return [];
-    }
-
-    const events = [];
-    const emailCol = CONFIG.columns.availability.email;
-    const dateCol = CONFIG.columns.availability.date;
-    const startCol = CONFIG.columns.availability.startTime;
-    const endCol = CONFIG.columns.availability.endTime;
-    const notesCol = CONFIG.columns.availability.notes;
-
-    for (let i = 0; i < sheetData.data.length; i++) {
-      const row = sheetData.data[i];
-      const rowEmail = getColumnValue(row, sheetData.columnMap, emailCol);
+    const eventsCreated = [];
+    const start = new Date(startDate);
+    
+    // For each week
+    for (let week = 0; week < weeks; week++) {
+      const weekStart = new Date(start);
+      weekStart.setDate(start.getDate() + (week * 7));
       
-      if (rowEmail && rowEmail.toLowerCase() === email.toLowerCase()) {
-        const date = getColumnValue(row, sheetData.columnMap, dateCol);
-        const startTime = getColumnValue(row, sheetData.columnMap, startCol);
-        const endTime = getColumnValue(row, sheetData.columnMap, endCol);
-        const notes = getColumnValue(row, sheetData.columnMap, notesCol) || '';
-
-        if (date && startTime && endTime) {
-          const eventDate = new Date(date);
-          const startDateTime = combineDateAndTime(eventDate, startTime);
-          const endDateTime = combineDateAndTime(eventDate, endTime);
-
-          // Determine status from notes or default to available
-          let status = 'available';
-          if (notes.toLowerCase().includes('unavailable') || notes.toLowerCase().includes('busy')) {
-            status = 'unavailable';
-          } else if (notes.toLowerCase().includes('assigned') || notes.toLowerCase().includes('escort')) {
-            status = 'busy';
+      // Apply each day in the schedule
+      Object.values(profile.schedule).forEach(scheduleItem => {
+        const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+          .indexOf(scheduleItem.day);
+        
+        if (dayIndex >= 0) {
+          const eventDate = new Date(weekStart);
+          eventDate.setDate(weekStart.getDate() + dayIndex);
+          
+          // Create availability entry
+          const availabilityData = {
+            email: email,
+            date: eventDate.toISOString().split('T')[0],
+            startTime: scheduleItem.time,
+            endTime: getEndTime(scheduleItem.time), // Helper function to calculate end time
+            status: scheduleItem.type,
+            notes: `Applied from profile: ${profile.name}`,
+            created: new Date().toISOString()
+          };
+          
+          // Add to availability sheet
+          const success = addAvailabilityEntry(availabilityData);
+          if (success) {
+            eventsCreated.push(availabilityData);
           }
-
-          events.push({
-            id: `avail_${i}`,
-            title: getEventTitle(status, notes),
-            start: startDateTime.toISOString(),
-            end: endDateTime.toISOString(),
-            status: status,
-            notes: notes,
-            riderId: getUserRiderId(email)
-          });
         }
+      });
+    }
+    
+    return {
+      success: true,
+      eventsCreated: eventsCreated.length,
+      message: `Profile applied successfully. Created ${eventsCreated.length} availability entries.`
+    };
+    
+  } catch (error) {
+    console.error('Error applying availability profile:', error);
+    return { success: false, error: 'Failed to apply profile' };
+  }
+}
+
+/**
+ * Helper function to calculate end time based on start time and type
+ * @param {string} startTime Start time
+ * @return {string} End time
+ */
+function getEndTime(startTime) {
+  // Simple logic - add 8 hours for available slots, full day for others
+  const start = new Date(`1970-01-01T${startTime}:00`);
+  start.setHours(start.getHours() + 8);
+  
+  return start.toTimeString().slice(0, 5);
+}
+
+/**
+ * Adds a single availability entry to the sheet
+ * @param {object} availabilityData Availability data
+ * @return {boolean} Success status
+ */
+function addAvailabilityEntry(availabilityData) {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rider Availability');
+    
+    // Check if entry already exists for this date
+    const existingData = sheet.getDataRange().getValues();
+    const headers = existingData[0];
+    
+    for (let i = 1; i < existingData.length; i++) {
+      const row = existingData[i];
+      const existingEmail = row[headers.indexOf('Email')];
+      const existingDate = row[headers.indexOf('Date')];
+      
+      if (existingEmail === availabilityData.email && 
+          existingDate === availabilityData.date) {
+        // Update existing entry
+        sheet.getRange(i + 1, headers.indexOf('Start Time') + 1).setValue(availabilityData.startTime);
+        sheet.getRange(i + 1, headers.indexOf('End Time') + 1).setValue(availabilityData.endTime);
+        sheet.getRange(i + 1, headers.indexOf('Status') + 1).setValue(availabilityData.status);
+        sheet.getRange(i + 1, headers.indexOf('Notes') + 1).setValue(availabilityData.notes);
+        return true;
       }
     }
-
-    console.log(`Found ${events.length} availability events for ${email}`);
-    return events;
-
+    
+    // Add new entry
+    sheet.appendRow([
+      availabilityData.email,
+      availabilityData.date,
+      availabilityData.startTime,
+      availabilityData.endTime,
+      availabilityData.status,
+      availabilityData.notes,
+      availabilityData.created
+    ]);
+    
+    return true;
+    
   } catch (error) {
-    console.error('Error getting user availability:', error);
-    logError('Error in getUserAvailabilityForCalendar', error);
-    return [];
+    console.error('Error adding availability entry:', error);
+    return false;
   }
+}
+
+/**
+ * Ensures the availability profiles sheet exists
+ */
+function ensureProfilesSheet() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = spreadsheet.getSheetByName('Availability Profiles');
+    
+    if (!sheet) {
+      sheet = spreadsheet.insertSheet('Availability Profiles');
+      
+      // Set up headers
+      const headers = ['ID', 'Email', 'Name', 'Description', 'Type', 'Schedule', 'Created', 'Updated', 'Active'];
+      sheet.appendRow(headers);
+      
+      // Format headers
+      const headerRange = sheet.getRange(1, 1, 1, headers.length);
+      headerRange.setFontWeight('bold');
+      headerRange.setBackground('#4a90e2');
+      headerRange.setFontColor('white');
+      
+      // Set column widths
+      sheet.setColumnWidth(1, 200); // ID
+      sheet.setColumnWidth(2, 200); // Email
+      sheet.setColumnWidth(3, 150); // Name
+      sheet.setColumnWidth(4, 200); // Description
+      sheet.setColumnWidth(5, 100); // Type
+      sheet.setColumnWidth(6, 300); // Schedule
+      sheet.setColumnWidth(7, 150); // Created
+      sheet.setColumnWidth(8, 150); // Updated
+      sheet.setColumnWidth(9, 80);  // Active
+      
+      console.log('Availability Profiles sheet created successfully');
+    }
+    
+    return sheet;
+    
+  } catch (error) {
+    console.error('Error ensuring profiles sheet exists:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gets template suggestions based on user's historical availability
+ * @param {string} email User email
+ * @return {Array} Array of suggested templates
+ */
+function getProfileSuggestions(email) {
+  try {
+    console.log(`Getting profile suggestions for: ${email}`);
+    
+    // Get user's historical availability
+    const availabilityData = getUserAvailabilityForCalendar(email);
+    
+    if (!availabilityData || availabilityData.length === 0) {
+      return getDefaultProfileSuggestions();
+    }
+    
+    // Analyze patterns
+    const patterns = analyzeAvailabilityPatterns(availabilityData);
+    
+    // Generate suggestions based on patterns
+    const suggestions = [];
+    
+    if (patterns.commonDays && patterns.commonDays.length > 0) {
+      suggestions.push({
+        name: 'Your Usual Schedule',
+        description: `Based on your common availability pattern (${patterns.commonDays.join(', ')})`,
+        type: 'weekly',
+        schedule: generateScheduleFromPattern(patterns)
+      });
+    }
+    
+    if (patterns.weekendAvailability > 0.5) {
+      suggestions.push({
+        name: 'Weekend Warrior',
+        description: 'Focused on weekend availability',
+        type: 'weekly',
+        schedule: generateWeekendSchedule()
+      });
+    }
+    
+    if (patterns.weekdayAvailability > 0.7) {
+      suggestions.push({
+        name: 'Weekday Regular',
+        description: 'Monday through Friday availability',
+        type: 'weekly',
+        schedule: generateWeekdaySchedule()
+      });
+    }
+    
+    return suggestions;
+    
+  } catch (error) {
+    console.error('Error getting profile suggestions:', error);
+    return getDefaultProfileSuggestions();
+  }
+}
+
+/**
+ * Provides default profile suggestions
+ * @return {Array} Array of default templates
+ */
+function getDefaultProfileSuggestions() {
+  return [
+    {
+      name: 'Full Time (M-F)',
+      description: 'Monday through Friday, 9 AM to 5 PM',
+      type: 'weekly',
+      schedule: generateWeekdaySchedule()
+    },
+    {
+      name: 'Part Time (M-W-F)',
+      description: 'Monday, Wednesday, Friday availability',
+      type: 'weekly',
+      schedule: generatePartTimeSchedule()
+    },
+    {
+      name: 'Weekend Only',
+      description: 'Saturday and Sunday availability',
+      type: 'weekly',
+      schedule: generateWeekendSchedule()
+    },
+    {
+      name: 'Flexible',
+      description: 'Mixed availability throughout the week',
+      type: 'weekly',
+      schedule: generateFlexibleSchedule()
+    }
+  ];
+}
+
+/**
+ * Analyzes availability patterns from historical data
+ * @param {Array} availabilityData Historical availability data
+ * @return {object} Pattern analysis results
+ */
+function analyzeAvailabilityPatterns(availabilityData) {
+  const patterns = {
+    commonDays: [],
+    commonTimes: [],
+    weekendAvailability: 0,
+    weekdayAvailability: 0
+  };
+  
+  // Count days and times
+  const dayCounts = {};
+  const timeCounts = {};
+  let weekendCount = 0;
+  let weekdayCount = 0;
+  
+  availabilityData.forEach(item => {
+    const date = new Date(item.start);
+    const dayOfWeek = date.getDay();
+    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek];
+    
+    // Count days
+    dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
+    
+    // Count weekend vs weekday
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      weekendCount++;
+    } else {
+      weekdayCount++;
+    }
+    
+    // Count times (if available)
+    if (item.startTime) {
+      timeCounts[item.startTime] = (timeCounts[item.startTime] || 0) + 1;
+    }
+  });
+  
+  // Find most common days
+  patterns.commonDays = Object.keys(dayCounts)
+    .sort((a, b) => dayCounts[b] - dayCounts[a])
+    .slice(0, 3);
+  
+  // Find most common times
+  patterns.commonTimes = Object.keys(timeCounts)
+    .sort((a, b) => timeCounts[b] - timeCounts[a])
+    .slice(0, 3);
+  
+  // Calculate weekend vs weekday ratios
+  const total = weekendCount + weekdayCount;
+  if (total > 0) {
+    patterns.weekendAvailability = weekendCount / total;
+    patterns.weekdayAvailability = weekdayCount / total;
+  }
+  
+  return patterns;
+}
+
+/**
+ * Generates schedule templates
+ */
+function generateWeekdaySchedule() {
+  const schedule = {};
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  
+  days.forEach((day, index) => {
+    schedule[`${index + 1}-9:00 AM`] = {
+      type: 'available',
+      time: '9:00 AM',
+      day: day
+    };
+  });
+  
+  return schedule;
+}
+
+function generateWeekendSchedule() {
+  const schedule = {};
+  const days = ['Saturday', 'Sunday'];
+  
+  days.forEach((day, index) => {
+    schedule[`${index + 6}-9:00 AM`] = {
+      type: 'available',
+      time: '9:00 AM',
+      day: day
+    };
+  });
+  
+  return schedule;
+}
+
+function generatePartTimeSchedule() {
+  const schedule = {};
+  const days = ['Monday', 'Wednesday', 'Friday'];
+  
+  days.forEach((day, index) => {
+    const dayIndex = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(day);
+    schedule[`${dayIndex}-9:00 AM`] = {
+      type: 'available',
+      time: '9:00 AM',
+      day: day
+    };
+  });
+  
+  return schedule;
+}
+
+function generateFlexibleSchedule() {
+  const schedule = {};
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  days.forEach((day, index) => {
+    // Mix of available and maintenance days
+    const type = index % 3 === 0 ? 'maintenance' : 'available';
+    schedule[`${index}-9:00 AM`] = {
+      type: type,
+      time: '9:00 AM',
+      day: day
+    };
+  });
+  
+  return schedule;
 }
 
 /**
@@ -833,4 +1380,105 @@ function getPageDataForMobileRiderView(filter = 'All') {
     logError('Error in getPageDataForMobileRiderView', error);
     return { success: false, error: 'Failed to load mobile data' };
   }
+}
+
+/**
+ * Gets availability data for a specific user's calendar
+ * @param {string} email User email
+ * @return {Array} Array of calendar events
+ */
+function getUserAvailabilityForCalendar(email) {
+  try {
+    console.log(`Getting availability for user: ${email}`);
+    
+    // Ensure availability sheet exists
+    ensureAvailabilitySheet();
+    
+    const sheetData = getSheetData(CONFIG.sheets.availability, false);
+    if (!sheetData || !sheetData.data) {
+      return [];
+    }
+
+    const events = [];
+    const emailCol = CONFIG.columns.availability.email;
+    const dateCol = CONFIG.columns.availability.date;
+    const startCol = CONFIG.columns.availability.startTime;
+    const endCol = CONFIG.columns.availability.endTime;
+    const notesCol = CONFIG.columns.availability.notes;
+
+    for (let i = 0; i < sheetData.data.length; i++) {
+      const row = sheetData.data[i];
+      const rowEmail = getColumnValue(row, sheetData.columnMap, emailCol);
+      
+      if (rowEmail && rowEmail.toLowerCase() === email.toLowerCase()) {
+        const date = getColumnValue(row, sheetData.columnMap, dateCol);
+        const startTime = getColumnValue(row, sheetData.columnMap, startCol);
+        const endTime = getColumnValue(row, sheetData.columnMap, endCol);
+        const notes = getColumnValue(row, sheetData.columnMap, notesCol) || '';
+
+        if (date && startTime && endTime) {
+          const eventDate = new Date(date);
+          const startDateTime = combineDateAndTime(eventDate, startTime);
+          const endDateTime = combineDateAndTime(eventDate, endTime);
+
+          // Determine status from notes or default to available
+          let status = 'available';
+          if (notes.toLowerCase().includes('unavailable') || notes.toLowerCase().includes('busy')) {
+            status = 'unavailable';
+          } else if (notes.toLowerCase().includes('assigned') || notes.toLowerCase().includes('escort')) {
+            status = 'busy';
+          }
+
+          events.push({
+            id: `availability-${i}`,
+            title: getAvailabilityTitle(status),
+            start: startDateTime,
+            end: endDateTime,
+            allDay: false,
+            extendedProps: {
+              status: status,
+              notes: notes,
+              email: rowEmail
+            }
+          });
+        }
+      }
+    }
+
+    return events;
+    
+  } catch (error) {
+    console.error('Error getting user availability for calendar:', error);
+    return [];
+  }
+}
+
+/**
+ * Helper function to get availability title based on status
+ * @param {string} status Availability status
+ * @return {string} Display title
+ */
+function getAvailabilityTitle(status) {
+  const titles = {
+    available: '✅ Available',
+    unavailable: '❌ Unavailable',
+    busy: '🔄 Busy',
+    maintenance: '🔧 Maintenance',
+    personal: '🏠 Personal'
+  };
+  
+  return titles[status] || status;
+}
+
+/**
+ * Combines date and time strings into a Date object
+ * @param {Date} date Date object
+ * @param {string} time Time string (HH:MM format)
+ * @return {Date} Combined date and time
+ */
+function combineDateAndTime(date, time) {
+  const combined = new Date(date);
+  const [hours, minutes] = time.split(':').map(Number);
+  combined.setHours(hours, minutes, 0, 0);
+  return combined;
 }
