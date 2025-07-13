@@ -72,6 +72,8 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         let calendar;
+        let currentUser = null;
+        
         function initCalendar() {
             const el = document.getElementById('calendar');
             calendar = new FullCalendar.Calendar(el, {
@@ -86,9 +88,36 @@
             calendar.render();
         }
 
-        function loadAvailability() {
+        function loadCurrentUser() {
             if (google && google.script && google.script.run) {
-                google.script.run.withSuccessHandler(renderAvailability).getUserAvailability();
+                google.script.run
+                    .withSuccessHandler(function(user) {
+                        currentUser = user;
+                        console.log('Current user loaded:', user.email);
+                        loadAvailability();
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading current user:', error);
+                        document.getElementById('availabilityList').textContent = 'Error loading user. Please refresh the page.';
+                    })
+                    .getCurrentUser();
+            }
+        }
+
+        function loadAvailability() {
+            if (!currentUser) {
+                console.error('Cannot load availability - user not loaded yet');
+                return;
+            }
+            
+            if (google && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(renderAvailability)
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading availability:', error);
+                        document.getElementById('availabilityList').textContent = 'Error loading availability data.';
+                    })
+                    .getUserAvailability(currentUser, currentUser.email);
             }
         }
 
@@ -113,6 +142,12 @@
 
         document.getElementById('availabilityForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            if (!currentUser) {
+                alert('Please wait for user data to load before saving.');
+                return;
+            }
+            
             const entry = {
                 date: document.getElementById('availDate').value,
                 startTime: document.getElementById('availStart').value,
@@ -121,14 +156,31 @@
                 repeatUntil: document.getElementById('repeatUntil').value,
                 notes: document.getElementById('availNotes').value
             };
+            
             if (google && google.script && google.script.run) {
-                google.script.run.withSuccessHandler(loadAvailability).saveUserAvailability(entry);
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        if (response && response.success) {
+                            console.log('Availability saved successfully');
+                            loadAvailability(); // Reload the data
+                            // Clear form
+                            document.getElementById('availabilityForm').reset();
+                        } else {
+                            console.error('Save failed:', response);
+                            alert('Failed to save availability: ' + (response ? response.error : 'Unknown error'));
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error saving availability:', error);
+                        alert('Error saving availability: ' + error);
+                    })
+                    .saveUserAvailability(currentUser, entry);
             }
         });
 
         document.addEventListener('DOMContentLoaded', function() {
             initCalendar();
-            loadAvailability();
+            loadCurrentUser(); // Load user first, then availability
         });
     </script>
 </body>

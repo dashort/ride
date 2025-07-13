@@ -71,10 +71,39 @@
                 }).getActiveRidersForWebApp();
             }
         }
+        let currentUser = null;
+        
+        function loadCurrentUser() {
+            if (google && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(user) {
+                        currentUser = user;
+                        console.log('Current admin user loaded:', user.email);
+                        loadRiders();
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading current user:', error);
+                        alert('Error loading user. Please refresh the page.');
+                    })
+                    .getCurrentUser();
+            }
+        }
+        
         function loadAvailability() {
+            if (!currentUser) {
+                console.error('Cannot load availability - admin user not loaded yet');
+                return;
+            }
+            
             const email = document.getElementById('riderEmail').value;
             if (google && google.script && google.script.run) {
-                google.script.run.withSuccessHandler(renderAvailability).getUserAvailability(email);
+                google.script.run
+                    .withSuccessHandler(renderAvailability)
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading availability:', error);
+                        alert('Error loading availability data.');
+                    })
+                    .getUserAvailability(currentUser, email);
             }
         }
         function renderAvailability(data) {
@@ -87,6 +116,12 @@
         }
         document.getElementById('adminAvailabilityForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            if (!currentUser) {
+                alert('Please wait for user data to load before saving.');
+                return;
+            }
+            
             const entry = {
                 email: document.getElementById('riderEmail').value,
                 date: document.getElementById('availDate').value,
@@ -96,12 +131,29 @@
                 repeatUntil: document.getElementById('repeatUntil').value,
                 notes: document.getElementById('availNotes').value
             };
+            
             if (google && google.script && google.script.run) {
-                google.script.run.withSuccessHandler(loadAvailability).saveUserAvailability(entry);
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        if (response && response.success) {
+                            console.log('Availability saved successfully');
+                            loadAvailability(); // Reload the data
+                            // Clear form
+                            document.getElementById('adminAvailabilityForm').reset();
+                        } else {
+                            console.error('Save failed:', response);
+                            alert('Failed to save availability: ' + (response ? response.error : 'Unknown error'));
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error saving availability:', error);
+                        alert('Error saving availability: ' + error);
+                    })
+                    .saveUserAvailability(currentUser, entry);
             }
         });
         document.getElementById('riderEmail').addEventListener('change', loadAvailability);
-        document.addEventListener('DOMContentLoaded', loadRiders);
+        document.addEventListener('DOMContentLoaded', loadCurrentUser);
     </script>
 </body>
 </html>
