@@ -130,7 +130,10 @@ const CONFIG = {
       date: 'Date',
       startTime: 'Start Time',
       endTime: 'End Time',
+      status: 'Status',
       notes: 'Notes',
+      created: 'Created',
+      updated: 'Updated',
       riderId: 'Rider ID'
 
     }
