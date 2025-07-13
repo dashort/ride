@@ -397,6 +397,36 @@
             border: 1px solid #f5c6cb;
         }
 
+        #toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 2px;
+            padding: 10px;
+            position: fixed;
+            z-index: 3000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+        }
+
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from { bottom: 20px; opacity: 0; }
+            to { bottom: 30px; opacity: 1; }
+        }
+
+        @keyframes fadeout {
+            from { bottom: 30px; opacity: 1; }
+            to { bottom: 40px; opacity: 0; }
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .container {
@@ -511,6 +541,7 @@
 
         <!-- Message Container -->
         <div id="messageContainer"></div>
+        <div id="toast"></div>
 
         <!-- My Escort Assignments Section -->
         <div class="dashboard-section">
@@ -839,6 +870,7 @@
         function handleAvailabilitySaved(result) {
             if (result.success) {
                 showMessage(result.message || 'Availability saved successfully!', 'success');
+                showToast('Availability saved');
                 clearQuickActionForms();
                 loadMyAvailability();
                 loadAvailabilityStats(); // Refresh stats
@@ -850,6 +882,7 @@
         function handleSaveError(error) {
             console.error('Save error:', error);
             showMessage('Error saving availability', 'error');
+            showToast('Error saving availability');
         }
 
         // Create new availability from calendar selection
@@ -928,6 +961,15 @@
             setTimeout(() => {
                 messageDiv.remove();
             }, 5000);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
         }
 
         // Section toggle functionality
