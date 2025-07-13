@@ -41,6 +41,21 @@
             max-width: 800px;
             margin-top: 1rem;
         }
+        .save-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .save-btn:hover {
+            background: #218838;
+        }
+        .save-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -63,7 +78,7 @@
             </select>
             <input type="date" id="repeatUntil" placeholder="Repeat Until">
             <input type="text" id="availNotes" placeholder="Notes">
-            <button type="submit">Save</button>
+            <button type="submit" class="save-btn" id="saveBtn">Save</button>
         </form>
         <div id="calendar"></div>
         <div id="availabilityList">Loading...</div>
@@ -72,6 +87,53 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <script>
         let calendar;
+        
+        // Notification system
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                color: white;
+                font-weight: 500;
+                z-index: 2000;
+                max-width: 400px;
+                word-wrap: break-word;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+            `;
+            
+            // Set colors based on type
+            const colors = {
+                success: '#27ae60',
+                error: '#e74c3c',
+                warning: '#f39c12',
+                info: '#3498db'
+            };
+            
+            notification.style.backgroundColor = colors[type] || colors.info;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.transform = 'translateX(0)';
+            }, 10);
+            
+            // Auto remove after 4 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 4000);
+        }
+        
         function initCalendar() {
             const el = document.getElementById('calendar');
             calendar = new FullCalendar.Calendar(el, {
@@ -111,8 +173,52 @@
             }
         }
 
+        function handleSaveSuccess(response) {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            
+            if (response && response.success) {
+                showNotification('✅ Availability saved successfully to spreadsheet!', 'success');
+                loadAvailability(); // Reload the availability data
+                
+                // Clear the form
+                document.getElementById('availabilityForm').reset();
+            } else {
+                const errorMsg = response ? response.error : 'Unknown error - no response received';
+                showNotification('❌ Save failed: ' + errorMsg, 'error');
+            }
+        }
+
+        function handleSaveError(error) {
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save';
+            
+            console.error('Error saving availability:', error);
+            
+            let errorMsg = 'Could not save to spreadsheet';
+            if (typeof error === 'string') {
+                errorMsg += ': ' + error;
+            } else if (error && error.message) {
+                errorMsg += ': ' + error.message;
+            }
+            
+            showNotification('❌ ' + errorMsg, 'error');
+            
+            // Check for permission issues
+            if (String(error).includes('permission') || String(error).includes('auth')) {
+                showNotification('⚠️ Permission issue detected. Please refresh and try again.', 'warning');
+            }
+        }
+
         document.getElementById('availabilityForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            
             const entry = {
                 date: document.getElementById('availDate').value,
                 startTime: document.getElementById('availStart').value,
@@ -121,8 +227,16 @@
                 repeatUntil: document.getElementById('repeatUntil').value,
                 notes: document.getElementById('availNotes').value
             };
+            
+            showNotification('💾 Saving availability to spreadsheet...', 'info');
+            
             if (google && google.script && google.script.run) {
-                google.script.run.withSuccessHandler(loadAvailability).saveUserAvailability(entry);
+                google.script.run
+                    .withSuccessHandler(handleSaveSuccess)
+                    .withFailureHandler(handleSaveError)
+                    .saveUserAvailability(entry);
+            } else {
+                handleSaveError('Google Apps Script runtime not available');
             }
         });
 
