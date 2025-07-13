@@ -1118,49 +1118,95 @@ function setMaintenanceDay() {
         // Calendar Event Management
 
         // Save calendar event to backend
-async function addCalendarEvent(eventData) {
+        function addCalendarEvent(eventData) {
     try {
-        // Check if user is loaded
-        if (!currentUser || !currentUser.email) {
-            showNotification('❌ Please wait for user data to load', 'error');
+        // ENHANCED USER VALIDATION - Check if user is properly loaded
+        if (!currentUser) {
+            showNotification('❌ User not loaded. Please refresh the page.', 'error');
+            console.error('addCalendarEvent: currentUser is null or undefined');
             return;
         }
         
-        showNotification('Saving to sheet...', 'info');
-        
+        if (!currentUser.email) {
+            showNotification('❌ User email not available. Please log in again.', 'error');
+            console.error('addCalendarEvent: currentUser.email is missing', currentUser);
+            return;
+        }
+
+        // ENHANCED DATA VALIDATION
+        if (!eventData.start || !eventData.extendedProps.status) {
+            showNotification('❌ Date and status are required', 'error');
+            console.error('addCalendarEvent: Missing required fields', { date: eventData.start, status: eventData.extendedProps.status });
+            return;
+        }
+
+        // Prepare availability data with enhanced validation
         const availabilityData = {
             email: currentUser.email,
-            date: eventData.start.toISOString().split('T')[0],
-            startTime: eventData.allDay ? '09:00' : eventData.start.toTimeString().slice(0, 5),
-            endTime: eventData.allDay ? '17:00' : (eventData.end || eventData.start).toTimeString().slice(0, 5),
+            date: typeof eventData.start === 'string' ? eventData.start : eventData.start.toISOString().split('T')[0],
+            startTime: eventData.extendedProps.startTime || '09:00',
+            endTime: eventData.extendedProps.endTime || '17:00',
             status: eventData.extendedProps.status,
-            notes: eventData.title
+            notes: eventData.title || '',
+            riderId: currentUser.riderId || null,
+            timestamp: new Date().toISOString()
         };
 
-        // Log the data being saved for debugging
-        console.log('Saving availability data:', availabilityData);
+        // Enhanced logging for debugging
+        console.log('=== SAVE ATTEMPT ===');
+        console.log('Current User:', currentUser);
+        console.log('Availability Data:', availabilityData);
+        console.log('Data validation passed - calling backend...');
+
+        // Show saving indicator
+        showNotification('💾 Saving to spreadsheet...', 'info');
 
         // THIS IS WHERE THE FRONTEND CALLS THE BACKEND TO WRITE TO SHEET
         google.script.run
             .withSuccessHandler(function(response) {
-                console.log('Save response:', response);
-                if (response.success) {
+                console.log('=== SAVE RESPONSE ===');
+                console.log('Full response:', response);
+                
+                if (response && response.success) {
+                    // Update the calendar display
                     calendar.addEvent(eventData);
-                    showNotification('✅ Saved to Google Sheet!', 'success');
+                    showNotification('✅ Saved to Google Sheet successfully!', 'success');
+                    console.log('Calendar event added successfully');
                 } else {
-                    showNotification('❌ Sheet save failed: ' + response.error, 'error');
-                    console.error('Save failed:', response);
+                    const errorMsg = response ? response.error : 'Unknown error - no response received';
+                    showNotification('❌ Save failed: ' + errorMsg, 'error');
+                    console.error('=== SAVE FAILED ===');
+                    console.error('Response:', response);
                 }
             })
             .withFailureHandler(function(error) {
-                showNotification('❌ Could not save to sheet: ' + error, 'error');
-                console.error('Save error:', error);
+                console.error('=== SAVE ERROR ===');
+                console.error('Error details:', error);
+                console.error('Error type:', typeof error);
+                console.error('Error string:', String(error));
+                
+                let errorMsg = 'Could not save to spreadsheet';
+                if (typeof error === 'string') {
+                    errorMsg += ': ' + error;
+                } else if (error && error.message) {
+                    errorMsg += ': ' + error.message;
+                }
+                
+                showNotification('❌ ' + errorMsg, 'error');
+                
+                // Additional debugging for permission issues
+                if (String(error).includes('permission') || String(error).includes('auth')) {
+                    console.error('Possible permission issue - user may need to re-authenticate');
+                    showNotification('⚠️ Permission issue detected. Please refresh and try again.', 'warning');
+                }
             })
-            .saveAvailabilityEntry(availabilityData);  // <-- THIS CALLS THE SHEET WRITE FUNCTION
+            .saveAvailabilityEntry(availabilityData);
 
     } catch (error) {
-        showNotification('❌ Error saving to sheet', 'error');
-        console.error('Unexpected error:', error);
+        console.error('=== UNEXPECTED ERROR ===');
+        console.error('Error in addCalendarEvent:', error);
+        console.error('Stack trace:', error.stack);
+        showNotification('❌ Unexpected error occurred', 'error');
     }
 }
         function updateCalendarEvent(date, status) {
@@ -1278,9 +1324,16 @@ async function addCalendarEvent(eventData) {
             
             // Save availability function
             window.saveAvailability = function(dateStr) {
-                // Check if user is loaded
-                if (!currentUser || !currentUser.email) {
-                    showNotification('❌ Please wait for user data to load', 'error');
+                // ENHANCED USER VALIDATION - Check if user is properly loaded
+                if (!currentUser) {
+                    showNotification('❌ User not loaded. Please refresh the page.', 'error');
+                    console.error('saveAvailability (modal): currentUser is null or undefined');
+                    return;
+                }
+                
+                if (!currentUser.email) {
+                    showNotification('❌ User email not available. Please log in again.', 'error');
+                    console.error('saveAvailability (modal): currentUser.email is missing', currentUser);
                     return;
                 }
                 
@@ -1289,30 +1342,48 @@ async function addCalendarEvent(eventData) {
                 const endTime = document.getElementById('endTime').value;
                 const notes = document.getElementById('notesInput').value;
                 
+                // ENHANCED DATA VALIDATION
+                if (!dateStr || !status) {
+                    showNotification('❌ Date and status are required', 'error');
+                    console.error('saveAvailability (modal): Missing required fields', { dateStr, status });
+                    return;
+                }
+                
                 const availabilityData = {
                     email: currentUser.email,
                     date: dateStr,
                     startTime: startTime,
                     endTime: endTime,
                     status: status,
-                    notes: notes
+                    notes: notes,
+                    riderId: currentUser.riderId || null,
+                    timestamp: new Date().toISOString()
                 };
                 
-                // Log the data being saved for debugging
-                console.log('Saving availability data from modal:', availabilityData);
+                // Enhanced logging for debugging
+                console.log('=== MODAL SAVE ATTEMPT ===');
+                console.log('Current User:', currentUser);
+                console.log('Availability Data:', availabilityData);
+                console.log('Data validation passed - calling backend...');
+                
+                // Show saving indicator
+                showNotification('💾 Saving to spreadsheet...', 'info');
                 
                 // Call the backend save function
                 google.script.run
                     .withSuccessHandler(function(response) {
-                        console.log('Modal save response:', response);
-                        if (response.success) {
+                        console.log('=== MODAL SAVE RESPONSE ===');
+                        console.log('Full response:', response);
+                        
+                        if (response && response.success) {
                             showNotification('✅ Availability saved successfully!', 'success');
                             
                             // Update calendar display
                             const statusColors = {
                                 available: '#27ae60',
                                 unavailable: '#e74c3c',
-                                partial: '#f39c12'
+                                partial: '#f39c12',
+                                busy: '#f39c12'
                             };
                             
                             // Remove existing events for this date
@@ -1328,22 +1399,45 @@ async function addCalendarEvent(eventData) {
                                 title: status.charAt(0).toUpperCase() + status.slice(1),
                                 start: dateStr,
                                 allDay: true,
-                                backgroundColor: statusColors[status],
-                                borderColor: statusColors[status],
+                                backgroundColor: statusColors[status] || '#6c757d',
+                                borderColor: statusColors[status] || '#6c757d',
                                 extendedProps: {
                                     status: status,
-                                    notes: notes
+                                    notes: notes,
+                                    startTime: startTime,
+                                    endTime: endTime
                                 }
                             });
                             
+                            console.log('Modal save: Calendar event added successfully');
+                            
                         } else {
-                            showNotification('❌ Failed to save: ' + response.error, 'error');
-                            console.error('Modal save failed:', response);
+                            const errorMsg = response ? response.error : 'Unknown error - no response received';
+                            showNotification('❌ Failed to save: ' + errorMsg, 'error');
+                            console.error('=== MODAL SAVE FAILED ===');
+                            console.error('Response:', response);
                         }
                     })
                     .withFailureHandler(function(error) {
-                        showNotification('❌ Error saving availability: ' + error, 'error');
-                        console.error('Modal save error:', error);
+                        console.error('=== MODAL SAVE ERROR ===');
+                        console.error('Error details:', error);
+                        console.error('Error type:', typeof error);
+                        console.error('Error string:', String(error));
+                        
+                        let errorMsg = 'Could not save to spreadsheet';
+                        if (typeof error === 'string') {
+                            errorMsg += ': ' + error;
+                        } else if (error && error.message) {
+                            errorMsg += ': ' + error.message;
+                        }
+                        
+                        showNotification('❌ ' + errorMsg, 'error');
+                        
+                        // Additional debugging for permission issues
+                        if (String(error).includes('permission') || String(error).includes('auth')) {
+                            console.error('Possible permission issue - user may need to re-authenticate');
+                            showNotification('⚠️ Permission issue detected. Please refresh and try again.', 'warning');
+                        }
                     })
                     .saveAvailabilityEntry(availabilityData);
                 
@@ -1417,26 +1511,57 @@ async function addCalendarEvent(eventData) {
         }
 
         function saveQuickAvailability(availabilityData, status) {
-            // Check if user is loaded
-            if (!currentUser || !currentUser.email) {
-                showNotification('❌ Please wait for user data to load', 'error');
+            // ENHANCED USER VALIDATION - Check if user is properly loaded
+            if (!currentUser) {
+                showNotification('❌ User not loaded. Please refresh the page.', 'error');
+                console.error('saveQuickAvailability: currentUser is null or undefined');
                 return;
             }
             
-            // Log the data being saved for debugging
-            console.log('Saving quick availability data:', availabilityData);
+            if (!currentUser.email) {
+                showNotification('❌ User email not available. Please log in again.', 'error');
+                console.error('saveQuickAvailability: currentUser.email is missing', currentUser);
+                return;
+            }
+            
+            // ENHANCED DATA VALIDATION
+            if (!availabilityData.date || !status) {
+                showNotification('❌ Date and status are required', 'error');
+                console.error('saveQuickAvailability: Missing required fields', { date: availabilityData.date, status });
+                return;
+            }
+            
+            // Ensure availabilityData has all required fields
+            availabilityData = {
+                ...availabilityData,
+                status: status,
+                riderId: currentUser.riderId || null,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Enhanced logging for debugging
+            console.log('=== QUICK SAVE ATTEMPT ===');
+            console.log('Current User:', currentUser);
+            console.log('Availability Data:', availabilityData);
+            console.log('Data validation passed - calling backend...');
+            
+            // Show saving indicator
+            showNotification('💾 Saving to spreadsheet...', 'info');
             
             google.script.run
                 .withSuccessHandler(function(response) {
-                    console.log('Quick save response:', response);
-                    if (response.success) {
+                    console.log('=== QUICK SAVE RESPONSE ===');
+                    console.log('Full response:', response);
+                    
+                    if (response && response.success) {
                         showNotification('✅ Quick availability set!', 'success');
                         
                         // Update calendar display
                         const statusColors = {
                             available: '#27ae60',
                             unavailable: '#e74c3c',
-                            partial: '#f39c12'
+                            partial: '#f39c12',
+                            busy: '#f39c12'
                         };
                         
                         // Remove existing events for today
@@ -1452,22 +1577,45 @@ async function addCalendarEvent(eventData) {
                             title: status.charAt(0).toUpperCase() + status.slice(1),
                             start: availabilityData.date,
                             allDay: true,
-                            backgroundColor: statusColors[status],
-                            borderColor: statusColors[status],
+                            backgroundColor: statusColors[status] || '#6c757d',
+                            borderColor: statusColors[status] || '#6c757d',
                             extendedProps: {
                                 status: status,
-                                notes: availabilityData.notes
+                                notes: availabilityData.notes,
+                                startTime: availabilityData.startTime,
+                                endTime: availabilityData.endTime
                             }
                         });
                         
+                        console.log('Quick save: Calendar event added successfully');
+                        
                     } else {
-                        showNotification('❌ Failed to save: ' + response.error, 'error');
-                        console.error('Quick save failed:', response);
+                        const errorMsg = response ? response.error : 'Unknown error - no response received';
+                        showNotification('❌ Failed to save: ' + errorMsg, 'error');
+                        console.error('=== QUICK SAVE FAILED ===');
+                        console.error('Response:', response);
                     }
                 })
                 .withFailureHandler(function(error) {
-                    showNotification('❌ Error saving availability: ' + error, 'error');
-                    console.error('Quick save error:', error);
+                    console.error('=== QUICK SAVE ERROR ===');
+                    console.error('Error details:', error);
+                    console.error('Error type:', typeof error);
+                    console.error('Error string:', String(error));
+                    
+                    let errorMsg = 'Could not save to spreadsheet';
+                    if (typeof error === 'string') {
+                        errorMsg += ': ' + error;
+                    } else if (error && error.message) {
+                        errorMsg += ': ' + error.message;
+                    }
+                    
+                    showNotification('❌ ' + errorMsg, 'error');
+                    
+                    // Additional debugging for permission issues
+                    if (String(error).includes('permission') || String(error).includes('auth')) {
+                        console.error('Possible permission issue - user may need to re-authenticate');
+                        showNotification('⚠️ Permission issue detected. Please refresh and try again.', 'warning');
+                    }
                 })
                 .saveAvailabilityEntry(availabilityData);
         }
