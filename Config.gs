@@ -130,7 +130,8 @@ const CONFIG = {
       date: 'Date',
       startTime: 'Start Time',
       endTime: 'End Time',
-      notes: 'Notes'
+      notes: 'Notes',
+      riderId: 'Rider ID'
 
     }
   },

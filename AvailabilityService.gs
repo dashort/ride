@@ -209,14 +209,18 @@ function saveRiderAvailabilityData(data) {
     
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
     const sheetData = getSheetData(CONFIG.sheets.availability, false);
-    
+
+    // Determine rider ID
+    const riderId = data.riderId || currentUser.riderId || getUserRiderId(currentUser.email);
+
     // Prepare row data
     const rowData = [
       currentUser.email,
       new Date(data.date),
       data.startTime,
       data.endTime,
-      generateAvailabilityNotes(data.status, data.notes)
+      generateAvailabilityNotes(data.status, data.notes),
+      riderId
     ];
 
     // Check if updating existing entry
@@ -302,6 +306,7 @@ function saveAvailabilityEntry(availabilityData) {
       sheet.getRange(existingRowIndex, 5).setValue(availabilityData.status);     // Status
       sheet.getRange(existingRowIndex, 6).setValue(availabilityData.notes || ''); // Notes
       sheet.getRange(existingRowIndex, 8).setValue(timestamp);                   // Updated
+      sheet.getRange(existingRowIndex, 9).setValue(availabilityData.riderId || getUserRiderId(availabilityData.email)); // Rider ID
       
       console.log('SHEET UPDATED: Row ' + existingRowIndex + ' modified');
       
@@ -315,7 +320,8 @@ function saveAvailabilityEntry(availabilityData) {
         availabilityData.status,
         availabilityData.notes || '',
         timestamp,
-        timestamp
+        timestamp,
+        availabilityData.riderId || getUserRiderId(availabilityData.email)
       ];
       
       sheet.appendRow(newRow);  // <-- THIS IS THE ACTUAL SHEET WRITE
@@ -650,8 +656,15 @@ function getAvailableRidersForTimeSlot(date, startTime, endTime, ridersNeeded) {
 function ensureAvailabilitySheet() {
   const sheetName = CONFIG.sheets.availability;
   const headers = Object.values(CONFIG.columns.availability);
-  
-  getOrCreateSheet(sheetName, headers);
+
+  const sheet = getOrCreateSheet(sheetName, headers);
+
+  // If sheet already existed, ensure it has all headers
+  const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (currentHeaders.length < headers.length) {
+    sheet.insertColumnsAfter(currentHeaders.length, headers.length - currentHeaders.length);
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  }
 }
 
 /**
