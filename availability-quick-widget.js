@@ -376,15 +376,19 @@ class AvailabilityWidget {
         const today = new Date().toISOString().split('T')[0];
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            const email = this.currentUser && this.currentUser.email ? this.currentUser.email : null;
             google.script.run
                 .withSuccessHandler((availability) => {
-                    this.displayTodayAvailability(availability);
+                    const todays = Array.isArray(availability)
+                        ? availability.filter(evt => evt.start && evt.start.startsWith(today))
+                        : [];
+                    this.displayTodayAvailability(todays);
                 })
                 .withFailureHandler((error) => {
                     statusElement.innerHTML = 'Unable to load availability';
                     console.warn('Error loading today availability:', error);
                 })
-                .getRiderAvailabilityForDate(today);
+                .getUserAvailabilityForCalendar(email);
         } else {
             statusElement.innerHTML = 'No availability data available';
         }
@@ -444,6 +448,8 @@ class AvailabilityWidget {
             };
         }
 
+        const riderId = this.currentUser && this.currentUser.riderId ? this.currentUser.riderId : null;
+
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             const statusElement = document.getElementById('today-availability');
             statusElement.innerHTML = '<div class="loading">Updating...</div>';
@@ -461,7 +467,7 @@ class AvailabilityWidget {
                     this.showToast('Error updating status', true);
                     console.error('Error updating availability:', error);
                 })
-                .updateRiderAvailability(statusData);
+                .saveRiderAvailabilityData({ ...statusData, riderId });
         } else {
             this.showToast('Availability service not available', true);
         }
