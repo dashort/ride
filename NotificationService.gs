@@ -847,6 +847,10 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   const requestDetails = getRequestDetailsForNotification(requestId);
   
   if (requestDetails) {
+    if (requestDetails.escortFee && requestDetails.escortFee.trim()) {
+      message += `\n💰 Fee: ${requestDetails.escortFee.trim()}\n`;
+    }
+    
     if (requestDetails.courtesy === 'Yes') {
       message += `\n⭐ COURTESY REQUEST ⭐\n`;
     }
@@ -896,6 +900,7 @@ function formatRequestDetails(details) {
   if (details.secondaryLocation) parts.push(`Final Location: ${details.secondaryLocation}`);
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
+  if (details.escortFee) parts.push(`💰 Escort Fee: ${details.escortFee}`);
   if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
   if (details.notes) parts.push(`Notes: ${details.notes}`);
   if (details.courtesy) {
@@ -1435,6 +1440,7 @@ function getRequestDetailsForNotification(requestId) {
           status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
+          escortFee: getColumnValue(row, columnMap, CONFIG.columns.requests.escortFee) || '',
           lastUpdated: getColumnValue(row, columnMap, CONFIG.columns.requests.lastUpdated) || ''
         };
       }
