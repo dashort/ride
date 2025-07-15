@@ -1947,7 +1947,7 @@ function processSMSResponse(fromNumber, messageBody, messageSid) {
       
     } else {
       action = 'general_response';
-      autoReply = `Thanks for your message, ${rider.name}. An admin will review and respond if needed.\n\nQuick replies:\n• CONFIRM - Accept assignment\n• DECLINE - Cannot accept\n• INFO - Get assignment details`;
+      autoReply = `Thanks for your message, ${rider.name}. An admin will review and respond if needed.\n\nQuick replies:\n• Reply "Confirm" - Accept assignment\n• Reply "Decline" - Cannot accept\n• INFO - Get assignment details`;
       
       // Notify admin of message that needs attention
       notifyAdminOfResponse(rider.name, fromNumber, messageBody);
@@ -2141,15 +2141,18 @@ function getAssignmentDetails(riderName) {
         const startLocation = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation);
         const endLocation = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation);
         
-        let details = `📋 ASSIGNMENT DETAILS\n\n`;
-        details += `Assignment: ${assignmentId}\n`;
+        let details = `Assignment: ${assignmentId}\n`;
         details += `Request: ${requestId}\n`;
-        details += `Date: ${formatDateForDisplay(eventDate)}\n`;
-        details += `Time: ${formatTimeForDisplay(startTime)}\n`;
-        details += `Start: ${startLocation || 'TBD'}\n`;
-        details += `End: ${endLocation || 'TBD'}\n`;
+        details += `Rider: ${riderName}\n\n`;
+        details += `Request Details:\n`;
+        details += `📅 Date: ${formatDateForDisplay(eventDate)}\n`;
+        details += `🕐 Time: ${formatTimeForDisplay(startTime)}\n`;
+        details += `📍 Start: ${startLocation || 'TBD'}\n`;
+        details += `🏁 End: ${endLocation || 'TBD'}\n`;
         details += `Status: ${status}\n\n`;
-        details += `Reply CONFIRM to accept or DECLINE if unavailable.`;
+        details += `RESPOND:\n`;
+        details += `Reply "Confirm"\n`;
+        details += `Reply "Decline"`;
         
         return details;
       }

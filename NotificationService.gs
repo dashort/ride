@@ -815,10 +815,12 @@ function sendEmail(email, subject, message) {
 function formatNotificationMessage(assignment, includeLinks = true) {
   const { assignmentId, requestId, riderName, eventDate, startTime, startLocation, endLocation } = assignment;
   
-  let message = `🏍️ ESCORT ASSIGNMENT\n\n`;
-  message += `Assignment: ${assignmentId}\n`;
+  let message = `Assignment: ${assignmentId}\n`;
   if (requestId) message += `Request: ${requestId}\n`;
   message += `Rider: ${riderName}\n\n`;
+  
+  // Request Details section
+  message += `Request Details:\n`;
   
   if (eventDate) {
     let dateStr = eventDate;
@@ -848,31 +850,19 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   
   if (requestDetails) {
     if (requestDetails.courtesy === 'Yes') {
-      message += `\n⭐ COURTESY REQUEST ⭐\n`;
+      message += `⭐ COURTESY REQUEST ⭐\n`;
     }
     
     if (requestDetails.notes && requestDetails.notes.trim()) {
-      message += `\n📝 Notes: ${requestDetails.notes.trim()}\n`;
+      message += `📝 Notes: ${requestDetails.notes.trim()}\n`;
     }
   }
   
-  // Add response options
-  message += `\n📱 RESPOND:\n`;
-  message += `• Reply "CONFIRM" to confirm\n`;
-  message += `• Reply "DECLINE" if unavailable\n`;
-  message += `• Reply "INFO" for details\n`;
+  // Simplified RESPOND section - moved below request details
+  message += `\nRESPOND:\n`;
+  message += `Reply "Confirm"\n`;
+  message += `Reply "Decline"\n`;
   
-  // Add links if enabled
-  if (includeLinks) {
-    const webAppUrl = getWebAppUrl();
-    if (webAppUrl) {
-      // Create a shortened assignment-specific URL
-      const assignmentUrl = `${webAppUrl}?page=assignments&requestId=${requestId}`;
-      message += `\n🔗 View Details: ${assignmentUrl}\n`;
-    }
-  }
-  
-  message += `\n-- Rider Integration and Deployment Engine`;
   return message;
 }
 
@@ -1306,13 +1296,17 @@ function getAssignmentDetails(riderName) {
         const startLocation = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation);
         const endLocation = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation);
         
-        let details = `📋 ASSIGNMENT DETAILS\n\n`;
+        let details = `Assignment: ${assignmentId}\n`;
         details += `Request: ${requestId}\n`;
-        details += `Date: ${formatDateForDisplay(eventDate)}\n`;
-        details += `Time: ${formatTimeForDisplay(startTime)}\n`;
-        details += `Start: ${startLocation}\n`;
-        details += `End: ${endLocation}\n\n`;
-        details += `Reply CONFIRM to accept or DECLINE if unavailable.`;
+        details += `Rider: ${riderName}\n\n`;
+        details += `Request Details:\n`;
+        details += `📅 Date: ${formatDateForDisplay(eventDate)}\n`;
+        details += `🕐 Time: ${formatTimeForDisplay(startTime)}\n`;
+        details += `📍 Start: ${startLocation}\n`;
+        details += `🏁 End: ${endLocation}\n\n`;
+        details += `RESPOND:\n`;
+        details += `Reply "Confirm"\n`;
+        details += `Reply "Decline"`;
         
         return details;
       }
