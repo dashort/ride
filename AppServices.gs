@@ -3367,6 +3367,15 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       updateAssignmentRotation(assignedRiderNames);
     }
 
+    // Post assignments to calendar to ensure assigned riders appear in calendar events
+    if (typeof postAssignmentsToCalendar === 'function') {
+      try {
+        postAssignmentsToCalendar();
+      } catch (calendarError) {
+        logError('Failed to post assignments to calendar', calendarError);
+      }
+    }
+
     // Clear caches to ensure fresh data
     clearRequestsCache();
     clearDataCache();
