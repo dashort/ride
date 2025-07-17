@@ -60,6 +60,7 @@ function createMenu() {
     .addItem('📊 Notification Report', 'generateNotificationReport')
     .addSeparator()
     .addItem('🔄 Sync All Assigned to Calendar', 'syncAllAssignedRequestsToCalendar')
+    .addItem('📝 Post Assignments to Calendar', 'postAssignmentsToCalendar')
     .addSeparator()
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();

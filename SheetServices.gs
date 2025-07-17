@@ -754,6 +754,15 @@ function updateRequestStatusBasedOnRiders(requestId) {
             requestsData.sheet.getRange(requestRowIndex, lastUpdatedColIdx + 1).setValue(new Date());
         }
         logActivity(`Status automatically updated for request ${requestId} to ${determinedNewStatus}.`);
+        
+        // Sync calendar when status changes to 'Assigned' to ensure riders appear in calendar events
+        if (determinedNewStatus === 'Assigned' && typeof syncRequestToCalendar === 'function') {
+          try {
+            syncRequestToCalendar(requestId);
+          } catch (syncError) {
+            logError(`Failed to sync request ${requestId} to calendar after status update`, syncError);
+          }
+        }
       } else {
         logError(`Could not update status for ${requestId}: Status column or row index invalid.`);
       }
