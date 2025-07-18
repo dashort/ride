@@ -1317,6 +1317,13 @@ function isRiderAvailable(riderName, dateStr, startTimeStr) {
   if (conflict) return false;
 
   const rider = getRiderDetails(riderName);
+  
+  // Skip availability check for NOPD riders - they are always considered available
+  if (rider && (rider.organization === 'NOPD' || rider['Organization'] === 'NOPD')) {
+    console.log(`⚠️ Skipping availability check for NOPD rider: ${riderName}`);
+    return true;
+  }
+  
   const riderId = rider ? rider.jpNumber || rider.riderId || rider.id : riderName;
   const start = parseTimeString(startTimeStr);
   const date = new Date(dateStr);

@@ -595,6 +595,7 @@
                             <th>Platoon</th>
                             <th>Part Time</th>
                             <th>Certification</th>
+                            <th>Organization</th>
                             <th>Assignments</th>
                             <th>Last Assignment</th>
                             <th>Actions</th>
@@ -685,6 +686,15 @@
                                 <option value="Instructor">Instructor</option>
                                 <option value="Trainee">Trainee</option>
                                 <option value="Not Certified">Not Certified</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="riderOrganization">Organization</label>
+                            <select id="riderOrganization" name="riderOrganization">
+                                <option value="">Internal (Default)</option>
+                                <option value="NOPD">NOPD</option>
+                                <option value="Other">Other Organization</option>
                             </select>
                         </div>
                     </div>
@@ -1091,6 +1101,7 @@ function editRider(riderId) {
   document.getElementById('riderPlatoon').value = rider.platoon || rider['Platoon'] || '';
   document.getElementById('riderPartTime').value = rider.partTime || rider['Part Time'] || 'No';
   document.getElementById('riderCertification').value = rider.certification || rider['Certification'] || 'Standard';
+  document.getElementById('riderOrganization').value = rider.organization || rider['Organization'] || 'Internal (Default)';
 
   document.getElementById('deleteRiderBtn').style.display = 'inline-block';
 
@@ -1211,7 +1222,8 @@ function saveRider() {
     'Status': formData.get('riderStatus'),
     'Platoon': formData.get('riderPlatoon'),
     'Part Time': formData.get('riderPartTime'),
-    'Certification': formData.get('riderCertification') // ← Check this value
+    'Certification': formData.get('riderCertification'), // ← Check this value
+    'Organization': formData.get('riderOrganization') // ← Add this value
   };
   
   console.log('🗂️ Mapped rider data:', riderData);
@@ -1586,6 +1598,7 @@ function renderRidersTable(riders) {
       <td>${riderPlatoon}</td>
       <td>${riderPartTime}</td>
       <td>${riderCertification}</td>
+      <td>${rider.organization || rider['Organization'] || 'Internal'}</td>
       <td id="assign-count-${riderId}">${totalAssignments}</td>
       <td id="last-assignment-${riderId}">${lastAssignment}</td>
       <td class="actions-cell">
