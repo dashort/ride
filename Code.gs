@@ -2446,7 +2446,7 @@ function appendEmailResponseToAssignments(riderName, messageBody) {
       const assignmentRider = row[riderCol];
       const status = statusCol !== undefined ? row[statusCol] : '';
 
-      if (assignmentRider === riderName && status !== 'Completed') {
+      if (assignmentRider === riderName && status !== 'Completed' && status !== 'Cancelled') {
         const rowNumber = i + 2; // Account for header row
         const existingNote = row[notesCol] || '';
         const newNote = existingNote ? existingNote + '\n' + noteText : noteText;
