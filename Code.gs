@@ -3537,6 +3537,146 @@ function exportRiderActivityCSV(startDate, endDate) {
 }
 
 /**
+ * Generates an escort hours summary report for the specified date range.
+ * This function calculates the total hours worked by all escorts using end times.
+ * @param {string} startDate Start date in YYYY-MM-DD format.
+ * @param {string} endDate End date in YYYY-MM-DD format.
+ * @return {object} Result object with escort hours summary data or error message.
+ */
+function generateEscortHoursSummary(startDate, endDate) {
+  try {
+    console.log(`📊 Generating escort hours summary for ${startDate} to ${endDate}`);
+    
+    const assignmentsData = getAssignmentsData();
+    const start = parseDateString(startDate);
+    const end = parseDateString(endDate);
+    
+    if (!start || !end) {
+      throw new Error('Invalid date range provided');
+    }
+    
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const riderHoursMap = {};
+    let totalHoursAllRiders = 0;
+    let totalEscortsProcessed = 0;
+
+    assignmentsData.data.forEach(row => {
+      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Filter by date range
+      if (eventDate instanceof Date) {
+        if (eventDate < start || eventDate > end) return;
+      }
+      
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const rider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      
+      if (!rider) return;
+
+      // Only count assignments that have actually been worked (completed or past events that were assigned)
+      const statusLower = (status || '').toLowerCase().trim();
+      const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const isCompleted = statusLower === 'completed';
+      const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
+      const wasAssigned = ['assigned', 'confirmed', 'en route', 'in progress'].includes(statusLower);
+      
+      if (!(isCompleted || (eventHasPassed && wasAssigned))) return;
+
+      // Initialize rider entry if not exists
+      if (!riderHoursMap[rider]) {
+        riderHoursMap[rider] = { totalHours: 0, escortsCount: 0 };
+      }
+
+      // Calculate hours worked for this assignment
+      let hoursWorked = 0;
+      
+      // Priority 1: Use actual completion times if available
+      const actualStart = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime);
+      const actualEnd = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime);
+      const actualDuration = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
+      
+      if (actualDuration && !isNaN(parseFloat(actualDuration))) {
+        // Use manually entered duration
+        hoursWorked = roundToQuarterHour(parseFloat(actualDuration));
+        console.log(`Using actual duration for ${rider}: ${hoursWorked} hours`);
+      } else if (actualStart && actualEnd) {
+        // Calculate from actual start/end times
+        const startTime = parseTimeString(actualStart);
+        const endTime = parseTimeString(actualEnd);
+        if (startTime && endTime && endTime > startTime) {
+          hoursWorked = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+          console.log(`Calculated from actual times for ${rider}: ${hoursWorked} hours`);
+        }
+      } else {
+        // Priority 2: Use original request times if actual times not available and event has passed
+        if (eventHasPassed) {
+          const originalStart = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
+          const originalEnd = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime);
+          
+          if (originalStart && originalEnd) {
+            const startTime = parseTimeString(originalStart);
+            const endTime = parseTimeString(originalEnd);
+            if (startTime && endTime && endTime > startTime) {
+              hoursWorked = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+              console.log(`Calculated from original times for ${rider}: ${hoursWorked} hours`);
+            }
+          } else {
+            // Priority 3: Use realistic estimate based on request type
+            hoursWorked = getRealisticEscortHours(row, assignmentsData.columnMap);
+            console.log(`Using estimated hours for ${rider}: ${hoursWorked} hours`);
+          }
+        }
+      }
+
+      // Add hours to rider's total
+      if (hoursWorked > 0) {
+        riderHoursMap[rider].totalHours += hoursWorked;
+        riderHoursMap[rider].escortsCount++;
+        totalHoursAllRiders += hoursWorked;
+        totalEscortsProcessed++;
+      }
+    });
+
+    // Convert to array and sort by total hours (descending)
+    const summaryData = Object.keys(riderHoursMap).map(riderName => ({
+      name: riderName,
+      totalHours: Math.round(riderHoursMap[riderName].totalHours * 100) / 100,
+      escortsCount: riderHoursMap[riderName].escortsCount
+    })).sort((a, b) => b.totalHours - a.totalHours);
+
+    // Add summary totals
+    const summary = {
+      periodStart: formatDateForDisplay(start),
+      periodEnd: formatDateForDisplay(end),
+      totalHoursAllRiders: Math.round(totalHoursAllRiders * 100) / 100,
+      totalEscortsProcessed: totalEscortsProcessed,
+      activeRidersCount: summaryData.length
+    };
+
+    console.log(`📊 Escort Hours Summary: ${summary.totalHoursAllRiders} total hours across ${summary.totalEscortsProcessed} escorts`);
+
+    return {
+      success: true,
+      data: summaryData,
+      summary: summary
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in generateEscortHoursSummary:', error);
+    logError('Error in generateEscortHoursSummary', error);
+    return { 
+      success: false, 
+      error: error.message || 'Failed to generate escort hours summary'
+    };
+  }
+}
+
+/**
  * Generates an executive summary for the given period or the last 30 days.
  * @param {string} [startDate] Start date in YYYY-MM-DD format.
  * @param {string} [endDate] End date in YYYY-MM-DD format.

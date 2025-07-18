@@ -506,6 +506,9 @@
                 <button class="btn btn-primary" onclick="generateComprehensiveReport('rider')">
                     🏍️ Rider Activity Report
                 </button>
+                <button class="btn btn-primary" onclick="generateEscortHoursSummaryReport()">
+                    ⏱️ Escort Hours Summary
+                </button>
                 <button class="btn btn-success" onclick="exportRiderActivityCSV()">
                     📥 Rider CSV
                 </button>
@@ -811,6 +814,26 @@
             }
         }
 
+        function generateEscortHoursSummaryReport() {
+            var start = document.getElementById('startDate').value;
+            var end = document.getElementById('endDate').value;
+            if (!start || !end) {
+                showError('Please select a date range for the escort hours summary.');
+                return;
+            }
+
+            showLoading('Generating escort hours summary...');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(displayEscortHoursSummary)
+                    .withFailureHandler(handleError)
+                    .generateEscortHoursSummary(start, end);
+            } else {
+                hideLoading();
+                showError('Google Apps Script not available.');
+            }
+        }
+
 function displayRiderActivityReport(result) {
             hideLoading();
             if (!result || !result.success) {
@@ -863,6 +886,57 @@ function displayRiderActivityReport(result) {
                 '<h3>Request Type Distribution</h3>' +
                 '<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>' + rows + '</tbody></table>' +
                 '</body></html>';
+
+            var reportWindow = window.open('', '_blank');
+            if (reportWindow) {
+                reportWindow.document.write(html);
+                reportWindow.document.close();
+            } else {
+                showError('Unable to open report window.');
+            }
+        }
+
+        function displayEscortHoursSummary(result) {
+            hideLoading();
+            if (!result || !result.success) {
+                showError(result && result.error ? result.error : 'Failed to generate escort hours summary');
+                return;
+            }
+
+            var rows = '';
+            var totalHoursDisplayed = 0;
+            for (var i = 0; i < result.data.length; i++) {
+                var r = result.data[i];
+                totalHoursDisplayed += r.totalHours;
+                rows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.totalHours) + '</td><td>' + escapeHtml(r.escortsCount) + '</td></tr>';
+            }
+
+            // Add summary information from the backend
+            var summaryInfo = '';
+            if (result.summary) {
+                summaryInfo = '<div style="background:#f8f9fa;padding:1rem;margin:1rem 0;border-radius:5px;">' +
+                    '<h3>Summary for Period: ' + escapeHtml(result.summary.periodStart) + ' to ' + escapeHtml(result.summary.periodEnd) + '</h3>' +
+                    '<p><strong>Total Hours Worked:</strong> ' + escapeHtml(result.summary.totalHoursAllRiders) + ' hours</p>' +
+                    '<p><strong>Total Escorts Completed:</strong> ' + escapeHtml(result.summary.totalEscortsProcessed) + '</p>' +
+                    '<p><strong>Active Riders:</strong> ' + escapeHtml(result.summary.activeRidersCount) + '</p>' +
+                    '</div>';
+            }
+
+            var html = '<!DOCTYPE html><html><head><title>Escort Hours Summary</title>' +
+                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
+                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}' +
+                '.summary{background:#e8f5e8;padding:1rem;margin:1rem 0;border-radius:5px;}' +
+                '.total-row{font-weight:bold;background:#f0f0f0;}</style>' +
+                '</head><body><h2>🏍️ Escort Hours Summary Report</h2>' +
+                summaryInfo +
+                '<h3>Hours by Rider</h3>' +
+                '<table><thead><tr><th>Rider</th><th>Total Hours</th><th>Escorts Count</th></tr></thead><tbody>' + 
+                rows + 
+                '<tr class="total-row"><td>TOTAL</td><td>' + escapeHtml(totalHoursDisplayed.toFixed(2)) + '</td><td>' + escapeHtml(result.data.length) + ' riders</td></tr>' +
+                '</tbody></table>' +
+                '<p style="margin-top:1rem;font-size:0.9rem;color:#666;">' +
+                'Note: Hours are calculated using actual completion times when available, otherwise estimated from scheduled times.' +
+                '</p></body></html>';
 
             var reportWindow = window.open('', '_blank');
             if (reportWindow) {
