@@ -606,7 +606,10 @@ function getAdminDashboardData() {
     }
     
     const result = {
-      totalRequests: requests.filter(r => String(r.status || r['Status']).trim() !== 'Completed').length,
+      totalRequests: requests.filter(r => {
+        const status = String(r.status || r['Status']).trim();
+        return status !== 'Completed' && status !== 'Cancelled';
+      }).length,
       totalRiders: activeRiders,
       totalAssignments: assignments.length,
       pendingNotifications: pendingNotifications,

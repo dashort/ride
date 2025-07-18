@@ -1258,7 +1258,7 @@
             }
 
             if (hideCompleted) {
-                allRequests = allRequests.filter(r => r.status !== 'Completed');
+                allRequests = allRequests.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled');
             }
 
             // Build the requester lookup cache from all requests data
