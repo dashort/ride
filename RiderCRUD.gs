@@ -625,6 +625,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   }
   rider.partTime = partTimeVal || 'No';
   rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
+  rider.organization = getColumnValue(row, columnMap, CONFIG.columns.riders.organization) || '';
   rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
   rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
   

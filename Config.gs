@@ -88,6 +88,7 @@ const CONFIG = {
       platoon: 'Platoon',
       partTime: 'Part-Time Rider',
       certification: 'Certification',
+      organization: 'Organization',
       totalAssignments: 'Total Assignments',
       lastAssignmentDate: 'Last Assignment Date'  // Fixed: was 'LastAssignmentDate'
     },

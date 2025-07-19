@@ -504,6 +504,16 @@
             background: #95a5a6;
         }
 
+        .rider-status-indicator.nopd {
+            background: #2e7d32;
+            box-shadow: 0 0 8px rgba(46, 125, 50, 0.4);
+        }
+
+        .rider-assignment-card.nopd-rider {
+            border-left: 4px solid #2e7d32;
+            background: linear-gradient(135deg, rgba(46, 125, 50, 0.03), rgba(46, 125, 50, 0.08));
+        }
+
         .rider-name {
             font-weight: bold;
             color: #2c3e50;
@@ -2074,19 +2084,21 @@
         grid.innerHTML = filteredRiders.map(rider => {
             const isSelected = selectedRiderNames.has(rider.name);
             const availability = riderAvailabilityData[rider.name] || 'Checking...';
-            const isUnavailable = availability !== 'Available' && availability !== 'Checking...';
+            const isNOPD = rider.organization === 'NOPD' || rider['Organization'] === 'NOPD';
+            const isUnavailable = !isNOPD && availability !== 'Available' && availability !== 'Checking...';
             
             return `
-                <div class="rider-assignment-card ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''}" 
+                <div class="rider-assignment-card ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''} ${isNOPD ? 'nopd-rider' : ''}" 
                      data-rider-name="${rider.name.replace(/"/g, '&quot;')}" 
                      onclick="toggleRiderSelection('${rider.name.replace(/'/g, "\\'")}')">
-                    <div class="rider-status-indicator ${availability.toLowerCase()}"></div>
+                    <div class="rider-status-indicator ${isNOPD ? 'nopd' : availability.toLowerCase()}"></div>
                     <div class="rider-name" style="font-weight: bold; margin-bottom: 0.5rem;">${rider.name}</div>
                     <div class="rider-info" style="font-size: 0.9rem; color: #666;">
                         <div>JP: ${rider.jpNumber || 'N/A'}</div>
                         <div>📞 ${rider.phone || 'N/A'}</div>
                         <div>📧 ${rider.email || 'N/A'}</div>
-                        ${isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${availability}</div>` : ''}
+                        ${isNOPD ? `<div style="color: #2e7d32; font-weight: bold; margin-top: 0.5rem;">🚓 NOPD - Always Available</div>` : 
+                          isUnavailable ? `<div style="color: #e74c3c; font-weight: bold; margin-top: 0.5rem;">⚠️ ${availability}</div>` : ''}
                     </div>
                     <div class="selection-indicator" style="position: absolute; top: 10px; right: 10px; font-size: 1.2rem;">
                         ${isSelected ? '✅' : '⬜'}
