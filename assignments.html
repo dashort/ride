@@ -880,28 +880,6 @@ function displayNoRiders(message) {
   }
 }
 
-// Better success/error notifications
-function showSuccess(message) {
-  console.log('✅', message);
-  // Add your success notification code here
-}
-
-function showError(message) {
-  console.error('❌', message);
-  // Add your error notification code here
-}
-
-function showLoading(message) {
-  console.log('🔄', message);
-  // Add your loading indicator code here
-}
-
-function hideLoading() {
-  console.log('✅ Loading complete');
-  // Add your hide loading code here
-}
-
-
 // Add CSS for the no-riders message
 const debugStyles = `
 <style>
@@ -1821,8 +1799,8 @@ function updateAssignmentOrder() {
             const timeoutId = setTimeout(() => {
                 hideLoading();
                 showError('Assignment save timed out. Please check if the assignment was saved and refresh the page.');
-                console.log('Assignment save operation timed out after 30 seconds');
-            }, 30000); // 30 second timeout
+                console.log('Assignment save operation timed out after 60 seconds');
+            }, 60000); // 60 second timeout
 
             google.script.run
                 .withSuccessHandler((result) => {
