@@ -2256,8 +2256,8 @@
             const timeoutId = setTimeout(() => {
                 hideLoadingOverlay();
                 showToast('Assignment save timed out. Please check if the assignment was saved and refresh the page.', 8000);
-                console.log('Assignment save operation timed out after 30 seconds');
-            }, 30000); // 30 second timeout
+                console.log('Assignment save operation timed out after 60 seconds');
+            }, 60000); // 60 second timeout
 
             google.script.run
                 .withSuccessHandler((result) => {

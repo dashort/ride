@@ -880,28 +880,6 @@ function displayNoRiders(message) {
   }
 }
 
-// Better success/error notifications
-function showSuccess(message) {
-  console.log('✅', message);
-  // Add your success notification code here
-}
-
-function showError(message) {
-  console.error('❌', message);
-  // Add your error notification code here
-}
-
-function showLoading(message) {
-  console.log('🔄', message);
-  // Add your loading indicator code here
-}
-
-function hideLoading() {
-  console.log('✅ Loading complete');
-  // Add your hide loading code here
-}
-
-
 // Add CSS for the no-riders message
 const debugStyles = `
 <style>
@@ -1821,16 +1799,18 @@ function updateAssignmentOrder() {
             const timeoutId = setTimeout(() => {
                 hideLoading();
                 showError('Assignment save timed out. Please check if the assignment was saved and refresh the page.');
-                console.log('Assignment save operation timed out after 30 seconds');
-            }, 30000); // 30 second timeout
+                console.log('Assignment save operation timed out after 60 seconds');
+            }, 60000); // 60 second timeout
 
             google.script.run
                 .withSuccessHandler((result) => {
                     clearTimeout(timeoutId);
+                    hideLoading();
                     handleAssignmentSuccess(result);
                 })
                 .withFailureHandler((error) => {
                     clearTimeout(timeoutId);
+                    hideLoading();
                     handleError(error);
                 })
                 .processAssignmentAndPopulate(selectedRequest.id, ridersArray, priorityEnabled);
@@ -1925,21 +1905,23 @@ function updateAssignmentOrder() {
      * @return {void}
      */
     function showLoading(message) {
-        var loadingDiv = document.createElement('div');
-        loadingDiv.className = 'loading'; // Use class for styling if defined
+        var loadingDiv = document.getElementById('loading-overlay');
+        if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-overlay';
+            loadingDiv.className = 'loading'; // Use class for styling if defined
+            loadingDiv.style.position = 'fixed';
+            loadingDiv.style.top = '50%';
+            loadingDiv.style.left = '50%';
+            loadingDiv.style.transform = 'translate(-50%, -50%)';
+            loadingDiv.style.background = 'rgba(255, 255, 255, 0.95)';
+            loadingDiv.style.padding = '2rem';
+            loadingDiv.style.borderRadius = '10px';
+            loadingDiv.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+            loadingDiv.style.zIndex = '9999';
+            document.body.appendChild(loadingDiv);
+        }
         loadingDiv.textContent = message || 'Loading...';
-        loadingDiv.style.position = 'fixed';
-        loadingDiv.style.top = '50%';
-        loadingDiv.style.left = '50%';
-        loadingDiv.style.transform = 'translate(-50%, -50%)';
-        loadingDiv.style.background = 'rgba(255, 255, 255, 0.95)';
-        loadingDiv.style.padding = '2rem';
-        loadingDiv.style.borderRadius = '10px';
-        loadingDiv.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-        loadingDiv.style.zIndex = '9999';
-        loadingDiv.id = 'loading-overlay';
-
-        document.body.appendChild(loadingDiv);
     }
 
     /**
