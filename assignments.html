@@ -1827,10 +1827,12 @@ function updateAssignmentOrder() {
             google.script.run
                 .withSuccessHandler((result) => {
                     clearTimeout(timeoutId);
+                    hideLoading();
                     handleAssignmentSuccess(result);
                 })
                 .withFailureHandler((error) => {
                     clearTimeout(timeoutId);
+                    hideLoading();
                     handleError(error);
                 })
                 .processAssignmentAndPopulate(selectedRequest.id, ridersArray, priorityEnabled);
@@ -1925,21 +1927,23 @@ function updateAssignmentOrder() {
      * @return {void}
      */
     function showLoading(message) {
-        var loadingDiv = document.createElement('div');
-        loadingDiv.className = 'loading'; // Use class for styling if defined
+        var loadingDiv = document.getElementById('loading-overlay');
+        if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-overlay';
+            loadingDiv.className = 'loading'; // Use class for styling if defined
+            loadingDiv.style.position = 'fixed';
+            loadingDiv.style.top = '50%';
+            loadingDiv.style.left = '50%';
+            loadingDiv.style.transform = 'translate(-50%, -50%)';
+            loadingDiv.style.background = 'rgba(255, 255, 255, 0.95)';
+            loadingDiv.style.padding = '2rem';
+            loadingDiv.style.borderRadius = '10px';
+            loadingDiv.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+            loadingDiv.style.zIndex = '9999';
+            document.body.appendChild(loadingDiv);
+        }
         loadingDiv.textContent = message || 'Loading...';
-        loadingDiv.style.position = 'fixed';
-        loadingDiv.style.top = '50%';
-        loadingDiv.style.left = '50%';
-        loadingDiv.style.transform = 'translate(-50%, -50%)';
-        loadingDiv.style.background = 'rgba(255, 255, 255, 0.95)';
-        loadingDiv.style.padding = '2rem';
-        loadingDiv.style.borderRadius = '10px';
-        loadingDiv.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
-        loadingDiv.style.zIndex = '9999';
-        loadingDiv.id = 'loading-overlay';
-
-        document.body.appendChild(loadingDiv);
     }
 
     /**
