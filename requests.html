@@ -2252,9 +2252,22 @@
         });
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Set a timeout to handle cases where the script doesn't respond
+            const timeoutId = setTimeout(() => {
+                hideLoadingOverlay();
+                showToast('Assignment save timed out. Please check if the assignment was saved and refresh the page.', 8000);
+                console.log('Assignment save operation timed out after 30 seconds');
+            }, 30000); // 30 second timeout
+
             google.script.run
-                .withSuccessHandler(handleAssignmentSaveSuccess)
-                .withFailureHandler(handleAssignmentSaveError)
+                .withSuccessHandler((result) => {
+                    clearTimeout(timeoutId);
+                    handleAssignmentSaveSuccess(result);
+                })
+                .withFailureHandler((error) => {
+                    clearTimeout(timeoutId);
+                    handleAssignmentSaveError(error);
+                })
                 .processAssignmentAndPopulate(requestId, riderObjects, true);
         } else {
             hideLoadingOverlay();

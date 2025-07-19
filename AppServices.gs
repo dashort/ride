@@ -3374,26 +3374,13 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       updateAssignmentRotation(assignedRiderNames);
     }
 
-    // Post assignments to calendar to ensure assigned riders appear in calendar events
-    if (typeof postAssignmentsToCalendar === 'function') {
-      try {
-        postAssignmentsToCalendar();
-      } catch (calendarError) {
-        logError('Failed to post assignments to calendar', calendarError);
-      }
-    }
-
-    // Clear caches to ensure fresh data
-    clearRequestsCache();
-    clearDataCache();
-
-
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
     logActivity(`Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
 
-    return {
+    // Return immediately to prevent timeout - defer heavy operations
+    const response = {
       success: true,
       message: `Successfully assigned ${successCount} rider(s) to request ${requestId}`,
       requestId: requestId,
@@ -3401,6 +3388,18 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       successCount: successCount,
       failCount: failCount
     };
+
+    // Schedule post-assignment cleanup in background to avoid blocking UI
+    try {
+      if (typeof executePostAssignmentCleanup === 'function') {
+        executePostAssignmentCleanup(requestId, assignedRiderNames);
+      }
+    } catch (cleanupError) {
+      // Don't let cleanup errors affect the main response
+      logError('Post-assignment cleanup failed but assignment was successful', cleanupError);
+    }
+
+    return response;
 
   } catch (error) {
     console.error('❌ Error in processAssignmentAndPopulate:', error);
@@ -4548,4 +4547,39 @@ function updateRotationOnUnassign(unassignedNames) {
  */
 function getAssignmentOrderForWeb() {
   return getAssignmentRotation();
+}
+
+/**
+ * Executes post-assignment cleanup operations in the background
+ * This function handles cache clearing and calendar sync to avoid blocking the main response
+ * @param {string} requestId - The request ID that was processed
+ * @param {Array} assignedRiderNames - Array of rider names that were assigned
+ */
+function executePostAssignmentCleanup(requestId, assignedRiderNames) {
+  try {
+    console.log(`🧹 Starting post-assignment cleanup for request ${requestId}`);
+    
+    // Clear caches to ensure fresh data
+    if (typeof clearRequestsCache === 'function') {
+      clearRequestsCache();
+    }
+    if (typeof clearDataCache === 'function') {
+      clearDataCache();
+    }
+    
+    // Post assignments to calendar
+    if (typeof postAssignmentsToCalendar === 'function') {
+      try {
+        postAssignmentsToCalendar();
+        console.log(`✅ Calendar sync completed for request ${requestId}`);
+      } catch (calendarError) {
+        logError('Failed to post assignments to calendar during cleanup', calendarError);
+      }
+    }
+    
+    console.log(`🧹 Post-assignment cleanup completed for request ${requestId}`);
+    
+  } catch (error) {
+    logError('Error in executePostAssignmentCleanup', error);
+  }
 }
