@@ -1521,7 +1521,10 @@ function convertAssignmentsToNotificationFormat(assignments) {
 
 ${result.message || 'Completed'}`;
             
-            alert(message);
+            // Use custom notification instead of browser alert
+            // to avoid the default "An embedded page at..." prefix
+            // that appears when using alert() inside an iframe.
+            showMessage(message, 'info');
         }
 
         function clearAllFilters() {
