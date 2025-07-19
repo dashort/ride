@@ -19,7 +19,9 @@
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/script.webapp.deploy",
-    "https://www.googleapis.com/auth/calendar"
+    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/gmail.modify"
   ],
   "webapp": {
     "executeAs": "USER_ACCESSING",
