@@ -4355,7 +4355,16 @@ function debugNotificationsFile() {
 function doGet(e) {
   try {
     console.log('🚀 doGet with cache-friendly headers...');
-    
+
+    if (e.parameter && e.parameter.action === 'respondAssignment') {
+      const assignmentId = e.parameter.assignmentId;
+      const resp = String(e.parameter.response || '').toLowerCase();
+      const status = resp === 'confirm' ? 'Confirmed' : 'Declined';
+      const result = updateAssignmentStatusById(assignmentId, status, 'Link');
+      const message = result.success ? `Your response has been recorded as ${status}.` : 'Unable to record response.';
+      return HtmlService.createHtmlOutput(`<p>${message}</p>`).setTitle('Escort Response');
+    }
+
     // Authentication and page logic (your existing code)
     const authResult = authenticateAndAuthorizeUser();
     if (!authResult.success) {

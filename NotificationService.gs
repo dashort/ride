@@ -400,38 +400,40 @@ function sendAssignmentNotification(assignmentId, type) {
       endLocation
     }, true);
 
-    // Build an email-specific message (without links) that includes other assigned riders
+    // Build email-specific message with formatted layout and action links
     let emailMessage = smsMessage;
+    let emailHtml = null;
 
     if (type === 'Email' || type === 'Both') {
-      emailMessage = formatNotificationMessage({
-        assignmentId,
-        requestId,
-        riderName,
-        eventDate,
-        startTime,
-        startLocation,
-        endLocation
-      }, false);
       try {
         const relatedAssignments = getAssignmentsForRequest(requestId);
         const otherRiders = relatedAssignments
           .map(row => getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName))
           .filter(name => name && name !== riderName);
-        if (otherRiders.length > 0) {
-          emailMessage += `\n\nRiders Assigned: ${otherRiders.concat(riderName).join(', ')}`;
-        } else {
-          emailMessage += `\n\nRiders Assigned: ${riderName}`;
-        }
+        const allRiders = otherRiders.concat(riderName);
 
-        const requestDetails = getRequestDetailsForNotification(requestId);
-        const formattedDetails = formatRequestDetails(requestDetails);
-        if (formattedDetails) {
-          emailMessage += `\n\nRequest Details:\n${formattedDetails}`;
-        }
-              } catch (otherError) {
-          debugLog(`Could not retrieve other riders for ${requestId}: ${otherError}`);
-        }
+        const requestDetails = getRequestDetailsForNotification(requestId) || {};
+        const confirmUrl = `${getWebAppUrl()}?action=respondAssignment&assignmentId=${assignmentId}&response=confirm`;
+        const declineUrl = `${getWebAppUrl()}?action=respondAssignment&assignmentId=${assignmentId}&response=decline`;
+
+        const formatted = formatEmailNotification({
+          requestId,
+          eventDate: requestDetails.eventDate || eventDate,
+          startTime: requestDetails.startTime || startTime,
+          startLocation: requestDetails.startLocation || startLocation,
+          endLocation: requestDetails.endLocation || endLocation,
+          secondaryLocation: requestDetails.secondaryLocation,
+          requesterName: requestDetails.requesterName,
+          requesterContact: requestDetails.requesterContact,
+          escortFee: requestDetails.escortFee,
+          notes: requestDetails.notes
+        }, allRiders, confirmUrl, declineUrl);
+
+        emailMessage = formatted.text;
+        emailHtml = formatted.html;
+      } catch (otherError) {
+        debugLog(`Could not build email message for ${requestId}: ${otherError}`);
+      }
     }
     
     let smsResult = { success: true };
@@ -441,7 +443,12 @@ function sendAssignmentNotification(assignmentId, type) {
       smsResult = sendSMS(riderPhone, riderCarrier, smsMessage);
     }
     if ((type === 'Email' || type === 'Both') && riderEmail) {
-      emailResult = sendEmail(riderEmail, `Assignment ${assignmentId} - ${requestId}`, emailMessage);
+      emailResult = sendEmail(
+        riderEmail,
+        `Assignment ${assignmentId} - ${requestId}`,
+        emailMessage,
+        emailHtml || emailMessage
+      );
     }
     
     try {
@@ -783,10 +790,14 @@ function getTwilioAccountInfo() {
  * @param {string} message - The email body.
  * @returns {Object} An object indicating success and a message.
  */
-function sendEmail(email, subject, message) {
+function sendEmail(email, subject, message, htmlBody) {
   try {
     if (!email || !email.includes('@')) return { success: false, message: 'Invalid email address' };
-    GmailApp.sendEmail(email, subject, message);
+    if (htmlBody) {
+      GmailApp.sendEmail(email, subject, message, { htmlBody: htmlBody });
+    } else {
+      GmailApp.sendEmail(email, subject, message);
+    }
     return { success: true, message: 'Email sent' };
   } catch (error) {
     logError(`Email sending error for ${email}:`, error);
@@ -866,8 +877,74 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   message += `\nRESPOND:\n`;
   message += `Reply "Confirm"\n`;
   message += `Reply "Decline"\n`;
-  
+
   return message;
+}
+
+/**
+ * Format assignment details for email with confirm/decline links.
+ * @param {Object} params - Details for the assignment and request.
+ * @param {string[]} assignedRiders - Names of all assigned riders.
+ * @param {string} confirmUrl - URL for confirming the assignment.
+ * @param {string} declineUrl - URL for declining the assignment.
+ * @return {{text:string,html:string}} Plain text and HTML message bodies.
+ */
+function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl) {
+  const {
+    requestId,
+    eventDate,
+    startTime,
+    startLocation,
+    endLocation,
+    secondaryLocation,
+    requesterName,
+    requesterContact,
+    escortFee,
+    notes
+  } = params;
+
+  const dateStr = formatDateForDisplay(eventDate);
+  const timeStr = formatTimeForDisplay(startTime);
+  const riders = assignedRiders.join(', ');
+
+  const lines = [
+    `Escort ${requestId}`,
+    `Date: ${dateStr}`,
+    `Time: ${timeStr}`,
+    `Assigned Riders: ${riders}`,
+    '',
+    `First Location: ${startLocation || ''}`,
+    `Second Location: ${endLocation || ''}`,
+    `Final Location: ${secondaryLocation || ''}`,
+    '',
+    `Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}`,
+    escortFee ? `Fee: $${escortFee}` : '',
+    notes ? `Notes: ${notes}` : '',
+    '',
+    `Confirm: ${confirmUrl}`,
+    `Decline: ${declineUrl}`
+  ].filter(Boolean);
+
+  const textBody = lines.join('\n');
+
+  const htmlLines = [
+    `<p><strong>Escort ${requestId}</strong></p>`,
+    `<p>Date: ${dateStr}<br>Time: ${timeStr}<br>Assigned Riders: ${riders}</p>`,
+    `<p>${startLocation ? 'First Location: ' + startLocation + '<br>' : ''}` +
+      `${endLocation ? 'Second Location: ' + endLocation + '<br>' : ''}` +
+      `${secondaryLocation ? 'Final Location: ' + secondaryLocation : ''}</p>`,
+    `<p>Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}<br>` +
+      `${escortFee ? 'Fee: $' + escortFee + '<br>' : ''}` +
+      `${notes ? 'Notes: ' + notes : ''}</p>`,
+    `<p>` +
+      `<a href="${confirmUrl}" style="background:#4CAF50;color:#fff;padding:8px 12px;text-decoration:none;border-radius:4px">Confirm</a>` +
+      ` <a href="${declineUrl}" style="background:#f44336;color:#fff;padding:8px 12px;text-decoration:none;border-radius:4px;margin-left:10px">Decline</a>` +
+    `</p>`
+  ];
+
+  const htmlBody = htmlLines.join('\n');
+
+  return { text: textBody, html: htmlBody };
 }
 
 /**
