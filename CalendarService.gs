@@ -15,7 +15,12 @@
  */
 function postAssignmentsToCalendar() {
   try {
+    console.log('📅 Starting calendar sync...');
     const assignmentsData = getAssignmentsData();
+    if (!assignmentsData || !assignmentsData.data) {
+      console.log('⚠️ No assignments data available for calendar sync');
+      return;
+    }
     const map = assignmentsData.columnMap;
     const sheet = assignmentsData.sheet;
 
@@ -68,7 +73,10 @@ function postAssignmentsToCalendar() {
         }
       }
     });
+    
+    console.log(`✅ Calendar sync completed. Processed ${Object.keys(grouped).length} request(s)`);
   } catch (error) {
+    console.error('❌ Calendar sync error:', error);
     logError('Error posting assignments to calendar', error);
   }
 }

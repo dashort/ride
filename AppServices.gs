@@ -3377,15 +3377,27 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     // Post assignments to calendar to ensure assigned riders appear in calendar events
     if (typeof postAssignmentsToCalendar === 'function') {
       try {
+        console.log('📅 Posting assignments to calendar...');
         postAssignmentsToCalendar();
+        console.log('✅ Calendar sync completed');
       } catch (calendarError) {
+        console.error('❌ Calendar sync failed:', calendarError);
         logError('Failed to post assignments to calendar', calendarError);
+        // Don't fail the entire operation if calendar sync fails
       }
     }
 
     // Clear caches to ensure fresh data
-    clearRequestsCache();
-    clearDataCache();
+    try {
+      console.log('🗑️ Clearing caches...');
+      clearRequestsCache();
+      clearDataCache();
+      console.log('✅ Cache clearing completed');
+    } catch (cacheError) {
+      console.error('❌ Cache clearing failed:', cacheError);
+      logError('Failed to clear caches', cacheError);
+      // Don't fail the entire operation if cache clearing fails
+    }
 
 
     const successCount = assignmentResults.filter(r => r.status === 'success').length;

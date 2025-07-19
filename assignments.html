@@ -891,15 +891,7 @@ function showError(message) {
   // Add your error notification code here
 }
 
-function showLoading(message) {
-  console.log('🔄', message);
-  // Add your loading indicator code here
-}
-
-function hideLoading() {
-  console.log('✅ Loading complete');
-  // Add your hide loading code here
-}
+// Loading functions moved to bottom of file - these were incomplete stubs
 
 
 // Add CSS for the no-riders message
@@ -1816,12 +1808,26 @@ function updateAssignmentOrder() {
 
         showLoading('Saving assignment...');
 
+        // Set a timeout to handle hanging operations
+        var timeoutId = setTimeout(function() {
+            hideLoading();
+            showError('Assignment save operation timed out. Please try again.');
+            console.warn('Assignment save operation timed out after 30 seconds');
+        }, 30000); // 30 second timeout
+
         try {
             google.script.run
-                .withSuccessHandler(handleAssignmentSuccess)
-                .withFailureHandler(handleError) // Generic error handler
+                .withSuccessHandler(function(response) {
+                    clearTimeout(timeoutId);
+                    handleAssignmentSuccess(response);
+                })
+                .withFailureHandler(function(error) {
+                    clearTimeout(timeoutId);
+                    handleError(error);
+                })
                 .processAssignmentAndPopulate(selectedRequest.id, ridersArray, priorityEnabled);
         } catch (error) {
+            clearTimeout(timeoutId);
             console.error('Error calling processAssignmentAndPopulate:', error);
             hideLoading();
             showError('Failed to save assignment: ' + error.message);
