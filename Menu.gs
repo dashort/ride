@@ -62,6 +62,13 @@ function createMenu() {
     .addItem('🔄 Sync All Assigned to Calendar', 'syncAllAssignedRequestsToCalendar')
     .addItem('📝 Post Assignments to Calendar', 'postAssignmentsToCalendar')
     .addSeparator()
+    .addSubMenu(ui.createMenu('📧 Email Response Tracking')
+      .addItem('🚀 Setup Email Response Tracking', 'setupEmailResponseTracking')
+      .addItem('📊 Check Tracking Status', 'checkEmailResponseTrackingStatus')
+      .addItem('🔧 Process Emails Manually', 'processEmailResponsesManually')
+      .addItem('🗑️ Remove Email Triggers', 'deleteEmailResponseTriggers')
+    )
+    .addSeparator()
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();
 }
