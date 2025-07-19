@@ -1817,9 +1817,22 @@ function updateAssignmentOrder() {
         showLoading('Saving assignment...');
 
         try {
+            // Set a timeout to handle cases where the script doesn't respond
+            const timeoutId = setTimeout(() => {
+                hideLoading();
+                showError('Assignment save timed out. Please check if the assignment was saved and refresh the page.');
+                console.log('Assignment save operation timed out after 30 seconds');
+            }, 30000); // 30 second timeout
+
             google.script.run
-                .withSuccessHandler(handleAssignmentSuccess)
-                .withFailureHandler(handleError) // Generic error handler
+                .withSuccessHandler((result) => {
+                    clearTimeout(timeoutId);
+                    handleAssignmentSuccess(result);
+                })
+                .withFailureHandler((error) => {
+                    clearTimeout(timeoutId);
+                    handleError(error);
+                })
                 .processAssignmentAndPopulate(selectedRequest.id, ridersArray, priorityEnabled);
         } catch (error) {
             console.error('Error calling processAssignmentAndPopulate:', error);
