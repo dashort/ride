@@ -325,6 +325,32 @@
             background: linear-gradient(135deg, rgba(46, 125, 50, 0.03), rgba(46, 125, 50, 0.08));
         }
 
+        .riders-controls {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: #bdc3c7;
+        }
+
         .assignment-actions {
             display: flex;
             gap: 1rem;
@@ -1212,12 +1238,7 @@ if (!document.getElementById('debug-styles')) {
             });
         }
 
-        var availCheckbox = document.getElementById('filterAvailability');
-        if (availCheckbox) {
-            availCheckbox.addEventListener('change', function() {
-                loadRidersWithAvailability(availCheckbox.checked);
-            });
-        }
+
     }
 
     /**
@@ -1442,8 +1463,11 @@ function selectRequestById(requestId) {
             '</div>' +
             '<div class="riders-section">' +
             '<h4>Available Riders</h4>' +
+            '<div class="riders-controls">' +
+            '<input type="text" id="riderSearchInput" placeholder="Search riders by name or JP number..." class="search-input">' +
             '<label style="margin-left:10px; font-weight:normal;">' +
             '<input type="checkbox" id="filterAvailability"> Show only available</label>' +
+            '</div>' +
             '<div class="riders-grid" id="ridersGrid">' +
             renderRidersGrid() +
             '</div>' +
@@ -1469,9 +1493,35 @@ function selectRequestById(requestId) {
             });
         }
 
+        // Set up search input event listener
+        var searchInput = document.getElementById('riderSearchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                refreshRidersGrid();
+            });
+        }
+
+        // Set up filter availability checkbox event listener
+        var filterAvailabilityCheckbox = document.getElementById('filterAvailability');
+        if (filterAvailabilityCheckbox) {
+            filterAvailabilityCheckbox.addEventListener('change', function() {
+                refreshRidersGrid();
+            });
+        }
+
         updateSelectedCount();
         updateAssignmentOrder();
         fetchRiderAvailabilityForRequest();
+    }
+
+    /**
+     * Refreshes the riders grid without reloading data from server.
+     */
+    function refreshRidersGrid() {
+        var grid = document.getElementById('ridersGrid');
+        if (grid) {
+            grid.innerHTML = renderRidersGrid();
+        }
     }
 
     /**
@@ -1481,10 +1531,22 @@ function selectRequestById(requestId) {
      */
     function renderRidersGrid() {
         var ridersList = activeRiders;
+        
+        // Filter by availability
         var availCheckbox = document.getElementById('filterAvailability');
         if (availCheckbox && availCheckbox.checked) {
-            ridersList = activeRiders.filter(function(r) {
+            ridersList = ridersList.filter(function(r) {
                 return (riderAvailability[r.name] || 'Available') === 'Available';
+            });
+        }
+        
+        // Filter by search term
+        var searchInput = document.getElementById('riderSearchInput');
+        if (searchInput && searchInput.value.trim()) {
+            var searchTerm = searchInput.value.trim().toLowerCase();
+            ridersList = ridersList.filter(function(r) {
+                return r.name.toLowerCase().indexOf(searchTerm) !== -1 ||
+                       (r.jpNumber && r.jpNumber.toLowerCase().indexOf(searchTerm) !== -1);
             });
         }
 
@@ -1505,9 +1567,7 @@ function selectRequestById(requestId) {
                 '<div class="rider-status status-' + (isNOPD ? 'nopd' : availability.toLowerCase()) + '"></div>' +
                 '<div class="rider-name">' + rider.name + '</div>' +
                 '<div class="rider-info">JP: ' + rider.jpNumber + '</div>' +
-                '<div class="rider-info">📞 ' + rider.phone + '</div>' +
-                '<div class="rider-info">📧 ' + rider.email + '</div>' +
-                (isNOPD ? '<div class="rider-info nopd-info" style="color: #2e7d32; font-weight: bold;">🚓 NOPD - Always Available</div>' : 
+                (isNOPD ? '<div class="rider-info nopd-info" style="color: #2e7d32; font-weight: bold;">🚓 NOPD</div>' : 
                  isUnavailable ? '<div class="rider-info conflict-info" style="color: #e74c3c; font-weight: bold;">⚠️ ' + availability + '</div>' : '') +
                 '</div>';
         }).join('');
