@@ -94,13 +94,13 @@ function handleEnhancedNotificationAction(e, dashSheet, row) {
     } else if (selectedAction.includes('Send Both to All')) {
       sendNotificationsToRequest(requestId, 'Both');
     } else if (selectedAction.includes('SMS →')) {
-      const riderName = selectedAction.split('→')[1].trim();
+      const riderName = (selectedAction.split('→')[1] || '').trim();
       sendIndividualNotification(requestId, riderName, 'SMS');
     } else if (selectedAction.includes('Email →')) {
-      const riderName = selectedAction.split('→')[1].trim();
+      const riderName = (selectedAction.split('→')[1] || '').trim();
       sendIndividualNotification(requestId, riderName, 'Email');
     } else if (selectedAction.includes('Both →')) {
-      const riderName = selectedAction.split('→')[1].trim();
+      const riderName = (selectedAction.split('→')[1] || '').trim();
       sendIndividualNotification(requestId, riderName, 'Both');
     } else if (selectedAction.includes('Mark All as Notified')) {
       markRequestAsNotified(requestId);
@@ -849,16 +849,16 @@ function formatNotificationMessage(assignment, includeLinks = true) {
   const requestDetails = getRequestDetailsForNotification(requestId);
   
   if (requestDetails) {
-    if (requestDetails.escortFee && requestDetails.escortFee.trim()) {
-      message += `\n💰 Fee: ${requestDetails.escortFee.trim()}\n`;
+    if (requestDetails.escortFee && String(requestDetails.escortFee).trim()) {
+      message += `\n💰 Fee: ${String(requestDetails.escortFee).trim()}\n`;
     }
     
     if (requestDetails.courtesy === 'Yes') {
       message += `⭐ COURTESY REQUEST ⭐\n`;
     }
     
-    if (requestDetails.notes && requestDetails.notes.trim()) {
-      message += `📝 Notes: ${requestDetails.notes.trim()}\n`;
+    if (requestDetails.notes && String(requestDetails.notes).trim()) {
+      message += `📝 Notes: ${String(requestDetails.notes).trim()}\n`;
     }
   }
   
@@ -1164,7 +1164,7 @@ function handleSMSWebhook(e) {
  */
 function processSMSResponse(fromNumber, messageBody, messageSid) {
   try {
-    const cleanMessage = messageBody.trim().toLowerCase();
+    const cleanMessage = String(messageBody || '').trim().toLowerCase();
     
     // Find the rider by phone number
     const rider = findRiderByPhone(fromNumber);
