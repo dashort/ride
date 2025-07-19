@@ -353,6 +353,7 @@ function sendAssignmentNotification(assignmentId, type) {
     
     const riderName = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
     const requestId = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+    const jpNumber = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.jpNumber);
     const eventDate = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
     const startTime = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
     const startLocation = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation);
@@ -408,9 +409,13 @@ function sendAssignmentNotification(assignmentId, type) {
       try {
         const relatedAssignments = getAssignmentsForRequest(requestId);
         const otherRiders = relatedAssignments
-          .map(row => getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName))
-          .filter(name => name && name !== riderName);
-        const allRiders = otherRiders.concat(riderName);
+          .map(row => ({
+            name: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
+            jpNumber: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.jpNumber)
+          }))
+          .filter(r => r.name && r.name !== riderName);
+        const currentRider = { name: riderName, jpNumber: jpNumber };
+        const allRiders = otherRiders.concat(currentRider);
 
         const requestDetails = getRequestDetailsForNotification(requestId) || {};
         const confirmUrl = `${getWebAppUrl()}?action=respondAssignment&assignmentId=${assignmentId}&response=confirm`;
@@ -884,7 +889,7 @@ function formatNotificationMessage(assignment, includeLinks = true) {
 /**
  * Format assignment details for email with confirm/decline links.
  * @param {Object} params - Details for the assignment and request.
- * @param {string[]} assignedRiders - Names of all assigned riders.
+ * @param {{name:string,jpNumber:(string|undefined)}[]} assignedRiders - List of assigned riders with optional JP numbers.
  * @param {string} confirmUrl - URL for confirming the assignment.
  * @param {string} declineUrl - URL for declining the assignment.
  * @return {{text:string,html:string}} Plain text and HTML message bodies.
@@ -905,7 +910,9 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
 
   const dateStr = formatDateForDisplay(eventDate);
   const timeStr = formatTimeForDisplay(startTime);
-  const riders = assignedRiders.join(', ');
+  const riders = assignedRiders
+    .map(r => r.jpNumber ? `${r.name} (${r.jpNumber})` : r.name)
+    .join(', ');
 
   const lines = [
     `Escort ${requestId}`,
