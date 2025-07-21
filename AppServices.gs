@@ -2732,15 +2732,25 @@ function getAllAssignmentsForNotifications() {
       return [];
     }
     
+    console.log(`📊 Raw assignments data: ${assignmentsData.data.length} rows`);
+    console.log('📋 Available columns:', Object.keys(assignmentsData.columnMap));
+    
     const assignments = assignmentsData.data
       .filter(assignment => {
         const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
         const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id);
+        
+        console.log(`🔍 Checking assignment: ID=${assignmentId}, Rider=${riderName}, Status=${status}`);
         
         // Only include assignments with riders that aren't cancelled/completed
-        return riderName && 
-               riderName.trim().length > 0 && 
-               !['Cancelled', 'Completed', 'No Show'].includes(status);
+        const hasRider = riderName && riderName.trim().length > 0;
+        const isActiveStatus = !['Cancelled', 'Completed', 'No Show'].includes(status);
+        
+        const shouldInclude = hasRider && isActiveStatus;
+        console.log(`  → Include: ${shouldInclude} (hasRider: ${hasRider}, isActiveStatus: ${isActiveStatus})`);
+        
+        return shouldInclude;
       })
       .map(assignment => {
         const smsSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.smsSent);
@@ -2792,6 +2802,46 @@ function getAllAssignmentsForNotifications() {
       .filter(assignment => assignment.id && assignment.riderName);
     
     console.log(`✅ Processed ${assignments.length} assignments for notifications`);
+    
+    // If no assignments after filtering, let's check if there are any assignments at all
+    if (assignments.length === 0) {
+      console.log('⚠️ No assignments passed the filter. Checking total assignment count...');
+      console.log(`📊 Total raw assignments: ${assignmentsData.data.length}`);
+      
+      if (assignmentsData.data.length > 0) {
+        console.log('🔍 Sample raw assignment (first row):', assignmentsData.data[0]);
+        
+        // Let's be more permissive and include assignments even without riders for debugging
+        const debugAssignments = assignmentsData.data
+          .slice(0, 5) // Just show first 5 for debugging
+          .map(assignment => {
+            const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id) || 'No ID';
+            const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName) || 'No Rider';
+            
+            return {
+              uid: `debug_${assignmentId}`,
+              id: assignmentId,
+              requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId) || 'No Request ID',
+              riderName: riderName,
+              riderPhone: 'Debug Mode',
+              riderEmail: 'Debug Mode',
+              riderCarrier: 'Debug',
+              eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)) || 'No Date',
+              startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)) || 'No Time',
+              endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)) || '',
+              startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation) || 'No Location',
+              endLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation) || '',
+              notificationStatus: 'debug',
+              lastNotified: null,
+              status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) || 'No Status'
+            };
+          });
+          
+        console.log('🧪 Returning debug assignments for troubleshooting...');
+        return debugAssignments;
+      }
+    }
+    
     return assignments;
     
   } catch (error) {

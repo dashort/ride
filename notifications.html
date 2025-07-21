@@ -377,6 +377,12 @@
             color: #6c757d;
         }
 
+        .status-debug {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px dashed #ffc107;
+        }
+
         .assignment-details {
             font-size: 0.9rem;
             color: #7f8c8d;
@@ -557,6 +563,9 @@
                     </button>
                     <button class="btn-bulk" onclick="testDataLoading()" style="background: #9b59b6; color: white;">
                         🧪 Test Data
+                    </button>
+                    <button class="btn-bulk" onclick="createSampleAssignments()" style="background: #f39c12; color: white;">
+                        ➕ Create Sample Assignments
                     </button>
                 </div>
             </div>
@@ -776,6 +785,31 @@ function handleNotificationDataSuccess(data) {
         
         if (data.assignments && data.assignments.length > 0) {
             console.log('📋 First assignment sample:', data.assignments[0]);
+            console.log('📋 All assignments:', data.assignments);
+        } else {
+            console.log('⚠️ No assignments in response data');
+            
+            // Show helpful message in the UI
+            const container = document.getElementById('allAssignmentsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Assignment Data</h3>
+                        <p>The server returned no assignments. This could mean:</p>
+                        <ul style="text-align: left; margin: 1rem 0;">
+                            <li>No assignments exist in the Assignments sheet</li>
+                            <li>All assignments have status "Completed", "Cancelled", or "No Show"</li>
+                            <li>All assignments are missing rider names</li>
+                        </ul>
+                        <button class="btn" style="background: #3498db; color: white; margin-top: 1rem;" onclick="window.open('assignments.html', '_blank')">
+                            📋 View Assignments Page
+                        </button>
+                        <button class="btn" style="background: #e67e22; color: white; margin-top: 1rem;" onclick="loadNotificationData()">
+                            🔄 Retry Loading
+                        </button>
+                    </div>
+                `;
+            }
         }
         
         handleUserData(data.user);
@@ -1602,6 +1636,27 @@ ${result.message || 'Completed'}`;
                     .testNotificationDataLoading();
             } else {
                 showMessage('❌ Google Apps Script not available for testing', 'error');
+            }
+        }
+
+        function createSampleAssignments() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                if (confirm('This will create sample assignment data. Continue?')) {
+                    showMessage('Creating sample assignments...', 'info');
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            console.log('✅ Sample assignments created:', response);
+                            showMessage('Sample assignments created successfully!', 'success');
+                            setTimeout(() => loadNotificationData(), 1000);
+                        })
+                        .withFailureHandler(error => {
+                            console.error('❌ Failed to create sample assignments:', error);
+                            showMessage('Failed to create sample assignments', 'error');
+                        })
+                        .createSampleAssignmentsForTesting();
+                }
+            } else {
+                showMessage('Google Apps Script not available', 'error');
             }
         }
 
