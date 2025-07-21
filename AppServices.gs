@@ -2646,30 +2646,30 @@ function testRequestsPageData() {
  * Gets consolidated data for the notifications page
  * @return {object} Consolidated data object with user, assignments, and stats
  */
-function getPageDataForNotifications(user) { // Added user parameter
+function getPageDataForNotifications() { // Removed user parameter
   try {
     console.log('🔄 Loading notifications page data...');
     
     const result = {
       success: true,
-      user: user, // Use passed user
+      user: null,
       assignments: [],
       stats: {},
       recentActivity: []
     };
     
     // Get user data
-    // try { // Removed block
-    //   result.user = getCurrentUser();
-    // } catch (userError) {
-    //   console.log('⚠️ Could not load user data:', userError);
-    //   result.user = {
-    //     name: 'System User',
-    //     email: 'user@system.com',
-    //     roles: ['admin'],
-    //     permissions: ['send_notifications']
-    //   };
-    // }
+    try {
+      result.user = getCurrentUser();
+    } catch (userError) {
+      console.log('⚠️ Could not load user data:', userError);
+      result.user = {
+        name: 'System User',
+        email: 'user@system.com',
+        roles: ['admin'],
+        permissions: ['send_notifications']
+      };
+    }
     
     // Get all assignments for notifications
     try {
@@ -2710,7 +2710,7 @@ function getPageDataForNotifications(user) { // Added user parameter
     return {
       success: false,
       error: error.message,
-      user: user || { // Use passed user or fallback
+      user: {
         name: 'System User',
         email: 'user@system.com',
         roles: ['admin'],
@@ -2719,83 +2719,6 @@ function getPageDataForNotifications(user) { // Added user parameter
     };
   }
 }
-
-/**
- * ADD THIS NEW FUNCTION to AppServices.gs
- * Gets all assignments formatted for notifications page
- */
-function getAllAssignmentsForNotifications() {
-  try {
-    const assignmentsData = getAssignmentsData();
-    if (!assignmentsData || !assignmentsData.data) {
-      console.log('⚠️ No assignments data found');
-      return [];
-    }
-    
-    const assignments = assignmentsData.data
-      .filter(assignment => {
-        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-        
-        // Only include assignments with riders that aren't cancelled/completed
-        return riderName && 
-               riderName.trim().length > 0 && 
-               !['Cancelled', 'Completed', 'No Show'].includes(status);
-      })
-      .map(assignment => {
-        const smsSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.smsSent);
-        const emailSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.emailSent);
-        const notified = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.notified);
-        
-        // Determine notification status
-        let notificationStatus = 'none';
-        if (smsSent instanceof Date && emailSent instanceof Date) {
-          notificationStatus = 'both_sent';
-        } else if (smsSent instanceof Date) {
-          notificationStatus = 'sms_sent';
-        } else if (emailSent instanceof Date) {
-          notificationStatus = 'email_sent';
-        } else if (notified instanceof Date) {
-          notificationStatus = 'notified'; // Generic notification
-        }
-        
-        // Get the most recent notification timestamp
-        let lastNotified = null;
-        if (smsSent instanceof Date || emailSent instanceof Date || notified instanceof Date) {
-          const dates = [smsSent, emailSent, notified].filter(d => d instanceof Date);
-          if (dates.length > 0) {
-            lastNotified = new Date(Math.max(...dates.map(d => d.getTime())));
-          }
-        }
-        
-        return {
-          id: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
-          requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
-          riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
-          riderPhone: getRiderPhone(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          riderEmail: getRiderEmail(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          riderCarrier: getRiderCarrier(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
-          startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
-          endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)),
-          startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation),
-          endLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation),
-          notificationStatus: notificationStatus,
-          lastNotified: lastNotified ? lastNotified.toISOString() : null,
-          status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status)
-        };
-      })
-      .filter(assignment => assignment.id && assignment.riderName);
-    
-    console.log(`✅ Processed ${assignments.length} assignments for notifications`);
-    return assignments;
-    
-  } catch (error) {
-    console.error('❌ Error getting assignments for notifications:', error);
-    return [];
-  }
-}
-
 
 /**
  * Gets all assignments formatted for notifications page
@@ -2845,13 +2768,17 @@ function getAllAssignmentsForNotifications() {
           }
         }
         
+        const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id);
+        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        
         return {
-          id: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id),
+          uid: `${assignmentId}__${riderName}`, // Add unique identifier for frontend
+          id: assignmentId,
           requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
-          riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
-          riderPhone: getRiderPhone(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          riderEmail: getRiderEmail(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
-          riderCarrier: getRiderCarrier(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName)),
+          riderName: riderName,
+          riderPhone: getRiderPhone(riderName),
+          riderEmail: getRiderEmail(riderName),
+          riderCarrier: getRiderCarrier(riderName),
           eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
           startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
           endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)),
@@ -2918,6 +2845,46 @@ function getRiderCarrier(riderName) {
     return rider ? getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.carrier) || 'N/A' : 'N/A';
   } catch (error) {
     return 'N/A';
+  }
+}
+
+/**
+ * Test function to verify notification data loading
+ */
+function testNotificationDataLoading() {
+  try {
+    console.log('🧪 Testing notification data loading...');
+    
+    // Test basic assignment data loading
+    const assignmentsData = getAssignmentsData();
+    console.log('📊 Assignments data available:', assignmentsData ? assignmentsData.data.length : 'none');
+    
+    // Test notification-specific function
+    const notificationAssignments = getAllAssignmentsForNotifications();
+    console.log('📋 Notification assignments:', notificationAssignments.length);
+    
+    if (notificationAssignments.length > 0) {
+      console.log('📝 Sample assignment:', notificationAssignments[0]);
+    }
+    
+    // Test page data function
+    const pageData = getPageDataForNotifications();
+    console.log('📦 Page data result:', pageData);
+    
+    return {
+      success: true,
+      assignmentsDataCount: assignmentsData ? assignmentsData.data.length : 0,
+      notificationAssignmentsCount: notificationAssignments.length,
+      pageDataSuccess: pageData ? pageData.success : false,
+      pageDataAssignmentsCount: pageData && pageData.assignments ? pageData.assignments.length : 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
