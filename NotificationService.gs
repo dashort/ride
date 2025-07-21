@@ -2066,3 +2066,100 @@ function convertAssignmentToRow(assignment) {
     getColumnValue(row, columnMap, CONFIG.columns.assignments.id) === assignment.id
   );
 }
+
+/**
+ * Immediate fix script for notifications assignment loading issue
+ * This function can be called from the frontend to fix assignment loading
+ */
+function runImmediateAssignmentFix() {
+  console.log('🚀 Starting immediate assignment fix for notifications page...');
+  
+  try {
+    // Step 1: Run diagnostics first
+    console.log('\n=== STEP 1: DIAGNOSTICS ===');
+    const diagnostics = debugAssignmentsSheetState();
+    console.log('Diagnostic results:', JSON.stringify(diagnostics, null, 2));
+    
+    // Step 2: Run the comprehensive fix
+    console.log('\n=== STEP 2: APPLYING FIXES ===');
+    const fixResult = fixNotificationsAssignmentLoading();
+    console.log('Fix results:', JSON.stringify(fixResult, null, 2));
+    
+    // Step 3: Create sample data if needed
+    if (!fixResult.success || (fixResult.verifyResult && fixResult.verifyResult.notificationAssignmentsCount === 0)) {
+      console.log('\n=== STEP 3: CREATING SAMPLE DATA ===');
+      const sampleResult = createSampleAssignmentsForTesting();
+      console.log('Sample data creation result:', JSON.stringify(sampleResult, null, 2));
+      
+      // Also create sample riders if needed
+      createSampleRidersIfNeeded();
+    }
+    
+    // Step 4: Clear caches and verify final result
+    console.log('\n=== STEP 4: FINAL VERIFICATION ===');
+    dataCache.clear('sheet_' + CONFIG.sheets.assignments);
+    dataCache.clear('sheet_' + CONFIG.sheets.riders);
+    
+    const finalAssignments = getAllAssignmentsForNotifications();
+    console.log(`✅ Final result: ${finalAssignments.length} assignments loaded for notifications`);
+    
+    if (finalAssignments.length > 0) {
+      console.log('Sample assignment:', JSON.stringify(finalAssignments[0], null, 2));
+      return {
+        success: true,
+        message: `Success! ${finalAssignments.length} assignments are now available for notifications`,
+        assignmentCount: finalAssignments.length,
+        sampleAssignment: finalAssignments[0]
+      };
+    } else {
+      return {
+        success: false,
+        message: 'Fix attempted but no assignments are still loading. Manual intervention may be needed.',
+        diagnostics: diagnostics
+      };
+    }
+    
+  } catch (error) {
+    console.error('❌ Error in runImmediateAssignmentFix:', error);
+    return {
+      success: false,
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * Quick test function to check current assignment loading status
+ */
+function checkAssignmentLoadingStatus() {
+  console.log('🔍 Checking current assignment loading status...');
+  
+  try {
+    // Test getAssignmentsData
+    const rawData = getAssignmentsData(false);
+    console.log(`Raw assignments data: ${rawData.data ? rawData.data.length : 0} rows`);
+    
+    // Test getAllAssignmentsForNotifications
+    const notificationAssignments = getAllAssignmentsForNotifications();
+    console.log(`Notification assignments: ${notificationAssignments.length} items`);
+    
+    // Test getPageDataForNotifications
+    const pageData = getPageDataForNotifications();
+    console.log('Page data success:', pageData.success);
+    console.log('Page data assignments:', pageData.assignments ? pageData.assignments.length : 0);
+    
+    return {
+      rawDataRows: rawData.data ? rawData.data.length : 0,
+      notificationAssignments: notificationAssignments.length,
+      pageDataSuccess: pageData.success,
+      pageDataAssignments: pageData.assignments ? pageData.assignments.length : 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Error checking status:', error);
+    return {
+      error: error.message
+    };
+  }
+}
