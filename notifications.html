@@ -824,26 +824,96 @@ function handleNotificationDataSuccess(data) {
     }
 }
 
-function handleNotificationDataFailure(error) {
-    console.error('❌ Error loading notifications data:', error.message || error);
-    
-    // Show fallback data
-    const fallbackUser = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['send_notifications']
-    };
-    
-    handleUserData(fallbackUser);
-    updateStats({
-        totalAssignments: 0,
-        pendingNotifications: 0,
-        smsToday: 0,
-        emailToday: 0
-    });
-    handleAssignmentsLoaded([]);
-}
+        function handleNotificationDataFailure(error) {
+            console.error('❌ Error loading notifications data:', error.message || error);
+            
+            // Show fallback data
+            const fallbackUser = {
+                name: 'System User',
+                email: 'user@system.com',
+                roles: ['admin'],
+                permissions: ['send_notifications']
+            };
+            
+            handleUserData(fallbackUser);
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+            handleAssignmentsLoaded([]);
+            
+            // Auto-attempt to fix the issue
+            setTimeout(() => {
+                console.log('🔧 Attempting automatic fix for assignment loading...');
+                attemptAutoFix();
+            }, 2000);
+        }
+
+        function attemptAutoFix() {
+            console.log('🔧 Running automatic assignment loading fix...');
+            showMessage('🔧 Attempting to fix assignment loading issue...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        console.log('🔧 Auto-fix result:', result);
+                        if (result.success && result.verifyResult && result.verifyResult.success) {
+                            showMessage(`✅ Auto-fix successful! Found ${result.verifyResult.notificationAssignmentsCount} assignments`, 'success');
+                            // Reload the page data after successful fix
+                            setTimeout(() => {
+                                loadNotificationData();
+                            }, 1000);
+                        } else {
+                            showMessage('⚠️ Auto-fix completed but assignments still not loading. You may need to create sample data.', 'warning');
+                            showDataRecoveryOptions();
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Auto-fix failed:', error);
+                        showMessage('❌ Auto-fix failed. Please try manual recovery.', 'error');
+                        showDataRecoveryOptions();
+                    })
+                    .fixNotificationsAssignmentLoading();
+            } else {
+                showMessage('❌ Cannot run auto-fix: Google Apps Script not available', 'error');
+                showDataRecoveryOptions();
+            }
+        }
+
+        function showDataRecoveryOptions() {
+            const container = document.getElementById('allAssignmentsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🔧 Assignment Data Recovery</h3>
+                        <p>The system couldn't load assignment data. Here are your options:</p>
+                        <div style="margin: 1rem 0;">
+                            <button class="btn" style="background: #3498db; color: white; margin: 0.5rem;" onclick="createSampleAssignments()">
+                                📋 Create Sample Assignments
+                            </button>
+                            <button class="btn" style="background: #e67e22; color: white; margin: 0.5rem;" onclick="loadNotificationData()">
+                                🔄 Retry Loading
+                            </button>
+                            <button class="btn" style="background: #9b59b6; color: white; margin: 0.5rem;" onclick="testDataLoading()">
+                                🧪 Run Diagnostics
+                            </button>
+                        </div>
+                        <details style="margin-top: 1rem; text-align: left;">
+                            <summary>Why might assignments not load?</summary>
+                            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                                <li>The Assignments sheet doesn't exist or is empty</li>
+                                <li>All assignments have status "Completed", "Cancelled", or "No Show"</li>
+                                <li>All assignments are missing rider names</li>
+                                <li>Required columns are missing from the sheet</li>
+                                <li>Data caching issues</li>
+                            </ul>
+                        </details>
+                    </div>
+                `;
+            }
+        }
 
 function renderRecentActivity(activities) {
     const container = document.getElementById('recentActivityList');
