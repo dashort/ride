@@ -555,6 +555,9 @@
                     <button class="btn-bulk btn-refresh" onclick="refreshNotifications()">
                         🔄 Refresh Data
                     </button>
+                    <button class="btn-bulk" onclick="testDataLoading()" style="background: #9b59b6; color: white;">
+                        🧪 Test Data
+                    </button>
                 </div>
             </div>
 
@@ -764,14 +767,24 @@ function loadNotificationData() {
 }
 
 function handleNotificationDataSuccess(data) {
+    console.log('📦 Raw data received:', data);
+    
     if (data && data.success) {
-        console.log('✅ Notifications data loaded successfully:', data);
+        console.log('✅ Notifications data loaded successfully');
+        console.log('📊 Stats:', data.stats);
+        console.log('👥 Assignments count:', data.assignments ? data.assignments.length : 'none');
+        
+        if (data.assignments && data.assignments.length > 0) {
+            console.log('📋 First assignment sample:', data.assignments[0]);
+        }
+        
         handleUserData(data.user);
         updateStats(data.stats);
         handleAssignmentsLoaded(data.assignments);
         renderRecentActivity(data.recentActivity);
     } else {
         console.error('❌ Failed to load notifications data:', data ? data.error : 'No data returned');
+        console.error('📦 Full response object:', data);
         handleNotificationDataFailure(data || { message: "Received success:false or no data." });
     }
 }
@@ -1111,24 +1124,32 @@ function convertAssignmentsToNotificationFormat(assignments) {
         }
 
         function handleAssignmentsLoaded(assignments) {
-            console.log('Assignments loaded:', assignments);
+            console.log('📥 handleAssignmentsLoaded called with:', assignments);
+            console.log('📏 Assignment count:', assignments ? assignments.length : 'null/undefined');
 
             if (assignments === null || assignments === undefined) {
-                console.log('⚠️ Server returned null/undefined');
+                console.log('⚠️ Server returned null/undefined assignments');
                 assignments = [];
             }
 
             // Ensure assignments include uid/assignmentId fields
-            if (assignments && assignments.length > 0 && !assignments[0].uid) {
-                assignments = processAssignmentsForNotifications(assignments);
+            if (assignments && assignments.length > 0) {
+                console.log('🔍 Checking first assignment structure:', assignments[0]);
+                if (!assignments[0].uid) {
+                    console.log('🔄 Processing assignments to add UIDs...');
+                    assignments = processAssignmentsForNotifications(assignments);
+                    console.log('✅ Processed first assignment:', assignments[0]);
+                }
             }
 
             app.assignments = Array.isArray(assignments) ? assignments : [];
             app.filteredAssignments = [...app.assignments];
             
-            console.log('Stored assignments count:', app.assignments.length);
+            console.log('💾 Stored assignments count in app.assignments:', app.assignments.length);
+            console.log('💾 Stored assignments count in app.filteredAssignments:', app.filteredAssignments.length);
             
             setTimeout(() => {
+                console.log('🎨 Starting assignment rendering...');
                 renderAllAssignments();
                 renderRecentActivity();
                 console.log('✅ Assignment rendering complete');
@@ -1221,14 +1242,18 @@ function convertAssignmentsToNotificationFormat(assignments) {
         }
 
         function renderAllAssignments() {
-            console.log('Rendering assignments count:', app.filteredAssignments.length);
+            console.log('🎨 renderAllAssignments called');
+            console.log('📊 app.filteredAssignments.length:', app.filteredAssignments.length);
+            console.log('📊 app.assignments.length:', app.assignments.length);
             
             const container = document.getElementById('allAssignmentsList');
             
             if (!container) {
-                console.error('Container element not found!');
+                console.error('❌ Container element "allAssignmentsList" not found!');
                 return;
             }
+            
+            console.log('✅ Container found, proceeding with render...');
             
             if (app.filteredAssignments.length === 0) {
                 const hasFilters = document.getElementById('statusFilter').value || 
@@ -1535,10 +1560,49 @@ ${result.message || 'Completed'}`;
         }
 
         function refreshNotifications() {
+            console.log('🔄 Manual refresh triggered');
             showMessage('Refreshing notifications...', 'info');
+            
+            // Clear existing data
+            app.assignments = [];
+            app.filteredAssignments = [];
             app.selectedAssignments.clear();
             updateSelectionUI();
+            
+            // Clear the assignment list UI
+            const container = document.getElementById('allAssignmentsList');
+            if (container) {
+                container.innerHTML = '<div class="empty-state"><h3>Loading...</h3><p>Refreshing notification data...</p></div>';
+            }
+            
+            // Reload data with detailed logging
+            console.log('🔄 Calling loadNotificationData()...');
             loadNotificationData();
+        }
+
+        // Test function for debugging
+        function testDataLoading() {
+            console.log('🧪 Running data loading test...');
+            showMessage('Running data loading test...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        console.log('🧪 Test results:', result);
+                        if (result.success) {
+                            showMessage(`✅ Test passed! Found ${result.notificationAssignmentsCount} assignments for notifications`, 'success');
+                        } else {
+                            showMessage(`❌ Test failed: ${result.error}`, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('🧪 Test failed:', error);
+                        showMessage(`❌ Test failed: ${error.message || error}`, 'error');
+                    })
+                    .testNotificationDataLoading();
+            } else {
+                showMessage('❌ Google Apps Script not available for testing', 'error');
+            }
         }
 
         // Utility functions
