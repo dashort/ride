@@ -377,6 +377,51 @@
             color: #6c757d;
         }
 
+        .status-debug {
+            background: #f39c12;
+            color: white;
+            border: 1px dashed #e67e22;
+        }
+
+        .debug-assignment {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 2px dashed #f39c12;
+            position: relative;
+        }
+
+        .debug-assignment::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(243, 156, 18, 0.1) 10px,
+                rgba(243, 156, 18, 0.1) 20px
+            );
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .debug-assignment > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        .debug-badge {
+            background: #f39c12;
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            margin-left: 0.5rem;
+            font-weight: bold;
+        }
+
         .assignment-details {
             font-size: 0.9rem;
             color: #7f8c8d;
@@ -555,6 +600,12 @@
                     <button class="btn-bulk btn-refresh" onclick="refreshNotifications()">
                         🔄 Refresh Data
                     </button>
+                    <button class="btn-bulk" onclick="testDataLoading()" style="background: #9b59b6; color: white;">
+                        🧪 Test Data
+                    </button>
+                    <button class="btn-bulk" onclick="createSampleAssignments()" style="background: #f39c12; color: white;">
+                        ➕ Create Sample Assignments
+                    </button>
                 </div>
             </div>
 
@@ -628,244 +679,300 @@
         </div>
     </div>
 
-<script>
-function loadData() {
-    console.log('🔄 Loading notifications page data...');
-    showLoadingStates();
-    
-    if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        console.log('⚠️ Google Apps Script not available - using fallback data');
-        handleDataLoadFailure();
-        return;
-    }
+    <script>
+        // Global state
+        let app = {
+            user: null,
+            assignments: [],
+            filteredAssignments: [],
+            selectedAssignments: new Set(),
+            stats: {},
+            isOnline: navigator.onLine
+        };
 
-    // Add timeout protection
-    const timeout = setTimeout(() => {
-        console.log('⏰ Timeout reached, using fallback data');
-        handleDataLoadFailure();
-    }, 15000);
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Notifications page loading...');
+            loadUserData();
+            loadNotificationData();
+            setupEventListeners();
+        });
 
-    try {
-        google.script.run
-            .withSuccessHandler((data) => {
-                clearTimeout(timeout);
-                handleNotificationDataSuccess(data);
-            })
-            .withFailureHandler((error) => {
-                clearTimeout(timeout);
-                handleNotificationDataFailure(error);
-            })
-            .getPageDataForNotifications();
-    } catch (error) {
-        clearTimeout(timeout);
-        console.error('❌ Exception calling getPageDataForNotifications:', error);
-        handleDataLoadFailure();
-    }
-}
-
-function showLoadingStates() {
-    // Show loading indicators
-    const elements = [
-        'totalAssignments',
-        'pendingNotifications', 
-        'smsToday',
-        'emailToday'
-    ];
-    
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.textContent = '...';
+        function setupEventListeners() {
+            // Filter events
+            const statusFilter = document.getElementById('statusFilter');
+            const timeFilter = document.getElementById('timeFilter');
+            const searchBox = document.getElementById('searchBox');
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', applyFilters);
+            }
+            if (timeFilter) {
+                timeFilter.addEventListener('change', applyFilters);
+            }
+            if (searchBox) {
+                searchBox.addEventListener('input', debounce(applyFilters, 300));
+                searchBox.addEventListener('keyup', function(e) {
+                    if (e.key === 'Enter') {
+                        applyFilters();
+                    }
+                });
+                searchBox.addEventListener('search', applyFilters);
+            }
         }
-    });
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        function loadUserData() {
+            console.log('Loading user data...');
+            try {
+                if (typeof google === 'undefined' || !google.script || !google.script.run) {
+                    console.log('Google Apps Script not available, using fallback user data');
+                    handleUserData({
+                        name: 'System User',
+                        roles: ['admin'],
+                        permissions: ['send_notifications']
+                    });
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(handleUserData)
+                    .withFailureHandler((error) => {
+                        console.error('Error loading user:', error);
+                        handleUserData({
+                            name: 'System User',
+                            roles: ['admin'],
+                            permissions: ['send_notifications']
+                        });
+                    })
+                    .getCurrentUser();
+            } catch (error) {
+                console.error('Error in loadUserData:', error);
+                handleUserData({
+                    name: 'System User',
+                    roles: ['admin'],
+                    permissions: ['send_notifications']
+                });
+            }
+        }
+
+        function handleUserData(user) {
+            console.log('User data loaded:', user);
+            app.user = user;
+            
+            setTimeout(() => {
+                updateUserInfoSafely(user);
+            }, 100);
+        }
+
+        function updateUserInfoSafely(user) {
+            try {
+                const safeUser = user || {};
+                const safeUpdate = (id, value) => {
+                    try {
+                        const element = document.getElementById(id);
+                        if (element && element.textContent !== undefined) {
+                            element.textContent = value;
+                            console.log(`✅ Updated ${id}: ${value}`);
+                        }
+                    } catch (e) {
+                        console.log(`❌ Error updating ${id}:`, e.message);
+                    }
+                };
+
+                safeUpdate('userName', safeUser.name || 'User');
+                safeUpdate('userRole', (safeUser.roles || ['user']).join(', '));
+                safeUpdate('userAvatar', (safeUser.name || 'U').charAt(0).toUpperCase());
+            } catch (error) {
+                console.log('Error in updateUserInfoSafely:', error);
+            }
+        }
+
+        // Replace the entire loadNotificationData function in notifications.html
+
+function loadNotificationData() {
+    console.log('🔄 Loading notification data using consolidated function...');
     
-    // Show loading for assignments list
-    const assignmentsList = document.getElementById('assignmentsList');
-    if (assignmentsList) {
-        assignmentsList.innerHTML = '<div class="loading-state"><p>Loading assignments...</p></div>';
-    }
-    
-    // Show loading for recent activity
-    const recentActivityList = document.getElementById('recentActivityList');
-    if (recentActivityList) {
-        recentActivityList.innerHTML = '<div class="loading-state"><p>Loading recent activity...</p></div>';
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(handleNotificationDataSuccess)
+            .withFailureHandler(handleNotificationDataFailure)
+            .getPageDataForNotifications();
+    } else {
+        console.log('⚠️ Google Apps Script not available for notifications');
+        handleNotificationDataFailure({ message: "Google Apps Script not available." });
     }
 }
 
 function handleNotificationDataSuccess(data) {
-    console.log('✅ Notifications data loaded successfully:', data);
+    console.log('📦 Raw data received:', data);
     
     if (data && data.success) {
-        // Update user info
-        if (data.user) {
-            handleUserData(data.user);
+        console.log('✅ Notifications data loaded successfully');
+        console.log('📊 Stats:', data.stats);
+        console.log('👥 Assignments count:', data.assignments ? data.assignments.length : 'none');
+        
+        if (data.assignments && data.assignments.length > 0) {
+            console.log('📋 First assignment sample:', data.assignments[0]);
+            console.log('📋 All assignments:', data.assignments);
+        } else {
+            console.log('⚠️ No assignments in response data');
+            
+            // Show enhanced help message with diagnostic options
+            const container = document.getElementById('allAssignmentsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-state" style="background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
+                        <h3 style="color: #b8860b; margin-bottom: 1rem;">📭 No Notification Data Available</h3>
+                        <p style="margin-bottom: 1rem; color: #856404;">This usually means one of the following:</p>
+                        <ul style="text-align: left; margin: 1rem 0; color: #856404; line-height: 1.6;">
+                            <li><strong>No assignments exist</strong> - The Assignments sheet may be empty</li>
+                            <li><strong>All assignments are completed</strong> - Status is "Completed", "Cancelled", or "No Show"</li>
+                            <li><strong>Missing rider names</strong> - Assignments don't have riders assigned</li>
+                            <li><strong>Data loading issue</strong> - Technical problem with sheet access</li>
+                        </ul>
+                        
+                        <div style="margin-top: 1.5rem;">
+                            <h4 style="color: #b8860b; margin-bottom: 0.5rem;">🔧 Quick Fixes:</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center;">
+                                <button class="btn" style="background: #17a2b8; color: white; padding: 0.5rem 1rem;" onclick="runDiagnostics()">
+                                    🔍 Run Diagnostics
+                                </button>
+                                <button class="btn" style="background: #28a745; color: white; padding: 0.5rem 1rem;" onclick="createSampleAssignments()">
+                                    ➕ Create Sample Data
+                                </button>
+                                <button class="btn" style="background: #6c757d; color: white; padding: 0.5rem 1rem;" onclick="window.open('assignments.html', '_blank')">
+                                    📋 View Assignments
+                                </button>
+                                <button class="btn" style="background: #e67e22; color: white; padding: 0.5rem 1rem;" onclick="loadNotificationData()">
+                                    🔄 Retry Loading
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 5px; font-size: 0.9rem; color: #6c757d;">
+                            <strong>💡 Pro Tip:</strong> Start by running diagnostics to identify the exact issue, then use the appropriate fix.
+                        </div>
+                    </div>
+                `;
+            }
         }
         
-        // Update statistics
-        if (data.stats) {
-            updateStats(data.stats);
-        }
-        
-        // Update assignments list
-        if (data.assignments) {
-            handleAssignmentsLoaded(data.assignments);
-        }
-        
-        // Update recent activity
-        if (data.recentActivity) {
-            renderRecentActivity(data.recentActivity);
-        }
+        handleUserData(data.user);
+        updateStats(data.stats);
+        handleAssignmentsLoaded(data.assignments);
+        renderRecentActivity(data.recentActivity);
     } else {
         console.error('❌ Failed to load notifications data:', data ? data.error : 'No data returned');
-        handleDataLoadFailure();
+        console.error('📦 Full response object:', data);
+        handleNotificationDataFailure(data || { message: "Received success:false or no data." });
     }
 }
 
-function handleNotificationDataFailure(error) {
-    console.error('❌ Error loading notifications data:', error.message || error);
-    handleDataLoadFailure();
-}
-
-function handleDataLoadFailure() {
-    console.log('🔄 Loading fallback data for notifications...');
-    
-    // Show fallback user data
-    const fallbackUser = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['send_notifications']
-    };
-    handleUserData(fallbackUser);
-    
-    // Show fallback stats
-    updateStats({
-        totalAssignments: 0,
-        pendingNotifications: 0,
-        smsToday: 0,
-        emailToday: 0
-    });
-    
-    // Show empty assignments
-    handleAssignmentsLoaded([]);
-    
-    // Show empty recent activity
-    renderRecentActivity([]);
-}
-
-function updateStats(stats) {
-    console.log('📊 Updating notification stats:', stats);
-    
-    const safeUpdateStat = (id, value) => {
-        try {
-            const element = document.getElementById(id);
-            if (element) {
-                const displayValue = (value !== null && value !== undefined) ? value : 0;
-                element.textContent = displayValue;
-                console.log(`✅ Updated stat ${id}: ${displayValue}`);
-            } else {
-                console.log(`⚠️ Stat element ${id} not found`);
-            }
-        } catch (e) {
-            console.log(`❌ Error updating stat ${id}:`, e.message);
-        }
-    };
-
-    safeUpdateStat('totalAssignments', stats.totalAssignments);
-    safeUpdateStat('pendingNotifications', stats.pendingNotifications);
-    safeUpdateStat('smsToday', stats.smsToday);
-    safeUpdateStat('emailToday', stats.emailToday);
-}
-
-function handleAssignmentsLoaded(assignments) {
-    console.log('📋 Rendering assignments for notifications:', assignments);
-    
-    const container = document.getElementById('assignmentsList');
-    if (!container) {
-        console.error('❌ Assignments container not found');
-        return;
-    }
-    
-    if (!assignments || assignments.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <h3>No Active Assignments</h3>
-                <p>Assignments with riders will appear here for sending notifications.</p>
-                <p style="font-size: 0.9rem; color: #7f8c8d; margin-top: 1rem;">
-                    Make sure you have assignments created in the Assignments page.
-                </p>
-            </div>
-        `;
-        return;
-    }
-
-    try {
-        container.innerHTML = assignments.map(assignment => {
-            const notificationStatus = getNotificationStatusDisplay(assignment);
-            const canSendNotification = !assignment.smsSent && !assignment.emailSent;
+        function handleNotificationDataFailure(error) {
+            console.error('❌ Error loading notifications data:', error.message || error);
             
-            return `
-                <div class="assignment-item" data-assignment-id="${assignment.id}">
-                    <div class="assignment-header">
-                        <span class="assignment-id">${assignment.id} - ${assignment.requestId}</span>
-                        <span class="assignment-status status-${assignment.status.toLowerCase().replace(' ', '-')}">
-                            ${assignment.status}
-                        </span>
-                    </div>
-                    <div class="assignment-details">
-                        <strong>Rider:</strong> ${assignment.riderName} ${assignment.jpNumber ? `(${assignment.jpNumber})` : ''}<br>
-                        <strong>Event:</strong> ${assignment.eventDate} ${assignment.eventTime ? `at ${assignment.eventTime}` : ''}<br>
-                        <strong>Route:</strong> ${assignment.startLocation} → ${assignment.endLocation}
-                    </div>
-                    <div class="notification-status">
-                        ${notificationStatus}
-                    </div>
-                    <div class="notification-actions">
-                        ${canSendNotification ? `
-                            <button class="btn btn-primary" onclick="sendNotification('${assignment.id}', 'sms')">
-                                📱 Send SMS
-                            </button>
-                            <button class="btn btn-secondary" onclick="sendNotification('${assignment.id}', 'email')">
-                                📧 Send Email
-                            </button>
-                            <button class="btn" onclick="sendNotification('${assignment.id}', 'both')">
-                                📬 Send Both
-                            </button>
-                        ` : `
-                            <span class="notification-sent">✅ Notification Sent</span>
-                        `}
-                    </div>
-                </div>
-            `;
-        }).join('');
+            // Show fallback data
+            const fallbackUser = {
+                name: 'System User',
+                email: 'user@system.com',
+                roles: ['admin'],
+                permissions: ['send_notifications']
+            };
+            
+            handleUserData(fallbackUser);
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+            handleAssignmentsLoaded([]);
+            
+            // Auto-attempt to fix the issue
+            setTimeout(() => {
+                console.log('🔧 Attempting automatic fix for assignment loading...');
+                attemptAutoFix();
+            }, 2000);
+        }
 
-        console.log('✅ Assignments rendered successfully');
-    } catch (error) {
-        console.error('❌ Error rendering assignments:', error);
-        container.innerHTML = '<div class="empty-state"><h3>Error Loading Assignments</h3></div>';
-    }
-}
+        function attemptAutoFix() {
+            console.log('🔧 Running automatic assignment loading fix...');
+            showMessage('🔧 Attempting to fix assignment loading issue...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        console.log('🔧 Auto-fix result:', result);
+                        if (result.success && result.verifyResult && result.verifyResult.success) {
+                            showMessage(`✅ Auto-fix successful! Found ${result.verifyResult.notificationAssignmentsCount} assignments`, 'success');
+                            // Reload the page data after successful fix
+                            setTimeout(() => {
+                                loadNotificationData();
+                            }, 1000);
+                        } else {
+                            showMessage('⚠️ Auto-fix completed but assignments still not loading. You may need to create sample data.', 'warning');
+                            showDataRecoveryOptions();
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('❌ Auto-fix failed:', error);
+                        showMessage('❌ Auto-fix failed. Please try manual recovery.', 'error');
+                        showDataRecoveryOptions();
+                    })
+                    .fixNotificationsAssignmentLoading();
+            } else {
+                showMessage('❌ Cannot run auto-fix: Google Apps Script not available', 'error');
+                showDataRecoveryOptions();
+            }
+        }
 
-function getNotificationStatusDisplay(assignment) {
-    if (assignment.smsSent && assignment.emailSent) {
-        return '<span class="status-badge status-both_sent">Both Sent</span>';
-    } else if (assignment.smsSent) {
-        return '<span class="status-badge status-sms_sent">SMS Sent</span>';
-    } else if (assignment.emailSent) {
-        return '<span class="status-badge status-email_sent">Email Sent</span>';
-    } else {
-        return '<span class="status-badge status-pending">Pending</span>';
-    }
-}
+        function showDataRecoveryOptions() {
+            const container = document.getElementById('allAssignmentsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>🔧 Assignment Data Recovery</h3>
+                        <p>The system couldn't load assignment data. Here are your options:</p>
+                        <div style="margin: 1rem 0;">
+                            <button class="btn" style="background: #3498db; color: white; margin: 0.5rem;" onclick="createSampleAssignments()">
+                                📋 Create Sample Assignments
+                            </button>
+                            <button class="btn" style="background: #e67e22; color: white; margin: 0.5rem;" onclick="loadNotificationData()">
+                                🔄 Retry Loading
+                            </button>
+                            <button class="btn" style="background: #9b59b6; color: white; margin: 0.5rem;" onclick="testDataLoading()">
+                                🧪 Run Diagnostics
+                            </button>
+                        </div>
+                        <details style="margin-top: 1rem; text-align: left;">
+                            <summary>Why might assignments not load?</summary>
+                            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                                <li>The Assignments sheet doesn't exist or is empty</li>
+                                <li>All assignments have status "Completed", "Cancelled", or "No Show"</li>
+                                <li>All assignments are missing rider names</li>
+                                <li>Required columns are missing from the sheet</li>
+                                <li>Data caching issues</li>
+                            </ul>
+                        </details>
+                    </div>
+                `;
+            }
+        }
 
 function renderRecentActivity(activities) {
-    console.log('📝 Rendering recent notification activity:', activities);
-    
     const container = document.getElementById('recentActivityList');
-    if (!container) {
-        console.error('❌ Recent activity container not found');
-        return;
-    }
     
     if (!activities || activities.length === 0) {
         container.innerHTML = `
@@ -877,58 +984,1056 @@ function renderRecentActivity(activities) {
         return;
     }
 
-    try {
-        container.innerHTML = activities.map(activity => `
-            <div class="activity-item">
-                <div class="activity-header">
-                    <span class="activity-type">${activity.type}</span>
-                    <span class="activity-timestamp">${new Date(activity.timestamp).toLocaleString()}</span>
-                </div>
-                <div class="activity-details">
-                    <strong>${activity.recipient}</strong> - ${activity.messagePreview}
-                </div>
+    container.innerHTML = activities.map(activity => `
+        <div class="assignment-item">
+            <div class="assignment-header">
+                <span class="assignment-id">${activity.requestId} - ${activity.recipient}</span>
+                <span class="notification-status status-success">
+                    ${activity.type} Sent
+                </span>
             </div>
-        `).join('');
-
-        console.log('✅ Recent activity rendered successfully');
-    } catch (error) {
-        console.error('❌ Error rendering recent activity:', error);
-        container.innerHTML = '<div class="empty-state"><h3>Error Loading Activity</h3></div>';
-    }
+            <div class="assignment-details">
+                ${activity.messagePreview}
+            </div>
+            <div class="notification-history">
+                Sent: ${new Date(activity.timestamp).toLocaleString()}
+            </div>
+        </div>
+    `).join('');
 }
 
-function handleUserData(user) {
-    // Update user display elements if they exist
-    const userNameElement = document.getElementById('userName');
-    const userEmailElement = document.getElementById('userEmail');
-    
-    if (userNameElement) {
-        userNameElement.textContent = user.name || 'System User';
-    }
-    
-    if (userEmailElement) {
-        userEmailElement.textContent = user.email || 'user@system.com';
-    }
-}
+function loadNotificationStatsWorking() {
+    console.log('📊 Loading notification statistics using working method...');
+    try {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Use the same function that works on assignments page
+            google.script.run
+                .withSuccessHandler((requests) => {
+                    console.log('✅ Stats data loaded successfully:', requests);
 
-function sendNotification(assignmentId, type) {
-    console.log(`📤 Sending ${type} notification for assignment ${assignmentId}`);
-    
-    // Show sending state
-    const assignmentElement = document.querySelector(`[data-assignment-id="${assignmentId}"]`);
-    if (assignmentElement) {
-        const actionsDiv = assignmentElement.querySelector('.notification-actions');
-        if (actionsDiv) {
-            actionsDiv.innerHTML = '<span class="sending-notification">Sending...</span>';
+                    // Calculate basic stats from requests data
+                    const stats = {
+                        totalAssignments: requests ? requests.length : 0,
+                        pendingNotifications: requests ? requests.filter(r => r.status === 'Assigned').length : 0,
+                        smsToday: 0, // Will be 0 for now until we get notification data working
+                        emailToday: 0
+                    };
+
+                    console.log('📊 Calculated stats:', stats);
+                    updateStats(stats);
+                })
+                .withFailureHandler((error) => {
+                    console.error('❌ Error loading stats:', error);
+                    updateStats({
+                        totalAssignments: 0,
+                        pendingNotifications: 0,
+                        smsToday: 0,
+                        emailToday: 0
+                    });
+                })
+                .getFilteredRequestsForWebApp('All'); // Use the working function from assignments
+        } else {
+            console.log('⚠️ Google Apps Script not available for stats');
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
         }
+    } catch (error) {
+        console.error('❌ Exception in loadNotificationStatsWorking:', error);
+        updateStats({
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        });
     }
-    
+}
+
+function loadAssignmentsWorking() {
+    console.log('📋 Loading real assignments for notifications...');
+
     if (typeof google === 'undefined' || !google.script || !google.script.run) {
-        alert('Cannot send notifications - Google Apps Script not available');
-        loadData(); // Reload to reset UI
+        console.log('⚠️ Google Apps Script not available');
+        handleAssignmentsLoaded([]);
         return;
     }
+
+    try {
+        // Get actual assignments with real assignment IDs
+        google.script.run
+            .withSuccessHandler((assignments) => {
+                console.log('✅ Real assignments loaded successfully');
+                console.log('Assignment count:', assignments ? assignments.length : 0);
+
+                if (assignments && assignments.length > 0) {
+                    console.log('Sample real assignment:', assignments[0]);
+                    console.log('Real assignment ID:', assignments[0].id);
+
+                    // Use the assignments directly - they already have real IDs
+                    handleAssignmentsLoaded(assignments);
+                } else {
+                    console.log('⚠️ No assignments data received');
+                    handleAssignmentsLoaded([]);
+                }
+            })
+            .withFailureHandler((error) => {
+                console.error('❌ Error loading real assignments:', error);
+                handleAssignmentsLoaded([]);
+            })
+            .getAllAssignmentsForNotifications(); // Use the real assignments function
+    } catch (error) {
+        console.error('❌ Exception in loadAssignmentsWorking:', error);
+        handleAssignmentsLoaded([]);
+    }
+}
+
+
+
+
+function loadNotificationStats() {
+    console.log('📊 Loading notification statistics...');
+    try {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Load assignments data for calculating stats
+            google.script.run
+                .withSuccessHandler((assignments) => {
+                    console.log('✅ Assignments loaded for stats calculation:', assignments);
+
+                    // Calculate stats from actual assignments data
+                    const stats = calculateStatsFromAssignmentsData(assignments);
+                    console.log('📊 Calculated stats:', stats);
+
+                    updateStats(stats);
+                })
+                .withFailureHandler((error) => {
+                    console.error('❌ Error loading assignments for stats:', error);
+                    updateStats({
+                        totalAssignments: 0,
+                        pendingNotifications: 0,
+                        smsToday: 0,
+                        emailToday: 0
+                    });
+                })
+                .getAllAssignmentsForNotifications(); // Use assignments data
+        } else {
+            console.log('⚠️ Google Apps Script not available for stats');
+            updateStats({
+                totalAssignments: 0,
+                pendingNotifications: 0,
+                smsToday: 0,
+                emailToday: 0
+            });
+        }
+    } catch (error) {
+        console.error('❌ Exception in loadNotificationStats:', error);
+        updateStats({
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        });
+    }
+}
+// Add this helper function to notifications.html
+
+function calculateStatsFromAssignmentsData(assignments) {
+    if (!assignments || !Array.isArray(assignments)) {
+        return {
+            totalAssignments: 0,
+            pendingNotifications: 0,
+            smsToday: 0,
+            emailToday: 0
+        };
+    }
     
-    google.script
+    const today = new Date();
+    const todayStr = today.toDateString();
+    
+    let totalAssignments = assignments.length;
+    let pendingNotifications = 0;
+    let smsToday = 0;
+    let emailToday = 0;
+    
+    assignments.forEach(assignment => {
+        // Count pending notifications (not yet notified)
+        if (!assignment.notificationStatus || assignment.notificationStatus === 'none') {
+            pendingNotifications++;
+        }
+        
+        // Count today's notifications
+        if (assignment.lastNotified) {
+            const notifiedDate = new Date(assignment.lastNotified);
+            if (notifiedDate.toDateString() === todayStr) {
+                if (assignment.notificationStatus === 'sms_sent' || assignment.notificationStatus === 'both_sent') {
+                    smsToday++;
+                }
+                if (assignment.notificationStatus === 'email_sent' || assignment.notificationStatus === 'both_sent') {
+                    emailToday++;
+                }
+            }
+        }
+    });
+    
+    return {
+        totalAssignments: totalAssignments,
+        pendingNotifications: pendingNotifications,
+        smsToday: smsToday,
+        emailToday: emailToday
+    };
+}
+
+function loadAssignments() {
+    console.log('📋 Loading assignments for notifications...');
+
+    if (typeof google === 'undefined' || !google.script || !google.script.run) {
+        console.log('⚠️ Google Apps Script not available');
+        handleAssignmentsLoaded([]);
+        return;
+    }
+
+    try {
+        // Use the same function that works on assignments page
+        google.script.run
+            .withSuccessHandler((assignments) => {
+                console.log('✅ Assignments loaded successfully for notifications');
+
+                // Convert assignments to notification format
+                const notificationAssignments = convertAssignmentsToNotificationFormat(assignments);
+                handleAssignmentsLoaded(notificationAssignments);
+            })
+            .withFailureHandler((error) => {
+                console.error('❌ Error loading assignments:', error);
+                handleAssignmentsLoaded([]);
+            })
+            .getFilteredRequestsForAssignments({roles: ['admin']});
+    } catch (error) {
+        console.error('❌ Exception in loadAssignments:', error);
+        handleAssignmentsLoaded([]);
+    }
+}
+function processAssignmentsForNotifications(assignments) {
+    if (!assignments || !Array.isArray(assignments)) {
+        console.log('⚠️ No assignments data to process');
+        return [];
+    }
+    
+    console.log(`📋 Processing ${assignments.length} assignments for notifications`);
+    
+    return assignments.map((assignment, index) => {
+        // Log first few assignments for debugging
+        if (index < 3) {
+            console.log(`Assignment ${index}:`, assignment);
+        }
+
+        const realId = assignment.id || assignment.assignmentId || `ASG-${index}`;
+        const riderName = assignment.riderName || assignment.rider_name || 'Unknown Rider';
+
+        return {
+            uid: `${realId}__${riderName}`,
+            assignmentId: realId,
+            requestId: assignment.requestId || assignment.request_id || 'Unknown Request',
+            riderName: riderName,
+            riderPhone: assignment.riderPhone || assignment.rider_phone || 'N/A',
+            riderEmail: assignment.riderEmail || assignment.rider_email || 'N/A',
+            riderCarrier: assignment.riderCarrier || assignment.rider_carrier || 'N/A',
+            eventDate: assignment.eventDate || assignment.event_date || 'No Date',
+            startTime: assignment.startTime || assignment.start_time || 'No Time',
+            endTime: assignment.endTime || assignment.end_time || '',
+            startLocation: assignment.startLocation || assignment.start_location || 'Location TBD',
+            endLocation: assignment.endLocation || assignment.end_location || '',
+            notificationStatus: assignment.notificationStatus || 'none',
+            lastNotified: assignment.lastNotified || null
+        };
+    }).filter(assignment => assignment.riderName !== 'Unknown Rider'); // Filter out assignments without riders
+}
+
+// Alias used by older code
+function convertAssignmentsToNotificationFormat(assignments) {
+    return processAssignmentsForNotifications(assignments);
+}
+
+        function updateStats(stats) {
+            console.log('📊 Updating stats:', stats);
+            app.stats = stats;
+            
+            const safeUpdateStat = (id, value) => {
+                try {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.textContent = value || 0;
+                    }
+                } catch (e) {
+                    console.log(`❌ Error updating stat ${id}:`, e.message);
+                }
+            };
+
+            safeUpdateStat('totalAssignments', stats.totalAssignments);
+            safeUpdateStat('pendingNotifications', stats.pendingNotifications);
+            safeUpdateStat('smsToday', stats.smsToday);
+            safeUpdateStat('emailToday', stats.emailToday);
+            
+            if (stats && stats.assignments) {
+                console.log(`🔍 Assignments found in stats: ${stats.assignments.length}`);
+                if (Array.isArray(stats.assignments) && stats.assignments.length > 0) {
+                    handleAssignmentsLoaded(stats.assignments);
+                    showMessage(`✅ Auto-loaded ${stats.assignments.length} assignments via stats!`, 'success');
+                }
+            }
+        }
+
+        function handleAssignmentsLoaded(assignments) {
+            console.log('📥 handleAssignmentsLoaded called with:', assignments);
+            console.log('📏 Assignment count:', assignments ? assignments.length : 'null/undefined');
+
+            if (assignments === null || assignments === undefined) {
+                console.log('⚠️ Server returned null/undefined assignments');
+                assignments = [];
+            }
+
+            // Ensure assignments include uid/assignmentId fields
+            if (assignments && assignments.length > 0) {
+                console.log('🔍 Checking first assignment structure:', assignments[0]);
+                if (!assignments[0].uid) {
+                    console.log('🔄 Processing assignments to add UIDs...');
+                    assignments = processAssignmentsForNotifications(assignments);
+                    console.log('✅ Processed first assignment:', assignments[0]);
+                }
+            }
+
+            app.assignments = Array.isArray(assignments) ? assignments : [];
+            app.filteredAssignments = [...app.assignments];
+            
+            console.log('💾 Stored assignments count in app.assignments:', app.assignments.length);
+            console.log('💾 Stored assignments count in app.filteredAssignments:', app.filteredAssignments.length);
+            
+            // Check if any assignments are debug assignments
+            const debugCount = app.assignments.filter(a => a.notificationStatus === 'debug' || a.uid?.startsWith('debug_')).length;
+            if (debugCount > 0) {
+                showDebugInfoBanner(debugCount, app.assignments.length);
+            }
+            
+            setTimeout(() => {
+                console.log('🎨 Starting assignment rendering...');
+                renderAllAssignments();
+                renderRecentActivity();
+                console.log('✅ Assignment rendering complete');
+            }, 100);
+        }
+
+        function applyFilters() {
+            console.log('Applying filters...');
+            
+            const statusFilterEl = document.getElementById('statusFilter');
+            const timeFilterEl = document.getElementById('timeFilter');
+            const searchBoxEl = document.getElementById('searchBox');
+            
+            const statusFilter = statusFilterEl ? statusFilterEl.value : '';
+            const timeFilter = timeFilterEl ? timeFilterEl.value : '';
+            const searchTerm = searchBoxEl ? searchBoxEl.value.toLowerCase().trim() : '';
+
+            console.log('Filters:', { statusFilter, timeFilter, searchTerm });
+            
+            if (app.assignments.length === 0) {
+                console.log('No assignments to filter!');
+                return;
+            }
+
+            app.filteredAssignments = app.assignments.filter(assignment => {
+                // Status filter
+                const currentStatus = assignment.notificationStatus || 'none';
+                const matchesStatus = !statusFilter || 
+                    (statusFilter === 'pending' && currentStatus === 'none') ||
+                    currentStatus === statusFilter;
+
+                // Time filter
+                let matchesTime = true;
+                if (timeFilter && assignment.eventDate) {
+                    try {
+                        const eventDate = new Date(assignment.eventDate);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        switch (timeFilter) {
+                            case 'today':
+                                matchesTime = eventDate.toDateString() === today.toDateString();
+                                break;
+                            case 'tomorrow':
+                                const tomorrow = new Date(today);
+                                tomorrow.setDate(today.getDate() + 1);
+                                matchesTime = eventDate.toDateString() === tomorrow.toDateString();
+                                break;
+                            case 'week':
+                                const weekLater = new Date(today);
+                                weekLater.setDate(today.getDate() + 7);
+                                matchesTime = eventDate >= today && eventDate <= weekLater;
+                                break;
+                            case 'overdue':
+                                matchesTime = eventDate < today;
+                                break;
+                        }
+                    } catch (e) {
+                        console.log('Date parsing error for:', assignment.eventDate);
+                        matchesTime = true;
+                    }
+                }
+
+                // Search filter
+                let matchesSearch = true;
+                if (searchTerm) {
+                    const searchableFields = [
+                        assignment.riderName,
+                        assignment.requestId, 
+                        assignment.startLocation,
+                        assignment.endLocation,
+                        assignment.riderPhone,
+                        assignment.riderEmail
+                    ];
+                    
+                    matchesSearch = searchableFields.some(field => {
+                        if (!field) return false;
+                        return String(field).toLowerCase().includes(searchTerm);
+                    });
+                }
+
+                return matchesStatus && matchesTime && matchesSearch;
+            });
+
+            console.log(`Filtered result: ${app.filteredAssignments.length} assignments from ${app.assignments.length} total`);
+            
+            app.selectedAssignments.clear();
+            updateSelectionUI();
+            renderAllAssignments();
+        }
+
+        function renderAllAssignments() {
+            console.log('🎨 renderAllAssignments called');
+            console.log('📊 app.filteredAssignments.length:', app.filteredAssignments.length);
+            console.log('📊 app.assignments.length:', app.assignments.length);
+            
+            const container = document.getElementById('allAssignmentsList');
+            
+            if (!container) {
+                console.error('❌ Container element "allAssignmentsList" not found!');
+                return;
+            }
+            
+            console.log('✅ Container found, proceeding with render...');
+            
+            if (app.filteredAssignments.length === 0) {
+                const hasFilters = document.getElementById('statusFilter').value || 
+                                 document.getElementById('timeFilter').value || 
+                                 document.getElementById('searchBox').value.trim();
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>${hasFilters ? 'No Matching Assignments' : 'No Assignments Found'}</h3>
+                        <p>${hasFilters ? 'Try adjusting your filters or search terms' : 'No assignments available'}</p>
+                        ${hasFilters ? '<button class="btn" style="background: #95a5a6; color: white; margin-top: 1rem;" onclick="clearAllFilters()">Clear All Filters</button>' : ''}
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = app.filteredAssignments.map((assignment, index) => {
+                const isSelected = app.selectedAssignments.has(assignment.uid);
+                const notificationStatus = assignment.notificationStatus || 'none';
+                const lastNotified = assignment.lastNotified ? new Date(assignment.lastNotified).toLocaleString() : 'Never';
+                
+                const riderName = assignment.riderName || assignment.rider_name || assignment.name || 'Unknown Rider';
+                const requestId = assignment.requestId || assignment.request_id || assignment.assignmentId || 'Unknown ID';
+                const riderPhone = assignment.riderPhone || assignment.rider_phone || assignment.phone || 'N/A';
+                const riderEmail = assignment.riderEmail || assignment.rider_email || assignment.email || 'N/A';
+                const eventDate = assignment.eventDate || assignment.event_date || 'N/A';
+                const startTime = assignment.startTime || assignment.start_time || 'N/A';
+                const startLocation = assignment.startLocation || assignment.start_location || 'N/A';
+                const endLocation = assignment.endLocation || assignment.end_location || '';
+                
+                // Check if this is a debug assignment
+                const isDebugAssignment = notificationStatus === 'debug' || assignment.uid?.startsWith('debug_');
+                const debugClass = isDebugAssignment ? 'debug-assignment' : '';
+                const debugBadge = isDebugAssignment ? '<span class="debug-badge">🔍 DEBUG DATA</span>' : '';
+                
+                return `
+                    <div class="assignment-item ${isSelected ? 'selected' : ''} ${debugClass}" data-assignment-id="${assignment.uid}">
+                        <div class="assignment-header">
+                            <div class="assignment-id">
+                                <input type="checkbox" class="select-checkbox"
+                                       ${isSelected ? 'checked' : ''}
+                                       onchange="toggleAssignmentSelection('${assignment.uid}')">
+                                ${requestId} - ${riderName}
+                                ${debugBadge}
+                            </div>
+                            <span class="notification-status status-${notificationStatus}">
+                                ${notificationStatus === 'none' ? 'Never Notified' : 
+                                  notificationStatus === 'debug' ? 'Debug Mode' :
+                                  notificationStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </span>
+                        </div>
+                        <div class="assignment-details">
+                            <div class="assignment-rider">📞 ${riderPhone} | 📧 ${riderEmail}</div>
+                            📅 ${eventDate} at ${startTime}<br>
+                            📍 ${startLocation}
+                            ${endLocation ? ' → ' + endLocation : ''}
+                        </div>
+                        <div class="notification-history">
+                            Last notification: ${lastNotified}
+                        </div>
+                        <div class="assignment-actions">
+                            <button class="btn btn-sms" onclick="sendIndividualNotification('${assignment.uid}', 'SMS')">
+                                📱 SMS
+                            </button>
+                            <button class="btn btn-email" onclick="sendIndividualNotification('${assignment.uid}', 'Email')">
+                                📧 Email
+                            </button>
+                            <button class="btn btn-both" onclick="sendIndividualNotification('${assignment.uid}', 'Both')">
+                                📨 Both
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log('✅ Assignments rendered successfully');
+        }
+
+        function renderRecentActivity() {
+            const container = document.getElementById('recentActivityList');
+            
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            
+            const recentActivity = app.assignments
+                .filter(assignment => assignment.lastNotified && new Date(assignment.lastNotified) > weekAgo)
+                .sort((a, b) => new Date(b.lastNotified) - new Date(a.lastNotified))
+                .slice(0, 10);
+
+            if (recentActivity.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Recent Activity</h3>
+                        <p>Recent notifications will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = recentActivity.map(assignment => `
+                <div class="assignment-item">
+                    <div class="assignment-header">
+                        <span class="assignment-id">${assignment.requestId} - ${assignment.riderName}</span>
+                        <span class="notification-status status-${assignment.notificationStatus}">
+                            ${assignment.notificationStatus.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                    </div>
+                    <div class="assignment-details">
+                        📅 ${assignment.eventDate} at ${assignment.startTime}<br>
+                        📍 ${assignment.startLocation}
+                    </div>
+                    <div class="notification-history">
+                        Sent: ${new Date(assignment.lastNotified).toLocaleString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleAssignmentSelection(assignmentId) {
+            if (app.selectedAssignments.has(assignmentId)) {
+                app.selectedAssignments.delete(assignmentId);
+            } else {
+                app.selectedAssignments.add(assignmentId);
+            }
+            
+            updateSelectionUI();
+        }
+
+        function toggleSelectAll() {
+            if (app.selectedAssignments.size === app.filteredAssignments.length) {
+                app.selectedAssignments.clear();
+            } else {
+                app.selectedAssignments.clear();
+                app.filteredAssignments.forEach(assignment => {
+                    app.selectedAssignments.add(assignment.uid);
+                });
+            }
+            
+            updateSelectionUI();
+            renderAllAssignments();
+        }
+
+        function clearSelection() {
+            app.selectedAssignments.clear();
+            updateSelectionUI();
+            renderAllAssignments();
+        }
+
+        function updateSelectionUI() {
+            const panel = document.getElementById('bulkSelectionPanel');
+            const countElement = document.getElementById('selectedCount');
+            
+            if (app.selectedAssignments.size > 0) {
+                panel.classList.add('show');
+                countElement.textContent = app.selectedAssignments.size;
+            } else {
+                panel.classList.remove('show');
+            }
+        }
+
+        function sendIndividualNotification(assignmentId, type) {
+            const assignment = app.assignments.find(a => a.uid === assignmentId);
+            if (!assignment) {
+                showError('Assignment not found');
+                return;
+            }
+
+            const confirmMessage = assignment.notificationStatus && assignment.notificationStatus !== 'none' 
+                ? `Re-send ${type} notification to ${assignment.riderName}?\n\nNote: This rider was previously notified.`
+                : `Send ${type} notification to ${assignment.riderName}?`;
+
+            if (confirm(confirmMessage)) {
+                showLoading(`Sending ${type} notification...`);
+
+                try {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            hideLoading();
+                            if (result.success) {
+                                showSuccess(`${type} notification sent successfully!`);
+                                setTimeout(loadNotificationData, 1000);
+                            } else {
+                                showError('Failed to send notification: ' + result.message);
+                            }
+                        })
+                        .withFailureHandler((error) => {
+                            hideLoading();
+                            showError('Error sending notification: ' + error.message);
+                        })
+                        .sendAssignmentNotification(assignment.assignmentId, type);
+                } catch (error) {
+                    hideLoading();
+                    showError('Error: ' + error.message);
+                }
+            }
+        }
+
+
+        function sendToSelected(type) {
+            if (app.selectedAssignments.size === 0) {
+                showError('No assignments selected');
+                return;
+            }
+
+            const selectedUids = Array.from(app.selectedAssignments);
+            const selectedAssignments = app.assignments.filter(a => selectedUids.includes(a.uid));
+            const assignmentIds = selectedAssignments.map(a => a.assignmentId);
+            
+            const previouslyNotified = selectedAssignments.filter(a => a.notificationStatus && a.notificationStatus !== 'none').length;
+            const neverNotified = selectedAssignments.length - previouslyNotified;
+            
+            let confirmMessage = `Send ${type} notifications to ${selectedAssignments.length} selected assignment(s)?`;
+            
+            if (previouslyNotified > 0) {
+                confirmMessage += `\n\nNote: ${previouslyNotified} rider(s) have been previously notified and ${neverNotified} have never been notified.`;
+            }
+
+            if (confirm(confirmMessage)) {
+                showLoading(`Sending ${type} notifications to ${selectedAssignments.length} assignments...`);
+
+                try {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            hideLoading();
+                            showBulkResult(result);
+                            app.selectedAssignments.clear();
+                            updateSelectionUI();
+                            setTimeout(loadNotificationData, 2000);
+                        })
+                        .withFailureHandler((error) => {
+                            hideLoading();
+                            showError('Bulk notification error: ' + error.message);
+                        })
+                        .sendBulkNotificationsToSelected(assignmentIds, type);
+                } catch (error) {
+                    hideLoading();
+                    showError('Error: ' + error.message);
+                }
+            }
+        }
+
+        function sendBulkNotifications(type, filter) {
+            let targetAssignments = [];
+            let description = '';
+            
+            switch (filter) {
+                case 'all':
+                    targetAssignments = app.assignments;
+                    description = 'all assignments';
+                    break;
+                case 'pending':
+                    targetAssignments = app.assignments.filter(a => !a.notificationStatus || a.notificationStatus === 'none');
+                    description = 'assignments that have never been notified';
+                    break;
+                case 'today':
+                    const today = new Date().toDateString();
+                    targetAssignments = app.assignments.filter(a => new Date(a.eventDate).toDateString() === today);
+                    description = "today's assignments";
+                    break;
+            }
+
+            if (targetAssignments.length === 0) {
+                showError(`No assignments found for ${filter} filter`);
+                return;
+            }
+
+            const confirmMessage = `Send ${type} notifications to ${targetAssignments.length} ${description}?`;
+
+            if (confirm(confirmMessage)) {
+                showLoading(`Sending bulk ${type} notifications...`);
+
+                try {
+                    google.script.run
+                        .withSuccessHandler((result) => {
+                            hideLoading();
+                            showBulkResult(result);
+                            setTimeout(loadNotificationData, 2000);
+                        })
+                        .withFailureHandler((error) => {
+                            hideLoading();
+                            showError('Bulk notification error: ' + error.message);
+                        })
+                        .sendBulkNotificationsByTimeframe(filter, type);
+                } catch (error) {
+                    hideLoading();
+                    showError('Error: ' + error.message);
+                }
+            }
+        }
+
+        function showBulkResult(result) {
+            const message = `Bulk Notification Results:
+
+✅ Successful: ${result.successful || 0}
+❌ Failed: ${result.failed || 0}
+🔄 Re-notifications: ${result.renotifications || 0}
+
+${result.message || 'Completed'}`;
+            
+            // Use custom notification instead of browser alert
+            // to avoid the default "An embedded page at..." prefix
+            // that appears when using alert() inside an iframe.
+            showMessage(message, 'info');
+        }
+
+        function clearAllFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('timeFilter').value = '';
+            document.getElementById('searchBox').value = '';
+            applyFilters();
+        }
+
+        function refreshNotifications() {
+            console.log('🔄 Manual refresh triggered');
+            showMessage('Refreshing notifications...', 'info');
+            
+            // Clear existing data
+            app.assignments = [];
+            app.filteredAssignments = [];
+            app.selectedAssignments.clear();
+            updateSelectionUI();
+            
+            // Clear the assignment list UI
+            const container = document.getElementById('allAssignmentsList');
+            if (container) {
+                container.innerHTML = '<div class="empty-state"><h3>Loading...</h3><p>Refreshing notification data...</p></div>';
+            }
+            
+            // Reload data with detailed logging
+            console.log('🔄 Calling loadNotificationData()...');
+            loadNotificationData();
+        }
+
+        // Test function for debugging
+        function testDataLoading() {
+            console.log('🧪 Running data loading test...');
+            showMessage('Running data loading test...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        console.log('🧪 Test results:', result);
+                        if (result.success) {
+                            showMessage(`✅ Test passed! Found ${result.notificationAssignmentsCount} assignments for notifications`, 'success');
+                        } else {
+                            showMessage(`❌ Test failed: ${result.error}`, 'error');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('🧪 Test failed:', error);
+                        showMessage(`❌ Test failed: ${error.message || error}`, 'error');
+                    })
+                    .testNotificationDataLoading();
+            } else {
+                showMessage('❌ Google Apps Script not available for testing', 'error');
+            }
+        }
+
+        // Comprehensive diagnostics function
+        function runDiagnostics() {
+            console.log('🔍 Running comprehensive diagnostics...');
+            showMessage('🔍 Running diagnostics... This may take a moment.', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        console.log('🔍 Diagnostic results:', result);
+                        displayDiagnosticResults(result);
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('🔍 Diagnostics failed:', error);
+                        showMessage(`❌ Diagnostics failed: ${error.message || error}`, 'error');
+                    })
+                    .fixNotificationsAssignmentLoading();
+            } else {
+                showMessage('❌ Google Apps Script not available for diagnostics', 'error');
+            }
+        }
+
+        function displayDiagnosticResults(result) {
+            const container = document.getElementById('allAssignmentsList');
+            if (!container) return;
+
+            let statusColor = result.success ? '#28a745' : '#dc3545';
+            let statusIcon = result.success ? '✅' : '❌';
+            
+            let html = `
+                <div class="empty-state" style="background: #f8f9fa; border: 2px solid ${statusColor}; border-radius: 10px; padding: 2rem; margin: 1rem 0;">
+                    <h3 style="color: ${statusColor}; margin-bottom: 1rem;">${statusIcon} Diagnostic Results</h3>
+            `;
+
+            if (result.success) {
+                html += `
+                    <p style="color: #28a745; margin-bottom: 1rem;">✅ <strong>System is working correctly!</strong></p>
+                    <p>Found <strong>${result.verifyResult?.notificationAssignmentsCount || 0}</strong> assignments available for notifications.</p>
+                    <div style="margin-top: 1rem;">
+                        <button class="btn" style="background: #28a745; color: white; padding: 0.5rem 1rem;" onclick="loadNotificationData()">
+                            🔄 Reload Data
+                        </button>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <p style="color: #dc3545; margin-bottom: 1rem;">❌ <strong>Issues found:</strong></p>
+                `;
+
+                if (result.debugResult && result.debugResult.issues) {
+                    html += '<ul style="text-align: left; margin: 1rem 0; color: #dc3545;">';
+                    result.debugResult.issues.forEach(issue => {
+                        switch(issue) {
+                            case 'assignments_sheet_missing':
+                                html += '<li>📋 Assignments sheet does not exist</li>';
+                                break;
+                            case 'assignments_sheet_empty':
+                                html += '<li>📄 Assignments sheet is completely empty</li>';
+                                break;
+                            case 'assignments_sheet_no_data':
+                                html += '<li>📊 Assignments sheet has headers but no data rows</li>';
+                                break;
+                            case 'missing_required_columns':
+                                html += '<li>📋 Required columns are missing from assignments sheet</li>';
+                                break;
+                            case 'getAssignmentsData_returns_empty':
+                                html += '<li>🔧 getAssignmentsData() function returns no data</li>';
+                                break;
+                            case 'getAllAssignmentsForNotifications_returns_empty':
+                                html += '<li>🔧 getAllAssignmentsForNotifications() function returns no data</li>';
+                                break;
+                            default:
+                                html += `<li>⚠️ ${issue}</li>`;
+                        }
+                    });
+                    html += '</ul>';
+                }
+
+                if (result.debugResult && result.debugResult.dataAnalysis) {
+                    html += `
+                        <div style="margin-top: 1rem; padding: 1rem; background: #fff; border-radius: 5px;">
+                            <h5>📊 Data Analysis:</h5>
+                            <p>Sheet rows: ${result.debugResult.rowCount || 0}</p>
+                            <p>Data rows: ${result.debugResult.dataRowCount || 0}</p>
+                            <p>Raw assignments loaded: ${result.debugResult.assignmentsDataCount || 0}</p>
+                            <p>Filtered for notifications: ${result.debugResult.notificationAssignmentsCount || 0}</p>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div style="margin-top: 1.5rem;">
+                        <h5 style="color: #dc3545;">🔧 Recommended Actions:</h5>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 0.5rem;">
+                `;
+
+                if (result.debugResult?.issues?.includes('assignments_sheet_no_data') || 
+                    result.debugResult?.issues?.includes('assignments_sheet_empty')) {
+                    html += `
+                        <button class="btn" style="background: #28a745; color: white; padding: 0.5rem 1rem;" onclick="createSampleAssignments()">
+                            ➕ Create Sample Data
+                        </button>
+                    `;
+                }
+
+                html += `
+                        <button class="btn" style="background: #6c757d; color: white; padding: 0.5rem 1rem;" onclick="window.open('assignments.html', '_blank')">
+                            📋 Check Assignments
+                        </button>
+                        <button class="btn" style="background: #17a2b8; color: white; padding: 0.5rem 1rem;" onclick="runDiagnostics()">
+                            🔄 Re-run Diagnostics
+                        </button>
+                    </div>
+                `;
+            }
+
+            html += `
+                </div>
+            `;
+
+            container.innerHTML = html;
+
+            // Show summary message
+            if (result.success) {
+                showMessage('✅ Diagnostics completed - system is working!', 'success');
+            } else {
+                showMessage(`❌ Diagnostics found ${result.debugResult?.issues?.length || 0} issue(s)`, 'error');
+            }
+        }
+
+        function createSampleAssignments() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                if (confirm('This will create sample assignment data. Continue?')) {
+                    showMessage('Creating sample assignments...', 'info');
+                    google.script.run
+                        .withSuccessHandler(response => {
+                            console.log('✅ Sample assignments created:', response);
+                            showMessage('Sample assignments created successfully!', 'success');
+                            // Remove debug banner if it exists
+                            const banner = document.getElementById('debug-info-banner');
+                            if (banner) banner.remove();
+                            setTimeout(() => loadNotificationData(), 1000);
+                        })
+                        .withFailureHandler(error => {
+                            console.error('❌ Failed to create sample assignments:', error);
+                            showMessage('Failed to create sample assignments', 'error');
+                        })
+                        .createSampleAssignmentsForTesting();
+                }
+            } else {
+                showMessage('Google Apps Script not available', 'error');
+            }
+        }
+
+        function showDebugInfoBanner(debugCount, totalCount) {
+            // Create or update debug info banner
+            let banner = document.getElementById('debug-info-banner');
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'debug-info-banner';
+                const container = document.getElementById('allAssignmentsList');
+                if (container && container.parentNode) {
+                    container.parentNode.insertBefore(banner, container);
+                }
+            }
+
+            banner.innerHTML = `
+                <div style="background: #fff3cd; border: 2px solid #ffeaa7; border-radius: 10px; padding: 1rem; margin: 1rem 0; text-align: center;">
+                    <h4 style="color: #b8860b; margin-bottom: 0.5rem;">🔍 Debug Mode Active</h4>
+                    <p style="color: #856404; margin-bottom: 0.5rem;">
+                        Showing <strong>${debugCount}</strong> debug assignment(s) out of <strong>${totalCount}</strong> total. 
+                        These are sample data entries to help diagnose the "no data" issue.
+                    </p>
+                    <p style="color: #856404; font-size: 0.9rem;">
+                        <strong>Why you're seeing this:</strong> The system couldn't find real assignments that meet the notification criteria 
+                        (assignments with riders that aren't completed/cancelled), so it's showing raw data for troubleshooting.
+                    </p>
+                    <div style="margin-top: 0.5rem;">
+                        <button class="btn" style="background: #28a745; color: white; margin: 0.25rem;" onclick="createSampleAssignments()">
+                            ➕ Create Real Sample Data
+                        </button>
+                        <button class="btn" style="background: #6c757d; color: white; margin: 0.25rem;" onclick="window.open('assignments.html', '_blank')">
+                            📋 Check Assignments Sheet
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Utility functions
+        function showLoading(message = 'Loading...') {
+            const loadingDiv = document.createElement('div');
+            loadingDiv.innerHTML = `
+                <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                           background: rgba(255, 255, 255, 0.95); padding: 2rem; border-radius: 10px; 
+                           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); z-index: 9999;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">📱</div>
+                        <div>${message}</div>
+                    </div>
+                </div>
+            `;
+            loadingDiv.id = 'loading-overlay';
+            document.body.appendChild(loadingDiv);
+        }
+
+        function hideLoading() {
+            const loading = document.getElementById('loading-overlay');
+            if (loading) loading.remove();
+        }
+
+        function showSuccess(message) {
+            showNotification(message, '#27ae60');
+        }
+
+        function showError(message) {
+            showNotification('Error: ' + message, '#e74c3c');
+        }
+
+        function showMessage(message, type = 'info') {
+            const colors = {
+                success: '#27ae60',
+                error: '#e74c3c',
+                info: '#3498db',
+                warning: '#f39c12'
+            };
+            showNotification(message, colors[type] || colors.info);
+        }
+
+        function showNotification(message, color) {
+            const notification = document.createElement('div');
+            notification.style.position = 'fixed';
+            notification.style.top = '20px';
+            notification.style.right = '20px';
+            notification.style.background = color;
+            notification.style.color = 'white';
+            notification.style.padding = '1rem';
+            notification.style.borderRadius = '5px';
+            notification.style.zIndex = '9999';
+            notification.style.maxWidth = '300px';
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        function logout() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(url => { window.location.href = url; })
+                    .logout();
+            } else {
+                window.location.href = 'https://accounts.google.com/Logout';
+            }
+        }
+    </script>
 </body>
 </html>
