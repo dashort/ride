@@ -606,6 +606,9 @@
                     <button class="btn-bulk" onclick="createSampleAssignments()" style="background: #f39c12; color: white;">
                         ➕ Create Sample Assignments
                     </button>
+                    <button class="btn-bulk" onclick="runManualAssignmentFix()" style="background: #e74c3c; color: white;">
+                        🔧 Fix Assignment Loading
+                    </button>
                 </div>
             </div>
 
@@ -2023,6 +2026,36 @@ ${result.message || 'Completed'}`;
             document.body.appendChild(notification);
             
             setTimeout(() => notification.remove(), 3000);
+        }
+
+        function runManualAssignmentFix() {
+            console.log('🔧 Running manual assignment fix...');
+            showMessage('Running assignment fix diagnostic and repair...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler((result) => {
+                        console.log('✅ Manual fix completed:', result);
+                        if (result.success) {
+                            showMessage(`✅ Fix successful! ${result.assignmentCount} assignments loaded`, 'success');
+                            // Reload the page data
+                            setTimeout(() => {
+                                loadNotificationData();
+                            }, 1000);
+                        } else {
+                            showMessage(`⚠️ Fix completed but assignments still not loading: ${result.message}`, 'warning');
+                            // Show detailed error for debugging
+                            console.error('Fix details:', result);
+                        }
+                    })
+                    .withFailureHandler((error) => {
+                        console.error('❌ Manual fix failed:', error);
+                        showMessage('❌ Assignment fix failed. Check console for details.', 'error');
+                    })
+                    .runImmediateAssignmentFix();
+            } else {
+                showMessage('❌ Google Apps Script not available', 'error');
+            }
         }
 
         function logout() {
