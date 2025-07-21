@@ -1775,6 +1775,13 @@ function updateAssignmentOrder() {
             return;
         }
 
+        // Warn for large assignments that might take longer
+        if (selectedRiders.size > 10) {
+            if (!confirm(`You are assigning ${selectedRiders.size} riders to this request. Large assignments may take longer to process. Continue?`)) {
+                return;
+            }
+        }
+
         var ridersArray = [];
         selectedRiders.forEach(function(name) {
             var rider = null;
@@ -1795,21 +1802,36 @@ function updateAssignmentOrder() {
         showLoading('Saving assignment...');
 
         try {
-            // Set a timeout to handle cases where the script doesn't respond
+            let hasCompleted = false;
+            
+            // Improved timeout handling with progress indicators
             const timeoutId = setTimeout(() => {
-                hideLoading();
-                showError('Assignment save timed out. Please check if the assignment was saved and refresh the page.');
-                console.log('Assignment save operation timed out after 60 seconds');
+                if (!hasCompleted) {
+                    hideLoading();
+                    showError('Assignment save is taking longer than expected. The assignment may still be processing in the background. Please wait a moment and refresh the page to check if it was saved.');
+                    console.log('Assignment save operation timed out after 60 seconds');
+                }
             }, 60000); // 60 second timeout
+
+            // Show progress indicator after 10 seconds
+            const progressTimeoutId = setTimeout(() => {
+                if (!hasCompleted) {
+                    showLoading('Still saving assignment... This may take a moment for large assignments.');
+                }
+            }, 10000);
 
             google.script.run
                 .withSuccessHandler((result) => {
+                    hasCompleted = true;
                     clearTimeout(timeoutId);
+                    clearTimeout(progressTimeoutId);
                     hideLoading();
                     handleAssignmentSuccess(result);
                 })
                 .withFailureHandler((error) => {
+                    hasCompleted = true;
                     clearTimeout(timeoutId);
+                    clearTimeout(progressTimeoutId);
                     hideLoading();
                     handleError(error);
                 })

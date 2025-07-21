@@ -3321,32 +3321,32 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 
     console.log('Request details found:', requestDetails);
 
-    // Remove any existing assignments for this request first
-    const existingAssignments = getAssignmentsForRequest(requestId);
-    if (existingAssignments.length > 0) {
-      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
-      removeExistingAssignments(requestId);
+    // Get assignments sheet once
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+    if (!assignmentsSheet) {
+      throw new Error('Assignments sheet not found');
     }
 
-    // Create new assignments
+    // Remove any existing assignments for this request using optimized batch operation
+    const removedNames = removeExistingAssignmentsBatch(requestId, assignmentsSheet);
+    if (removedNames.length > 0) {
+      console.log(`🗑️ Removed ${removedNames.length} existing assignments for request ${requestId}`);
+    }
+
+    // Prepare all assignment rows in memory first
+    const assignmentRows = [];
     const assignmentResults = [];
     const assignedRiderNames = [];
 
     for (let i = 0; i < selectedRiders.length; i++) {
       const rider = selectedRiders[i];
-      console.log(`📝 Creating assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
+      console.log(`📝 Preparing assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
       
       try {
         const assignmentId = generateAssignmentId();
         const assignmentRow = buildAssignmentRow(assignmentId, requestId, rider, requestDetails);
         
-        // Add the assignment to the sheet
-        const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
-        if (!assignmentsSheet) {
-          throw new Error('Assignments sheet not found');
-        }
-        
-        assignmentsSheet.appendRow(assignmentRow);
+        assignmentRows.push(assignmentRow);
         assignedRiderNames.push(rider.name);
         
         assignmentResults.push({
@@ -3355,16 +3355,24 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
           status: 'success'
         });
         
-        console.log(`✅ Created assignment ${assignmentId} for rider ${rider.name}`);
+        console.log(`✅ Prepared assignment ${assignmentId} for rider ${rider.name}`);
         
       } catch (riderError) {
-        console.error(`❌ Failed to create assignment for rider ${rider.name}:`, riderError);
+        console.error(`❌ Failed to prepare assignment for rider ${rider.name}:`, riderError);
         assignmentResults.push({
           riderName: rider.name,
           status: 'failed',
           error: riderError.message
         });
       }
+    }
+
+    // Batch insert all assignment rows at once (this is the key optimization)
+    if (assignmentRows.length > 0) {
+      console.log(`📝 Batch inserting ${assignmentRows.length} assignments...`);
+      const range = assignmentsSheet.getRange(assignmentsSheet.getLastRow() + 1, 1, assignmentRows.length, assignmentRows[0].length);
+      range.setValues(assignmentRows);
+      console.log(`✅ Successfully batch inserted ${assignmentRows.length} assignments`);
     }
 
     // Update the request with assigned rider names
@@ -4581,5 +4589,72 @@ function executePostAssignmentCleanup(requestId, assignedRiderNames) {
     
   } catch (error) {
     logError('Error in executePostAssignmentCleanup', error);
+  }
+}
+
+/**
+ * Optimized batch removal of existing assignments for a request
+ * Instead of deleting rows one by one, this rewrites the entire sheet without the matching rows
+ * @param {string} requestId - The request ID to remove assignments for
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} assignmentsSheet - The assignments sheet (passed to avoid repeated lookups)
+ * @return {Array<string>} Array of removed rider names
+ */
+function removeExistingAssignmentsBatch(requestId, assignmentsSheet) {
+  try {
+    const data = assignmentsSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return []; // No data or just headers
+    }
+
+    const headers = data[0];
+    const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
+    const riderNameCol = headers.indexOf(CONFIG.columns.assignments.riderName);
+
+    if (requestIdCol === -1) {
+      throw new Error('Request ID column not found in assignments sheet');
+    }
+
+    // Separate rows to keep vs rows to remove
+    const rowsToKeep = [headers]; // Always keep headers
+    const removedNames = [];
+
+    for (let i = 1; i < data.length; i++) { // Skip header row
+      if (String(data[i][requestIdCol]).trim() === String(requestId).trim()) {
+        // This row should be removed
+        if (riderNameCol !== -1) {
+          const name = String(data[i][riderNameCol]).trim();
+          if (name) removedNames.push(name);
+        }
+      } else {
+        // This row should be kept
+        rowsToKeep.push(data[i]);
+      }
+    }
+
+    // Only rewrite the sheet if we actually found rows to remove
+    if (removedNames.length > 0) {
+      console.log(`🗑️ Batch removing ${removedNames.length} assignments for request ${requestId}`);
+      
+      // Clear the entire sheet and rewrite with only the rows we want to keep
+      assignmentsSheet.clear();
+      
+      if (rowsToKeep.length > 0) {
+        const range = assignmentsSheet.getRange(1, 1, rowsToKeep.length, rowsToKeep[0].length);
+        range.setValues(rowsToKeep);
+      }
+      
+      console.log(`✅ Successfully batch removed ${removedNames.length} assignments`);
+
+      // Update rotation for removed riders
+      if (removedNames.length > 0) {
+        updateRotationOnUnassign(removedNames);
+      }
+    }
+
+    return removedNames;
+
+  } catch (error) {
+    logError('Error in removeExistingAssignmentsBatch', error);
+    throw new Error(`Failed to remove existing assignments: ${error.message}`);
   }
 }
