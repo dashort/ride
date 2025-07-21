@@ -2671,9 +2671,9 @@ function getPageDataForNotifications() { // Removed user parameter
       };
     }
     
-    // Get all assignments for notifications
+    // Get all assignments for notifications (force fresh data)
     try {
-      result.assignments = getAllAssignmentsForNotifications();
+      result.assignments = getAllAssignmentsForNotifications(false);
       console.log(`✅ Loaded ${result.assignments.length} assignments for notifications`);
     } catch (assignmentsError) {
       console.log('⚠️ Could not load assignments:', assignmentsError);
@@ -2724,9 +2724,9 @@ function getPageDataForNotifications() { // Removed user parameter
  * Gets all assignments formatted for notifications page
  * @return {Array<object>} Array of assignment objects with notification data
  */
-function getAllAssignmentsForNotifications() {
+function getAllAssignmentsForNotifications(useCache = true) {
   try {
-    const assignmentsData = getAssignmentsData();
+    const assignmentsData = getAssignmentsData(useCache);
     if (!assignmentsData || !assignmentsData.data) {
       console.log('⚠️ No assignments data found');
       return [];
@@ -4854,7 +4854,7 @@ function testNotificationDataLoading() {
     
     // Test 3: Test getAllAssignmentsForNotifications
     try {
-      const notificationAssignments = getAllAssignmentsForNotifications();
+      const notificationAssignments = getAllAssignmentsForNotifications(false);
       results.tests.notificationAssignmentsCount = notificationAssignments?.length || 0;
       results.tests.getAllAssignmentsForNotificationsSuccess = true;
     } catch (error) {

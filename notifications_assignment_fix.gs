@@ -128,7 +128,7 @@ function debugAssignmentsSheetState() {
     }
     
     // Check 5: Test getAllAssignmentsForNotifications function
-    const notificationAssignments = getAllAssignmentsForNotifications();
+    const notificationAssignments = getAllAssignmentsForNotifications(false);
     if (!notificationAssignments || notificationAssignments.length === 0) {
       issues.push('getAllAssignmentsForNotifications_returns_empty');
     }
@@ -314,7 +314,7 @@ function verifyAssignmentLoading() {
     console.log(`📊 getAssignmentsData returned ${assignmentsData.data?.length || 0} rows`);
     
     // Test getAllAssignmentsForNotifications
-    const notificationAssignments = getAllAssignmentsForNotifications();
+    const notificationAssignments = getAllAssignmentsForNotifications(false);
     console.log(`📊 getAllAssignmentsForNotifications returned ${notificationAssignments?.length || 0} assignments`);
     
     // Test the full getPageDataForNotifications function
@@ -362,7 +362,7 @@ function quickFixAssignments() {
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
     // Test the result
-    const assignments = getAllAssignmentsForNotifications();
+    const assignments = getAllAssignmentsForNotifications(false);
     
     return {
       success: assignments && assignments.length > 0,
