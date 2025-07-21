@@ -398,6 +398,79 @@
             color: #7f8c8d;
         }
 
+        .error-state {
+            text-align: center;
+            padding: 2rem;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            margin: 1rem;
+        }
+
+        .error-state h3 {
+            color: #856404;
+            margin-bottom: 1rem;
+        }
+
+        .error-actions {
+            margin: 1rem 0;
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .debug-info {
+            margin-top: 1rem;
+            text-align: left;
+        }
+
+        .debug-info pre {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 4px;
+            overflow: auto;
+            max-height: 200px;
+        }
+
+        .debug-results {
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            margin: 1rem;
+        }
+
+        .test-result {
+            margin: 1rem 0;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+        }
+
+        .test-result.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .test-result.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .test-result h4 {
+            margin: 0 0 0.5rem 0;
+            color: #2c3e50;
+        }
+
+        .test-result pre {
+            background: #f8f9fa;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            overflow: auto;
+            max-height: 150px;
+        }
+
         .assignment-summary {
             background: #e8f5e8;
             border-radius: 10px;
@@ -697,15 +770,38 @@
      */
     function loadAllData() {
         console.log('📊 Starting consolidated data loading for assignments page...');
+        showLoading('Loading assignments and riders...');
+        
         var urlParams = new URLSearchParams(window.location.search);
         var requestIdToLoad = urlParams.get('requestId');
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Add timeout handling
+            const timeoutId = setTimeout(() => {
+                hideLoading();
+                console.error('❌ Data loading timed out after 30 seconds');
+                handleAssignmentsDataFailure({ 
+                    message: "Data loading timed out. Please refresh the page.",
+                    timeout: true 
+                });
+            }, 30000);
+
             google.script.run
-                .withSuccessHandler(handleAssignmentsDataSuccess)
-                .withFailureHandler(handleAssignmentsDataFailure)
+                .withSuccessHandler(function(data) {
+                    clearTimeout(timeoutId);
+                    hideLoading();
+                    console.log('✅ Raw data received:', data);
+                    handleAssignmentsDataSuccess(data);
+                })
+                .withFailureHandler(function(error) {
+                    clearTimeout(timeoutId);
+                    hideLoading();
+                    console.error('❌ Data loading failed:', error);
+                    handleAssignmentsDataFailure(error);
+                })
                 .getPageDataForAssignments(requestIdToLoad);
         } else {
+            hideLoading();
             console.log('⚠️ Google Apps Script not available for assignments page.');
             handleAssignmentsDataFailure({ message: "Google Apps Script not available." });
         }
@@ -966,6 +1062,13 @@ if (!document.getElementById('debug-styles')) {
     function handleAssignmentsDataSuccess(data) {
         if (data && data.success) {
             console.log('✅ Assignments page data loaded successfully:', data);
+            console.log(`📊 Summary: ${data.requests?.length || 0} requests, ${data.riders?.length || 0} riders`);
+            
+            // Show loading success message briefly
+            if (data.requests?.length > 0 || data.riders?.length > 0) {
+                showSuccess(`Data loaded: ${data.requests?.length || 0} requests, ${data.riders?.length || 0} riders`);
+            }
+            
             handleUserData(data.user);
             handleRequestsLoaded(data.requests); // This populates currentRequests and calls filterRequests
             handleRidersLoaded(data.riders);
@@ -1012,6 +1115,39 @@ if (!document.getElementById('debug-styles')) {
                         console.warn('⚠️ Pre-selection with ID (fallback) failed.');
                     }
                 }, 100);
+            }
+
+            // If no data was loaded, provide helpful messaging
+            if ((!data.requests || data.requests.length === 0) && (!data.riders || data.riders.length === 0)) {
+                const requestsContainer = document.getElementById('requestsList');
+                if (requestsContainer) {
+                    requestsContainer.innerHTML = `
+                        <div class="empty-state">
+                            <h3>📋 No Data Available</h3>
+                            <p>No assignable requests or active riders found in the system.</p>
+                                                         <div class="error-actions">
+                                 <button onclick="debugDataLoading()" class="btn btn-info">
+                                     🔍 Debug Data Loading
+                                 </button>
+                                 <button onclick="location.reload()" class="btn btn-primary">
+                                     🔄 Refresh Page
+                                 </button>
+                                 <button onclick="createSampleData()" class="btn btn-warning">
+                                     🔧 Create Sample Data
+                                 </button>
+                             </div>
+                            <details class="debug-info">
+                                <summary>🔧 Possible Causes</summary>
+                                <ul>
+                                    <li>No requests with "New", "Pending", "Assigned", or "Unassigned" status</li>
+                                    <li>No riders with "Active" or "Available" status</li>
+                                    <li>Missing data in spreadsheet sheets</li>
+                                    <li>Column header mismatch in configuration</li>
+                                </ul>
+                            </details>
+                        </div>
+                    `;
+                }
             }
 
         } else {
@@ -1074,7 +1210,226 @@ if (!document.getElementById('debug-styles')) {
             permissions: ['view', 'create_request', 'assign_riders', 'send_notifications', 'view_reports']
         };
         handleUserData(fallbackUser);
+        
+        // Show error message to user
+        const requestsContainer = document.getElementById('requestsList');
+        if (requestsContainer) {
+            requestsContainer.innerHTML = `
+                <div class="error-state">
+                    <h3>⚠️ Data Loading Error</h3>
+                    <p>${error.message || 'Failed to load assignments data'}</p>
+                    ${error.timeout ? '<p><strong>This appears to be a timeout issue.</strong></p>' : ''}
+                                         <div class="error-actions">
+                         <button onclick="location.reload()" class="btn btn-primary">
+                             🔄 Refresh Page
+                         </button>
+                         <button onclick="debugDataLoading()" class="btn btn-info">
+                             🔍 Debug Data Loading
+                         </button>
+                         <button onclick="testServerConnection()" class="btn btn-secondary">
+                             🌐 Test Server Connection
+                         </button>
+                         <button onclick="createSampleData()" class="btn btn-warning">
+                             🔧 Create Sample Data
+                         </button>
+                     </div>
+                    <details class="debug-info">
+                        <summary>🔧 Technical Details</summary>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    </details>
+                </div>
+            `;
+        }
+        
         handleLoadingTimeout();
+    }
+
+    /**
+     * Debug function to test data loading components individually
+     */
+    function debugDataLoading() {
+        console.log('🔍 Starting comprehensive data loading debug...');
+        showLoading('Running diagnostics...');
+        
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+            hideLoading();
+            console.error('❌ Google Apps Script not available');
+            showError('Google Apps Script environment not available');
+            return;
+        }
+
+        // Test 1: Check if server functions exist
+        console.log('🧪 Test 1: Testing server function availability...');
+        google.script.run
+            .withSuccessHandler(function(result) {
+                console.log('✅ Server functions test result:', result);
+                
+                // Test 2: Test individual data loading
+                console.log('🧪 Test 2: Testing individual data loading...');
+                testIndividualDataLoading();
+            })
+            .withFailureHandler(function(error) {
+                hideLoading();
+                console.error('❌ Server functions test failed:', error);
+                showError('Server functions not available: ' + error.message);
+            })
+            .testServerFunctionAvailability();
+    }
+
+    function testIndividualDataLoading() {
+        let testsCompleted = 0;
+        const totalTests = 3;
+        const results = {};
+
+        function checkComplete() {
+            testsCompleted++;
+            if (testsCompleted >= totalTests) {
+                hideLoading();
+                console.log('🧪 All tests completed:', results);
+                displayDebugResults(results);
+            }
+        }
+
+        // Test requests loading
+        google.script.run
+            .withSuccessHandler(function(data) {
+                results.requests = { success: true, count: Array.isArray(data) ? data.length : 0, data: data };
+                console.log('✅ Requests test:', results.requests);
+                checkComplete();
+            })
+            .withFailureHandler(function(error) {
+                results.requests = { success: false, error: error.message || error };
+                console.error('❌ Requests test failed:', error);
+                checkComplete();
+            })
+            .getFilteredRequestsForAssignments({ roles: ['admin'] });
+
+        // Test riders loading
+        google.script.run
+            .withSuccessHandler(function(data) {
+                results.riders = { success: true, count: Array.isArray(data) ? data.length : 0, data: data };
+                console.log('✅ Riders test:', results.riders);
+                checkComplete();
+            })
+            .withFailureHandler(function(error) {
+                results.riders = { success: false, error: error.message || error };
+                console.error('❌ Riders test failed:', error);
+                checkComplete();
+            })
+            .getActiveRidersForAssignments();
+
+        // Test authentication
+        google.script.run
+            .withSuccessHandler(function(data) {
+                results.auth = { success: true, user: data };
+                console.log('✅ Auth test:', results.auth);
+                checkComplete();
+            })
+            .withFailureHandler(function(error) {
+                results.auth = { success: false, error: error.message || error };
+                console.error('❌ Auth test failed:', error);
+                checkComplete();
+            })
+            .authenticateAndAuthorizeUser();
+    }
+
+    function displayDebugResults(results) {
+        const requestsContainer = document.getElementById('requestsList');
+        if (requestsContainer) {
+            requestsContainer.innerHTML = `
+                <div class="debug-results">
+                    <h3>🔍 Diagnostic Results</h3>
+                    
+                    <div class="test-result ${results.auth?.success ? 'success' : 'error'}">
+                        <h4>Authentication Test</h4>
+                        <p>${results.auth?.success ? '✅ Working' : '❌ Failed: ' + results.auth?.error}</p>
+                        ${results.auth?.user ? '<pre>' + JSON.stringify(results.auth.user, null, 2) + '</pre>' : ''}
+                    </div>
+                    
+                    <div class="test-result ${results.requests?.success ? 'success' : 'error'}">
+                        <h4>Requests Loading Test</h4>
+                        <p>${results.requests?.success ? `✅ Working (${results.requests.count} requests found)` : '❌ Failed: ' + results.requests?.error}</p>
+                        ${results.requests?.data?.length > 0 ? '<p>Sample request: ' + JSON.stringify(results.requests.data[0], null, 2) + '</p>' : ''}
+                    </div>
+                    
+                    <div class="test-result ${results.riders?.success ? 'success' : 'error'}">
+                        <h4>Riders Loading Test</h4>
+                        <p>${results.riders?.success ? `✅ Working (${results.riders.count} riders found)` : '❌ Failed: ' + results.riders?.error}</p>
+                        ${results.riders?.data?.length > 0 ? '<p>Sample rider: ' + JSON.stringify(results.riders.data[0], null, 2) + '</p>' : ''}
+                    </div>
+                    
+                                         <div class="debug-actions">
+                         <button onclick="location.reload()" class="btn btn-primary">🔄 Refresh Page</button>
+                         <button onclick="loadAllData()" class="btn btn-secondary">🔄 Retry Load</button>
+                         <button onclick="createSampleData()" class="btn btn-warning">🔧 Create Sample Data</button>
+                     </div>
+                </div>
+            `;
+        }
+    }
+
+    function testServerConnection() {
+        console.log('🌐 Testing server connection...');
+        showLoading('Testing connection...');
+        
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+            hideLoading();
+            showError('Google Apps Script not available in this environment');
+            return;
+        }
+
+        google.script.run
+            .withSuccessHandler(function(result) {
+                hideLoading();
+                console.log('✅ Server connection test passed:', result);
+                showSuccess('Server connection is working. Try refreshing the page.');
+            })
+            .withFailureHandler(function(error) {
+                hideLoading();
+                console.error('❌ Server connection test failed:', error);
+                showError('Server connection failed: ' + error.message);
+            })
+            .testConnection();
+    }
+
+    function createSampleData() {
+        console.log('🔧 Creating sample data...');
+        
+        if (!confirm('This will create sample requests and riders data for testing. Continue?')) {
+            return;
+        }
+
+        showLoading('Creating sample data...');
+        
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+            hideLoading();
+            showError('Google Apps Script not available');
+            return;
+        }
+
+        google.script.run
+            .withSuccessHandler(function(result) {
+                hideLoading();
+                console.log('✅ Sample data creation result:', result);
+                
+                if (result.success) {
+                    const message = `Sample data created: ${result.created.requests} requests, ${result.created.riders} riders`;
+                    showSuccess(message);
+                    
+                    // Reload data after creating samples
+                    setTimeout(() => {
+                        loadAllData();
+                    }, 1000);
+                } else {
+                    showError('Failed to create sample data: ' + result.error);
+                }
+            })
+            .withFailureHandler(function(error) {
+                hideLoading();
+                console.error('❌ Sample data creation failed:', error);
+                showError('Sample data creation failed: ' + error.message);
+            })
+            .createSampleDataForAssignments();
     }
 
     /**
@@ -1145,6 +1500,12 @@ if (!document.getElementById('debug-styles')) {
 
         activeRiders = Array.isArray(data) ? data : [];
         console.log('📊 Stored riders count:', activeRiders.length);
+        
+        if (activeRiders.length === 0) {
+            console.warn('❌ No active riders loaded - this may cause assignment issues');
+            displayNoRiders('No active riders found. Please check the Riders sheet.');
+        }
+        
         updateAssignmentOrder();
     }
 

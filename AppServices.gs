@@ -2375,6 +2375,246 @@ function getPageDataForAssignments(requestIdToLoad) {
 }
 
 /**
+ * Test function to check server function availability
+ * @return {object} Test result
+ */
+function testServerFunctionAvailability() {
+  try {
+    console.log('🧪 Testing server function availability...');
+    
+    const result = {
+      timestamp: new Date().toISOString(),
+      functions: {},
+      sheets: {},
+      success: true
+    };
+
+    // Test function availability
+    try {
+      result.functions.authenticateAndAuthorizeUser = typeof authenticateAndAuthorizeUser === 'function';
+      result.functions.getFilteredRequestsForAssignments = typeof getFilteredRequestsForAssignments === 'function';
+      result.functions.getActiveRidersForAssignments = typeof getActiveRidersForAssignments === 'function';
+      result.functions.getPageDataForAssignments = typeof getPageDataForAssignments === 'function';
+    } catch (funcError) {
+      result.functions.error = funcError.message;
+    }
+
+    // Test sheet access
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheets = ss.getSheets();
+      result.sheets.totalSheets = sheets.length;
+      result.sheets.sheetNames = sheets.map(sheet => sheet.getName());
+      result.sheets.hasRequestsSheet = result.sheets.sheetNames.includes(CONFIG.sheets.requests);
+      result.sheets.hasRidersSheet = result.sheets.sheetNames.includes(CONFIG.sheets.riders);
+    } catch (sheetError) {
+      result.sheets.error = sheetError.message;
+    }
+
+    console.log('✅ Server function availability test completed:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Server function availability test failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Simple test function to verify server connection
+ * @return {object} Connection test result
+ */
+function testConnection() {
+  try {
+    console.log('🌐 Testing server connection...');
+    
+    const result = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      message: 'Server connection is working',
+      serverInfo: {
+        userEmail: Session.getActiveUser().getEmail(),
+        timezone: Session.getScriptTimeZone(),
+        locale: Session.getActiveLocale()
+      }
+    };
+    
+    console.log('✅ Server connection test passed:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Server connection test failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Creates sample data for testing assignments functionality
+ * @return {object} Result of sample data creation
+ */
+function createSampleDataForAssignments() {
+  try {
+    console.log('🔧 Creating sample data for assignments testing...');
+    
+    const result = {
+      success: true,
+      created: {
+        requests: 0,
+        riders: 0
+      },
+      errors: []
+    };
+
+    // Create sample requests
+    try {
+      const requestsSheet = getOrCreateSheet(CONFIG.sheets.requests);
+      const requestsData = requestsSheet.getDataRange().getValues();
+      
+      // If sheet is empty or has only headers, create sample data
+      if (requestsData.length <= 1) {
+        console.log('📋 Creating sample requests...');
+        
+        const headers = [
+          'Request ID', 'Requester Name', 'Requester Email', 'Type', 
+          'Event Date', 'Start Time', 'End Time', 'Start Location', 
+          'End Location', 'Riders Needed', 'Riders Assigned', 'Status', 
+          'Notes', 'Created Date'
+        ];
+        
+        const today = new Date();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        
+        const sampleRequests = [
+          [
+            'REQ-001', 'John Smith', 'john.smith@example.com', 'Escort',
+            tomorrow.toLocaleDateString(), '09:00 AM', '10:00 AM',
+            'Downtown Office', 'City Hall', '2', '', 'New',
+            'High priority event', today.toLocaleDateString()
+          ],
+          [
+            'REQ-002', 'Sarah Johnson', 'sarah.j@example.com', 'Escort',
+            nextWeek.toLocaleDateString(), '02:00 PM', '03:30 PM',
+            'Airport', 'Convention Center', '3', '', 'Pending',
+            'VIP transport needed', today.toLocaleDateString()
+          ],
+          [
+            'REQ-003', 'Mike Davis', 'mike.davis@example.com', 'Event',
+            tomorrow.toLocaleDateString(), '11:00 AM', '12:00 PM',
+            'Hotel Grand', 'Stadium', '1', '', 'Unassigned',
+            'Sports event escort', today.toLocaleDateString()
+          ]
+        ];
+        
+        requestsSheet.clear();
+        requestsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        requestsSheet.getRange(2, 1, sampleRequests.length, headers.length).setValues(sampleRequests);
+        
+        result.created.requests = sampleRequests.length;
+        console.log(`✅ Created ${sampleRequests.length} sample requests`);
+      }
+    } catch (requestsError) {
+      result.errors.push('Requests creation failed: ' + requestsError.message);
+      console.error('❌ Failed to create sample requests:', requestsError);
+    }
+
+    // Create sample riders
+    try {
+      const ridersSheet = getOrCreateSheet(CONFIG.sheets.riders);
+      const ridersData = ridersSheet.getDataRange().getValues();
+      
+      // If sheet is empty or has only headers, create sample data
+      if (ridersData.length <= 1) {
+        console.log('🏍️ Creating sample riders...');
+        
+        const headers = [
+          'Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status',
+          'Part-Time Rider', 'Carrier', 'Notes', 'Join Date'
+        ];
+        
+        const today = new Date();
+        const sampleRiders = [
+          [
+            'R001', 'Alex Rodriguez', '555-0101', 'alex.r@example.com', 'Active',
+            'No', 'Verizon', 'Experienced rider', today.toLocaleDateString()
+          ],
+          [
+            'R002', 'Emily Chen', '555-0102', 'emily.c@example.com', 'Active',
+            'No', 'AT&T', 'Lead rider for events', today.toLocaleDateString()
+          ],
+          [
+            'R003', 'Marcus Johnson', '555-0103', 'marcus.j@example.com', 'Available',
+            'Yes', 'T-Mobile', 'Part-time weekends only', today.toLocaleDateString()
+          ],
+          [
+            'R004', 'Lisa Williams', '555-0104', 'lisa.w@example.com', 'Active',
+            'No', 'Verizon', 'Senior rider trainer', today.toLocaleDateString()
+          ],
+          [
+            'R005', 'David Brown', '555-0105', 'david.b@example.com', 'Active',
+            'No', 'AT&T', 'Backup rider', today.toLocaleDateString()
+          ]
+        ];
+        
+        ridersSheet.clear();
+        ridersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        ridersSheet.getRange(2, 1, sampleRiders.length, headers.length).setValues(sampleRiders);
+        
+        result.created.riders = sampleRiders.length;
+        console.log(`✅ Created ${sampleRiders.length} sample riders`);
+      }
+    } catch (ridersError) {
+      result.errors.push('Riders creation failed: ' + ridersError.message);
+      console.error('❌ Failed to create sample riders:', ridersError);
+    }
+
+    // Clear any cached data
+    try {
+      clearDataCache();
+      console.log('✅ Cleared data cache');
+    } catch (cacheError) {
+      console.warn('⚠️ Failed to clear cache:', cacheError);
+    }
+
+    console.log('🎯 Sample data creation completed:', result);
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Sample data creation failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Helper function to get or create a sheet
+ * @param {string} sheetName - Name of the sheet
+ * @return {GoogleAppsScript.Spreadsheet.Sheet} The sheet object
+ */
+function getOrCreateSheet(sheetName) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(sheetName);
+  
+  if (!sheet) {
+    console.log(`📄 Creating new sheet: ${sheetName}`);
+    sheet = ss.insertSheet(sheetName);
+  }
+  
+  return sheet;
+}
+
+/**
  * Gets consolidated data for the requests page
  * @param {string} [filter='All'] - Status filter for requests
  * @return {object} Consolidated data object with user and filtered requests
