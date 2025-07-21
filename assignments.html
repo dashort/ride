@@ -1775,13 +1775,6 @@ function updateAssignmentOrder() {
             return;
         }
 
-        // Warn for large assignments that might take longer
-        if (selectedRiders.size > 10) {
-            if (!confirm(`You are assigning ${selectedRiders.size} riders to this request. Large assignments may take longer to process. Continue?`)) {
-                return;
-            }
-        }
-
         var ridersArray = [];
         selectedRiders.forEach(function(name) {
             var rider = null;
@@ -1799,65 +1792,24 @@ function updateAssignmentOrder() {
             });
         });
 
-        // Show appropriate loading message based on assignment size
-        const riderCount = ridersArray.length;
-        let loadingMessage = 'Saving assignment...';
-        if (riderCount > 10) {
-            loadingMessage = `Saving large assignment (${riderCount} riders)... This may take up to 2 minutes.`;
-        } else if (riderCount > 5) {
-            loadingMessage = `Saving assignment (${riderCount} riders)... This may take a moment.`;
-        }
-        showLoading(loadingMessage);
+        showLoading('Saving assignment...');
 
         try {
-            let hasCompleted = false;
-            
-            // Improved timeout handling with progress indicators
+            // Set a timeout to handle cases where the script doesn't respond
             const timeoutId = setTimeout(() => {
-                if (!hasCompleted) {
-                    hideLoading();
-                    showError('Assignment save is taking longer than expected. The assignment may still be processing in the background. Please wait a moment and refresh the page to check if it was saved.');
-                    console.log('Assignment save operation timed out after 120 seconds');
-                }
-            }, 120000); // 120 second timeout - increased from 60s to accommodate larger assignments
-
-            // Show progress indicator after 10 seconds
-            const progressTimeoutId = setTimeout(() => {
-                if (!hasCompleted) {
-                    showLoading('Still saving assignment... This may take a moment for large assignments.');
-                }
-            }, 10000);
-
-            // Show extended progress indicator after 30 seconds for large assignments
-            const extendedProgressTimeoutId = setTimeout(() => {
-                if (!hasCompleted && riderCount > 10) {
-                    showLoading(`Processing large assignment (${riderCount} riders)... Almost done. Please wait...`);
-                }
-            }, 30000);
-
-            // Show final progress indicator after 60 seconds
-            const finalProgressTimeoutId = setTimeout(() => {
-                if (!hasCompleted) {
-                    showLoading('Assignment is taking longer than usual... Please continue waiting, it should complete soon.');
-                }
-            }, 60000);
+                hideLoading();
+                showError('Assignment save timed out. Please check if the assignment was saved and refresh the page.');
+                console.log('Assignment save operation timed out after 60 seconds');
+            }, 60000); // 60 second timeout
 
             google.script.run
                 .withSuccessHandler((result) => {
-                    hasCompleted = true;
                     clearTimeout(timeoutId);
-                    clearTimeout(progressTimeoutId);
-                    clearTimeout(extendedProgressTimeoutId);
-                    clearTimeout(finalProgressTimeoutId);
                     hideLoading();
                     handleAssignmentSuccess(result);
                 })
                 .withFailureHandler((error) => {
-                    hasCompleted = true;
                     clearTimeout(timeoutId);
-                    clearTimeout(progressTimeoutId);
-                    clearTimeout(extendedProgressTimeoutId);
-                    clearTimeout(finalProgressTimeoutId);
                     hideLoading();
                     handleError(error);
                 })

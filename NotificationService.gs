@@ -1535,11 +1535,11 @@ function getRequestDetailsForNotification(requestId) {
  * Returns all assignments data structured for the notifications page.
  * @returns {Array<Object>} An array of assignment objects.
  */
-function getAllAssignmentsForNotifications(useCache = true) {
+function getAllAssignmentsForNotifications() {
   try {
     console.log('📋 Getting all assignments for notifications...');
-
-    const assignmentsData = getAssignmentsData(useCache); // This gets actual assignments
+    
+    const assignmentsData = getAssignmentsData(); // This gets actual assignments
     
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
       console.log('❌ No assignments data found');
@@ -1897,7 +1897,7 @@ function getEnhancedNotificationStats() {
     });
     
     // Get processed assignments for the notifications page
-    const processedAssignments = getAllAssignmentsForNotifications(false);
+    const processedAssignments = getAllAssignmentsForNotifications();
     
     const stats = {
       totalAssignments: totalAssignments,

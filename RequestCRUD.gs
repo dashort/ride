@@ -2502,11 +2502,11 @@ function getAllRequestsForLookup() {
         const request = {};
         
         // Map only the fields needed for lookup functionality
-        request.requestId = String(getColumnValue(row, columnMap, CONFIG.columns.requests.id) || '');
-        request.requesterName = String(getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '');
-        request.requesterContact = String(getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '');
-        request.eventDate = String(getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate) || '');
-        request.status = String(getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '');
+        request.requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id) || '';
+        request.requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '';
+        request.requesterContact = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '';
+        request.eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate) || '';
+        request.status = getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '';
         
         // Format event date for consistent sorting
         if (request.eventDate) {
@@ -2523,8 +2523,7 @@ function getAllRequestsForLookup() {
         return request;
       }).filter(request => {
         // Only include requests that have both requester name and contact info
-        return request.requesterName && request.requesterName.trim() && 
-               request.requesterContact && request.requesterContact.trim();
+        return request.requesterName.trim() && request.requesterContact.trim();
       });
 
       debugLog(`Returning ${requests.length} requests for lookup cache`);

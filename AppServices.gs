@@ -2646,34 +2646,43 @@ function testRequestsPageData() {
  * Gets consolidated data for the notifications page
  * @return {object} Consolidated data object with user, assignments, and stats
  */
-function getPageDataForNotifications() { // Removed user parameter
+function getPageDataForNotifications(user) {
   try {
     console.log('🔄 Loading notifications page data...');
     
+    // Use passed user or get current user
+    let currentUser = user;
+    if (!currentUser) {
+      try {
+        const auth = authenticateAndAuthorizeUser();
+        currentUser = auth.success ? auth.user : {
+          name: 'System User',
+          email: 'user@system.com',
+          roles: ['admin'],
+          permissions: ['send_notifications']
+        };
+      } catch (userError) {
+        console.log('⚠️ Could not authenticate user:', userError);
+        currentUser = {
+          name: 'System User',
+          email: 'user@system.com',
+          roles: ['admin'],
+          permissions: ['send_notifications']
+        };
+      }
+    }
+    
     const result = {
       success: true,
-      user: null,
+      user: currentUser,
       assignments: [],
       stats: {},
       recentActivity: []
     };
     
-    // Get user data
+    // Get all assignments for notifications
     try {
-      result.user = getCurrentUser();
-    } catch (userError) {
-      console.log('⚠️ Could not load user data:', userError);
-      result.user = {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['send_notifications']
-      };
-    }
-    
-    // Get all assignments for notifications (force fresh data)
-    try {
-      result.assignments = getAllAssignmentsForNotifications(false);
+      result.assignments = getAllAssignmentsForNotifications();
       console.log(`✅ Loaded ${result.assignments.length} assignments for notifications`);
     } catch (assignmentsError) {
       console.log('⚠️ Could not load assignments:', assignmentsError);
@@ -2710,138 +2719,255 @@ function getPageDataForNotifications() { // Removed user parameter
     return {
       success: false,
       error: error.message,
-      user: {
+      user: user || {
         name: 'System User',
         email: 'user@system.com',
         roles: ['admin'],
         permissions: ['send_notifications']
+      },
+      assignments: [],
+      stats: {
+        totalAssignments: 0,
+        pendingNotifications: 0,
+        smsToday: 0,
+        emailToday: 0
+      },
+      recentActivity: []
+    };
+  }
+}
+function debugAssignmentLoading() {
+  try {
+    console.log('🔍 DEBUGGING ASSIGNMENT LOADING...');
+    
+    const result = {
+      step1_rawData: null,
+      step2_filtering: null,
+      step3_processedData: null,
+      step4_finalResult: null,
+      issues: []
+    };
+    
+    // STEP 1: Check raw assignments data
+    console.log('\n--- STEP 1: Raw Assignments Data ---');
+    const assignmentsData = getAssignmentsData();
+    result.step1_rawData = {
+      dataExists: !!assignmentsData,
+      hasData: !!(assignmentsData && assignmentsData.data),
+      totalRows: assignmentsData?.data?.length || 0,
+      hasColumnMap: !!(assignmentsData && assignmentsData.columnMap),
+      columnMapKeys: assignmentsData?.columnMap ? Object.keys(assignmentsData.columnMap) : []
+    };
+    
+    console.log('Raw data check:', result.step1_rawData);
+    
+    if (!assignmentsData || !assignmentsData.data) {
+      result.issues.push('No assignments data found - check getAssignmentsData()');
+      return result;
+    }
+    
+    // STEP 2: Check first 5 assignments in detail
+    console.log('\n--- STEP 2: Sample Assignment Analysis ---');
+    const sampleSize = Math.min(5, assignmentsData.data.length);
+    result.step2_filtering = [];
+    
+    for (let i = 0; i < sampleSize; i++) {
+      const row = assignmentsData.data[i];
+      const analysis = {
+        rowIndex: i,
+        assignmentId: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.id),
+        riderName: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
+        status: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status),
+        requestId: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
+        eventDate: getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate),
+        rawRow: row
+      };
+      
+      analysis.shouldInclude = !!(
+        analysis.riderName && 
+        analysis.riderName.trim().length > 0 && 
+        analysis.status && 
+        !['cancelled', 'completed'].includes(analysis.status.toLowerCase())
+      );
+      
+      analysis.filterReasons = [];
+      if (!analysis.riderName) analysis.filterReasons.push('No rider name');
+      if (analysis.riderName && analysis.riderName.trim().length === 0) analysis.filterReasons.push('Empty rider name');
+      if (!analysis.status) analysis.filterReasons.push('No status');
+      if (analysis.status && ['cancelled', 'completed'].includes(analysis.status.toLowerCase())) {
+        analysis.filterReasons.push(`Status is ${analysis.status}`);
       }
+      
+      result.step2_filtering.push(analysis);
+      console.log(`Assignment ${i}:`, analysis);
+    }
+    
+    // STEP 3: Check status distribution
+    console.log('\n--- STEP 3: Status Distribution ---');
+    const statusCounts = {};
+    const riderNameCounts = {};
+    
+    assignmentsData.data.forEach(row => {
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const riderName = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      
+      statusCounts[status || 'NULL'] = (statusCounts[status || 'NULL'] || 0) + 1;
+      riderNameCounts[riderName ? 'HAS_RIDER' : 'NO_RIDER'] = (riderNameCounts[riderName ? 'HAS_RIDER' : 'NO_RIDER'] || 0) + 1;
+    });
+    
+    result.step3_processedData = {
+      statusDistribution: statusCounts,
+      riderDistribution: riderNameCounts
+    };
+    
+    console.log('Status distribution:', statusCounts);
+    console.log('Rider distribution:', riderNameCounts);
+    
+    // STEP 4: Test the actual getAllAssignmentsForNotifications function
+    console.log('\n--- STEP 4: Testing getAllAssignmentsForNotifications ---');
+    const filteredAssignments = getAllAssignmentsForNotifications();
+    result.step4_finalResult = {
+      filteredCount: filteredAssignments.length,
+      sampleAssignments: filteredAssignments.slice(0, 3)
+    };
+    
+    console.log(`Filtered assignments count: ${filteredAssignments.length}`);
+    if (filteredAssignments.length > 0) {
+      console.log('Sample filtered assignment:', filteredAssignments[0]);
+    }
+    
+    // STEP 5: Identify issues
+    if (result.step1_rawData.totalRows === 0) {
+      result.issues.push('No assignment rows found in spreadsheet');
+    }
+    
+    if (result.step2_filtering.every(item => !item.shouldInclude)) {
+      result.issues.push('All sample assignments filtered out due to missing rider or completed/cancelled status');
+    }
+    
+    if (result.step3_processedData.riderDistribution.NO_RIDER > result.step3_processedData.riderDistribution.HAS_RIDER) {
+      result.issues.push('Most assignments have no rider assigned');
+    }
+    
+    if (Object.keys(result.step3_processedData.statusDistribution).some(status => 
+        ['completed', 'cancelled'].includes(status?.toLowerCase()))) {
+      result.issues.push('Many assignments have completed/cancelled status');
+    }
+    
+    if (result.step4_finalResult.filteredCount === 0 && result.step1_rawData.totalRows > 0) {
+      result.issues.push('Filtering logic is too restrictive - all assignments excluded');
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Debug function failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+/**
+ * Test function to verify notifications data loading
+ */
+function testNotificationsData() {
+  try {
+    console.log('🧪 Testing notifications data loading...');
+    
+    // Test user authentication
+    const auth = authenticateAndAuthorizeUser();
+    console.log('Auth result:', auth.success);
+    
+    // Test assignments loading
+    const assignments = getAllAssignmentsForNotifications();
+    console.log(`Assignments found: ${assignments.length}`);
+    
+    if (assignments.length > 0) {
+      console.log('Sample assignment:', assignments[0]);
+    }
+    
+    // Test stats calculation
+    const stats = calculateNotificationStats(assignments);
+    console.log('Stats:', stats);
+    
+    // Test recent activity
+    const activity = getRecentNotificationActivity(assignments);
+    console.log(`Recent activities: ${activity.length}`);
+    
+    // Test complete data loading
+    const pageData = getPageDataForNotifications(auth.user);
+    console.log('Page data success:', pageData.success);
+    
+    return {
+      success: true,
+      assignmentCount: assignments.length,
+      stats: stats,
+      activityCount: activity.length,
+      pageDataSuccess: pageData.success
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
     };
   }
 }
 
 /**
  * Gets all assignments formatted for notifications page
- * @return {Array<object>} Array of assignment objects with notification data
  */
-function getAllAssignmentsForNotifications(useCache = true) {
+function getAllAssignmentsForNotifications() {
   try {
-    const assignmentsData = getAssignmentsData(useCache);
+    console.log('📋 Getting all assignments for notifications...');
+    
+    const assignmentsData = getAssignmentsData();
     if (!assignmentsData || !assignmentsData.data) {
       console.log('⚠️ No assignments data found');
       return [];
     }
     
-    console.log(`📊 Raw assignments data: ${assignmentsData.data.length} rows`);
-    console.log('📋 Available columns:', Object.keys(assignmentsData.columnMap));
+    const columnMap = assignmentsData.columnMap;
+    const assignments = [];
     
-    const assignments = assignmentsData.data
-      .filter(assignment => {
-        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-        const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id);
-        
-        console.log(`🔍 Checking assignment: ID=${assignmentId}, Rider=${riderName}, Status=${status}`);
+    assignmentsData.data.forEach((row, index) => {
+      try {
+        const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
+        const requestId = getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId);
+        const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
         
         // Only include assignments with riders that aren't cancelled/completed
-        const hasRider = riderName && riderName.trim().length > 0;
-        const isActiveStatus = !['Cancelled', 'Completed', 'No Show'].includes(status);
-        
-        const shouldInclude = hasRider && isActiveStatus;
-        console.log(`  → Include: ${shouldInclude} (hasRider: ${hasRider}, isActiveStatus: ${isActiveStatus})`);
-        
-        return shouldInclude;
-      })
-      .map(assignment => {
-        const smsSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.smsSent);
-        const emailSent = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.emailSent);
-        const notified = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.notified);
-        
-        // Determine notification status
-        let notificationStatus = 'none';
-        if (smsSent instanceof Date && emailSent instanceof Date) {
-          notificationStatus = 'both_sent';
-        } else if (smsSent instanceof Date) {
-          notificationStatus = 'sms_sent';
-        } else if (emailSent instanceof Date) {
-          notificationStatus = 'email_sent';
-        } else if (notified instanceof Date) {
-          notificationStatus = 'notified'; // Generic notification
-        }
-        
-        // Get the most recent notification timestamp
-        let lastNotified = null;
-        if (smsSent instanceof Date || emailSent instanceof Date || notified instanceof Date) {
-          const dates = [smsSent, emailSent, notified].filter(d => d instanceof Date);
-          if (dates.length > 0) {
-            lastNotified = new Date(Math.max(...dates.map(d => d.getTime())));
-          }
-        }
-        
-        const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id);
-        const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        
-        return {
-          uid: `${assignmentId}__${riderName}`, // Add unique identifier for frontend
-          id: assignmentId,
-          requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
-          riderName: riderName,
-          riderPhone: getRiderPhone(riderName),
-          riderEmail: getRiderEmail(riderName),
-          riderCarrier: getRiderCarrier(riderName),
-          eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)),
-          startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)),
-          endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)),
-          startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation),
-          endLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation),
-          notificationStatus: notificationStatus,
-          lastNotified: lastNotified ? lastNotified.toISOString() : null,
-          status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status)
-        };
-      })
-      .filter(assignment => assignment.id && assignment.riderName);
-    
-    console.log(`✅ Processed ${assignments.length} assignments for notifications`);
-    
-    // If no assignments after filtering, let's check if there are any assignments at all
-    if (assignments.length === 0) {
-      console.log('⚠️ No assignments passed the filter. Checking total assignment count...');
-      console.log(`📊 Total raw assignments: ${assignmentsData.data.length}`);
-      
-      if (assignmentsData.data.length > 0) {
-        console.log('🔍 Sample raw assignment (first row):', assignmentsData.data[0]);
-        
-        // Let's be more permissive and include assignments even without riders for debugging
-        const debugAssignments = assignmentsData.data
-          .slice(0, 5) // Just show first 5 for debugging
-          .map(assignment => {
-            const assignmentId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.id) || 'No ID';
-            const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName) || 'No Rider';
-            
-            return {
-              uid: `debug_${assignmentId}`,
-              id: assignmentId,
-              requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId) || 'No Request ID',
-              riderName: riderName,
-              riderPhone: 'Debug Mode',
-              riderEmail: 'Debug Mode',
-              riderCarrier: 'Debug',
-              eventDate: formatDateForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate)) || 'No Date',
-              startTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)) || 'No Time',
-              endTime: formatTimeForDisplay(getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime)) || '',
-              startLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startLocation) || 'No Location',
-              endLocation: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endLocation) || '',
-              notificationStatus: 'debug',
-              lastNotified: null,
-              status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) || 'No Status'
-            };
-          });
+        if (riderName && riderName.trim().length > 0 && 
+            status && !['cancelled', 'completed'].includes(status.toLowerCase())) {
           
-        console.log('🧪 Returning debug assignments for troubleshooting...');
-        return debugAssignments;
+          const assignment = {
+            id: assignmentId || `ASG-${index + 1}`,
+            requestId: requestId || 'Unknown',
+            riderName: riderName,
+            jpNumber: getColumnValue(row, columnMap, CONFIG.columns.assignments.jpNumber) || '',
+            eventDate: getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate) || '',
+            eventTime: getColumnValue(row, columnMap, CONFIG.columns.assignments.eventTime) || '',
+            startLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation) || '',
+            endLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation) || '',
+            status: status,
+            createdDate: getColumnValue(row, columnMap, CONFIG.columns.assignments.createdDate) || '',
+            notificationStatus: getColumnValue(row, columnMap, CONFIG.columns.assignments.notificationStatus) || 'pending',
+            smsSent: getColumnValue(row, columnMap, CONFIG.columns.assignments.smsSent) || null,
+            emailSent: getColumnValue(row, columnMap, CONFIG.columns.assignments.emailSent) || null,
+            notified: getColumnValue(row, columnMap, CONFIG.columns.assignments.notified) || null
+          };
+          
+          assignments.push(assignment);
+        }
+      } catch (rowError) {
+        console.log(`⚠️ Error processing assignment row ${index}:`, rowError);
       }
-    }
+    });
     
+    console.log(`✅ Found ${assignments.length} assignments for notifications`);
     return assignments;
     
   } catch (error) {
@@ -2849,6 +2975,8 @@ function getAllAssignmentsForNotifications(useCache = true) {
     return [];
   }
 }
+
+
 
 /**
  * Helper function to get rider phone from riders data
@@ -2898,51 +3026,72 @@ function getRiderCarrier(riderName) {
   }
 }
 
-/**
- * Test function to verify notification data loading
- */
-function testNotificationDataLoading() {
+function calculateNotificationStats(assignments) {
   try {
-    console.log('🧪 Testing notification data loading...');
+    console.log('📊 Calculating notification stats...');
     
-    // Test basic assignment data loading
-    const assignmentsData = getAssignmentsData();
-    console.log('📊 Assignments data available:', assignmentsData ? assignmentsData.data.length : 'none');
-    
-    // Test notification-specific function
-    const notificationAssignments = getAllAssignmentsForNotifications();
-    console.log('📋 Notification assignments:', notificationAssignments.length);
-    
-    if (notificationAssignments.length > 0) {
-      console.log('📝 Sample assignment:', notificationAssignments[0]);
+    if (!assignments || !Array.isArray(assignments)) {
+      return {
+        totalAssignments: 0,
+        pendingNotifications: 0,
+        smsToday: 0,
+        emailToday: 0
+      };
     }
     
-    // Test page data function
-    const pageData = getPageDataForNotifications();
-    console.log('📦 Page data result:', pageData);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    return {
-      success: true,
-      assignmentsDataCount: assignmentsData ? assignmentsData.data.length : 0,
-      notificationAssignmentsCount: notificationAssignments.length,
-      pageDataSuccess: pageData ? pageData.success : false,
-      pageDataAssignmentsCount: pageData && pageData.assignments ? pageData.assignments.length : 0
+    let totalAssignments = assignments.length;
+    let pendingNotifications = 0;
+    let smsToday = 0;
+    let emailToday = 0;
+    
+    assignments.forEach(assignment => {
+      // Count pending notifications (assignments without notification sent)
+      if (!assignment.notified && !assignment.smsSent && !assignment.emailSent) {
+        pendingNotifications++;
+      }
+      
+      // Count SMS sent today
+      if (assignment.smsSent) {
+        try {
+          const smsDate = new Date(assignment.smsSent);
+          smsDate.setHours(0, 0, 0, 0);
+          if (smsDate.getTime() === today.getTime()) {
+            smsToday++;
+          }
+        } catch (e) {
+          // Invalid date, ignore
+        }
+      }
+      
+      // Count emails sent today
+      if (assignment.emailSent) {
+        try {
+          const emailDate = new Date(assignment.emailSent);
+          emailDate.setHours(0, 0, 0, 0);
+          if (emailDate.getTime() === today.getTime()) {
+            emailToday++;
+          }
+        } catch (e) {
+          // Invalid date, ignore
+        }
+      }
+    });
+    
+    const stats = {
+      totalAssignments,
+      pendingNotifications,
+      smsToday,
+      emailToday
     };
+    
+    console.log('✅ Notification stats calculated:', stats);
+    return stats;
     
   } catch (error) {
-    console.error('❌ Test failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * Calculates notification statistics from assignments data
- */
-function calculateNotificationStats(assignments) {
-  if (!assignments || !Array.isArray(assignments)) {
+    console.error('❌ Error calculating notification stats:', error);
     return {
       totalAssignments: 0,
       pendingNotifications: 0,
@@ -2950,70 +3099,75 @@ function calculateNotificationStats(assignments) {
       emailToday: 0
     };
   }
-  
-  const today = new Date();
-  const todayStr = today.toDateString();
-  
-  let totalAssignments = assignments.length;
-  let pendingNotifications = 0;
-  let smsToday = 0;
-  let emailToday = 0;
-  
-  assignments.forEach(assignment => {
-    // Count pending notifications (not yet notified)
-    if (!assignment.notificationStatus || assignment.notificationStatus === 'none') {
-      pendingNotifications++;
-    }
-    
-    // Count today's notifications
-    if (assignment.lastNotified) {
-      const notifiedDate = new Date(assignment.lastNotified);
-      if (notifiedDate.toDateString() === todayStr) {
-        if (assignment.notificationStatus === 'sms_sent' || assignment.notificationStatus === 'both_sent') {
-          smsToday++;
-        }
-        if (assignment.notificationStatus === 'email_sent' || assignment.notificationStatus === 'both_sent') {
-          emailToday++;
-        }
-      }
-    }
-  });
-  
-  return {
-    totalAssignments: totalAssignments,
-    pendingNotifications: pendingNotifications,
-    smsToday: smsToday,
-    emailToday: emailToday
-  };
 }
 
 /**
  * Gets recent notification activity
  */
 function getRecentNotificationActivity(assignments) {
-  if (!assignments || !Array.isArray(assignments)) {
+  try {
+    console.log('📝 Getting recent notification activity...');
+    
+    if (!assignments || !Array.isArray(assignments)) {
+      return [];
+    }
+    
+    const activities = [];
+    const today = new Date();
+    const sevenDaysAgo = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+    
+    assignments.forEach(assignment => {
+      // Check SMS activities
+      if (assignment.smsSent) {
+        try {
+          const smsDate = new Date(assignment.smsSent);
+          if (smsDate >= sevenDaysAgo) {
+            activities.push({
+              type: 'SMS',
+              requestId: assignment.requestId,
+              assignmentId: assignment.id,
+              recipient: assignment.riderName,
+              timestamp: smsDate,
+              messagePreview: `SMS notification sent for ${assignment.requestId} - ${assignment.eventDate}`
+            });
+          }
+        } catch (e) {
+          // Invalid date, ignore
+        }
+      }
+      
+      // Check Email activities
+      if (assignment.emailSent) {
+        try {
+          const emailDate = new Date(assignment.emailSent);
+          if (emailDate >= sevenDaysAgo) {
+            activities.push({
+              type: 'Email',
+              requestId: assignment.requestId,
+              assignmentId: assignment.id,
+              recipient: assignment.riderName,
+              timestamp: emailDate,
+              messagePreview: `Email notification sent for ${assignment.requestId} - ${assignment.eventDate}`
+            });
+          }
+        } catch (e) {
+          // Invalid date, ignore
+        }
+      }
+    });
+    
+    // Sort by most recent first
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    console.log(`✅ Found ${activities.length} recent notification activities`);
+    return activities.slice(0, 10); // Return last 10 activities
+    
+  } catch (error) {
+    console.error('❌ Error getting recent notification activity:', error);
     return [];
   }
-  
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  
-  return assignments
-    .filter(assignment => {
-      return assignment.lastNotified && new Date(assignment.lastNotified) > weekAgo;
-    })
-    .sort((a, b) => new Date(b.lastNotified).getTime() - new Date(a.lastNotified).getTime())
-    .slice(0, 10)
-    .map(assignment => ({
-      id: `${assignment.id}_activity`,
-      timestamp: assignment.lastNotified,
-      type: assignment.notificationStatus.includes('sms') ? 'SMS' : 'Email',
-      recipient: assignment.riderName,
-      requestId: assignment.requestId,
-      status: 'Success',
-      messagePreview: `Assignment notification sent to ${assignment.riderName}`
-    }));
 }
+
 
 /**
  * Fetches data for the reports page (reports.html).
@@ -3338,32 +3492,32 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 
     console.log('Request details found:', requestDetails);
 
-    // Get assignments sheet once
-    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
-    if (!assignmentsSheet) {
-      throw new Error('Assignments sheet not found');
+    // Remove any existing assignments for this request first
+    const existingAssignments = getAssignmentsForRequest(requestId);
+    if (existingAssignments.length > 0) {
+      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
+      removeExistingAssignments(requestId);
     }
 
-    // Remove any existing assignments for this request using optimized batch operation
-    const removedNames = removeExistingAssignmentsBatch(requestId, assignmentsSheet);
-    if (removedNames.length > 0) {
-      console.log(`🗑️ Removed ${removedNames.length} existing assignments for request ${requestId}`);
-    }
-
-    // Prepare all assignment rows in memory first
-    const assignmentRows = [];
+    // Create new assignments
     const assignmentResults = [];
     const assignedRiderNames = [];
 
     for (let i = 0; i < selectedRiders.length; i++) {
       const rider = selectedRiders[i];
-      console.log(`📝 Preparing assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
+      console.log(`📝 Creating assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
       
       try {
         const assignmentId = generateAssignmentId();
         const assignmentRow = buildAssignmentRow(assignmentId, requestId, rider, requestDetails);
         
-        assignmentRows.push(assignmentRow);
+        // Add the assignment to the sheet
+        const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+        if (!assignmentsSheet) {
+          throw new Error('Assignments sheet not found');
+        }
+        
+        assignmentsSheet.appendRow(assignmentRow);
         assignedRiderNames.push(rider.name);
         
         assignmentResults.push({
@@ -3372,10 +3526,10 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
           status: 'success'
         });
         
-        console.log(`✅ Prepared assignment ${assignmentId} for rider ${rider.name}`);
+        console.log(`✅ Created assignment ${assignmentId} for rider ${rider.name}`);
         
       } catch (riderError) {
-        console.error(`❌ Failed to prepare assignment for rider ${rider.name}:`, riderError);
+        console.error(`❌ Failed to create assignment for rider ${rider.name}:`, riderError);
         assignmentResults.push({
           riderName: rider.name,
           status: 'failed',
@@ -3384,42 +3538,11 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       }
     }
 
-    // Batch insert all assignment rows at once (this is the key optimization)
-    if (assignmentRows.length > 0) {
-      console.log(`📝 Batch inserting ${assignmentRows.length} assignments...`);
-      const range = assignmentsSheet.getRange(assignmentsSheet.getLastRow() + 1, 1, assignmentRows.length, assignmentRows[0].length);
-      range.setValues(assignmentRows);
-      console.log(`✅ Successfully batch inserted ${assignmentRows.length} assignments`);
-    }
+    // Update the request with assigned rider names
+    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
 
-    // Batch all final update operations for better performance
-    try {
-      // Update the request with assigned rider names (most critical operation)
-      updateRequestWithAssignedRiders(requestId, assignedRiderNames);
-
-      // Schedule rotation update to run after main response (if it takes time)
-      if (usePriority !== false) {
-        if (assignedRiderNames.length > 10) {
-          // For large assignments, defer rotation update to avoid timeout
-          console.log(`📝 Deferring rotation update for large assignment (${assignedRiderNames.length} riders)`);
-          try {
-            ScriptApp.newTrigger('updateAssignmentRotationDeferred')
-              .timeBased()
-              .after(1000) // 1 second delay
-              .create();
-            PropertiesService.getScriptProperties().setProperty('DEFERRED_ROTATION_UPDATE', assignedRiderNames.join(','));
-          } catch (triggerError) {
-            // Fallback to immediate update if trigger creation fails
-            console.log('Trigger creation failed, updating rotation immediately');
-            updateAssignmentRotation(assignedRiderNames);
-          }
-        } else {
-          updateAssignmentRotation(assignedRiderNames);
-        }
-      }
-    } catch (updateError) {
-      logError('Error in batch updates after assignment', updateError);
-      // Don't throw here - assignments were successful
+    if (usePriority !== false) {
+      updateAssignmentRotation(assignedRiderNames);
     }
 
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
@@ -3439,10 +3562,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 
     // Schedule post-assignment cleanup in background to avoid blocking UI
     try {
-      // Use time-driven trigger for heavy cleanup operations
-      if (typeof schedulePostAssignmentCleanup === 'function') {
-        schedulePostAssignmentCleanup(requestId, assignedRiderNames);
-      } else if (typeof executePostAssignmentCleanup === 'function') {
+      if (typeof executePostAssignmentCleanup === 'function') {
         executePostAssignmentCleanup(requestId, assignedRiderNames);
       }
     } catch (cleanupError) {
@@ -3715,28 +3835,23 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     const lastUpdatedCol = columnMap[CONFIG.columns.requests.lastUpdated];
     const ridersNeededCol = columnMap[CONFIG.columns.requests.ridersNeeded];
 
-    // Batch update all cells at once to minimize API calls
-    const updatesData = [];
-    const updateColumns = [];
-    
     // Update assigned riders
     if (ridersAssignedCol !== undefined) {
       const ridersText = riderNames.join(', ');
-      updatesData.push(ridersText);
-      updateColumns.push(ridersAssignedCol + 1);
+      requestsSheet.getRange(sheetRowNumber, ridersAssignedCol + 1).setValue(ridersText);
     }
 
     // Determine how many riders are needed for this request
     let ridersNeeded = 0;
     if (ridersNeededCol !== undefined) {
-      const neededVal = requestsData.data[targetRowIndex][ridersNeededCol];
+      const neededVal = requestsSheet.getRange(sheetRowNumber, ridersNeededCol + 1).getValue();
       const parsedNeeded = parseInt(neededVal, 10);
       ridersNeeded = isNaN(parsedNeeded) ? 0 : parsedNeeded;
     }
 
     // Update status based on how many riders are assigned
     if (statusCol !== undefined) {
-      const currentStatus = String(requestsData.data[targetRowIndex][statusCol] || '').trim();
+      const currentStatus = String(requestsSheet.getRange(sheetRowNumber, statusCol + 1).getValue()).trim();
       let newStatus;
       if (currentStatus === 'Completed' || currentStatus === 'Cancelled') {
         newStatus = currentStatus;
@@ -3747,28 +3862,12 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
       } else {
         newStatus = 'Assigned';
       }
-      updatesData.push(newStatus);
-      updateColumns.push(statusCol + 1);
+      requestsSheet.getRange(sheetRowNumber, statusCol + 1).setValue(newStatus);
     }
 
     // Update last modified timestamp
     if (lastUpdatedCol !== undefined) {
-      updatesData.push(new Date());
-      updateColumns.push(lastUpdatedCol + 1);
-    }
-
-    // Execute all updates in a batch if we have any updates to make
-    if (updatesData.length > 0) {
-      try {
-        // Use batch update for better performance
-        for (let i = 0; i < updatesData.length; i++) {
-          requestsSheet.getRange(sheetRowNumber, updateColumns[i]).setValue(updatesData[i]);
-        }
-        console.log(`📝 Batch updated ${updatesData.length} fields for request ${requestId}`);
-      } catch (batchError) {
-        logError('Error in batch update', batchError);
-        throw batchError;
-      }
+      requestsSheet.getRange(sheetRowNumber, lastUpdatedCol + 1).setValue(new Date());
     }
 
     console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
@@ -4653,248 +4752,5 @@ function executePostAssignmentCleanup(requestId, assignedRiderNames) {
     
   } catch (error) {
     logError('Error in executePostAssignmentCleanup', error);
-  }
-}
-
-/**
- * Optimized batch removal of existing assignments for a request
- * Instead of deleting rows one by one, this rewrites the entire sheet without the matching rows
- * @param {string} requestId - The request ID to remove assignments for
- * @param {GoogleAppsScript.Spreadsheet.Sheet} assignmentsSheet - The assignments sheet (passed to avoid repeated lookups)
- * @return {Array<string>} Array of removed rider names
- */
-function removeExistingAssignmentsBatch(requestId, assignmentsSheet) {
-  try {
-    const data = assignmentsSheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      return []; // No data or just headers
-    }
-
-    const headers = data[0];
-    const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
-    const riderNameCol = headers.indexOf(CONFIG.columns.assignments.riderName);
-
-    if (requestIdCol === -1) {
-      throw new Error('Request ID column not found in assignments sheet');
-    }
-
-    // Separate rows to keep vs rows to remove
-    const rowsToKeep = [headers]; // Always keep headers
-    const removedNames = [];
-
-    for (let i = 1; i < data.length; i++) { // Skip header row
-      if (String(data[i][requestIdCol]).trim() === String(requestId).trim()) {
-        // This row should be removed
-        if (riderNameCol !== -1) {
-          const name = String(data[i][riderNameCol]).trim();
-          if (name) removedNames.push(name);
-        }
-      } else {
-        // This row should be kept
-        rowsToKeep.push(data[i]);
-      }
-    }
-
-    // Only rewrite the sheet if we actually found rows to remove
-    if (removedNames.length > 0) {
-      console.log(`🗑️ Batch removing ${removedNames.length} assignments for request ${requestId}`);
-      
-      // Clear the entire sheet and rewrite with only the rows we want to keep
-      assignmentsSheet.clear();
-      
-      if (rowsToKeep.length > 0) {
-        const range = assignmentsSheet.getRange(1, 1, rowsToKeep.length, rowsToKeep[0].length);
-        range.setValues(rowsToKeep);
-      }
-      
-      console.log(`✅ Successfully batch removed ${removedNames.length} assignments`);
-
-      // Update rotation for removed riders
-      if (removedNames.length > 0) {
-        updateRotationOnUnassign(removedNames);
-      }
-    }
-
-    return removedNames;
-
-  } catch (error) {
-    logError('Error in removeExistingAssignmentsBatch', error);
-    throw new Error(`Failed to remove existing assignments: ${error.message}`);
-  }
-}
-
-/**
- * Deferred rotation update function triggered after large assignments.
- * This function is called by a time-based trigger to avoid timeout issues.
- */
-function updateAssignmentRotationDeferred() {
-  try {
-    const deferredNames = PropertiesService.getScriptProperties().getProperty('DEFERRED_ROTATION_UPDATE');
-    if (deferredNames) {
-      const nameArray = deferredNames.split(',').filter(name => name.trim());
-      if (nameArray.length > 0) {
-        console.log(`🔄 Processing deferred rotation update for ${nameArray.length} riders`);
-        updateAssignmentRotation(nameArray);
-        
-        // Clean up the property
-        PropertiesService.getScriptProperties().deleteProperty('DEFERRED_ROTATION_UPDATE');
-        console.log('✅ Deferred rotation update completed');
-      }
-    }
-    
-    // Clean up the trigger that called this function
-    const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
-      if (trigger.getHandlerFunction() === 'updateAssignmentRotationDeferred') {
-        ScriptApp.deleteTrigger(trigger);
-      }
-    });
-    
-  } catch (error) {
-    logError('Error in deferred rotation update', error);
-  }
-}
-
-/**
- * Schedule cleanup operations to run in background using triggers.
- * This helps avoid blocking the main assignment response.
- * @param {string} requestId - The request ID.
- * @param {string[]} assignedRiderNames - Array of assigned rider names.
- */
-function schedulePostAssignmentCleanup(requestId, assignedRiderNames) {
-  try {
-    // Store cleanup data in properties for the trigger to access
-    const cleanupData = {
-      requestId: requestId,
-      riderNames: assignedRiderNames,
-      timestamp: new Date().getTime()
-    };
-    
-    PropertiesService.getScriptProperties().setProperty('CLEANUP_DATA', JSON.stringify(cleanupData));
-    
-    // Create a trigger to run cleanup in 5 seconds
-    ScriptApp.newTrigger('executePostAssignmentCleanupDeferred')
-      .timeBased()
-      .after(5000) // 5 second delay
-      .create();
-      
-    console.log(`📅 Scheduled post-assignment cleanup for request ${requestId}`);
-    
-  } catch (error) {
-    logError('Error scheduling post-assignment cleanup', error);
-    // Fallback to immediate execution
-    executePostAssignmentCleanup(requestId, assignedRiderNames);
-  }
-}
-
-/**
- * Deferred cleanup function triggered after assignment completion.
- * Handles non-critical cleanup operations that can be delayed.
- */
-function executePostAssignmentCleanupDeferred() {
-  try {
-    const cleanupDataStr = PropertiesService.getScriptProperties().getProperty('CLEANUP_DATA');
-    if (cleanupDataStr) {
-      const cleanupData = JSON.parse(cleanupDataStr);
-      console.log(`🧹 Processing deferred cleanup for request ${cleanupData.requestId}`);
-      
-      // Execute the cleanup operations
-      executePostAssignmentCleanup(cleanupData.requestId, cleanupData.riderNames);
-      
-      // Clean up the property
-      PropertiesService.getScriptProperties().deleteProperty('CLEANUP_DATA');
-      console.log('✅ Deferred cleanup completed');
-    }
-    
-    // Clean up the trigger that called this function
-    const triggers = ScriptApp.getProjectTriggers();
-    triggers.forEach(trigger => {
-      if (trigger.getHandlerFunction() === 'executePostAssignmentCleanupDeferred') {
-        ScriptApp.deleteTrigger(trigger);
-      }
-    });
-    
-  } catch (error) {
-    logError('Error in deferred cleanup', error);
-  }
-}
-
-/**
- * Test function for debugging notification data loading
- */
-function testNotificationDataLoading() {
-  console.log('🧪 Testing notification data loading...');
-  
-  try {
-    // Test each component individually
-    const results = {
-      success: true,
-      tests: {}
-    };
-    
-    // Test 1: Check if assignments sheet exists
-    try {
-      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-      const assignmentsSheet = spreadsheet.getSheetByName(CONFIG.sheets.assignments);
-      results.tests.assignmentsSheetExists = !!assignmentsSheet;
-    } catch (error) {
-      results.tests.assignmentsSheetExists = false;
-      results.tests.assignmentsSheetError = error.message;
-    }
-    
-    // Test 2: Test getAssignmentsData
-    try {
-      const assignmentsData = getAssignmentsData(false);
-      results.tests.getAssignmentsDataCount = assignmentsData.data?.length || 0;
-      results.tests.getAssignmentsDataSuccess = true;
-    } catch (error) {
-      results.tests.getAssignmentsDataSuccess = false;
-      results.tests.getAssignmentsDataError = error.message;
-    }
-    
-    // Test 3: Test getAllAssignmentsForNotifications
-    try {
-      const notificationAssignments = getAllAssignmentsForNotifications(false);
-      results.tests.notificationAssignmentsCount = notificationAssignments?.length || 0;
-      results.tests.getAllAssignmentsForNotificationsSuccess = true;
-    } catch (error) {
-      results.tests.getAllAssignmentsForNotificationsSuccess = false;
-      results.tests.getAllAssignmentsForNotificationsError = error.message;
-    }
-    
-    // Test 4: Test full getPageDataForNotifications
-    try {
-      const pageData = getPageDataForNotifications();
-      results.tests.pageDataSuccess = pageData.success;
-      results.tests.pageDataAssignmentsCount = pageData.assignments?.length || 0;
-      results.tests.getPageDataForNotificationsSuccess = true;
-    } catch (error) {
-      results.tests.getPageDataForNotificationsSuccess = false;
-      results.tests.getPageDataForNotificationsError = error.message;
-    }
-    
-    // Overall success check
-    results.success = results.tests.assignmentsSheetExists && 
-                     results.tests.getAssignmentsDataSuccess && 
-                     results.tests.getAllAssignmentsForNotificationsSuccess && 
-                     results.tests.getPageDataForNotificationsSuccess &&
-                     results.tests.notificationAssignmentsCount > 0;
-    
-    if (!results.success) {
-      results.error = 'One or more tests failed. Check individual test results.';
-    }
-    
-    results.notificationAssignmentsCount = results.tests.notificationAssignmentsCount || 0;
-    
-    console.log('🧪 Test results:', results);
-    return results;
-    
-  } catch (error) {
-    console.error('❌ Error in testNotificationDataLoading:', error);
-    return {
-      success: false,
-      error: error.message,
-      notificationAssignmentsCount: 0
-    };
   }
 }
