@@ -4818,3 +4818,83 @@ function executePostAssignmentCleanupDeferred() {
     logError('Error in deferred cleanup', error);
   }
 }
+
+/**
+ * Test function for debugging notification data loading
+ */
+function testNotificationDataLoading() {
+  console.log('🧪 Testing notification data loading...');
+  
+  try {
+    // Test each component individually
+    const results = {
+      success: true,
+      tests: {}
+    };
+    
+    // Test 1: Check if assignments sheet exists
+    try {
+      const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const assignmentsSheet = spreadsheet.getSheetByName(CONFIG.sheets.assignments);
+      results.tests.assignmentsSheetExists = !!assignmentsSheet;
+    } catch (error) {
+      results.tests.assignmentsSheetExists = false;
+      results.tests.assignmentsSheetError = error.message;
+    }
+    
+    // Test 2: Test getAssignmentsData
+    try {
+      const assignmentsData = getAssignmentsData(false);
+      results.tests.getAssignmentsDataCount = assignmentsData.data?.length || 0;
+      results.tests.getAssignmentsDataSuccess = true;
+    } catch (error) {
+      results.tests.getAssignmentsDataSuccess = false;
+      results.tests.getAssignmentsDataError = error.message;
+    }
+    
+    // Test 3: Test getAllAssignmentsForNotifications
+    try {
+      const notificationAssignments = getAllAssignmentsForNotifications();
+      results.tests.notificationAssignmentsCount = notificationAssignments?.length || 0;
+      results.tests.getAllAssignmentsForNotificationsSuccess = true;
+    } catch (error) {
+      results.tests.getAllAssignmentsForNotificationsSuccess = false;
+      results.tests.getAllAssignmentsForNotificationsError = error.message;
+    }
+    
+    // Test 4: Test full getPageDataForNotifications
+    try {
+      const pageData = getPageDataForNotifications();
+      results.tests.pageDataSuccess = pageData.success;
+      results.tests.pageDataAssignmentsCount = pageData.assignments?.length || 0;
+      results.tests.getPageDataForNotificationsSuccess = true;
+    } catch (error) {
+      results.tests.getPageDataForNotificationsSuccess = false;
+      results.tests.getPageDataForNotificationsError = error.message;
+    }
+    
+    // Overall success check
+    results.success = results.tests.assignmentsSheetExists && 
+                     results.tests.getAssignmentsDataSuccess && 
+                     results.tests.getAllAssignmentsForNotificationsSuccess && 
+                     results.tests.getPageDataForNotificationsSuccess &&
+                     results.tests.notificationAssignmentsCount > 0;
+    
+    if (!results.success) {
+      results.error = 'One or more tests failed. Check individual test results.';
+    }
+    
+    results.notificationAssignmentsCount = results.tests.notificationAssignmentsCount || 0;
+    
+    console.log('🧪 Test results:', results);
+    return results;
+    
+  } catch (error) {
+    console.error('❌ Error in testNotificationDataLoading:', error);
+    return {
+      success: false,
+      error: error.message,
+      notificationAssignmentsCount: 0
+    };
+  }
+}
