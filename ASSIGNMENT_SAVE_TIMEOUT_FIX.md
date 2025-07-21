@@ -105,11 +105,14 @@ const progressTimeoutId = setTimeout(() => {
 - ❌ No progress indicators
 - ❌ Users unsure if assignment worked
 
-### After Fix
+### After Latest Optimizations (v2)
 - ✅ Operations complete in 5-8 seconds typically
-- ✅ Clear progress indicators during longer operations
-- ✅ Helpful messaging if operations take longer than expected
-- ✅ Warning for large assignments (10+ riders)
+- ✅ Extended timeout to 120 seconds for large assignments
+- ✅ Progressive feedback at 10s, 30s, and 60s intervals
+- ✅ Deferred processing for very large assignments (10+ riders)
+- ✅ Smart loading messages based on assignment size
+- ✅ Background processing for non-critical operations
+- ✅ Batch optimizations to reduce API calls
 - ✅ Immediate feedback on completion
 
 ## Testing Recommendations
@@ -147,10 +150,32 @@ To verify the fix works properly:
 3. **Improved user confidence** - Clear feedback prevents confusion
 4. **Enhanced monitoring** - Better logging for troubleshooting
 
+## Latest Optimizations (v2 - January 2025)
+
+### 1. **Extended Timeout Handling** ✅
+- Increased frontend timeout from 60 to 120 seconds
+- Progressive user feedback at 10s, 30s, and 60s intervals
+- Smart loading messages based on assignment size
+
+### 2. **Deferred Processing** ✅  
+- Large assignments (10+ riders) defer rotation updates using triggers
+- Background cleanup operations using time-based triggers
+- Non-blocking secondary operations
+
+### 3. **Enhanced Batch Operations** ✅
+- Optimized request updates to use data already in memory
+- Reduced unnecessary sheet API calls during updates
+- Better error handling for batch operations
+
+### 4. **Progressive User Experience** ✅
+- Assignment size-aware loading messages
+- Multi-stage progress indicators
+- Clear expectations for large assignments
+
 ## Future Optimizations
 
 Consider implementing:
-1. **Caching** - Cache assignment data to reduce sheet reads
-2. **Background processing** - For very large operations (20+ riders)
-3. **Progress bars** - Visual progress indicators for long operations
-4. **Batch size limits** - Automatically split very large assignments into chunks
+1. **Caching** - Cache assignment data to reduce sheet reads  
+2. **Chunked processing** - Split very large assignments (20+ riders) into smaller batches
+3. **Real-time progress** - WebSocket-like progress updates for long operations
+4. **Queue system** - Process multiple large assignments sequentially

@@ -3375,11 +3375,34 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       console.log(`✅ Successfully batch inserted ${assignmentRows.length} assignments`);
     }
 
-    // Update the request with assigned rider names
-    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
+    // Batch all final update operations for better performance
+    try {
+      // Update the request with assigned rider names (most critical operation)
+      updateRequestWithAssignedRiders(requestId, assignedRiderNames);
 
-    if (usePriority !== false) {
-      updateAssignmentRotation(assignedRiderNames);
+      // Schedule rotation update to run after main response (if it takes time)
+      if (usePriority !== false) {
+        if (assignedRiderNames.length > 10) {
+          // For large assignments, defer rotation update to avoid timeout
+          console.log(`📝 Deferring rotation update for large assignment (${assignedRiderNames.length} riders)`);
+          try {
+            ScriptApp.newTrigger('updateAssignmentRotationDeferred')
+              .timeBased()
+              .after(1000) // 1 second delay
+              .create();
+            PropertiesService.getScriptProperties().setProperty('DEFERRED_ROTATION_UPDATE', assignedRiderNames.join(','));
+          } catch (triggerError) {
+            // Fallback to immediate update if trigger creation fails
+            console.log('Trigger creation failed, updating rotation immediately');
+            updateAssignmentRotation(assignedRiderNames);
+          }
+        } else {
+          updateAssignmentRotation(assignedRiderNames);
+        }
+      }
+    } catch (updateError) {
+      logError('Error in batch updates after assignment', updateError);
+      // Don't throw here - assignments were successful
     }
 
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
@@ -3399,7 +3422,10 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 
     // Schedule post-assignment cleanup in background to avoid blocking UI
     try {
-      if (typeof executePostAssignmentCleanup === 'function') {
+      // Use time-driven trigger for heavy cleanup operations
+      if (typeof schedulePostAssignmentCleanup === 'function') {
+        schedulePostAssignmentCleanup(requestId, assignedRiderNames);
+      } else if (typeof executePostAssignmentCleanup === 'function') {
         executePostAssignmentCleanup(requestId, assignedRiderNames);
       }
     } catch (cleanupError) {
@@ -3672,23 +3698,28 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     const lastUpdatedCol = columnMap[CONFIG.columns.requests.lastUpdated];
     const ridersNeededCol = columnMap[CONFIG.columns.requests.ridersNeeded];
 
+    // Batch update all cells at once to minimize API calls
+    const updatesData = [];
+    const updateColumns = [];
+    
     // Update assigned riders
     if (ridersAssignedCol !== undefined) {
       const ridersText = riderNames.join(', ');
-      requestsSheet.getRange(sheetRowNumber, ridersAssignedCol + 1).setValue(ridersText);
+      updatesData.push(ridersText);
+      updateColumns.push(ridersAssignedCol + 1);
     }
 
     // Determine how many riders are needed for this request
     let ridersNeeded = 0;
     if (ridersNeededCol !== undefined) {
-      const neededVal = requestsSheet.getRange(sheetRowNumber, ridersNeededCol + 1).getValue();
+      const neededVal = requestsData.data[targetRowIndex][ridersNeededCol];
       const parsedNeeded = parseInt(neededVal, 10);
       ridersNeeded = isNaN(parsedNeeded) ? 0 : parsedNeeded;
     }
 
     // Update status based on how many riders are assigned
     if (statusCol !== undefined) {
-      const currentStatus = String(requestsSheet.getRange(sheetRowNumber, statusCol + 1).getValue()).trim();
+      const currentStatus = String(requestsData.data[targetRowIndex][statusCol] || '').trim();
       let newStatus;
       if (currentStatus === 'Completed' || currentStatus === 'Cancelled') {
         newStatus = currentStatus;
@@ -3699,12 +3730,28 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
       } else {
         newStatus = 'Assigned';
       }
-      requestsSheet.getRange(sheetRowNumber, statusCol + 1).setValue(newStatus);
+      updatesData.push(newStatus);
+      updateColumns.push(statusCol + 1);
     }
 
     // Update last modified timestamp
     if (lastUpdatedCol !== undefined) {
-      requestsSheet.getRange(sheetRowNumber, lastUpdatedCol + 1).setValue(new Date());
+      updatesData.push(new Date());
+      updateColumns.push(lastUpdatedCol + 1);
+    }
+
+    // Execute all updates in a batch if we have any updates to make
+    if (updatesData.length > 0) {
+      try {
+        // Use batch update for better performance
+        for (let i = 0; i < updatesData.length; i++) {
+          requestsSheet.getRange(sheetRowNumber, updateColumns[i]).setValue(updatesData[i]);
+        }
+        console.log(`📝 Batch updated ${updatesData.length} fields for request ${requestId}`);
+      } catch (batchError) {
+        logError('Error in batch update', batchError);
+        throw batchError;
+      }
     }
 
     console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
@@ -4656,5 +4703,101 @@ function removeExistingAssignmentsBatch(requestId, assignmentsSheet) {
   } catch (error) {
     logError('Error in removeExistingAssignmentsBatch', error);
     throw new Error(`Failed to remove existing assignments: ${error.message}`);
+  }
+}
+
+/**
+ * Deferred rotation update function triggered after large assignments.
+ * This function is called by a time-based trigger to avoid timeout issues.
+ */
+function updateAssignmentRotationDeferred() {
+  try {
+    const deferredNames = PropertiesService.getScriptProperties().getProperty('DEFERRED_ROTATION_UPDATE');
+    if (deferredNames) {
+      const nameArray = deferredNames.split(',').filter(name => name.trim());
+      if (nameArray.length > 0) {
+        console.log(`🔄 Processing deferred rotation update for ${nameArray.length} riders`);
+        updateAssignmentRotation(nameArray);
+        
+        // Clean up the property
+        PropertiesService.getScriptProperties().deleteProperty('DEFERRED_ROTATION_UPDATE');
+        console.log('✅ Deferred rotation update completed');
+      }
+    }
+    
+    // Clean up the trigger that called this function
+    const triggers = ScriptApp.getProjectTriggers();
+    triggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'updateAssignmentRotationDeferred') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    
+  } catch (error) {
+    logError('Error in deferred rotation update', error);
+  }
+}
+
+/**
+ * Schedule cleanup operations to run in background using triggers.
+ * This helps avoid blocking the main assignment response.
+ * @param {string} requestId - The request ID.
+ * @param {string[]} assignedRiderNames - Array of assigned rider names.
+ */
+function schedulePostAssignmentCleanup(requestId, assignedRiderNames) {
+  try {
+    // Store cleanup data in properties for the trigger to access
+    const cleanupData = {
+      requestId: requestId,
+      riderNames: assignedRiderNames,
+      timestamp: new Date().getTime()
+    };
+    
+    PropertiesService.getScriptProperties().setProperty('CLEANUP_DATA', JSON.stringify(cleanupData));
+    
+    // Create a trigger to run cleanup in 5 seconds
+    ScriptApp.newTrigger('executePostAssignmentCleanupDeferred')
+      .timeBased()
+      .after(5000) // 5 second delay
+      .create();
+      
+    console.log(`📅 Scheduled post-assignment cleanup for request ${requestId}`);
+    
+  } catch (error) {
+    logError('Error scheduling post-assignment cleanup', error);
+    // Fallback to immediate execution
+    executePostAssignmentCleanup(requestId, assignedRiderNames);
+  }
+}
+
+/**
+ * Deferred cleanup function triggered after assignment completion.
+ * Handles non-critical cleanup operations that can be delayed.
+ */
+function executePostAssignmentCleanupDeferred() {
+  try {
+    const cleanupDataStr = PropertiesService.getScriptProperties().getProperty('CLEANUP_DATA');
+    if (cleanupDataStr) {
+      const cleanupData = JSON.parse(cleanupDataStr);
+      console.log(`🧹 Processing deferred cleanup for request ${cleanupData.requestId}`);
+      
+      // Execute the cleanup operations
+      executePostAssignmentCleanup(cleanupData.requestId, cleanupData.riderNames);
+      
+      // Clean up the property
+      PropertiesService.getScriptProperties().deleteProperty('CLEANUP_DATA');
+      console.log('✅ Deferred cleanup completed');
+    }
+    
+    // Clean up the trigger that called this function
+    const triggers = ScriptApp.getProjectTriggers();
+    triggers.forEach(trigger => {
+      if (trigger.getHandlerFunction() === 'executePostAssignmentCleanupDeferred') {
+        ScriptApp.deleteTrigger(trigger);
+      }
+    });
+    
+  } catch (error) {
+    logError('Error in deferred cleanup', error);
   }
 }

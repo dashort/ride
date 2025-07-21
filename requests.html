@@ -2238,7 +2238,15 @@
         console.log('Saving rider assignments for request:', requestId);
         console.log('Selected riders:', selectedRidersArray);
 
-        showLoadingOverlay();
+        // Show appropriate loading message based on assignment size
+        const riderCount = selectedRidersArray.length;
+        if (riderCount > 10) {
+            showLoadingOverlay(`Saving large assignment (${riderCount} riders)... This may take up to 2 minutes.`);
+        } else if (riderCount > 5) {
+            showLoadingOverlay(`Saving assignment (${riderCount} riders)... This may take a moment.`);
+        } else {
+            showLoadingOverlay('Saving rider assignments...');
+        }
 
         // Create rider objects for the assignment function
         const riderObjects = selectedRidersArray.map(riderName => {
@@ -2259,9 +2267,9 @@
                 if (!hasCompleted) {
                     hideLoadingOverlay();
                     showToast('Assignment save is taking longer than expected. The assignment may still be processing in the background. Please wait a moment and refresh the page to check if it was saved.', 10000);
-                    console.log('Assignment save operation timed out after 60 seconds');
+                    console.log('Assignment save operation timed out after 120 seconds');
                 }
-            }, 60000); // 60 second timeout
+            }, 120000); // 120 second timeout - increased from 60s to accommodate larger assignments
 
             // Show progress indicator after 10 seconds
             const progressTimeoutId = setTimeout(() => {
@@ -2270,17 +2278,35 @@
                 }
             }, 10000);
 
+            // Show extended progress indicator after 30 seconds for large assignments
+            const extendedProgressTimeoutId = setTimeout(() => {
+                if (!hasCompleted && riderCount > 10) {
+                    showToast(`Processing large assignment (${riderCount} riders)... Almost done. Please wait...`, 5000);
+                }
+            }, 30000);
+
+            // Show final progress indicator after 60 seconds
+            const finalProgressTimeoutId = setTimeout(() => {
+                if (!hasCompleted) {
+                    showToast('Assignment is taking longer than usual... Please continue waiting, it should complete soon.', 5000);
+                }
+            }, 60000);
+
             google.script.run
                 .withSuccessHandler((result) => {
                     hasCompleted = true;
                     clearTimeout(timeoutId);
                     clearTimeout(progressTimeoutId);
+                    clearTimeout(extendedProgressTimeoutId);
+                    clearTimeout(finalProgressTimeoutId);
                     handleAssignmentSaveSuccess(result);
                 })
                 .withFailureHandler((error) => {
                     hasCompleted = true;
                     clearTimeout(timeoutId);
                     clearTimeout(progressTimeoutId);
+                    clearTimeout(extendedProgressTimeoutId);
+                    clearTimeout(finalProgressTimeoutId);
                     handleAssignmentSaveError(error);
                 })
                 .processAssignmentAndPopulate(requestId, riderObjects, true);
