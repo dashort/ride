@@ -79,6 +79,9 @@ const progressTimeoutId = setTimeout(() => {
 }, 10000);
 ```
 
+### 5. **Asynchronous Cleanup Trigger** ✅
+Post-assignment operations like calendar sync now run in the background to keep the save response under 10 seconds.
+
 ## Performance Improvements
 
 | Operation | Before | After | Improvement |
@@ -92,6 +95,8 @@ const progressTimeoutId = setTimeout(() => {
 ### Backend Optimizations (`AppServices.gs`)
 1. **`processAssignmentAndPopulate()`** - Main function optimized for batch operations
 2. **`removeExistingAssignmentsBatch()`** - New function for efficient assignment removal
+3. **`schedulePostAssignmentCleanup()`** - Schedules async cleanup to keep saves fast
+4. **`runPostAssignmentCleanup()`** - Triggered function performing background cleanup
 
 ### Frontend Improvements
 1. **`assignments.html`** - Enhanced timeout handling and user feedback

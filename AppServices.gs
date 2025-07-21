@@ -3397,14 +3397,14 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       failCount: failCount
     };
 
-    // Schedule post-assignment cleanup in background to avoid blocking UI
+    // Schedule post-assignment cleanup asynchronously to avoid blocking UI
     try {
-      if (typeof executePostAssignmentCleanup === 'function') {
-        executePostAssignmentCleanup(requestId, assignedRiderNames);
+      if (typeof schedulePostAssignmentCleanup === 'function') {
+        schedulePostAssignmentCleanup(requestId, assignedRiderNames);
       }
     } catch (cleanupError) {
       // Don't let cleanup errors affect the main response
-      logError('Post-assignment cleanup failed but assignment was successful', cleanupError);
+      logError('Failed to schedule post-assignment cleanup', cleanupError);
     }
 
     return response;
@@ -4589,6 +4589,59 @@ function executePostAssignmentCleanup(requestId, assignedRiderNames) {
     
   } catch (error) {
     logError('Error in executePostAssignmentCleanup', error);
+  }
+}
+
+/**
+ * Schedule background cleanup to run asynchronously after assignment save.
+ * @param {string} requestId - The processed request ID.
+ * @param {Array} assignedRiderNames - Names of assigned riders.
+ */
+function schedulePostAssignmentCleanup(requestId, assignedRiderNames) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty('cleanup_requestId', requestId);
+    props.setProperty('cleanup_riders', JSON.stringify(assignedRiderNames || []));
+
+    // Remove existing cleanup triggers to avoid duplicates
+    ScriptApp.getProjectTriggers().forEach(t => {
+      if (t.getHandlerFunction() === 'runPostAssignmentCleanup') {
+        ScriptApp.deleteTrigger(t);
+      }
+    });
+
+    ScriptApp.newTrigger('runPostAssignmentCleanup')
+      .timeBased()
+      .after(1)
+      .create();
+  } catch (error) {
+    logError('Failed to schedule post-assignment cleanup', error);
+  }
+}
+
+/**
+ * Triggered function to perform post-assignment cleanup asynchronously.
+ */
+function runPostAssignmentCleanup() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const requestId = props.getProperty('cleanup_requestId');
+    const riderData = props.getProperty('cleanup_riders');
+    const riders = riderData ? JSON.parse(riderData) : [];
+
+    props.deleteProperty('cleanup_requestId');
+    props.deleteProperty('cleanup_riders');
+
+    executePostAssignmentCleanup(requestId, riders);
+  } catch (error) {
+    logError('Error running post-assignment cleanup', error);
+  } finally {
+    // Clean up this trigger
+    ScriptApp.getProjectTriggers().forEach(t => {
+      if (t.getHandlerFunction() === 'runPostAssignmentCleanup') {
+        ScriptApp.deleteTrigger(t);
+      }
+    });
   }
 }
 
