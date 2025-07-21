@@ -647,6 +647,7 @@
 
         function updateUserInfoSafely(user) {
             try {
+                var safeUser = user || {};
                 var safeUpdate = function(id, value, property) {
                     property = property || 'textContent';
                     try {
@@ -659,9 +660,9 @@
                     }
                 };
 
-                safeUpdate('userName', user.name || 'User');
-                safeUpdate('userRole', (user.roles || ['user']).join(', '));
-                safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
+                safeUpdate('userName', safeUser.name || 'User');
+                safeUpdate('userRole', (safeUser.roles || ['user']).join(', '));
+                safeUpdate('userAvatar', (safeUser.name || 'U').charAt(0).toUpperCase());
             } catch (error) {
                 console.log('Error in updateUserInfoSafely:', error);
             }
