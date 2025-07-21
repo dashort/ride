@@ -2500,11 +2500,11 @@ function getAllRequestsForLookup() {
       const columnMap = requestsData.columnMap;
       const requests = requestsData.data.map(row => {
         const request = {};
-        
+
         // Map only the fields needed for lookup functionality
         request.requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id) || '';
-        request.requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '';
-        request.requesterContact = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '';
+        request.requesterName = String(getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName) || '');
+        request.requesterContact = String(getColumnValue(row, columnMap, CONFIG.columns.requests.requesterContact) || '');
         request.eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate) || '';
         request.status = getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '';
         
@@ -2523,7 +2523,7 @@ function getAllRequestsForLookup() {
         return request;
       }).filter(request => {
         // Only include requests that have both requester name and contact info
-        return request.requesterName.trim() && request.requesterContact.trim();
+        return String(request.requesterName).trim() && String(request.requesterContact).trim();
       });
 
       debugLog(`Returning ${requests.length} requests for lookup cache`);
