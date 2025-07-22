@@ -3169,6 +3169,10 @@ function getAllAssignmentsForNotifications(useCache = true) {
       return [];
     }
     
+    console.log(`📊 Raw assignments data: ${assignmentsData.data.length} rows`);
+    console.log('📊 Column map:', assignmentsData.columnMap);
+    console.log('📊 First few headers:', assignmentsData.data[0] ? assignmentsData.data[0].slice(0, 5) : 'No data');
+    
     const columnMap = assignmentsData.columnMap;
     const assignments = [];
     
@@ -3179,17 +3183,17 @@ function getAllAssignmentsForNotifications(useCache = true) {
         const requestId = getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId);
         const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
         
-        // Only include assignments with riders that aren't cancelled/completed
-        if (riderName && riderName.trim().length > 0 && 
-            status && !['cancelled', 'completed'].includes(status.toLowerCase())) {
+        // Include all assignments for notifications page - users may want to notify about various statuses
+        // Only filter out completely empty rows
+        if (requestId || assignmentId || riderName || status) {
           
           const assignment = {
             id: assignmentId || `ASG-${index + 1}`,
             requestId: requestId || 'Unknown',
-            riderName: riderName,
+            riderName: riderName || 'Unassigned',
             jpNumber: getColumnValue(row, columnMap, CONFIG.columns.assignments.jpNumber) || '',
             eventDate: getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate) || '',
-            eventTime: getColumnValue(row, columnMap, CONFIG.columns.assignments.eventTime) || '',
+            eventTime: getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime) || '',
             startLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation) || '',
             endLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation) || '',
             status: status,
@@ -3207,7 +3211,18 @@ function getAllAssignmentsForNotifications(useCache = true) {
       }
     });
     
-    console.log(`✅ Found ${assignments.length} assignments for notifications`);
+    console.log(`✅ Found ${assignments.length} assignments for notifications out of ${assignmentsData.data.length - 1} data rows`);
+    
+    if (assignments.length === 0 && assignmentsData.data.length > 1) {
+      console.log('🔍 No assignments passed filtering. Checking first data row:');
+      const firstRow = assignmentsData.data[1]; // Skip header row
+      console.log('🔍 First data row:', firstRow);
+      console.log('🔍 Rider name value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.riderName));
+      console.log('🔍 Status value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.status));
+      console.log('🔍 Request ID value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.requestId));
+      console.log('🔍 Assignment ID value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.id));
+    }
+    
     return assignments;
     
   } catch (error) {
