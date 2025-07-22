@@ -1535,11 +1535,11 @@ function getRequestDetailsForNotification(requestId) {
  * Returns all assignments data structured for the notifications page.
  * @returns {Array<Object>} An array of assignment objects.
  */
-function getAllAssignmentsForNotifications() {
+function getAllAssignmentsForNotifications(useCache = true) {
   try {
     console.log('📋 Getting all assignments for notifications...');
-    
-    const assignmentsData = getAssignmentsData(); // This gets actual assignments
+
+    const assignmentsData = getAssignmentsData(useCache); // This gets actual assignments
     
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
       console.log('❌ No assignments data found');
@@ -1897,7 +1897,7 @@ function getEnhancedNotificationStats() {
     });
     
     // Get processed assignments for the notifications page
-    const processedAssignments = getAllAssignmentsForNotifications();
+    const processedAssignments = getAllAssignmentsForNotifications(false);
     
     const stats = {
       totalAssignments: totalAssignments,
@@ -2100,7 +2100,7 @@ function runImmediateAssignmentFix() {
     dataCache.clear('sheet_' + CONFIG.sheets.assignments);
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
-    const finalAssignments = getAllAssignmentsForNotifications();
+    const finalAssignments = getAllAssignmentsForNotifications(false);
     console.log(`✅ Final result: ${finalAssignments.length} assignments loaded for notifications`);
     
     if (finalAssignments.length > 0) {
@@ -2141,7 +2141,7 @@ function checkAssignmentLoadingStatus() {
     console.log(`Raw assignments data: ${rawData.data ? rawData.data.length : 0} rows`);
     
     // Test getAllAssignmentsForNotifications
-    const notificationAssignments = getAllAssignmentsForNotifications();
+    const notificationAssignments = getAllAssignmentsForNotifications(false);
     console.log(`Notification assignments: ${notificationAssignments.length} items`);
     
     // Test getPageDataForNotifications
