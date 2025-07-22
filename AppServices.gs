@@ -3779,6 +3779,27 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     console.log(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
     console.log('Selected riders:', JSON.stringify(selectedRiders, null, 2));
     
+    // Log the operation for monitoring
+    logAssignmentOperation('ASSIGNMENT_START', requestId, { 
+      riderCount: selectedRiders.length, 
+      riderNames: selectedRiders.map(r => r.name).join(', ') 
+    });
+    
+    // Validate sheet integrity before starting
+    const validation = validateAssignmentsSheet();
+    if (!validation.valid) {
+      console.warn('⚠️ Assignments sheet validation issues:', validation.issues);
+      logAssignmentOperation('VALIDATION_WARNING', requestId, validation);
+    }
+    
+    // Create backup before making changes
+    const backup = createAssignmentsBackup();
+    if (backup.success) {
+      console.log(`💾 Created backup with ${backup.rowCount} rows at ${backup.timestamp}`);
+    } else {
+      console.warn('⚠️ Failed to create backup:', backup.error);
+    }
+    
     if (!requestId || !selectedRiders) {
       throw new Error('Request ID is required for assignment');
     }
@@ -3795,7 +3816,10 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     const existingAssignments = getAssignmentsForRequest(requestId);
     if (existingAssignments.length > 0) {
       console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
-      removeExistingAssignments(requestId);
+      const removedNames = removeExistingAssignments(requestId);
+      console.log(`✅ Successfully removed assignments for riders: ${removedNames.join(', ')}`);
+    } else {
+      console.log(`ℹ️ No existing assignments to remove for request ${requestId}`);
     }
 
     // Create new assignments using batch operation
@@ -4112,19 +4136,35 @@ function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
 }
 
 /**
- * Removes existing assignments for a request.
+ * Removes existing assignments for a request using safer row deletion instead of clearing entire sheet.
  * @param {string} requestId - The request ID to clear assignments for.
- * @return {void}
+ * @return {Array<string>} - Array of removed rider names
  */
 function removeExistingAssignments(requestId) {
   try {
-    console.log(`🗑️ Starting batch removal of assignments for request ${requestId}`);
+    console.log(`🗑️ Starting SAFE removal of assignments for request ${requestId}`);
+    
+    // Log the removal operation
+    logAssignmentOperation('REMOVAL_START', requestId);
+    
+    // Validate input
+    if (!requestId || String(requestId).trim() === '') {
+      console.log('⚠️ Empty requestId provided, skipping removal');
+      logAssignmentOperation('REMOVAL_SKIPPED', requestId, { reason: 'empty_request_id' });
+      return [];
+    }
+
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
     if (!assignmentsSheet) {
       throw new Error('Assignments sheet not found');
     }
 
     const data = assignmentsSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      console.log('ℹ️ No data rows to process (only headers or empty sheet)');
+      return [];
+    }
+
     const headers = data[0];
     const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
     const riderNameCol = headers.indexOf(CONFIG.columns.assignments.riderName);
@@ -4133,42 +4173,50 @@ function removeExistingAssignments(requestId) {
       throw new Error('Request ID column not found in assignments sheet');
     }
 
-    // Filter out rows that match the requestId and collect removed names
-    const rowsToKeep = [headers]; // Always keep the header row
+    // Find rows to delete (in reverse order to maintain indices)
+    const rowsToDelete = [];
     const removedNames = [];
-    let removedCount = 0;
+    const targetRequestId = String(requestId).trim();
 
     for (let i = 1; i < data.length; i++) { // Skip header row
-      const rowRequestId = String(data[i][requestIdCol]).trim();
-      if (rowRequestId === String(requestId).trim()) {
-        // This row should be removed
-        removedCount++;
+      const rowRequestId = String(data[i][requestIdCol] || '').trim();
+      if (rowRequestId === targetRequestId) {
+        rowsToDelete.push(i + 1); // Convert to 1-based sheet row number
         if (riderNameCol !== -1) {
-          const name = String(data[i][riderNameCol]).trim();
+          const name = String(data[i][riderNameCol] || '').trim();
           if (name) removedNames.push(name);
         }
-      } else {
-        // Keep this row
-        rowsToKeep.push(data[i]);
       }
     }
 
-    if (removedCount > 0) {
-      // Clear the sheet and rewrite with only the rows we want to keep
-      console.log(`🔄 Batch removing ${removedCount} assignments using full sheet rewrite`);
-      assignmentsSheet.clear();
-      
-      if (rowsToKeep.length > 1) { // More than just header
-        const range = assignmentsSheet.getRange(1, 1, rowsToKeep.length, headers.length);
-        range.setValues(rowsToKeep);
-      } else {
-        // Only header row remains
-        assignmentsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-      }
-      
-      console.log(`✅ Batch removed ${removedCount} existing assignments for request ${requestId}`);
-    } else {
+    if (rowsToDelete.length === 0) {
       console.log(`ℹ️ No existing assignments found for request ${requestId}`);
+      return [];
+    }
+
+    // Delete rows in reverse order to maintain correct indices
+    console.log(`🔄 SAFELY removing ${rowsToDelete.length} assignment rows for request ${requestId}`);
+    rowsToDelete.reverse().forEach(rowNumber => {
+      try {
+        assignmentsSheet.deleteRow(rowNumber);
+        console.log(`✅ Deleted row ${rowNumber}`);
+      } catch (error) {
+        console.error(`❌ Failed to delete row ${rowNumber}:`, error);
+        // Continue with other rows instead of failing completely
+      }
+    });
+    
+    console.log(`✅ SAFELY removed ${rowsToDelete.length} existing assignments for request ${requestId}`);
+
+    // Log successful removal
+    logAssignmentOperation('REMOVAL_COMPLETE', requestId, { 
+      removedCount: rowsToDelete.length,
+      removedRiders: removedNames.join(', ')
+    });
+
+    // Clear cache to ensure fresh data on next read
+    if (typeof dataCache !== 'undefined' && dataCache.clear) {
+      dataCache.clear('sheet_' + CONFIG.sheets.assignments);
     }
 
     if (removedNames.length > 0) {
@@ -4178,6 +4226,7 @@ function removeExistingAssignments(requestId) {
     return removedNames;
 
   } catch (error) {
+    console.error('❌ Error in SAFE removeExistingAssignments:', error);
     logError('Error removing existing assignments', error);
     throw new Error(`Failed to remove existing assignments: ${error.message}`);
   }
@@ -5239,5 +5288,402 @@ function cleanupOldAssignmentTriggers() {
     
   } catch (error) {
     logError('Error cleaning up assignment triggers', error);
+  }
+}
+
+/**
+ * Creates a backup of the assignments sheet data before making changes
+ * @return {object} Backup data object
+ */
+function createAssignmentsBackup() {
+  try {
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+    if (!assignmentsSheet) {
+      return { success: false, error: 'Assignments sheet not found' };
+    }
+
+    const data = assignmentsSheet.getDataRange().getValues();
+    const timestamp = new Date().toISOString();
+    
+    return {
+      success: true,
+      timestamp: timestamp,
+      data: data,
+      rowCount: data.length,
+      backup: JSON.stringify(data)
+    };
+  } catch (error) {
+    console.error('❌ Error creating assignments backup:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Monitors assignment operations and logs activity
+ * @param {string} operation - The operation being performed
+ * @param {string} requestId - The request ID involved
+ * @param {object} details - Additional details
+ */
+function logAssignmentOperation(operation, requestId, details = {}) {
+  try {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp: timestamp,
+      operation: operation,
+      requestId: requestId,
+      details: details,
+      user: getCurrentUser()?.email || 'unknown'
+    };
+    
+    console.log(`📊 ASSIGNMENT OPERATION: ${operation} for request ${requestId}`, logEntry);
+    
+    // Store in a log sheet if it exists
+    try {
+      const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignment_Logs');
+      if (logSheet) {
+        logSheet.appendRow([
+          timestamp,
+          operation,
+          requestId,
+          JSON.stringify(details),
+          logEntry.user
+        ]);
+      }
+    } catch (logError) {
+      // Log sheet doesn't exist or can't write - that's okay
+    }
+    
+  } catch (error) {
+    console.error('❌ Error logging assignment operation:', error);
+  }
+}
+
+/**
+ * Validates the assignments sheet integrity
+ * @return {object} Validation result
+ */
+function validateAssignmentsSheet() {
+  try {
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+    if (!assignmentsSheet) {
+      return { valid: false, error: 'Assignments sheet not found' };
+    }
+
+    const data = assignmentsSheet.getDataRange().getValues();
+    const issues = [];
+    
+    // Check if sheet has data
+    if (data.length === 0) {
+      issues.push('Sheet is completely empty');
+    } else if (data.length === 1) {
+      issues.push('Sheet only has headers, no data rows');
+    }
+    
+    // Check headers
+    if (data.length > 0) {
+      const headers = data[0];
+      const requiredColumns = [
+        CONFIG.columns.assignments.requestId,
+        CONFIG.columns.assignments.riderName,
+        CONFIG.columns.assignments.status
+      ];
+      
+      const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+      if (missingColumns.length > 0) {
+        issues.push(`Missing required columns: ${missingColumns.join(', ')}`);
+      }
+    }
+    
+    // Check for duplicate assignment IDs
+    if (data.length > 1) {
+      const assignmentIds = new Set();
+      const duplicates = [];
+      const idColIndex = data[0].indexOf(CONFIG.columns.assignments.id);
+      
+      if (idColIndex !== -1) {
+        for (let i = 1; i < data.length; i++) {
+          const id = data[i][idColIndex];
+          if (id && assignmentIds.has(id)) {
+            duplicates.push(id);
+          } else if (id) {
+            assignmentIds.add(id);
+          }
+        }
+        
+        if (duplicates.length > 0) {
+          issues.push(`Duplicate assignment IDs found: ${duplicates.join(', ')}`);
+        }
+      }
+    }
+    
+    return {
+      valid: issues.length === 0,
+      issues: issues,
+      rowCount: data.length,
+      dataRows: data.length - 1,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    return {
+      valid: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Comprehensive diagnostic function for assignment deletion issues
+ * Call this function to check for potential problems and get recommendations
+ * @return {object} Diagnostic report
+ */
+function diagnoseAssignmentDeletionIssues() {
+  try {
+    console.log('🔍 Starting comprehensive assignment deletion diagnosis...');
+    
+    const report = {
+      timestamp: new Date().toISOString(),
+      sheetStatus: {},
+      configurationStatus: {},
+      recentActivity: {},
+      recommendations: [],
+      issues: [],
+      warnings: []
+    };
+
+    // 1. Check sheet integrity
+    console.log('🔍 Checking assignments sheet integrity...');
+    const validation = validateAssignmentsSheet();
+    report.sheetStatus = validation;
+    
+    if (!validation.valid) {
+      report.issues.push('Assignments sheet integrity issues detected');
+      report.recommendations.push('Fix assignments sheet structure before making changes');
+    }
+
+    // 2. Check configuration
+    console.log('🔍 Checking configuration...');
+    const configIssues = [];
+    
+    if (!CONFIG?.sheets?.assignments) {
+      configIssues.push('CONFIG.sheets.assignments not defined');
+    }
+    
+    if (!CONFIG?.columns?.assignments?.requestId) {
+      configIssues.push('CONFIG.columns.assignments.requestId not defined');
+    }
+    
+    if (!CONFIG?.columns?.assignments?.riderName) {
+      configIssues.push('CONFIG.columns.assignments.riderName not defined');
+    }
+    
+    report.configurationStatus = {
+      valid: configIssues.length === 0,
+      issues: configIssues
+    };
+    
+    if (configIssues.length > 0) {
+      report.issues.push('Configuration issues detected');
+      report.recommendations.push('Review and fix CONFIG settings');
+    }
+
+    // 3. Check for potential data loss indicators
+    console.log('🔍 Checking for data loss indicators...');
+    try {
+      const assignmentsData = getAssignmentsData(false); // Force fresh data
+      const rowCount = assignmentsData?.data?.length || 0;
+      
+      report.sheetStatus.currentRowCount = rowCount;
+      
+      if (rowCount <= 1) {
+        report.warnings.push('Assignments sheet has no data rows (only headers or empty)');
+        report.recommendations.push('Check if assignments were accidentally deleted');
+      } else if (rowCount < 10) {
+        report.warnings.push(`Only ${rowCount - 1} assignment rows found - this seems low`);
+        report.recommendations.push('Verify if this is the expected number of assignments');
+      }
+      
+    } catch (error) {
+      report.issues.push(`Error reading assignments data: ${error.message}`);
+    }
+
+    // 4. Check recent assignment operations (if log sheet exists)
+    console.log('🔍 Checking recent assignment operations...');
+    try {
+      const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignment_Logs');
+      if (logSheet) {
+        const logData = logSheet.getDataRange().getValues();
+        const recentLogs = logData.slice(-20); // Last 20 entries
+        
+        const removalOperations = recentLogs.filter(row => 
+          row[1] && row[1].toString().includes('REMOVAL')
+        );
+        
+        report.recentActivity = {
+          totalLogEntries: logData.length,
+          recentEntries: recentLogs.length,
+          recentRemovals: removalOperations.length,
+          lastRemoval: removalOperations.length > 0 ? removalOperations[removalOperations.length - 1][0] : 'None'
+        };
+        
+        if (removalOperations.length > 5) {
+          report.warnings.push(`High number of recent removal operations: ${removalOperations.length}`);
+          report.recommendations.push('Review recent removal operations to ensure they were intentional');
+        }
+        
+      } else {
+        report.recentActivity = { message: 'No Assignment_Logs sheet found - consider creating one for monitoring' };
+        report.recommendations.push('Create Assignment_Logs sheet to monitor operations');
+      }
+    } catch (error) {
+      report.recentActivity = { error: error.message };
+    }
+
+    // 5. Check for common problematic patterns
+    console.log('🔍 Checking for problematic patterns...');
+    try {
+      const assignmentsData = getAssignmentsData(false);
+      if (assignmentsData?.data?.length > 1) {
+        const headers = assignmentsData.data[0];
+        const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
+        
+        if (requestIdCol !== -1) {
+          const emptyRequestIds = [];
+          const nullRequestIds = [];
+          
+          for (let i = 1; i < assignmentsData.data.length; i++) {
+            const requestId = assignmentsData.data[i][requestIdCol];
+            if (!requestId || requestId === '') {
+              emptyRequestIds.push(i + 1);
+            } else if (requestId === null || requestId === undefined) {
+              nullRequestIds.push(i + 1);
+            }
+          }
+          
+          if (emptyRequestIds.length > 0) {
+            report.warnings.push(`Found ${emptyRequestIds.length} assignments with empty request IDs at rows: ${emptyRequestIds.join(', ')}`);
+            report.recommendations.push('Fix or remove assignments with empty request IDs');
+          }
+          
+          if (nullRequestIds.length > 0) {
+            report.warnings.push(`Found ${nullRequestIds.length} assignments with null request IDs at rows: ${nullRequestIds.join(', ')}`);
+            report.recommendations.push('Fix or remove assignments with null request IDs');
+          }
+        }
+      }
+    } catch (error) {
+      report.issues.push(`Error checking for problematic patterns: ${error.message}`);
+    }
+
+    // 6. Generate overall assessment
+    if (report.issues.length === 0 && report.warnings.length === 0) {
+      report.overallStatus = 'HEALTHY';
+      report.message = 'No issues detected with assignment deletion functionality';
+    } else if (report.issues.length === 0) {
+      report.overallStatus = 'CAUTION';
+      report.message = 'Minor warnings detected - review recommendations';
+    } else {
+      report.overallStatus = 'CRITICAL';
+      report.message = 'Critical issues detected - immediate attention required';
+    }
+
+    console.log(`✅ Diagnosis complete. Status: ${report.overallStatus}`);
+    console.log('📊 Full report:', JSON.stringify(report, null, 2));
+    
+    return report;
+    
+  } catch (error) {
+    console.error('❌ Error during assignment deletion diagnosis:', error);
+    return {
+      timestamp: new Date().toISOString(),
+      overallStatus: 'ERROR',
+      error: error.message,
+      message: 'Failed to complete diagnosis'
+    };
+  }
+}
+
+/**
+ * Quick fix function for common assignment issues
+ * @return {object} Fix result
+ */
+function quickFixAssignmentIssues() {
+  try {
+    console.log('🔧 Starting quick fix for assignment issues...');
+    
+    const fixes = [];
+    const errors = [];
+    
+    // 1. Validate and fix sheet structure
+    try {
+      const validation = validateAssignmentsSheet();
+      if (!validation.valid) {
+        fixes.push('Sheet validation issues identified');
+        // Create assignments sheet if missing
+        if (validation.error && validation.error.includes('not found')) {
+          const sheet = getOrCreateSheet(CONFIG.sheets.assignments, [
+            CONFIG.columns.assignments.id,
+            CONFIG.columns.assignments.requestId,
+            CONFIG.columns.assignments.riderName,
+            CONFIG.columns.assignments.status,
+            CONFIG.columns.assignments.eventDate,
+            CONFIG.columns.assignments.startTime
+          ]);
+          fixes.push('Created missing assignments sheet');
+        }
+      }
+    } catch (error) {
+      errors.push(`Sheet validation fix failed: ${error.message}`);
+    }
+    
+    // 2. Create monitoring log sheet if missing
+    try {
+      const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignment_Logs');
+      if (!logSheet) {
+        const newLogSheet = getOrCreateSheet('Assignment_Logs', [
+          'Timestamp',
+          'Operation',
+          'Request ID',
+          'Details',
+          'User'
+        ]);
+        fixes.push('Created Assignment_Logs sheet for monitoring');
+      }
+    } catch (error) {
+      errors.push(`Log sheet creation failed: ${error.message}`);
+    }
+    
+    // 3. Clear any corrupted cache
+    try {
+      if (typeof dataCache !== 'undefined' && dataCache.clear) {
+        dataCache.clear('sheet_' + CONFIG.sheets.assignments);
+        fixes.push('Cleared assignments cache');
+      }
+    } catch (error) {
+      errors.push(`Cache clearing failed: ${error.message}`);
+    }
+    
+    const result = {
+      success: errors.length === 0,
+      timestamp: new Date().toISOString(),
+      fixesApplied: fixes,
+      errors: errors,
+      message: errors.length === 0 ? 
+        `Quick fix completed successfully. ${fixes.length} fixes applied.` :
+        `Quick fix completed with ${errors.length} errors. ${fixes.length} fixes applied.`
+    };
+    
+    console.log('✅ Quick fix result:', JSON.stringify(result, null, 2));
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error during quick fix:', error);
+    return {
+      success: false,
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      message: 'Quick fix failed'
+    };
   }
 }
