@@ -169,6 +169,45 @@ function sendIndividualNotification(requestId, riderName, type) {
 }
 
 /**
+ * Sends a provisional email notification to a rider before the assignment is saved.
+ * @param {string} requestId The request ID.
+ * @param {string} riderName The rider's full name.
+ * @return {{success:boolean,message:string}} Result object.
+ */
+function sendPreAssignmentEmail(requestId, riderName) {
+  try {
+    const request = getRequestDetails(requestId);
+    if (!request) {
+      return { success: false, message: 'Request not found' };
+    }
+
+    const ridersData = getRidersData();
+    const nameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
+    const emailIdx = ridersData.columnMap[CONFIG.columns.riders.email];
+    const riderRow = ridersData.data.find(r => r[nameIdx] === riderName);
+    if (!riderRow) {
+      return { success: false, message: 'Rider not found' };
+    }
+
+    const email = riderRow[emailIdx];
+    if (!email) {
+      return { success: false, message: 'No email for rider' };
+    }
+
+    const dateStr = formatDateForDisplay(request.eventDate);
+    const timeStr = formatTimeForDisplay(request.startTime);
+    const msg =
+      `You have been proposed for escort request ${request.id} on ${dateStr} at ${timeStr}.\n` +
+      `Start: ${request.startLocation || ''}${request.endLocation ? ' → ' + request.endLocation : ''}`;
+
+    return sendEmail(email, `Proposed Escort Assignment ${request.id}`, msg, msg);
+  } catch (err) {
+    logError('Error sending pre-assignment email', err);
+    return { success: false, message: err.message };
+  }
+}
+
+/**
  * Displays the notification status for all assignments related to a request.
  * @param {string} requestId The ID of the request.
  */
