@@ -576,6 +576,17 @@
             color: white;
         }
 
+        .notify-btn {
+            margin-left: 8px;
+            padding: 2px 6px;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .notify-btn.not-sent { background: #f8d7da; }
+        .notify-btn.sent { background: #d4edda; }
+
         @media (max-width: 1024px) {
             .assignments-layout {
                 grid-template-columns: 1fr;
@@ -716,6 +727,8 @@
     var selectedRequest = null;
     /** @type {Set<string>} */
     var selectedRiders = new Set(); // Stores names of selected riders
+    /** Map of rider name to whether pre-assignment email was sent */
+    var riderNotificationSent = {};
     var preselectedRequestId = null;
     var preselectAttempted = false; // Ensured this is the single global declaration
     /** Map of rider name to availability status */
@@ -1991,18 +2004,49 @@ function updateAssignedRidersList() {
     }
 
     var html = '<ul>' + Array.from(selectedRiders).map(function(name){
-        return '<li class="assigned-rider" data-rider-name="' + name.replace(/"/g,'&quot;') + '">' + name + '</li>';
+        var enc = name.replace(/"/g,'&quot;');
+        var sent = riderNotificationSent[name];
+        var btnClass = 'notify-btn ' + (sent ? 'sent' : 'not-sent');
+        return '<li class="assigned-rider" data-rider-name="' + enc + '">' +
+               name +
+               ' <button class="' + btnClass + '" onclick="sendPreNotify(\'' + enc + '\', event)">Notify</button></li>';
     }).join('') + '</ul>';
     listContainer.innerHTML = html;
 
     var items = listContainer.querySelectorAll('.assigned-rider');
     for (var i = 0; i < items.length; i++) {
         items[i].style.cursor = 'pointer';
-        items[i].addEventListener('click', function() {
+        items[i].addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('notify-btn')) return;
             var riderName = this.dataset.riderName;
             toggleRider(riderName);
         });
     }
+}
+
+function sendPreNotify(riderName, evt) {
+    if (evt) evt.stopPropagation();
+    if (!selectedRequest) {
+        showError('No request selected');
+        return;
+    }
+    showLoading('Sending email...');
+    google.script.run
+        .withSuccessHandler(function(result) {
+            hideLoading();
+            if (result.success) {
+                riderNotificationSent[riderName] = true;
+                updateAssignedRidersList();
+                showSuccess('Email sent to ' + riderName);
+            } else {
+                showError('Failed to send: ' + result.message);
+            }
+        })
+        .withFailureHandler(function(error) {
+            hideLoading();
+            showError('Error: ' + error.message);
+        })
+        .sendPreAssignmentEmail(selectedRequest.id, riderName);
 }
 
 
