@@ -1014,7 +1014,6 @@ function formatRequestDetails(details) {
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.escortFee) parts.push(`💰 Escort Fee: ${details.escortFee}`);
-  if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
   if (details.notes) parts.push(`Notes: ${details.notes}`);
   if (details.courtesy) {
     if (String(details.courtesy).toLowerCase() === 'yes') {
@@ -1553,7 +1552,6 @@ function getRequestDetailsForNotification(requestId) {
           secondaryLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || '',
           ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
-          requirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
           status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
