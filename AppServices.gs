@@ -655,8 +655,27 @@ function getRiderNotifications(riderId) {
 function getPageDataForRiders(user) { // Added user parameter
   try {
     console.log('🔄 Loading riders page data...');
-    
-    // const user = getCurrentUser(); // Removed: user is now a parameter
+
+    // Support calls without a user parameter
+    if (!user) {
+      try {
+        user = getCurrentUser();
+      } catch (e) {
+        console.warn('⚠️ getCurrentUser failed:', e);
+      }
+    }
+
+    if (!user || !user.email) {
+      const auth = (typeof authenticateAndAuthorizeUser === 'function')
+        ? authenticateAndAuthorizeUser()
+        : { success: false };
+      if (auth && auth.success) {
+        user = auth.user;
+      } else {
+        return { success: false, error: 'Authentication required' };
+      }
+    }
+
     const riders = getRiders(); // This should work now with our previous fixes
     
     // Calculate stats using the same filtered data
