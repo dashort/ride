@@ -753,11 +753,6 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="editSpecialRequirements">Special Requirements</label>
-                        <textarea id="editSpecialRequirements" placeholder="Enter any special requirements or notes..."></textarea>
-                    </div>
-                    
-                    <div class="form-group">
                         <label for="editNotes">Notes</label>
                         <textarea id="editNotes" placeholder="Additional notes..."></textarea>
                     </div>
@@ -881,7 +876,7 @@
      * @property {string} [escortFee]
      * @property {string} status
      * @property {string} [courtesy] - 'Yes' or 'No'
-     * @property {string} [specialRequirements]
+    
      * @property {string} [notes]
      * @property {string} [ridersAssigned] - Comma-separated string of rider names.
      * @property {string} [lastUpdated] - ISO DateTime string.
@@ -1489,7 +1484,7 @@
         document.getElementById('editEscortFee').value = request.escortFee || '';
         document.getElementById('editStatus').value = request.status || 'New';
         document.getElementById('editCourtesy').checked = (request.courtesy === 'Yes' || String(request.courtesy).toLowerCase() === 'true');
-        document.getElementById('editSpecialRequirements').value = request.specialRequirements || '';
+
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
@@ -1587,7 +1582,6 @@
             escortFee: document.getElementById('editEscortFee').value,
             status: document.getElementById('editStatus').value,
             courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
-            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
             notes: document.getElementById('editNotes').value.trim()
         };
 
@@ -1655,7 +1649,6 @@
             escortFee: document.getElementById('editEscortFee').value,
             status: 'Completed',
             courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
-            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
             notes: document.getElementById('editNotes').value.trim()
         };
 
