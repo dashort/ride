@@ -549,6 +549,18 @@
                 📊 Export CSV
             </button>
             
+            <button onclick="debugRidersLoad()" class="btn btn-secondary">
+                🔍 Debug Load
+            </button>
+            
+            <button onclick="fixRidersData()" class="btn btn-success">
+                🔧 Fix Data
+            </button>
+            
+            <button onclick="testSimpleLoad()" class="btn btn-info">
+                🚀 Simple Load
+            </button>
+            
             <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">
                 📋 Bulk Actions
             </button>
@@ -765,6 +777,114 @@
         } else {
             console.log('⚠️ Google Apps Script not available');
             handleRidersDataFailure({ message: "Google Apps Script not available." });
+        }
+    }
+
+    function debugRidersLoad() {
+        console.log('🔍 Running debug riders load...');
+        showLoading('Running diagnostics...');
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    console.log('🔍 Debug result:', result);
+                    
+                    if (result.success) {
+                        showSuccess('Debug successful! Check console for details.');
+                        console.log('✅ Riders found:', result.riders.length);
+                        console.log('📊 Stats:', result.stats);
+                    } else {
+                        showError('Debug failed: ' + result.error);
+                        console.log('❌ Debug error:', result.error);
+                        if (result.diagnostic) {
+                            console.log('📋 Diagnostic info:', result.diagnostic);
+                        }
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    console.error('❌ Debug function failed:', error);
+                    showError('Debug function failed: ' + error.message);
+                })
+                .debugGetPageDataForRiders();
+        } else {
+            hideLoading();
+            showError('Google Apps Script not available for debugging');
+        }
+    }
+
+    function fixRidersData() {
+        console.log('🔧 Running riders data fix...');
+        showLoading('Fixing riders data...');
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    console.log('🔧 Fix result:', result);
+                    
+                    if (result.success) {
+                        showSuccess('Data fixed! Found ' + result.ridersCount + ' riders. Reloading page...');
+                        // Reload the page after a short delay
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 2000);
+                    } else {
+                        showError('Fix failed: ' + result.error);
+                        console.log('❌ Fix error:', result.error);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    console.error('❌ Fix function failed:', error);
+                    showError('Fix function failed: ' + error.message);
+                })
+                .fixRidersDataIssue();
+        } else {
+            hideLoading();
+            showError('Google Apps Script not available for fixing');
+        }
+    }
+
+    function testSimpleLoad() {
+        console.log('🚀 Testing simple riders load...');
+        showLoading('Testing simple load...');
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    hideLoading();
+                    console.log('🚀 Simple load result:', result);
+                    
+                    if (result.success) {
+                        showSuccess('Simple load successful! Found ' + result.riders.length + ' riders.');
+                        
+                        // Try to update the page with the loaded data
+                        app.user = result.user;
+                        app.riders = result.riders || [];
+                        app.filteredRiders = [...app.riders];
+                        
+                        updateUserInfo(result.user);
+                        updateStats(result.stats);
+                        renderRidersTable(app.filteredRiders);
+                        showTable();
+                        
+                        console.log('✅ Page updated with simple load data');
+                    } else {
+                        showError('Simple load failed: ' + result.error);
+                        console.log('❌ Simple load error:', result.error);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    hideLoading();
+                    console.error('❌ Simple load function failed:', error);
+                    showError('Simple load function failed: ' + error.message);
+                })
+                .getPageDataForRidersSimple();
+        } else {
+            hideLoading();
+            showError('Google Apps Script not available for simple load test');
         }
     }
 

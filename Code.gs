@@ -796,7 +796,6 @@ function diagnoseAuthenticationIssue() {
     return { error: error.message };
   }
 }
-
 /**
  * EMERGENCY AUTHENTICATION DEBUG FUNCTIONS
  * Add these functions to help diagnose and fix the permission issues
@@ -1419,7 +1418,7 @@ function showActualWebAppOutput() {
     console.log('\nDeployment check:');
     console.log('- If you see navigation HTML above, the injection worked');
     console.log('- If not, there may be a deployment issue');
-    console.log('- Check your web app deployment settings');
+    console.log('- Check your browser console for any errors');
     
   } catch (error) {
     console.error('❌ Error showing output:', error);
@@ -2394,7 +2393,6 @@ function extractRequestIdFromSubject(subject) {
     return '';
   }
 }
-
 /**
  * Log email responses to tracking sheet
  */
@@ -3109,7 +3107,6 @@ function getRealisticEscortHours(assignment, columnMap) {
   // Default fallback
   return roundToQuarterHour(realisticEstimates['Other']);
 }
-
 /**
  * Debug function to diagnose assignment data issues in reports
  * Run this function to check what data is available for rider hours calculation
@@ -3307,7 +3304,7 @@ function testActualCompletionReportsFix() {
       error: error.message,
       message: '❌ ERROR: Test failed - check logs for details'
     };
-    }
+  }
 }
 
 /**
@@ -3391,7 +3388,7 @@ function setupActualCompletionTimeColumns() {
       '',
       '📊 REPORTING: Reports will use actual data when available, estimates when not',
       '   - Funeral: 0.5 hours estimate',
-      '   - Wedding: 2.5 hours estimate', 
+      '   - Wedding: 2.5 hours estimate',
       '   - VIP/Float Movement: 4.0 hours estimate'
     ];
     
@@ -3887,9 +3884,6 @@ function getPageDataForRiders() {
     };
   }
 }
-
-
-
 /**
  * Get current user information
  */
@@ -5319,8 +5313,6 @@ function addNavigationToContentSafe(content, navigationHtml) {
     return content;
   }
 }
-
-
 /**
  * Create a proper sign-in page that actually works
  */
@@ -6903,13 +6895,10 @@ function createAuthMappingPage() {
     .setTitle('Authentication Setup - Escort Management')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
-
 // 3. Check your dashboard navigation/buttons to ensure they link to the correct page:
-
 // Dashboard should have buttons like this:
 // <a href="?page=auth-setup" class="btn btn-primary">🔐 Auth Setup</a>
 // <a href="?page=user-management" class="btn btn-primary">👥 User Management</a>
-
 // 4. Testing function to verify the routing:
 
 function testAuthSetupRouting() {
