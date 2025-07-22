@@ -3798,25 +3798,23 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       removeExistingAssignments(requestId);
     }
 
-    // Create new assignments
+    // Create new assignments using batch operation
     const assignmentResults = [];
     const assignedRiderNames = [];
+    const assignmentRows = [];
 
+    console.log(`📝 Preparing ${selectedRiders.length} assignments for batch creation`);
+    
+    // First, prepare all assignment rows in memory
     for (let i = 0; i < selectedRiders.length; i++) {
       const rider = selectedRiders[i];
-      console.log(`📝 Creating assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
+      console.log(`📝 Preparing assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
       
       try {
         const assignmentId = generateAssignmentId();
         const assignmentRow = buildAssignmentRow(assignmentId, requestId, rider, requestDetails);
         
-        // Add the assignment to the sheet
-        const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
-        if (!assignmentsSheet) {
-          throw new Error('Assignments sheet not found');
-        }
-        
-        assignmentsSheet.appendRow(assignmentRow);
+        assignmentRows.push(assignmentRow);
         assignedRiderNames.push(rider.name);
         
         assignmentResults.push({
@@ -3825,10 +3823,10 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
           status: 'success'
         });
         
-        console.log(`✅ Created assignment ${assignmentId} for rider ${rider.name}`);
+        console.log(`✅ Prepared assignment ${assignmentId} for rider ${rider.name}`);
         
       } catch (riderError) {
-        console.error(`❌ Failed to create assignment for rider ${rider.name}:`, riderError);
+        console.error(`❌ Failed to prepare assignment for rider ${rider.name}:`, riderError);
         assignmentResults.push({
           riderName: rider.name,
           status: 'failed',
@@ -3837,19 +3835,56 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       }
     }
 
-    // Update the request with assigned rider names
-    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
-
-    if (usePriority !== false) {
-      updateAssignmentRotation(assignedRiderNames);
+    // Now batch insert all assignments at once
+    if (assignmentRows.length > 0) {
+      try {
+        const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+        if (!assignmentsSheet) {
+          throw new Error('Assignments sheet not found');
+        }
+        
+        console.log(`🔄 Batch inserting ${assignmentRows.length} assignments...`);
+        
+        // Get the range starting from the next available row
+        const lastRow = assignmentsSheet.getLastRow();
+        const startRow = lastRow + 1;
+        const numCols = assignmentRows[0].length;
+        
+        const range = assignmentsSheet.getRange(startRow, 1, assignmentRows.length, numCols);
+        range.setValues(assignmentRows);
+        
+        console.log(`✅ Successfully batch inserted ${assignmentRows.length} assignments`);
+        
+      } catch (batchError) {
+        console.error(`❌ Batch insert failed, falling back to individual inserts:`, batchError);
+        
+        // Fallback to individual inserts if batch fails
+        const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
+        for (let i = 0; i < assignmentRows.length; i++) {
+          try {
+            assignmentsSheet.appendRow(assignmentRows[i]);
+          } catch (individualError) {
+            console.error(`❌ Failed to insert assignment ${i + 1}:`, individualError);
+            // Mark this assignment as failed
+            const failedResult = assignmentResults.find(r => r.status === 'success' && assignmentResults.indexOf(r) === i);
+            if (failedResult) {
+              failedResult.status = 'failed';
+              failedResult.error = individualError.message;
+            }
+          }
+        }
+      }
     }
+
+    // Update the request with assigned rider names (critical operation)
+    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
 
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
-    logActivity(`Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
+    console.log(`✅ Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
 
-    // Return immediately to prevent timeout - defer heavy operations
+    // Return immediately to prevent timeout - defer non-critical operations
     const response = {
       success: true,
       message: `Successfully assigned ${successCount} rider(s) to request ${requestId}`,
@@ -3859,14 +3894,45 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       failCount: failCount
     };
 
-    // Schedule post-assignment cleanup in background to avoid blocking UI
+    // Defer rotation updates and other non-critical operations to background
     try {
-      if (typeof executePostAssignmentCleanup === 'function') {
-        executePostAssignmentCleanup(requestId, assignedRiderNames);
+      console.log('🔄 Scheduling background operations...');
+      
+      // Use a time-driven trigger to execute background operations
+      if (assignedRiderNames.length > 0) {
+        // Store data for background processing
+        const backgroundData = {
+          requestId: requestId,
+          assignedRiderNames: assignedRiderNames,
+          usePriority: usePriority,
+          timestamp: new Date().getTime()
+        };
+        
+        PropertiesService.getScriptProperties().setProperty(
+          'BACKGROUND_ASSIGNMENT_DATA_' + requestId, 
+          JSON.stringify(backgroundData)
+        );
+        
+        // Create a one-time trigger for background processing
+        ScriptApp.newTrigger('executeBackgroundAssignmentProcessing')
+          .timeBased()
+          .after(1000) // 1 second delay
+          .create();
       }
-    } catch (cleanupError) {
-      // Don't let cleanup errors affect the main response
-      logError('Post-assignment cleanup failed but assignment was successful', cleanupError);
+      
+    } catch (backgroundError) {
+      // Don't let background setup errors affect the main response
+      logError('Background processing setup failed but assignment was successful', backgroundError);
+      
+      // Fallback: try to execute critical operations immediately
+      try {
+        if (usePriority !== false && assignedRiderNames.length > 0) {
+          updateAssignmentRotation(assignedRiderNames);
+        }
+        logActivity(`Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
+      } catch (fallbackError) {
+        logError('Fallback operations also failed', fallbackError);
+      }
     }
 
     return response;
@@ -4052,6 +4118,7 @@ function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
  */
 function removeExistingAssignments(requestId) {
   try {
+    console.log(`🗑️ Starting batch removal of assignments for request ${requestId}`);
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
     if (!assignmentsSheet) {
       throw new Error('Assignments sheet not found');
@@ -4066,25 +4133,43 @@ function removeExistingAssignments(requestId) {
       throw new Error('Request ID column not found in assignments sheet');
     }
 
-    // Find rows to delete (in reverse order to avoid index shifting)
-    const rowsToDelete = [];
+    // Filter out rows that match the requestId and collect removed names
+    const rowsToKeep = [headers]; // Always keep the header row
     const removedNames = [];
-    for (let i = data.length - 1; i >= 1; i--) { // Start from bottom, skip header
-      if (String(data[i][requestIdCol]).trim() === String(requestId).trim()) {
-        rowsToDelete.push(i + 1); // Convert to 1-based row number
+    let removedCount = 0;
+
+    for (let i = 1; i < data.length; i++) { // Skip header row
+      const rowRequestId = String(data[i][requestIdCol]).trim();
+      if (rowRequestId === String(requestId).trim()) {
+        // This row should be removed
+        removedCount++;
         if (riderNameCol !== -1) {
           const name = String(data[i][riderNameCol]).trim();
           if (name) removedNames.push(name);
         }
+      } else {
+        // Keep this row
+        rowsToKeep.push(data[i]);
       }
     }
 
-    // Delete the rows
-    for (const rowNum of rowsToDelete) {
-      assignmentsSheet.deleteRow(rowNum);
+    if (removedCount > 0) {
+      // Clear the sheet and rewrite with only the rows we want to keep
+      console.log(`🔄 Batch removing ${removedCount} assignments using full sheet rewrite`);
+      assignmentsSheet.clear();
+      
+      if (rowsToKeep.length > 1) { // More than just header
+        const range = assignmentsSheet.getRange(1, 1, rowsToKeep.length, headers.length);
+        range.setValues(rowsToKeep);
+      } else {
+        // Only header row remains
+        assignmentsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      }
+      
+      console.log(`✅ Batch removed ${removedCount} existing assignments for request ${requestId}`);
+    } else {
+      console.log(`ℹ️ No existing assignments found for request ${requestId}`);
     }
-
-    console.log(`🗑️ Removed ${rowsToDelete.length} existing assignments for request ${requestId}`);
 
     if (removedNames.length > 0) {
       updateRotationOnUnassign(removedNames);
@@ -5051,5 +5136,108 @@ function executePostAssignmentCleanup(requestId, assignedRiderNames) {
     
   } catch (error) {
     logError('Error in executePostAssignmentCleanup', error);
+  }
+}
+
+/**
+ * Executes background operations that were deferred during assignment processing
+ * to improve the user experience by returning the assignment response faster.
+ * This function is triggered after a short delay to handle non-critical operations.
+ */
+function executeBackgroundAssignmentProcessing() {
+  try {
+    console.log('🔄 Starting background assignment processing...');
+    
+    // Get all pending background data
+    const properties = PropertiesService.getScriptProperties();
+    const allProperties = properties.getProperties();
+    
+    let processedCount = 0;
+    const maxAge = 5 * 60 * 1000; // 5 minutes max age
+    const now = new Date().getTime();
+    
+    // Process all pending background assignment data
+    for (const [key, value] of Object.entries(allProperties)) {
+      if (key.startsWith('BACKGROUND_ASSIGNMENT_DATA_')) {
+        try {
+          const backgroundData = JSON.parse(value);
+          const age = now - backgroundData.timestamp;
+          
+          if (age > maxAge) {
+            // Too old, skip and clean up
+            properties.deleteProperty(key);
+            console.log(`⏰ Skipped expired background data for ${backgroundData.requestId}`);
+            continue;
+          }
+          
+          console.log(`🔄 Processing background operations for request ${backgroundData.requestId}`);
+          
+          // Execute the deferred operations
+          if (backgroundData.usePriority !== false && backgroundData.assignedRiderNames.length > 0) {
+            updateAssignmentRotation(backgroundData.assignedRiderNames);
+            console.log(`✅ Updated rotation for ${backgroundData.assignedRiderNames.length} riders`);
+          }
+          
+          // Log the activity
+          logActivity(`Assignment process completed for ${backgroundData.requestId}: riders assigned successfully`);
+          
+          // Update rider assignment statistics
+          if (backgroundData.assignedRiderNames.length > 0) {
+            for (const riderName of backgroundData.assignedRiderNames) {
+              try {
+                updateRiderAssignmentStats(riderName);
+              } catch (statsError) {
+                logError(`Failed to update stats for rider ${riderName}`, statsError);
+              }
+            }
+            console.log(`📊 Updated assignment statistics for ${backgroundData.assignedRiderNames.length} riders`);
+          }
+          
+          // Clean up the processed data
+          properties.deleteProperty(key);
+          processedCount++;
+          
+          console.log(`✅ Completed background processing for request ${backgroundData.requestId}`);
+          
+        } catch (dataError) {
+          logError(`Error processing background assignment data for ${key}`, dataError);
+          // Clean up invalid data
+          properties.deleteProperty(key);
+        }
+      }
+    }
+    
+    console.log(`🏁 Background assignment processing completed. Processed ${processedCount} requests.`);
+    
+    // Clean up old triggers to prevent accumulation
+    cleanupOldAssignmentTriggers();
+    
+  } catch (error) {
+    logError('Error in executeBackgroundAssignmentProcessing', error);
+  }
+}
+
+/**
+ * Cleans up old assignment processing triggers to prevent accumulation.
+ */
+function cleanupOldAssignmentTriggers() {
+  try {
+    const triggers = ScriptApp.getProjectTriggers();
+    let cleanedCount = 0;
+    
+    for (const trigger of triggers) {
+      if (trigger.getHandlerFunction() === 'executeBackgroundAssignmentProcessing') {
+        // Delete the trigger since it's already been executed
+        ScriptApp.deleteTrigger(trigger);
+        cleanedCount++;
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      console.log(`🧹 Cleaned up ${cleanedCount} old assignment processing triggers`);
+    }
+    
+  } catch (error) {
+    logError('Error cleaning up assignment triggers', error);
   }
 }
