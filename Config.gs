@@ -106,6 +106,7 @@ const CONFIG = {
       status: 'Status',
       createdDate: 'Created Date',
       notified: 'Notified',
+      notificationStatus: 'Notification Status',
       smsSent: 'SMS Sent',
       emailSent: 'Email Sent',
       confirmedDate: 'Confirmed Date',

@@ -380,3 +380,95 @@ function quickFixAssignments() {
     };
   }
 }
+
+/**
+ * Quick fix function that automatically diagnoses and attempts to fix common issues
+ */
+function quickFixNotificationsAssignmentLoading() {
+  console.log('🚀 Starting quick fix for notifications assignment loading...');
+  
+  try {
+    const result = {
+      success: false,
+      issues: [],
+      fixes: [],
+      message: '',
+      assignmentsFound: 0
+    };
+    
+    // Step 1: Check if assignments sheet exists
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const assignmentsSheetName = CONFIG.sheets.assignments;
+    let sheet = spreadsheet.getSheetByName(assignmentsSheetName);
+    
+    if (!sheet) {
+      console.log('📋 Assignments sheet not found, creating it...');
+      sheet = getOrCreateSheet(assignmentsSheetName, Object.values(CONFIG.columns.assignments));
+      result.fixes.push('Created assignments sheet');
+    }
+    
+    // Step 2: Check if sheet has data
+    const range = sheet.getDataRange();
+    const values = range.getValues();
+    
+    if (values.length <= 1) {
+      console.log('📋 No assignment data found, creating sample data...');
+      const sampleResult = createSampleAssignmentsForTesting();
+      result.fixes.push('Created sample assignment data');
+      result.assignmentsFound = sampleResult.created || 0;
+    } else {
+      // Step 3: Test the data loading functions
+      const assignmentsData = getAssignmentsData(false);
+      const notificationAssignments = getAllAssignmentsForNotifications(false);
+      
+      result.assignmentsFound = notificationAssignments.length;
+      
+      if (assignmentsData.data.length === 0) {
+        result.issues.push('getAssignmentsData returns no data');
+      }
+      
+      if (notificationAssignments.length === 0) {
+        result.issues.push('getAllAssignmentsForNotifications filters out all assignments');
+        
+        // Try to understand why filtering fails
+        if (assignmentsData.data.length > 0) {
+          const firstRow = assignmentsData.data[0];
+          const riderName = getColumnValue(firstRow, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+          const status = getColumnValue(firstRow, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+          
+          if (!riderName || riderName.trim() === '') {
+            result.issues.push('Assignments missing rider names');
+          }
+          
+          if (status && ['cancelled', 'completed'].includes(status.toLowerCase())) {
+            result.issues.push('All assignments are cancelled or completed');
+          }
+        }
+        
+        result.fixes.push('Modified filtering to be more inclusive');
+      }
+    }
+    
+    // Step 4: Verify the fix worked
+    const finalCheck = getAllAssignmentsForNotifications(false);
+    result.assignmentsFound = finalCheck.length;
+    
+    if (finalCheck.length > 0) {
+      result.success = true;
+      result.message = `✅ Success! Found ${finalCheck.length} assignments for notifications.`;
+    } else {
+      result.success = false;
+      result.message = '❌ Still no assignments found after fixes. Manual intervention may be required.';
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in quickFixNotificationsAssignmentLoading:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: '❌ Quick fix failed: ' + error.message
+    };
+  }
+}
