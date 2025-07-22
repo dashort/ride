@@ -588,26 +588,8 @@
             <div class="bulk-actions">
                 <div class="bulk-title">📨 Bulk Notification Actions</div>
                 <div class="bulk-buttons">
-                    <button class="btn-bulk btn-sms" onclick="sendBulkNotifications('SMS', 'all')">
-                        📱 Send SMS to All Assignments
-                    </button>
-                    <button class="btn-bulk btn-email" onclick="sendBulkNotifications('Email', 'all')">
-                        📧 Send Email to All Assignments
-                    </button>
-                    <button class="btn-bulk btn-both" onclick="sendBulkNotifications('Both', 'today')">
-                        📨 Notify Today's Assignments
-                    </button>
-                    <button class="btn-bulk btn-refresh" onclick="refreshNotifications()">
-                        🔄 Refresh Data
-                    </button>
-                    <button class="btn-bulk" onclick="testDataLoading()" style="background: #9b59b6; color: white;">
-                        🧪 Test Data
-                    </button>
-                    <button class="btn-bulk" onclick="createSampleAssignments()" style="background: #f39c12; color: white;">
-                        ➕ Create Sample Assignments
-                    </button>
-                    <button class="btn-bulk" onclick="runManualAssignmentFix()" style="background: #e74c3c; color: white;">
-                        🔧 Fix Assignment Loading
+                    <button class="btn-bulk btn-both" onclick="sendBulkNotifications('Both', 'today_unsent')">
+                        📨 Notify Today's Unsent
                     </button>
                 </div>
             </div>
@@ -1686,6 +1668,15 @@ function convertAssignmentsToNotificationFormat(assignments) {
                     const today = new Date().toDateString();
                     targetAssignments = app.assignments.filter(a => new Date(a.eventDate).toDateString() === today);
                     description = "today's assignments";
+                    break;
+                case 'today_unsent':
+                    const todayDate = new Date().toDateString();
+                    targetAssignments = app.assignments.filter(a => {
+                        const isToday = new Date(a.eventDate).toDateString() === todayDate;
+                        const isUnsent = !a.notificationStatus || a.notificationStatus === 'none';
+                        return isToday && isUnsent;
+                    });
+                    description = "today's unsent assignments";
                     break;
             }
 
