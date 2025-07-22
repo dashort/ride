@@ -1393,12 +1393,16 @@ function handleRidersDataSuccess(data) {
   
   if (data && data.success) {
     console.log('✅ Riders data loaded:', data);
-    app.user = data.user;
-    app.riders = data.riders || [];
+    const riders = data.riders || (data.data && data.data.riders) || [];
+    const user = data.user || (data.data && data.data.user) || {};
+    const stats = data.stats || (data.data && data.data.stats) || {};
+
+    app.user = user;
+    app.riders = riders;
     app.filteredRiders = [...app.riders]; // Initialize filtered riders
-    
-    updateUserInfo(data.user);
-    updateStats(data.stats);
+
+    updateUserInfo(user);
+    updateStats(stats);
     renderRidersTable(app.filteredRiders); // Use filtered riders
     showTable();
     fetchAssignmentCountsForRiders(app.filteredRiders);
