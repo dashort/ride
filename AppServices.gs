@@ -3161,72 +3161,116 @@ function testNotificationsData() {
  */
 function getAllAssignmentsForNotifications(useCache = true) {
   try {
-    console.log('📋 Getting all assignments for notifications...');
+    console.log('📋 [FIXED] Getting all assignments for notifications...');
 
     const assignmentsData = getAssignmentsData(useCache);
-    if (!assignmentsData || !assignmentsData.data) {
-      console.log('⚠️ No assignments data found');
+    if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length <= 1) {
+      console.log('⚠️ No assignments data found or only headers');
       return [];
     }
     
-    console.log(`📊 Raw assignments data: ${assignmentsData.data.length} rows`);
-    console.log('📊 Column map:', assignmentsData.columnMap);
-    console.log('📊 First few headers:', assignmentsData.data[0] ? assignmentsData.data[0].slice(0, 5) : 'No data');
+    console.log(`📊 Processing ${assignmentsData.data.length - 1} assignment rows`);
     
     const columnMap = assignmentsData.columnMap;
     const assignments = [];
     
-    assignmentsData.data.forEach((row, index) => {
+    // Get rider contact info for enrichment
+    const ridersData = getRidersData();
+    const riderMap = {};
+    
+    if (ridersData && ridersData.data && ridersData.data.length > 0) {
+      ridersData.data.forEach(riderRow => {
+        const name = getColumnValue(riderRow, ridersData.columnMap, CONFIG.columns.riders.name);
+        if (name && name.trim()) {
+          riderMap[name.trim()] = {
+            phone: getColumnValue(riderRow, ridersData.columnMap, CONFIG.columns.riders.phone) || 'N/A',
+            email: getColumnValue(riderRow, ridersData.columnMap, CONFIG.columns.riders.email) || 'N/A',
+            carrier: getColumnValue(riderRow, ridersData.columnMap, CONFIG.columns.riders.carrier) || 'N/A'
+          };
+        }
+      });
+    }
+    
+    // Process each assignment row (skip header)
+    for (let i = 1; i < assignmentsData.data.length; i++) {
+      const row = assignmentsData.data[i];
+      
       try {
-        const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
-        const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
         const requestId = getColumnValue(row, columnMap, CONFIG.columns.assignments.requestId);
         const assignmentId = getColumnValue(row, columnMap, CONFIG.columns.assignments.id);
+        const riderName = getColumnValue(row, columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(row, columnMap, CONFIG.columns.assignments.status);
         
-        // Include all assignments for notifications page - users may want to notify about various statuses
-        // Only filter out completely empty rows
-        if (requestId || assignmentId || riderName || status) {
+        // Very inclusive filtering - include if ANY important field has data
+        const hasData = !!(requestId || assignmentId || (riderName && riderName.trim()) || status);
+        
+        if (hasData) {
+          const cleanRiderName = riderName ? riderName.trim() : '';
+          const riderInfo = cleanRiderName ? (riderMap[cleanRiderName] || { phone: 'N/A', email: 'N/A', carrier: 'N/A' }) : { phone: 'N/A', email: 'N/A', carrier: 'N/A' };
+          
+          // Determine notification status
+          const smsSent = getColumnValue(row, columnMap, CONFIG.columns.assignments.smsSent);
+          const emailSent = getColumnValue(row, columnMap, CONFIG.columns.assignments.emailSent);
+          const notified = getColumnValue(row, columnMap, CONFIG.columns.assignments.notified);
+          
+          let notificationStatus = 'pending';
+          let lastNotified = null;
+          
+          if (smsSent instanceof Date && emailSent instanceof Date) {
+            notificationStatus = 'both_sent';
+            lastNotified = smsSent > emailSent ? smsSent.toISOString() : emailSent.toISOString();
+          } else if (smsSent instanceof Date) {
+            notificationStatus = 'sms_sent';
+            lastNotified = smsSent.toISOString();
+          } else if (emailSent instanceof Date) {
+            notificationStatus = 'email_sent';
+            lastNotified = emailSent.toISOString();
+          } else if (notified instanceof Date) {
+            notificationStatus = 'notified';
+            lastNotified = notified.toISOString();
+          }
           
           const assignment = {
-            id: assignmentId || `ASG-${index + 1}`,
+            id: assignmentId || `ASG-${String(i).padStart(4, '0')}`,
             requestId: requestId || 'Unknown',
-            riderName: riderName || 'Unassigned',
+            riderName: cleanRiderName || 'Unassigned',
+            riderPhone: riderInfo.phone,
+            riderEmail: riderInfo.email,
+            riderCarrier: riderInfo.carrier,
             jpNumber: getColumnValue(row, columnMap, CONFIG.columns.assignments.jpNumber) || '',
-            eventDate: getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate) || '',
-            eventTime: getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime) || '',
-            startLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation) || '',
+            eventDate: formatDateForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.eventDate)) || 'No Date',
+            startTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.startTime)) || 'No Time',
+            endTime: formatTimeForDisplay(getColumnValue(row, columnMap, CONFIG.columns.assignments.endTime)) || '',
+            startLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.startLocation) || 'Location TBD',
             endLocation: getColumnValue(row, columnMap, CONFIG.columns.assignments.endLocation) || '',
-            status: status,
-            createdDate: getColumnValue(row, columnMap, CONFIG.columns.assignments.createdDate) || '',
-            notificationStatus: getColumnValue(row, columnMap, CONFIG.columns.assignments.notificationStatus) || 'pending',
-            smsSent: getColumnValue(row, columnMap, CONFIG.columns.assignments.smsSent) || null,
-            emailSent: getColumnValue(row, columnMap, CONFIG.columns.assignments.emailSent) || null,
-            notified: getColumnValue(row, columnMap, CONFIG.columns.assignments.notified) || null
+            status: status || 'Unknown',
+            notificationStatus: notificationStatus,
+            lastNotified: lastNotified,
+            createdDate: getColumnValue(row, columnMap, CONFIG.columns.assignments.createdDate) || ''
           };
           
           assignments.push(assignment);
         }
+        
       } catch (rowError) {
-        console.log(`⚠️ Error processing assignment row ${index}:`, rowError);
+        console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
       }
-    });
+    }
     
-    console.log(`✅ Found ${assignments.length} assignments for notifications out of ${assignmentsData.data.length - 1} data rows`);
+    console.log(`✅ [FIXED] Found ${assignments.length} assignments for notifications`);
     
+    // Debug output if no assignments found
     if (assignments.length === 0 && assignmentsData.data.length > 1) {
-      console.log('🔍 No assignments passed filtering. Checking first data row:');
-      const firstRow = assignmentsData.data[1]; // Skip header row
-      console.log('🔍 First data row:', firstRow);
-      console.log('🔍 Rider name value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.riderName));
-      console.log('🔍 Status value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.status));
-      console.log('🔍 Request ID value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.requestId));
-      console.log('🔍 Assignment ID value:', getColumnValue(firstRow, columnMap, CONFIG.columns.assignments.id));
+      console.log('🔍 No assignments found. Debugging first row:');
+      const firstRow = assignmentsData.data[1];
+      console.log('🔍 Row data:', firstRow.slice(0, 10));
+      console.log('🔍 Column map keys:', Object.keys(columnMap));
     }
     
     return assignments;
     
   } catch (error) {
-    console.error('❌ Error getting assignments for notifications:', error);
+    console.error('❌ Error in getAllAssignmentsForNotifications:', error);
     return [];
   }
 }
