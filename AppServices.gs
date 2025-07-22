@@ -2922,7 +2922,7 @@ function getPageDataForNotifications(user) {
     
     // Get all assignments for notifications
     try {
-      result.assignments = getAllAssignmentsForNotifications();
+      result.assignments = getAllAssignmentsForNotifications(false);
       console.log(`✅ Loaded ${result.assignments.length} assignments for notifications`);
     } catch (assignmentsError) {
       console.log('⚠️ Could not load assignments:', assignmentsError);
@@ -3065,7 +3065,7 @@ function debugAssignmentLoading() {
     
     // STEP 4: Test the actual getAllAssignmentsForNotifications function
     console.log('\n--- STEP 4: Testing getAllAssignmentsForNotifications ---');
-    const filteredAssignments = getAllAssignmentsForNotifications();
+    const filteredAssignments = getAllAssignmentsForNotifications(false);
     result.step4_finalResult = {
       filteredCount: filteredAssignments.length,
       sampleAssignments: filteredAssignments.slice(0, 3)
@@ -3120,7 +3120,7 @@ function testNotificationsData() {
     console.log('Auth result:', auth.success);
     
     // Test assignments loading
-    const assignments = getAllAssignmentsForNotifications();
+    const assignments = getAllAssignmentsForNotifications(false);
     console.log(`Assignments found: ${assignments.length}`);
     
     if (assignments.length > 0) {
@@ -3159,11 +3159,11 @@ function testNotificationsData() {
 /**
  * Gets all assignments formatted for notifications page
  */
-function getAllAssignmentsForNotifications() {
+function getAllAssignmentsForNotifications(useCache = true) {
   try {
     console.log('📋 Getting all assignments for notifications...');
-    
-    const assignmentsData = getAssignmentsData();
+
+    const assignmentsData = getAssignmentsData(useCache);
     if (!assignmentsData || !assignmentsData.data) {
       console.log('⚠️ No assignments data found');
       return [];
