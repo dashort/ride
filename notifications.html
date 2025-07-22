@@ -2029,30 +2029,32 @@ ${result.message || 'Completed'}`;
         }
 
         function runManualAssignmentFix() {
-            console.log('🔧 Running manual assignment fix...');
-            showMessage('Running assignment fix diagnostic and repair...', 'info');
+            console.log('🔧 Running comprehensive assignment fix...');
+            showMessage('Running comprehensive assignment fix diagnostic and repair...', 'info');
             
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler((result) => {
-                        console.log('✅ Manual fix completed:', result);
+                        console.log('✅ Comprehensive fix completed:', result);
                         if (result.success) {
-                            showMessage(`✅ Fix successful! ${result.assignmentCount} assignments loaded`, 'success');
+                            const message = result.verification?.finalStatus || 
+                                           `✅ Fix successful! ${result.diagnosis?.details?.getAllAssignmentsForNotificationsResult?.assignmentCount || 'Multiple'} assignments loaded`;
+                            showMessage(message, 'success');
                             // Reload the page data
                             setTimeout(() => {
                                 loadNotificationData();
                             }, 1000);
                         } else {
-                            showMessage(`⚠️ Fix completed but assignments still not loading: ${result.message}`, 'warning');
+                            showMessage(`⚠️ Fix failed: ${result.error || result.message}`, 'warning');
                             // Show detailed error for debugging
                             console.error('Fix details:', result);
                         }
                     })
                     .withFailureHandler((error) => {
-                        console.error('❌ Manual fix failed:', error);
+                        console.error('❌ Comprehensive fix failed:', error);
                         showMessage('❌ Assignment fix failed. Check console for details.', 'error');
                     })
-                    .runImmediateAssignmentFix();
+                    .runAssignmentLoadingFix();
             } else {
                 showMessage('❌ Google Apps Script not available', 'error');
             }
