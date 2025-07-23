@@ -2019,9 +2019,10 @@
         document.getElementById('ridersLoadingState').style.display = 'none';
         
         if (data && data.success && data.riders) {
-            availableRiders = data.riders.filter(rider => 
-                rider.status === 'Active' || rider.status === 'Available' || !rider.status
-            );
+            availableRiders = data.riders.filter(rider => {
+                const status = String(rider.status || '').toLowerCase().trim();
+                return status === 'active' || status === 'available' || status === '';
+            });
             
             if (availableRiders.length > 0) {
                 document.getElementById('ridersAssignmentGrid').style.display = 'grid';
