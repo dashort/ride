@@ -2021,7 +2021,9 @@
         if (data && data.success && data.riders) {
             availableRiders = data.riders.filter(rider => {
                 const status = String(rider.status || '').toLowerCase().trim();
-                return status === 'active' || status === 'available' || status === '';
+                return status === '' ||
+                       status.startsWith('active') ||
+                       status.startsWith('available');
             });
             
             if (availableRiders.length > 0) {
