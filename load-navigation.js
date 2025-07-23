@@ -1,28 +1,29 @@
-// Dynamically load the navigation menu for local testing
-function injectNavigation() {
-  const placeholder = document.getElementById('navigation-container');
-  if (!placeholder) return;
-  fetch('_navigation.html')
-    .then(res => res.text())
-    .then(html => {
-      placeholder.innerHTML = html;
-      // Execute any scripts from the loaded HTML
-      placeholder.querySelectorAll('script').forEach(old => {
-        const script = document.createElement('script');
-        if (old.src) {
-          script.src = old.src;
-        } else {
-          script.textContent = old.textContent;
-        }
-        document.head.appendChild(script);
-        old.remove();
-      });
-    })
-    .catch(err => console.error('Failed to load navigation', err));
-}
+// Optimized navigation loader
+(function() {
+  function loadNavigation() {
+    const container = document.getElementById('navigation-container');
+    if (!container) return;
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', injectNavigation);
-} else {
-  injectNavigation();
-}
+    fetch('_navigation.html')
+      .then(res => res.ok ? res.text() : Promise.reject(`HTTP ${res.status}`))
+      .then(html => {
+        container.innerHTML = html;
+        
+        // Execute scripts from loaded HTML
+        container.querySelectorAll('script').forEach(oldScript => {
+          const newScript = document.createElement('script');
+          newScript.textContent = oldScript.src ? '' : oldScript.textContent;
+          if (oldScript.src) newScript.src = oldScript.src;
+          
+          document.head.appendChild(newScript);
+          oldScript.remove();
+        });
+      })
+      .catch(err => console.error('Navigation load failed:', err));
+  }
+
+  // Initialize when ready
+  document.readyState === 'loading' 
+    ? document.addEventListener('DOMContentLoaded', loadNavigation)
+    : loadNavigation();
+})();

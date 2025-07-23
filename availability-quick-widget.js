@@ -1,5 +1,5 @@
 /**
- * Floating Availability Widget
+ * Floating Availability Widget - Optimized
  * Provides quick access to availability calendar from any page
  */
 
@@ -7,7 +7,6 @@ class AvailabilityWidget {
     constructor() {
         this.isOpen = false;
         this.currentUser = null;
-        this.todayAvailability = null;
         this.init();
     }
 
@@ -18,16 +17,27 @@ class AvailabilityWidget {
     }
 
     createWidget() {
-        // Create floating button
-        const fab = document.createElement('div');
-        fab.id = 'availability-fab';
-        fab.innerHTML = '🗓️';
+        // Create elements
+        const fab = this.createElement('div', 'availability-fab', '🗓️');
         fab.title = 'Quick Availability';
         
-        // Create widget panel
-        const widget = document.createElement('div');
-        widget.id = 'availability-widget';
-        widget.innerHTML = `
+        const widget = this.createElement('div', 'availability-widget', this.getWidgetHTML());
+
+        // Add optimized styles
+        this.addStyles();
+        
+        document.body.append(fab, widget);
+    }
+
+    createElement(tag, id, content) {
+        const element = document.createElement(tag);
+        element.id = id;
+        if (content) element.innerHTML = content;
+        return element;
+    }
+
+    getWidgetHTML() {
+        return `
             <div class="widget-header">
                 <h3>🗓️ Quick Availability</h3>
                 <button class="close-btn" id="close-widget">×</button>
@@ -43,27 +53,20 @@ class AvailabilityWidget {
                 <div class="quick-actions">
                     <h4>Quick Actions</h4>
                     <div class="action-buttons">
-                        <button class="action-btn available" id="set-available-today">
-                            ✅ Available Today
-                        </button>
-                        <button class="action-btn unavailable" id="set-unavailable-today">
-                            ❌ Unavailable Today
-                        </button>
-                        <button class="action-btn neutral" id="clear-today">
-                            🔄 Clear Status
-                        </button>
+                        <button class="action-btn available" data-status="available">✅ Available Today</button>
+                        <button class="action-btn unavailable" data-status="unavailable">❌ Unavailable Today</button>
+                        <button class="action-btn neutral" data-status="clear">🔄 Clear Status</button>
                     </div>
                 </div>
 
                 <div class="widget-footer">
-                    <button class="full-calendar-btn" id="open-full-calendar">
-                        📅 Open Full Calendar
-                    </button>
+                    <button class="full-calendar-btn" id="open-full-calendar">📅 Open Full Calendar</button>
                 </div>
             </div>
         `;
+    }
 
-        // Add styles
+    addStyles() {
         const styles = document.createElement('style');
         styles.textContent = `
             #availability-fab {
@@ -101,7 +104,6 @@ class AvailabilityWidget {
                 display: none;
                 z-index: 1001;
                 border: 1px solid rgba(255,255,255,0.2);
-                backdrop-filter: blur(10px);
             }
 
             #availability-widget.open {
@@ -110,14 +112,8 @@ class AvailabilityWidget {
             }
 
             @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
             }
 
             .widget-header {
@@ -130,11 +126,7 @@ class AvailabilityWidget {
                 align-items: center;
             }
 
-            .widget-header h3 {
-                margin: 0;
-                font-size: 1rem;
-                font-weight: 600;
-            }
+            .widget-header h3 { margin: 0; font-size: 1rem; font-weight: 600; }
 
             .close-btn {
                 background: none;
@@ -152,21 +144,13 @@ class AvailabilityWidget {
                 transition: background 0.2s ease;
             }
 
-            .close-btn:hover {
-                background: rgba(255,255,255,0.2);
-            }
+            .close-btn:hover { background: rgba(255,255,255,0.2); }
 
-            .widget-content {
-                padding: 1rem;
-            }
+            .widget-content { padding: 1rem; }
 
-            .today-status,
-            .quick-actions {
-                margin-bottom: 1rem;
-            }
+            .today-status, .quick-actions { margin-bottom: 1rem; }
 
-            .today-status h4,
-            .quick-actions h4 {
+            .today-status h4, .quick-actions h4 {
                 margin: 0 0 0.5rem 0;
                 font-size: 0.9rem;
                 color: #2c3e50;
@@ -193,16 +177,7 @@ class AvailabilityWidget {
                 color: #721c24;
             }
 
-            .status-display .loading {
-                color: #666;
-                font-style: italic;
-            }
-
-            .action-buttons {
-                display: flex;
-                flex-direction: column;
-                gap: 0.5rem;
-            }
+            .action-buttons { display: flex; flex-direction: column; gap: 0.5rem; }
 
             .action-btn {
                 padding: 0.5rem;
@@ -214,32 +189,12 @@ class AvailabilityWidget {
                 font-size: 0.85rem;
             }
 
-            .action-btn.available {
-                background: #27ae60;
-                color: white;
-            }
-
-            .action-btn.available:hover {
-                background: #229954;
-            }
-
-            .action-btn.unavailable {
-                background: #e74c3c;
-                color: white;
-            }
-
-            .action-btn.unavailable:hover {
-                background: #dc3545;
-            }
-
-            .action-btn.neutral {
-                background: #6c757d;
-                color: white;
-            }
-
-            .action-btn.neutral:hover {
-                background: #5a6268;
-            }
+            .action-btn.available { background: #27ae60; color: white; }
+            .action-btn.available:hover { background: #229954; }
+            .action-btn.unavailable { background: #e74c3c; color: white; }
+            .action-btn.unavailable:hover { background: #dc3545; }
+            .action-btn.neutral { background: #6c757d; color: white; }
+            .action-btn.neutral:hover { background: #5a6268; }
 
             .widget-footer {
                 border-top: 1px solid #ecf0f1;
@@ -263,72 +218,42 @@ class AvailabilityWidget {
                 box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
             }
 
-            /* Mobile responsive */
             @media (max-width: 768px) {
                 #availability-widget {
                     width: calc(100vw - 40px);
                     right: 20px;
                     left: 20px;
-                    bottom: 90px;
                 }
-
-                #availability-fab {
-                    bottom: 15px;
-                    right: 15px;
-                    width: 50px;
-                    height: 50px;
-                    font-size: 20px;
-                }
+                #availability-fab { bottom: 15px; right: 15px; width: 50px; height: 50px; font-size: 20px; }
             }
 
-            /* Hide on very small screens */
             @media (max-width: 480px) {
-                #availability-fab,
-                #availability-widget {
-                    display: none !important;
-                }
+                #availability-fab, #availability-widget { display: none !important; }
             }
         `;
-
         document.head.appendChild(styles);
-        document.body.appendChild(fab);
-        document.body.appendChild(widget);
     }
 
     bindEvents() {
-        // Toggle widget
-        document.getElementById('availability-fab').addEventListener('click', () => {
-            this.toggleWidget();
+        const fab = document.getElementById('availability-fab');
+        const closeBtn = document.getElementById('close-widget');
+        const fullCalendarBtn = document.getElementById('open-full-calendar');
+        const actionBtns = document.querySelectorAll('.action-btn');
+
+        // Use event delegation for cleaner code
+        fab.addEventListener('click', () => this.toggleWidget());
+        closeBtn.addEventListener('click', () => this.closeWidget());
+        fullCalendarBtn.addEventListener('click', () => this.openFullCalendar());
+        
+        actionBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                this.setTodayStatus(e.target.dataset.status);
+            });
         });
 
-        // Close widget
-        document.getElementById('close-widget').addEventListener('click', () => {
-            this.closeWidget();
-        });
-
-        // Quick actions
-        document.getElementById('set-available-today').addEventListener('click', () => {
-            this.setTodayStatus('available');
-        });
-
-        document.getElementById('set-unavailable-today').addEventListener('click', () => {
-            this.setTodayStatus('unavailable');
-        });
-
-        document.getElementById('clear-today').addEventListener('click', () => {
-            this.setTodayStatus('clear');
-        });
-
-        // Open full calendar
-        document.getElementById('open-full-calendar').addEventListener('click', () => {
-            this.openFullCalendar();
-        });
-
-        // Close widget when clicking outside
+        // Close on outside click
         document.addEventListener('click', (e) => {
             const widget = document.getElementById('availability-widget');
-            const fab = document.getElementById('availability-fab');
-            
             if (this.isOpen && !widget.contains(e.target) && !fab.contains(e.target)) {
                 this.closeWidget();
             }
@@ -336,35 +261,25 @@ class AvailabilityWidget {
     }
 
     toggleWidget() {
-        if (this.isOpen) {
-            this.closeWidget();
-        } else {
-            this.openWidget();
-        }
+        this.isOpen ? this.closeWidget() : this.openWidget();
     }
 
     openWidget() {
-        const widget = document.getElementById('availability-widget');
-        widget.classList.add('open');
+        document.getElementById('availability-widget').classList.add('open');
         this.isOpen = true;
         this.loadTodayAvailability();
     }
 
     closeWidget() {
-        const widget = document.getElementById('availability-widget');
-        widget.classList.remove('open');
+        document.getElementById('availability-widget').classList.remove('open');
         this.isOpen = false;
     }
 
     loadUserInfo() {
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
+        if (this.hasGoogleScript()) {
             google.script.run
-                .withSuccessHandler((user) => {
-                    this.currentUser = user;
-                })
-                .withFailureHandler((error) => {
-                    console.warn('Could not load user info for availability widget:', error);
-                })
+                .withSuccessHandler(user => this.currentUser = user)
+                .withFailureHandler(error => console.warn('Could not load user info:', error))
                 .getCurrentUser();
         }
     }
@@ -373,115 +288,112 @@ class AvailabilityWidget {
         const statusElement = document.getElementById('today-availability');
         statusElement.innerHTML = '<div class="loading">Loading...</div>';
 
-        const today = new Date().toISOString().split('T')[0];
-
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const email = this.currentUser && this.currentUser.email ? this.currentUser.email : null;
-            google.script.run
-                .withSuccessHandler((availability) => {
-                    const todays = Array.isArray(availability)
-                        ? availability.filter(evt => evt.start && evt.start.startsWith(today))
-                        : [];
-                    this.displayTodayAvailability(todays);
-                })
-                .withFailureHandler((error) => {
-                    statusElement.innerHTML = 'Unable to load availability';
-                    console.warn('Error loading today availability:', error);
-                })
-                .getUserAvailabilityForCalendar(email);
-        } else {
+        if (!this.hasGoogleScript()) {
             statusElement.innerHTML = 'No availability data available';
+            return;
         }
+
+        const today = new Date().toISOString().split('T')[0];
+        const email = this.currentUser?.email;
+
+        google.script.run
+            .withSuccessHandler(availability => {
+                const todaysAvailability = Array.isArray(availability) 
+                    ? availability.filter(evt => evt.start?.startsWith(today))
+                    : [];
+                this.displayTodayAvailability(todaysAvailability);
+            })
+            .withFailureHandler(error => {
+                statusElement.innerHTML = 'Unable to load availability';
+                console.warn('Error loading availability:', error);
+            })
+            .getUserAvailabilityForCalendar(email);
     }
 
     displayTodayAvailability(availability) {
         const statusElement = document.getElementById('today-availability');
         
-        if (!availability || availability.length === 0) {
+        if (!availability?.length) {
             statusElement.className = 'status-display';
             statusElement.innerHTML = 'No status set for today';
             return;
         }
 
-        const todayStatus = availability[0];
-        let statusClass = 'status-display';
-        let statusText = '';
+        const status = availability[0];
+        let className = 'status-display';
+        let text = '';
 
-        if (todayStatus.status === 'Available') {
-            statusClass += ' available';
-            statusText = `✅ Available ${todayStatus.startTime} - ${todayStatus.endTime}`;
-        } else if (todayStatus.status === 'Unavailable') {
-            statusClass += ' unavailable';
-            statusText = `❌ Unavailable`;
+        if (status.status === 'Available') {
+            className += ' available';
+            text = `✅ Available ${status.startTime} - ${status.endTime}`;
+        } else if (status.status === 'Unavailable') {
+            className += ' unavailable';
+            text = '❌ Unavailable';
         } else {
-            statusText = `🔄 ${todayStatus.status}`;
+            text = `🔄 ${status.status}`;
         }
 
-        statusElement.className = statusClass;
-        statusElement.innerHTML = statusText;
+        statusElement.className = className;
+        statusElement.innerHTML = text;
     }
 
     setTodayStatus(status) {
         const today = new Date().toISOString().split('T')[0];
-        let statusData = {};
+        const statusData = this.getStatusData(status, today);
+        const riderId = this.currentUser?.riderId;
 
-        if (status === 'available') {
-            statusData = {
+        if (!this.hasGoogleScript()) {
+            this.showToast('Availability service not available', true);
+            return;
+        }
+
+        document.getElementById('today-availability').innerHTML = '<div class="loading">Updating...</div>';
+
+        google.script.run
+            .withSuccessHandler(result => {
+                if (result.success) {
+                    this.loadTodayAvailability();
+                    this.showToast('Status updated successfully!');
+                } else {
+                    this.showToast('Error updating status: ' + result.error, true);
+                }
+            })
+            .withFailureHandler(error => {
+                this.showToast('Error updating status', true);
+                console.error('Error updating availability:', error);
+            })
+            .saveRiderAvailabilityData({ ...statusData, riderId });
+    }
+
+    getStatusData(status, today) {
+        const statusMap = {
+            available: {
                 date: today,
                 status: 'Available',
                 startTime: '09:00',
                 endTime: '17:00',
                 notes: 'Set via quick widget'
-            };
-        } else if (status === 'unavailable') {
-            statusData = {
+            },
+            unavailable: {
                 date: today,
                 status: 'Unavailable',
                 startTime: '',
                 endTime: '',
                 notes: 'Set via quick widget'
-            };
-        } else if (status === 'clear') {
-            statusData = {
+            },
+            clear: {
                 date: today,
                 action: 'delete'
-            };
-        }
-
-        const riderId = this.currentUser && this.currentUser.riderId ? this.currentUser.riderId : null;
-
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            const statusElement = document.getElementById('today-availability');
-            statusElement.innerHTML = '<div class="loading">Updating...</div>';
-
-            google.script.run
-                .withSuccessHandler((result) => {
-                    if (result.success) {
-                        this.loadTodayAvailability();
-                        this.showToast('Status updated successfully!');
-                    } else {
-                        this.showToast('Error updating status: ' + result.error, true);
-                    }
-                })
-                .withFailureHandler((error) => {
-                    this.showToast('Error updating status', true);
-                    console.error('Error updating availability:', error);
-                })
-                .saveRiderAvailabilityData({ ...statusData, riderId });
-        } else {
-            this.showToast('Availability service not available', true);
-        }
+            }
+        };
+        return statusMap[status] || {};
     }
 
     openFullCalendar() {
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
+        if (this.hasGoogleScript()) {
             google.script.run
-                .withSuccessHandler((url) => {
-                    window.open(url + '?page=availability', '_blank');
-                })
-                .withFailureHandler(() => {
-                    window.open('enhanced-rider-availability.html', '_blank');
-                })
+                .withSuccessHandler(url => window.open(url + '?page=availability', '_blank'))
+                .withFailureHandler(() => window.open('enhanced-rider-availability.html', '_blank'))
                 .getWebAppUrl();
         } else {
             window.open('enhanced-rider-availability.html', '_blank');
@@ -490,60 +402,45 @@ class AvailabilityWidget {
     }
 
     showToast(message, isError = false) {
-        let toast = document.getElementById('availability-toast');
-        if (!toast) {
-            toast = document.createElement('div');
-            toast.id = 'availability-toast';
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 100px;
-                right: 20px;
-                background: ${isError ? '#dc3545' : '#28a745'};
-                color: white;
-                padding: 0.75rem 1rem;
-                border-radius: 6px;
-                font-size: 0.9rem;
-                font-weight: 600;
-                z-index: 1002;
-                opacity: 0;
-                transition: opacity 0.3s ease;
-                max-width: 300px;
-            `;
-            document.body.appendChild(toast);
-        }
-
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed; bottom: 100px; right: 20px;
+            background: ${isError ? '#dc3545' : '#28a745'};
+            color: white; padding: 0.75rem 1rem; border-radius: 6px;
+            font-size: 0.9rem; font-weight: 600; z-index: 1002;
+            opacity: 0; transition: opacity 0.3s ease; max-width: 300px;
+        `;
         toast.textContent = message;
-        toast.style.background = isError ? '#dc3545' : '#28a745';
-        toast.style.opacity = '1';
+        document.body.appendChild(toast);
 
+        // Animate in
+        setTimeout(() => toast.style.opacity = '1', 10);
+        
+        // Remove after 3 seconds
         setTimeout(() => {
             toast.style.opacity = '0';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    toast.parentNode.removeChild(toast);
-                }
-            }, 300);
+            setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
-}
 
-// Auto-initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    // Only initialize if not on the full availability calendar page
-    if (!window.location.pathname.includes('enhanced-rider-availability.html')) {
-        new AvailabilityWidget();
+    hasGoogleScript() {
+        return typeof google !== 'undefined' && google.script?.run;
     }
-});
-
-// Fallback for pages that are already loaded
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initWidget);
-} else {
-    initWidget();
 }
 
-function initWidget() {
-    if (!window.availabilityWidget && !window.location.pathname.includes('enhanced-rider-availability.html')) {
+// Optimized initialization - single pattern
+(function initWidget() {
+    if (window.availabilityWidget || window.location.pathname.includes('enhanced-rider-availability.html')) {
+        return;
+    }
+    
+    const init = () => {
         window.availabilityWidget = new AvailabilityWidget();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-}
+})();
