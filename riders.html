@@ -540,8 +540,8 @@
                     <option value="Suspended">Suspended</option>
                 </select>
                 <select class="filter-select" id="motorFilter" onchange="filterRiders()">
-                    <option value="Motors" selected>Motors</option>
-                    <option value="All">All</option>
+                    <option value="All" selected>All</option>
+                    <option value="Motors">Motors</option>
                 </select>
             </div>
             
@@ -1007,9 +1007,10 @@ function filterRiders() {
       let matchesMotor = true;
       if (motorFilter_value === 'Motors') {
         const certLower = certification.toLowerCase();
-
-
-matchesMotor = certLower === 'standard' || certLower === 'instructor';
+        matchesMotor =
+          certLower === 'standard' ||
+          certLower === 'instructor' ||
+          certLower === 'advanced';
 
       }
 
