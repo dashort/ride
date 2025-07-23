@@ -3789,21 +3789,7 @@ function getPageDataForRiders() {
   try {
     console.log('🔄 Loading riders page data with consistent counts...');
 
-    // Step 1: Check if the riders sheet exists
-    try {
-      const ss = SpreadsheetApp.getActive();
-      const ridersSheet = ss.getSheetByName(CONFIG.sheets.riders);
-      if (!ridersSheet) {
-        console.error('❌ Riders sheet not found:', CONFIG.sheets.riders);
-        throw new Error(`Riders sheet "${CONFIG.sheets.riders}" not found. Please create the sheet first.`);
-      }
-      console.log('✅ Riders sheet found:', CONFIG.sheets.riders);
-    } catch (sheetError) {
-      console.error('❌ Sheet access error:', sheetError);
-      throw sheetError;
-    }
-
-    // Step 2: Attempt to authenticate the user, but continue gracefully if it fails
+    // Attempt to authenticate the user, but continue gracefully if it fails
     let auth = { success: false };
     try {
       auth = authenticateAndAuthorizeUser();
@@ -3819,89 +3805,56 @@ function getPageDataForRiders() {
     if (!(auth && auth.success)) {
       console.log('⚠️ Proceeding without full authentication');
     }
-
-    // Step 3: Get riders data
-    console.log('📋 Fetching riders data...');
     const riders = getRiders(); // Uses consistent filtering
-    console.log(`✅ Retrieved ${riders.length} riders`);
     
-    // Calculate stats using defensive logic
-    console.log('📊 Calculating stats for riders...');
-    
-    // Use all riders for stats instead of filtering by certification first
-    // This ensures we show all riders data even if certification data is missing
-    const allRiders = riders || [];
-    
-    // Filter certified riders for reference, but don't use exclusively for counts
-    const certifiedRiders = allRiders.filter(r => {
-      const cert = String(r.certification || r['Certification'] || '').toLowerCase();
-      return cert !== 'not certified' && cert !== '';
-    });
+    // Calculate stats using consistent logic
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
 
     const stats = {
-      totalRiders: allRiders.length, // Show all riders count
-      activeRiders: allRiders.filter(r => {
-        const status = String(r.status || r['Status'] || '').toLowerCase();
-        return status === 'active' || status === 'available' || status.trim() === '';
-      }).length,
-      inactiveRiders: allRiders.filter(r => {
-        const status = String(r.status || r['Status'] || '').toLowerCase();
-        return status === 'inactive';
-      }).length,
-      onVacation: allRiders.filter(r => {
-        const status = String(r.status || r['Status'] || '').toLowerCase();
-        return status === 'vacation';
-      }).length,
-      inTraining: allRiders.filter(r => {
-        const status = String(r.status || r['Status'] || '').toLowerCase();
-        return status === 'training';
-      }).length,
-      partTimeRiders: allRiders.filter(r => {
-        const partTime = String(r.partTime || r['Part Time'] || '').toLowerCase();
-        return partTime === 'yes';
-      }).length,
-      certifiedRiders: certifiedRiders.length // Add this for reference
+      totalRiders: certifiedRiders.length, // Matches displayed count
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
+        String(r.status || '').toLowerCase() === 'available' ||
+        String(r.status || '').trim() === ''
+      ).length,
+      inactiveRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'inactive'
+      ).length,
+      onVacation: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'vacation'
+      ).length,
+
+      inTraining: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'training'
+      ).length,
+      partTimeRiders: certifiedRiders.filter(r =>
+        String(r.partTime || '').toLowerCase() === 'yes'
+      ).length
     };
-    
-    console.log('📊 Stats calculated:', stats);
     
     console.log('✅ Riders page data loaded:', {
       userEmail: user.email,
-      ridersCount: allRiders.length,
+      ridersCount: riders.length,
       stats: stats
     });
     
     return {
       success: true,
       user: user,
-      riders: allRiders, // Return all riders, not just certified ones
+      riders: riders,
       stats: stats
     };
     
   } catch (error) {
     console.error('❌ Error loading riders page data:', error);
-    console.error('❌ Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
-    
     logError('Error in getPageDataForRiders', error);
-    
-    // Determine more specific error message
-    let errorMessage = error.message;
-    if (error.message.includes('not found')) {
-      errorMessage = `${error.message}. Please check your spreadsheet configuration.`;
-    } else if (error.message.includes('permission')) {
-      errorMessage = `Permission error: ${error.message}. Please check your access rights.`;
-    } else if (error.message.includes('auth')) {
-      errorMessage = `Authentication error: ${error.message}. Please try logging in again.`;
-    }
     
     return {
       success: false,
-      error: errorMessage,
-      errorType: error.name,
+      error: error.message,
       user: {
         name: 'System User',
         email: '',
@@ -3916,274 +3869,11 @@ function getPageDataForRiders() {
         onVacation: 0,
         inTraining: 0,
         partTimeRiders: 0
+
       }
     };
   }
 }
-
-/**
- * Debug version of getPageDataForRiders with detailed logging
- */
-function debugGetPageDataForRiders() {
-  try {
-    console.log('🔍 DEBUG: Starting debugGetPageDataForRiders...');
-    
-    // Step 1: Check CONFIG
-    console.log('📋 DEBUG: CONFIG.sheets.riders =', CONFIG.sheets.riders);
-    
-    // Step 2: Check spreadsheet access
-    console.log('📊 DEBUG: Checking spreadsheet access...');
-    const ss = SpreadsheetApp.getActive();
-    console.log('✅ DEBUG: Spreadsheet accessed:', ss.getName());
-    
-    // Step 3: List all sheets
-    const allSheets = ss.getSheets().map(s => s.getName());
-    console.log('📋 DEBUG: Available sheets:', allSheets);
-    
-    // Step 4: Check if riders sheet exists
-    const ridersSheetExists = allSheets.includes(CONFIG.sheets.riders);
-    console.log('🏍️ DEBUG: Riders sheet exists:', ridersSheetExists);
-    
-    if (!ridersSheetExists) {
-      return {
-        success: false,
-        error: `Riders sheet "${CONFIG.sheets.riders}" not found`,
-        diagnostic: {
-          configSheetName: CONFIG.sheets.riders,
-          availableSheets: allSheets,
-          step: 'sheet_not_found'
-        }
-      };
-    }
-    
-    // Step 5: Try to access riders sheet
-    console.log('🔍 DEBUG: Accessing riders sheet...');
-    const ridersSheet = ss.getSheetByName(CONFIG.sheets.riders);
-    console.log('✅ DEBUG: Riders sheet accessed');
-    
-    // Step 6: Check sheet data
-    const dataRange = ridersSheet.getDataRange();
-    const numRows = dataRange.getNumRows();
-    const numCols = dataRange.getNumColumns();
-    console.log(`📊 DEBUG: Sheet dimensions: ${numRows} rows x ${numCols} columns`);
-    
-    if (numRows === 0) {
-      return {
-        success: false,
-        error: 'Riders sheet is empty',
-        diagnostic: {
-          numRows: numRows,
-          numCols: numCols,
-          step: 'sheet_empty'
-        }
-      };
-    }
-    
-    // Step 7: Get headers
-    const headers = ridersSheet.getRange(1, 1, 1, numCols).getValues()[0];
-    console.log('📋 DEBUG: Headers:', headers);
-    
-    // Step 8: Try getRiders function
-    console.log('🔍 DEBUG: Calling getRiders...');
-    const riders = getRiders();
-    console.log(`✅ DEBUG: getRiders returned ${riders.length} riders`);
-    
-    // Step 9: Try authentication
-    console.log('🔐 DEBUG: Checking authentication...');
-    let user;
-    try {
-      const auth = authenticateAndAuthorizeUser();
-      user = auth.success ? auth.user : getCurrentUser();
-      console.log('✅ DEBUG: User authenticated:', user.email || user.name);
-    } catch (authError) {
-      console.warn('⚠️ DEBUG: Authentication failed:', authError.message);
-      user = getCurrentUser();
-    }
-    
-    // Step 10: Return debug results
-    return {
-      success: true,
-      riders: riders,
-      user: user,
-      stats: {
-        totalRiders: riders.length,
-        activeRiders: riders.filter(r => (r.status || '').toLowerCase() === 'active').length,
-        inactiveRiders: riders.filter(r => (r.status || '').toLowerCase() === 'inactive').length,
-        partTimeRiders: riders.filter(r => (r.partTime || '').toLowerCase() === 'yes').length
-      },
-      diagnostic: {
-        configSheetName: CONFIG.sheets.riders,
-        availableSheets: allSheets,
-        sheetExists: ridersSheetExists,
-        numRows: numRows,
-        numCols: numCols,
-        headers: headers,
-        step: 'success'
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ DEBUG: Error in debugGetPageDataForRiders:', error);
-    return {
-      success: false,
-      error: error.message,
-      diagnostic: {
-        step: 'exception',
-        errorType: error.name,
-        errorMessage: error.message,
-        errorStack: error.stack
-      }
-    };
-  }
-}
-
-/**
- * Simple version of getPageDataForRiders without complex authentication
- */
-function getPageDataForRidersSimple() {
-  try {
-    console.log('🚀 SIMPLE: Starting getPageDataForRidersSimple...');
-    
-    // Get basic user info
-    const user = {
-      name: Session.getActiveUser().getEmail().split('@')[0] || 'System User',
-      email: Session.getActiveUser().getEmail() || '',
-      roles: ['user']
-    };
-    
-    console.log('👤 SIMPLE: User:', user.email);
-    
-    // Get riders directly
-    const riders = getRiders();
-    console.log(`🏍️ SIMPLE: Found ${riders.length} riders`);
-    
-    // Calculate simple stats
-    const stats = {
-      totalRiders: riders.length,
-      activeRiders: riders.filter(r => {
-        const status = (r.status || r['Status'] || '').toLowerCase();
-        return status === 'active' || status === '' || status === 'available';
-      }).length,
-      inactiveRiders: riders.filter(r => {
-        const status = (r.status || r['Status'] || '').toLowerCase();
-        return status === 'inactive';
-      }).length,
-      partTimeRiders: riders.filter(r => {
-        const partTime = (r.partTime || r['Part Time'] || '').toLowerCase();
-        return partTime === 'yes';
-      }).length
-    };
-    
-    console.log('📊 SIMPLE: Stats:', stats);
-    
-    return {
-      success: true,
-      user: user,
-      riders: riders,
-      stats: stats
-    };
-    
-  } catch (error) {
-    console.error('❌ SIMPLE: Error in getPageDataForRidersSimple:', error);
-    return {
-      success: false,
-      error: error.message,
-      user: {
-        name: 'System User',
-        email: '',
-        roles: ['user']
-      },
-      riders: [],
-      stats: {
-        totalRiders: 0,
-        activeRiders: 0,
-        inactiveRiders: 0,
-        partTimeRiders: 0
-      }
-    };
-  }
-}
-
-/**
- * Fix common riders data issues
- */
-function fixRidersDataIssue() {
-  try {
-    console.log('🔧 FIX: Starting fixRidersDataIssue...');
-    
-    // Step 1: Check if riders sheet exists
-    const ss = SpreadsheetApp.getActive();
-    let ridersSheet = ss.getSheetByName(CONFIG.sheets.riders);
-    
-    if (!ridersSheet) {
-      console.log('🔧 FIX: Creating riders sheet...');
-      ridersSheet = ss.insertSheet(CONFIG.sheets.riders);
-      
-      // Add headers
-      const headers = Object.values(CONFIG.columns.riders);
-      ridersSheet.getRange(1, 1, 1, headers.length)
-        .setValues([headers])
-        .setFontWeight('bold')
-        .setBackground('#f3f3f3');
-      ridersSheet.setFrozenRows(1);
-      
-      console.log('✅ FIX: Created riders sheet with headers:', headers);
-    }
-    
-    // Step 2: Check if sheet has data
-    const dataRange = ridersSheet.getDataRange();
-    const numRows = dataRange.getNumRows();
-    
-    if (numRows <= 1) {
-      console.log('🔧 FIX: Adding sample rider data...');
-      
-      // Add sample rider
-      const sampleRider = [
-        'R001', // Rider ID
-        '12345', // Payroll Number
-        'Sample Rider', // Full Name
-        '555-0123', // Phone Number
-        'sample@example.com', // Email
-        'Active', // Status
-        'A', // Platoon
-        'No', // Part Time
-        'Standard', // Certification
-        '', // Organization
-        '0', // Total Assignments
-        '' // Last Assignment Date
-      ];
-      
-      ridersSheet.getRange(2, 1, 1, sampleRider.length).setValues([sampleRider]);
-      console.log('✅ FIX: Added sample rider data');
-    }
-    
-    // Step 3: Clear cache
-    if (typeof dataCache !== 'undefined') {
-      dataCache.clear('sheet_' + CONFIG.sheets.riders);
-      console.log('🗑️ FIX: Cleared riders sheet cache');
-    }
-    
-    // Step 4: Test riders loading
-    const riders = getRiders();
-    console.log(`✅ FIX: Successfully loaded ${riders.length} riders`);
-    
-    return {
-      success: true,
-      message: `Riders data fixed successfully. Found ${riders.length} riders.`,
-      ridersCount: riders.length,
-      sheetCreated: numRows <= 1,
-      sampleDataAdded: numRows <= 1
-    };
-    
-  } catch (error) {
-    console.error('❌ FIX: Error in fixRidersDataIssue:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
 /**
  * Get current user information
  */
@@ -4213,6 +3903,7 @@ function getCurrentUser() {
     };
   }
 }
+
 /**
  * Get dashboard statistics
  */
@@ -6411,7 +6102,10 @@ function injectUrlParameters(content, parameters) {
 <script>
 // URL Parameters injected by server-side doGet function
 window.urlParameters = ${JSON.stringify(parameters)};
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of b32168e (Enhance riders page loading with robust error handling and debugging)
 console.log('📄 URL parameters injected:', window.urlParameters);
 
 // Update the browser's URL to include the parameters for client-side compatibility
