@@ -6411,7 +6411,8 @@ function injectUrlParameters(content, parameters) {
 <script>
 // URL Parameters injected by server-side doGet function
 window.urlParameters = ${JSON.stringify(parameters)};
-
+```
+</script>
 console.log('📄 URL parameters injected:', window.urlParameters);
 
 // Update the browser's URL to include the parameters for client-side compatibility
