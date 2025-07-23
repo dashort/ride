@@ -3787,10 +3787,11 @@ function getPageDataForDashboard() {
  */
 function getPageDataForRiders() {
   try {
-    console.log('🔄 Loading riders page data with consistent counts...');
+    console.log('🔄 Loading riders page data with enhanced debugging...');
 
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
+      console.log('❌ Authentication failed:', auth.error);
       return {
         success: false,
         error: auth.error || 'UNAUTHORIZED',
@@ -3815,39 +3816,98 @@ function getPageDataForRiders() {
     const user = Object.assign({}, auth.user, {
       roles: auth.user.roles || [auth.user.role]
     });
-    const riders = getRiders(); // Uses consistent filtering
+    
+    console.log('✅ Authentication successful for user:', user.email);
+    
+    // Check if riders sheet exists
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!sheet) {
+      console.error('❌ Riders sheet not found:', CONFIG.sheets.riders);
+      return {
+        success: false,
+        error: `Riders sheet "${CONFIG.sheets.riders}" not found`,
+        user: user,
+        riders: [],
+        stats: {
+          totalRiders: 0,
+          activeRiders: 0,
+          inactiveRiders: 0,
+          onVacation: 0,
+          inTraining: 0,
+          partTimeRiders: 0
+        }
+      };
+    }
+    
+    console.log('✅ Riders sheet found, getting data...');
+    
+    // Get riders with enhanced error handling
+    let riders = [];
+    try {
+      riders = getRiders(); // Uses consistent filtering
+      console.log(`✅ getRiders() returned ${riders.length} riders`);
+      
+      // Log a sample rider for debugging
+      if (riders.length > 0) {
+        console.log('📋 Sample rider data:', {
+          name: riders[0].name || riders[0]['Full Name'],
+          id: riders[0].jpNumber || riders[0]['Rider ID'],
+          status: riders[0].status || riders[0]['Status'],
+          keys: Object.keys(riders[0])
+        });
+      }
+    } catch (ridersError) {
+      console.error('❌ Error getting riders:', ridersError);
+      return {
+        success: false,
+        error: 'Failed to fetch riders: ' + ridersError.message,
+        user: user,
+        riders: [],
+        stats: {
+          totalRiders: 0,
+          activeRiders: 0,
+          inactiveRiders: 0,
+          onVacation: 0,
+          inTraining: 0,
+          partTimeRiders: 0
+        }
+      };
+    }
     
     // Calculate stats using consistent logic
-    const certifiedRiders = riders.filter(r =>
-      String(r.certification || r['Certification'] || '').toLowerCase() !==
-      'not certified'
-    );
+    const certifiedRiders = riders.filter(r => {
+      const cert = String(r.certification || r['Certification'] || '').toLowerCase();
+      return cert !== 'not certified' && cert !== '';
+    });
 
     const stats = {
       totalRiders: certifiedRiders.length, // Matches displayed count
-      activeRiders: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'active' ||
-        String(r.status || '').toLowerCase() === 'available' ||
-        String(r.status || '').trim() === ''
-      ).length,
-      inactiveRiders: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'inactive'
-      ).length,
-      onVacation: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'vacation'
-      ).length,
-
-      inTraining: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'training'
-      ).length,
-      partTimeRiders: certifiedRiders.filter(r =>
-        String(r.partTime || '').toLowerCase() === 'yes'
-      ).length
+      activeRiders: certifiedRiders.filter(r => {
+        const status = String(r.status || '').toLowerCase();
+        return status === 'active' || status === 'available' || status.trim() === '';
+      }).length,
+      inactiveRiders: certifiedRiders.filter(r => {
+        const status = String(r.status || '').toLowerCase();
+        return status === 'inactive';
+      }).length,
+      onVacation: certifiedRiders.filter(r => {
+        const status = String(r.status || '').toLowerCase();
+        return status === 'vacation';
+      }).length,
+      inTraining: certifiedRiders.filter(r => {
+        const status = String(r.status || '').toLowerCase();
+        return status === 'training';
+      }).length,
+      partTimeRiders: certifiedRiders.filter(r => {
+        const partTime = String(r.partTime || '').toLowerCase();
+        return partTime === 'yes';
+      }).length
     };
     
-    console.log('✅ Riders page data loaded:', {
+    console.log('✅ Riders page data loaded successfully:', {
       userEmail: user.email,
       ridersCount: riders.length,
+      certifiedRidersCount: certifiedRiders.length,
       stats: stats
     });
     
@@ -3862,15 +3922,27 @@ function getPageDataForRiders() {
     console.error('❌ Error loading riders page data:', error);
     logError('Error in getPageDataForRiders', error);
     
+    // Try to get user info even if main function fails
+    let fallbackUser = {
+      name: 'System User',
+      email: '',
+      roles: ['user'],
+      permissions: []
+    };
+    
+    try {
+      const auth = authenticateAndAuthorizeUser();
+      if (auth.success && auth.user) {
+        fallbackUser = auth.user;
+      }
+    } catch (authError) {
+      console.warn('❌ Could not get user info for error response:', authError.message);
+    }
+    
     return {
       success: false,
       error: error.message,
-      user: {
-        name: 'System User',
-        email: '',
-        roles: ['system'],
-        permissions: []
-      },
+      user: fallbackUser,
       riders: [],
       stats: {
         totalRiders: 0,
@@ -3879,7 +3951,6 @@ function getPageDataForRiders() {
         onVacation: 0,
         inTraining: 0,
         partTimeRiders: 0
-
       }
     };
   }
@@ -6936,629 +7007,6 @@ function testAuthSetupRouting() {
     
   } catch (error) {
     console.error('❌ Test failed:', error);
-    return { error: error.message };
-  }
-}
-// 🚫 Error Pages
-function createAuthErrorPage(errorType) {
-  const signInUrl = getWebAppUrl();
-  
-  return HtmlService.createHtmlOutput(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Sign In Required - Escort Management</title>
-      <style>
-        body { 
-          font-family: Arial, sans-serif; 
-          text-align: center; 
-          padding: 50px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-        }
-        .container {
-          background: rgba(255, 255, 255, 0.95);
-          color: #333;
-          padding: 40px;
-          border-radius: 15px;
-          max-width: 500px;
-          margin: 0 auto;
-        }
-        .btn {
-          background: #3498db;
-          color: white;
-          padding: 15px 30px;
-          border: none;
-          border-radius: 25px;
-          font-size: 16px;
-          cursor: pointer;
-          text-decoration: none;
-          display: inline-block;
-          margin-top: 20px;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>🏍️ Motorcycle Escort Management</h1>
-        <h2>🔐 Authentication Required</h2>
-        <p>Please sign in with your authorized Google account to access the system.</p>
-        <a href="${signInUrl}" class="btn">🔑 Sign In with Google</a>
-        <p style="margin-top: 30px; font-size: 14px; color: #666;">
-          Contact your administrator if you need access.
-        </p>
-      </div>
-    </body>
-    </html>
-  `).setTitle('Sign In Required');
-}
-
-function createAccessDeniedPage(reason, user) {
-  return HtmlService.createHtmlOutput(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Access Denied - Escort Management</title>
-      <style>
-        body { 
-          font-family: Arial, sans-serif; 
-          text-align: center; 
-          padding: 50px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-        }
-        .container {
-          background: rgba(255, 255, 255, 0.95);
-          color: #333;
-          padding: 40px;
-          border-radius: 15px;
-          max-width: 500px;
-          margin: 0 auto;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h1>🏍️ Motorcycle Escort Management</h1>
-        <h2>🚫 Access Denied</h2>
-        <p>Hello ${user.name},</p>
-        <p>${reason}</p>
-        <p>Your role: <strong>${user.role}</strong></p>
-        <a href="${getWebAppUrl()}" style="color: #3498db;">← Back to Dashboard</a>
-      </div>
-    </body>
-    </html>
-  `).setTitle('Access Denied');
-}
-
-// Keep your existing addNavigationToContent function but enhance it
-function addNavigationToContent(content, navigationHtml) {
-  // Remove any existing navigation
-  content = content.replace(/<nav class="navigation">[\s\S]*?<\/nav>/g, '');
-  
-  // Add enhanced navigation CSS for roles
-  if (!content.includes('.navigation') || !content.includes('.nav-button')) {
-    const navCSS = `
-.navigation {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    gap: 1rem;
-    margin: 0 auto 2rem auto !important;
-    flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 1rem 2rem;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    border-radius: 0 0 15px 15px;
-}
-.nav-button {
-    padding: 0.75rem 1.5rem !important;
-    background: rgba(255, 255, 255, 0.9) !important;
-    border: none !important;
-    border-radius: 25px !important;
-    color: #2c3e50 !important;
-    text-decoration: none !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    cursor: pointer !important;
-    display: inline-block !important;
-}
-.nav-button:hover, .nav-button.active {
-    background: #3498db !important;
-    color: white !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
-}
-`;
-    
-    // Add CSS to head
-    if (content.includes('<head>')) {
-      content = content.replace('<head>', `<head><style>${navCSS}</style>`);
-    } else if (content.includes('<style>')) {
-      content = content.replace('</style>', `${navCSS}</style>`);
-    } else {
-      content = `<style>${navCSS}</style>${content}`;
-    }
-  }
-  
-  // Add navigation HTML
-  if (content.includes('<body>')) {
-    content = content.replace('<body>', `<body>${navigationHtml}`);
-  } else {
-    content = `${navigationHtml}${content}`;
-  }
-  
-  return content;
-}
-
-/**
- * STEP 2: Automatic fix based on diagnosis
- */
-function autoFixRidersIssue() {
-  try {
-    console.log('🔧 Starting automatic fix for riders issue...');
-    
-    // First, get diagnosis
-    const diagnosis = diagnoseRealRidersIssue();
-    
-    if (!diagnosis.recommendations || diagnosis.recommendations.length === 0) {
-      console.log('✅ No issues found that need fixing');
-      return { success: true, message: 'No fixes needed' };
-    }
-    
-    const fixResults = {
-      success: true,
-      appliedFixes: [],
-      errors: []
-    };
-    
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    
-    // Apply fixes based on recommendations
-    for (const recommendation of diagnosis.recommendations) {
-      console.log(`🔧 Applying fix: ${recommendation.fix}`);
-      
-      try {
-        switch (recommendation.fix) {
-          case 'addSampleRiders':
-            // Add sample riders if no data exists
-            const sampleRiders = [
-              ['RIDER001', 'John Smith', '555-0101', 'john@example.com', 'Active', 'Standard', 0, ''],
-              ['RIDER002', 'Jane Doe', '555-0102', 'jane@example.com', 'Active', 'Advanced', 0, ''],
-              ['RIDER003', 'Bob Wilson', '555-0103', 'bob@example.com', 'Active', 'Standard', 0, '']
-            ];
-            
-            sampleRiders.forEach(rider => {
-              sheet.appendRow(rider);
-            });
-            
-            fixResults.appliedFixes.push('Added 3 sample riders');
-            console.log('✅ Added sample riders');
-            break;
-            
-          case 'fixColumnHeaders':
-            // Fix headers to match CONFIG expectations
-            const expectedHeaders = Object.values(CONFIG.columns.riders);
-            sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
-            
-            fixResults.appliedFixes.push('Fixed column headers');
-            console.log('✅ Fixed column headers');
-            break;
-            
-          case 'setActiveStatuses':
-            // Set empty statuses to 'Active'
-            const data = sheet.getDataRange().getValues();
-            const headers = data[0];
-            const statusColIndex = headers.indexOf(CONFIG.columns.riders.status);
-            const nameColIndex = headers.indexOf(CONFIG.columns.riders.name);
-            
-            if (statusColIndex >= 0 && nameColIndex >= 0) {
-              let fixedCount = 0;
-              for (let i = 1; i < data.length; i++) {
-                const name = data[i][nameColIndex];
-                const status = data[i][statusColIndex];
-                
-                if (name && String(name).trim() && (!status || String(status).trim() === '')) {
-                  sheet.getRange(i + 1, statusColIndex + 1).setValue('Active');
-                  fixedCount++;
-                }
-              }
-              
-              fixResults.appliedFixes.push(`Set ${fixedCount} riders to Active status`);
-              console.log(`✅ Set ${fixedCount} riders to Active status`);
-            }
-            break;
-            
-          case 'addRiderNames':
-            // Add placeholder names where missing
-            const allData = sheet.getDataRange().getValues();
-            const allHeaders = allData[0];
-            const nameCol = allHeaders.indexOf(CONFIG.columns.riders.name);
-            const idCol = allHeaders.indexOf(CONFIG.columns.riders.jpNumber);
-            
-            if (nameCol >= 0) {
-              let addedNames = 0;
-              for (let i = 1; i < allData.length; i++) {
-                const name = allData[i][nameCol];
-                const id = allData[i][idCol];
-                
-                if ((!name || String(name).trim() === '') && id && String(id).trim()) {
-                  sheet.getRange(i + 1, nameCol + 1).setValue(`Rider ${id}`);
-                  addedNames++;
-                }
-              }
-              
-              fixResults.appliedFixes.push(`Added names to ${addedNames} riders`);
-              console.log(`✅ Added names to ${addedNames} riders`);
-            }
-            break;
-        }
-        
-      } catch (fixError) {
-        console.error(`❌ Fix ${recommendation.fix} failed:`, fixError);
-        fixResults.errors.push(`${recommendation.fix}: ${fixError.message}`);
-      }
-    }
-    
-    // Clear cache after fixes
-    dataCache.clear('sheet_' + CONFIG.sheets.riders);
-    fixResults.appliedFixes.push('Cleared data cache');
-    
-    // Test the result
-    try {
-      const testRiders = getActiveRidersForAssignments();
-      fixResults.testResult = {
-        success: testRiders.length > 0,
-        ridersFound: testRiders.length,
-        sampleRider: testRiders[0] || null
-      };
-      
-      console.log(`🧪 Test result: Found ${testRiders.length} active riders`);
-      
-    } catch (testError) {
-      fixResults.testResult = {
-        success: false,
-        error: testError.message
-      };
-    }
-    
-    console.log('🔧 Auto-fix complete:', fixResults);
-    return fixResults;
-    
-  } catch (error) {
-    console.error('❌ Auto-fix failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * STEP 3: Simple test to verify riders are working
- */
-function testRidersAreWorking() {
-  try {
-    console.log('🧪 Testing if riders are working...');
-    
-    const tests = {
-      timestamp: new Date().toISOString(),
-      results: {}
-    };
-    
-    // Test 1: Basic data access
-    try {
-      const ridersData = getRidersData(false);
-      tests.results.getRidersData = {
-        success: true,
-        dataFound: !!(ridersData && ridersData.data && ridersData.data.length > 0),
-        rowCount: ridersData?.data?.length || 0
-      };
-    } catch (error) {
-      tests.results.getRidersData = {
-        success: false,
-        error: error.message
-      };
-    }
-    
-    // Test 2: Active riders for assignments
-    try {
-      const activeRiders = getActiveRidersForAssignments();
-      tests.results.getActiveRidersForAssignments = {
-        success: true,
-        ridersFound: activeRiders.length,
-        hasRealRiders: activeRiders.length > 0 && !activeRiders[0].name.includes('System'),
-        sampleRider: activeRiders[0] || null
-      };
-    } catch (error) {
-      tests.results.getActiveRidersForAssignments = {
-        success: false,
-        error: error.message
-      };
-    }
-    
-    // Test 3: Web app riders
-    try {
-      const webAppRiders = getActiveRidersForWebApp();
-      tests.results.getActiveRidersForWebApp = {
-        success: true,
-        ridersFound: webAppRiders.length,
-        hasRealRiders: webAppRiders.length > 0 && !webAppRiders[0].name.includes('System'),
-        sampleRider: webAppRiders[0] || null
-      };
-    } catch (error) {
-      tests.results.getActiveRidersForWebApp = {
-        success: false,
-        error: error.message
-      };
-    }
-    
-    // Overall assessment
-    const hasRealRiders = tests.results.getActiveRidersForAssignments?.hasRealRiders === true;
-    tests.overallSuccess = hasRealRiders;
-    tests.message = hasRealRiders 
-      ? '✅ Riders are working correctly!' 
-      : '❌ Still showing fallback/system riders - real data issue remains';
-    
-    console.log('🧪 Test complete:', tests);
-    return tests;
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * STEP 4: Complete solution - diagnose and fix in one go
- */
-function fixRidersCompletely() {
-  try {
-    console.log('🚀 === COMPLETE RIDERS FIX ===');
-    
-    const solution = {
-      timestamp: new Date().toISOString(),
-      steps: []
-    };
-    
-    // Step 1: Diagnose
-    console.log('🔍 Step 1: Diagnosing issue...');
-    const diagnosis = diagnoseRealRidersIssue();
-    solution.steps.push({
-      step: 'diagnosis',
-      result: diagnosis,
-      success: !diagnosis.error
-    });
-    
-    // Step 2: Apply fixes
-    console.log('🔧 Step 2: Applying fixes...');
-    const fixes = autoFixRidersIssue();
-    solution.steps.push({
-      step: 'fixes',
-      result: fixes,
-      success: fixes.success
-    });
-    
-    // Step 3: Test result
-    console.log('🧪 Step 3: Testing result...');
-    const test = testRidersAreWorking();
-    solution.steps.push({
-      step: 'test',
-      result: test,
-      success: test.overallSuccess
-    });
-    
-    solution.overallSuccess = test.overallSuccess;
-    solution.finalMessage = test.message;
-    
-    console.log('🚀 Complete fix result:', solution);
-    
-    if (solution.overallSuccess) {
-      console.log('🎉 SUCCESS! Riders should now work properly. Refresh your web app.');
-    } else {
-      console.log('❌ Issue persists. Check the diagnosis for more details.');
-    }
-    
-    return solution;
-    
-  } catch (error) {
-    console.error('❌ Complete fix failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-/**
- * Handle user management page
- */
-function handleUserManagementPage(e) {
-  try {
-    console.log('🔐 Handling user management page...');
-    
-    // Check authentication first
-    const authResult = authenticateAndAuthorizeUser();
-    
-    if (!authResult.success) {
-      console.log('❌ User management auth failed:', authResult.error);
-      return createSignInPage();
-    }
-    
-    // Check if user is admin
-    if (authResult.user.role !== 'admin') {
-      console.log('❌ User management access denied for role:', authResult.user.role);
-      return createAccessDeniedPage('Only administrators can access user management', authResult.user);
-    }
-    
-    console.log('✅ User management access granted for admin:', authResult.user.name);
-    
-    // Check if user-management.html file exists
-    if (checkFileExists('user-management')) {
-      console.log('✅ Loading user-management.html file');
-      
-      // Load the HTML file normally
-      let htmlOutput = HtmlService.createHtmlOutputFromFile('user-management');
-      let content = htmlOutput.getContent();
-      
-      // Add navigation and user info
-      const navigationHtml = getRoleBasedNavigationSafe('user-management', authResult.user, authResult.rider);
-      content = injectUserInfoSafe(content, authResult.user, authResult.rider);
-      content = addNavigationToContentSafe(content, navigationHtml);
-      htmlOutput.setContent(content);
-      addUserDataInjectionSafe(htmlOutput, authResult.user, authResult.rider);
-
-      return htmlOutput
-        .setTitle('User Management - Escort Management')
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
-    } else {
-      console.log('❌ user-management.html file not found, creating dynamic page');
-      // Fall back to the dynamic version we created earlier
-      return createUserManagementDashboard();
-    }
-    
-  } catch (error) {
-    console.error('❌ User management page error:', error);
-    return createErrorPageWithSignIn(error);
-  }
-}
-
-/**
- * Handle auth setup page
- */
-function handleAuthSetupPage(e) {
-  try {
-    console.log('🔐 Handling auth setup page...');
-    
-    const authResult = authenticateAndAuthorizeUser();
-    
-    if (!authResult.success || authResult.user.role !== 'admin') {
-      return createAccessDeniedPage('Only administrators can access authentication setup', 
-        authResult.user || { name: 'Unknown', role: 'unknown' });
-    }
-    
-    // Return the auth mapping page we created
-    return createAuthMappingPage();
-    
-  } catch (error) {
-    console.error('❌ Auth setup page error:', error);
-    return createErrorPageWithSignIn(error);
-  }
-}
-
-/**
- * Enhanced navigation that includes user management
- */
-function getRoleBasedNavigationSafe(currentPage, user, rider) {
-  try {
-    const baseUrl = getWebAppUrlSafe();
-    
-    const navigationMenus = {
-      admin: [
-        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
-        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
-        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
-        { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
-        { page: 'user-management', label: '🔐 User Management', url: `${baseUrl}?page=user-management` },
-        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
-        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
-      ],
-      dispatcher: [
-        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
-        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
-        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
-        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
-        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
-      ],
-      rider: [
-        { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
-        { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
-        { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
-      ]
-    };
-    
-    const menuItems = navigationMenus[user.role] || navigationMenus.rider;
-    
-    let navHtml = '<nav class="navigation" style="display: flex; justify-content: center; align-items: center;">';
-    
-    menuItems.forEach(item => {
-      const isActive = item.page === currentPage ? 'active' : '';
-      navHtml += `
-        <a href="${item.url}"
-           class="nav-button ${isActive}"
-           data-page="${item.page}"
-           target="_top">
-          ${item.label}
-        </a>
-      `;
-    });
-    
-    navHtml += '</nav>';
-    
-    return navHtml;
-    
-  } catch (error) {
-    console.error('❌ Error in getRoleBasedNavigationSafe:', error);
-    return '<nav>Navigation error</nav>';
-  }
-}
-
-/**
- * Log out the current user and return a Google sign-out URL
- */
-function logout() {
-  try {
-    if (typeof logoutUser === 'function') {
-      logoutUser();
-    }
-    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
-    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
-  } catch (error) {
-    console.error('Error clearing cached user info during logout:', error);
-  }
-
-  const baseUrl = getWebAppUrlSafe();
-  return `https://accounts.google.com/Logout?continue=${encodeURIComponent(baseUrl)}`;
-}
-
-/**
- * Test function - run this to debug your setup
- */
-function debugSystemSetup() {
-  console.log('🧪 Debugging system setup...');
-  
-  try {
-    console.log('=== Testing Authentication ===');
-    const authResult = authenticateAndAuthorizeUser();
-    console.log('Auth result:', authResult);
-    
-    console.log('=== Testing Admin Dashboard Data ===');
-    const dashboardData = getAdminDashboardData();
-    console.log('Dashboard data:', dashboardData);
-    
-    console.log('=== Testing User Management Data ===');
-    const userMgmtData = getUserManagementData();
-    console.log('User management data:', userMgmtData);
-    
-    console.log('=== Testing File Existence ===');
-    const files = ['index', 'admin-dashboard', 'user-management', 'requests', 'assignments'];
-    files.forEach(file => {
-      const exists = checkFileExists(file);
-      console.log(`${exists ? '✅' : '❌'} ${file}.html`);
-    });
-    
-    return {
-      auth: authResult,
-      dashboard: dashboardData,
-      userMgmt: userMgmtData,
-      filesExist: files.map(f => ({ file: f, exists: checkFileExists(f) }))
-    };
-    
-  } catch (error) {
-    console.error('❌ Debug failed:', error);
     return { error: error.message };
   }
 }

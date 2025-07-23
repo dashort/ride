@@ -892,6 +892,24 @@
         hideLoading();
         console.error('❌ Error loading riders:', error);
         showError('Error loading riders: ' + (error.message || error));
+        
+        // Show the empty state with helpful troubleshooting
+        showEmptyState();
+        document.getElementById('emptyStateDiv').innerHTML = `
+            <h3>❌ Failed to Load Riders</h3>
+            <p>Error: ${error.message || error}</p>
+            <div style="margin-top: 20px;">
+                <button onclick="debugRidersLoad()" class="btn btn-secondary">
+                    🔍 Debug Issue
+                </button>
+                <button onclick="fixRidersData()" class="btn btn-primary" style="margin-left: 10px;">
+                    🔧 Try to Fix
+                </button>
+                <button onclick="loadRidersData()" class="btn btn-info" style="margin-left: 10px;">
+                    🔄 Retry
+                </button>
+            </div>
+        `;
     }
 
     function updateUserInfo(user) {
@@ -1431,6 +1449,36 @@ function handleRidersDataSuccess(data) {
   } else {
     console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
     showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
+    
+    // Show enhanced empty state with debugging options
+    showEmptyState();
+    document.getElementById('emptyStateDiv').innerHTML = `
+        <h3>❌ No Riders Data Loaded</h3>
+        <p>The system returned: ${data ? data.error : 'No data'}</p>
+        <div style="margin-top: 20px;">
+            <button onclick="debugRidersLoad()" class="btn btn-secondary">
+                🔍 Debug Issue
+            </button>
+            <button onclick="fixRidersData()" class="btn btn-primary" style="margin-left: 10px;">
+                🔧 Try to Fix
+            </button>
+            <button onclick="loadRidersData()" class="btn btn-info" style="margin-left: 10px;">
+                🔄 Retry Loading
+            </button>
+        </div>
+        <details style="margin-top: 20px; text-align: left;">
+            <summary style="cursor: pointer; font-weight: bold;">🔧 Troubleshooting Steps</summary>
+            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; margin-top: 10px;">
+                <ol>
+                    <li>Check if you're properly logged in</li>
+                    <li>Verify your user role has access to riders</li>
+                    <li>Ensure the "Riders" sheet exists in the spreadsheet</li>
+                    <li>Check if there's data in the Riders sheet</li>
+                    <li>Try refreshing the page</li>
+                </ol>
+            </div>
+        </details>
+    `;
   }
 }
 
@@ -1683,8 +1731,37 @@ if (typeof handleRiderOperationFailure === 'undefined') {
 function renderRidersTable(riders) {
   const tbody = document.getElementById('ridersTableBody');
   
+  console.log('🎨 renderRidersTable called with:', riders ? riders.length : 'null', 'riders');
+  
   if (!riders || riders.length === 0) {
+    console.log('⚠️ No riders to render, showing empty state');
     showEmptyState();
+    document.getElementById('emptyStateDiv').innerHTML = `
+        <h3>No Riders Available</h3>
+        <p>No riders found matching your current filters.</p>
+        <div style="margin-top: 20px;">
+            <button onclick="debugRidersLoad()" class="btn btn-secondary">
+                🔍 Debug Issue
+            </button>
+            <button onclick="fixRidersData()" class="btn btn-primary" style="margin-left: 10px;">
+                🔧 Try to Fix
+            </button>
+            <button onclick="loadRidersData()" class="btn btn-info" style="margin-left: 10px;">
+                🔄 Reload Data
+            </button>
+        </div>
+        <details style="margin-top: 20px; text-align: left;">
+            <summary style="cursor: pointer; font-weight: bold;">💡 Possible Causes</summary>
+            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; margin-top: 10px;">
+                <ul>
+                    <li>No riders have been added to the system yet</li>
+                    <li>All riders may be filtered out by status or certification</li>
+                    <li>There may be an issue with the Riders sheet data</li>
+                    <li>Authentication or permission issues</li>
+                </ul>
+            </div>
+        </details>
+    `;
     return;
   }
 
