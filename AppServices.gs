@@ -266,7 +266,7 @@ function getPageDataForRiders(user, filters = {}) {
       return { success: false, error: 'Authentication required' };
     }
     
-    if (!canAccessPage(user, 'riders')) {
+    if (!canAccessPage(user, 'riders') && !hasPermission(user, 'assignments', 'assign_any')) {
       return { success: false, error: 'Access denied to riders' };
     }
     
