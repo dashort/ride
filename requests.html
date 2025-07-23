@@ -2017,16 +2017,47 @@
 
     function handleRidersDataLoaded(data) {
         document.getElementById('ridersLoadingState').style.display = 'none';
+        
+        console.log('🔍 Full riders data response:', data);
 
         const ridersList = (data && data.riders) || (data && data.data && data.data.riders);
+        
+        if (!ridersList) {
+            console.log('🔍 Riders list not found in data. Data structure:', Object.keys(data || {}));
+        }
 
         if (data && data.success && Array.isArray(ridersList)) {
+            console.log('🔍 Raw riders data:', ridersList.length, 'riders loaded');
+            
+            // Debug: Log all unique status values
+            const allStatuses = [...new Set(ridersList.map(r => r.status || 'empty'))];
+            console.log('🔍 All rider status values found:', allStatuses);
+            
             availableRiders = ridersList.filter(rider => {
                 const status = String(rider.status || '').toLowerCase().trim();
-                return status === '' ||
-                       status.startsWith('active') ||
-                       status.startsWith('available');
+                // Include riders with Active status (case insensitive) or empty status
+                // Also exclude only clearly inactive statuses
+                const isAvailable = status === '' || 
+                                   status === 'active' || 
+                                   status.startsWith('active') ||
+                                   status.startsWith('available') ||
+                                   // More inclusive: exclude only specific inactive statuses
+                                   (status !== 'inactive' && 
+                                    status !== 'suspended' && 
+                                    status !== 'vacation' &&
+                                    status !== 'training');
+                
+                if (!isAvailable) {
+                    console.log('🔍 Filtering out rider:', rider.name, 'with status:', rider.status);
+                }
+                
+                return isAvailable;
             });
+            
+            console.log('🔍 After filtering:', availableRiders.length, 'available riders');
+            if (availableRiders.length > 0) {
+                console.log('🔍 Available riders:', availableRiders.map(r => `${r.name} (${r.status})`));
+            }
             
             if (availableRiders.length > 0) {
                 document.getElementById('ridersAssignmentGrid').style.display = 'grid';
