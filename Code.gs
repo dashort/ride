@@ -3789,22 +3789,32 @@ function getPageDataForRiders() {
   try {
     console.log('🔄 Loading riders page data with consistent counts...');
 
-    // Attempt to authenticate the user, but continue gracefully if it fails
-    let auth = { success: false };
-    try {
-      auth = authenticateAndAuthorizeUser();
-    } catch (e) {
-      console.warn('⚠️ authenticateAndAuthorizeUser failed:', e);
+    const auth = authenticateAndAuthorizeUser();
+    if (!auth.success) {
+      return {
+        success: false,
+        error: auth.error || 'UNAUTHORIZED',
+        user: auth.user || {
+          name: auth.userName || 'User',
+          email: auth.userEmail || '',
+          roles: ['unauthorized'],
+          permissions: []
+        },
+        riders: [],
+        stats: {
+          totalRiders: 0,
+          activeRiders: 0,
+          inactiveRiders: 0,
+          onVacation: 0,
+          inTraining: 0,
+          partTimeRiders: 0
+        }
+      };
     }
 
-    const user = auth && auth.success
-      ? Object.assign({}, auth.user, { roles: auth.user.roles || [auth.user.role] })
-      : getCurrentUser();
-
-    // If authentication failed, still proceed but indicate limited permissions
-    if (!(auth && auth.success)) {
-      console.log('⚠️ Proceeding without full authentication');
-    }
+    const user = Object.assign({}, auth.user, {
+      roles: auth.user.roles || [auth.user.role]
+    });
     const riders = getRiders(); // Uses consistent filtering
     
     // Calculate stats using consistent logic
