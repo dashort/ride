@@ -2017,9 +2017,11 @@
 
     function handleRidersDataLoaded(data) {
         document.getElementById('ridersLoadingState').style.display = 'none';
-        
-        if (data && data.success && data.riders) {
-            availableRiders = data.riders.filter(rider => {
+
+        const ridersList = (data && data.riders) || (data && data.data && data.data.riders);
+
+        if (data && data.success && Array.isArray(ridersList)) {
+            availableRiders = ridersList.filter(rider => {
                 const status = String(rider.status || '').toLowerCase().trim();
                 return status === '' ||
                        status.startsWith('active') ||
