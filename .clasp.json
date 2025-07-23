@@ -4,9 +4,8 @@
   "scriptExtensions": [
     ".gs"
   ],
-  "htmlExtensions": [
-    ".html"
-  ],
+  "htmlExtensions": [".html", ".md"],
+
   "jsonExtensions": [
     ".json"
   ],
