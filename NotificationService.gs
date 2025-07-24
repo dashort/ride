@@ -1006,11 +1006,9 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
     `Time: ${timeStr}`,
     `Assigned Riders: ${riders}`,
     '',
-
     `Pickup: ${startLocation || ''}`,
     `Second: ${endLocation || ''}`,
     `Dropoff: ${secondaryLocation || ''}`,
-
     '',
     `Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}`,
     escortFee ? `Fee: $${escortFee}` : '',
@@ -1025,11 +1023,9 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
   const htmlLines = [
     `<p><strong>Escort ${requestId}</strong></p>`,
     `<p>Date: ${dateStr}<br>Time: ${timeStr}<br>Assigned Riders: ${riders}</p>`,
-
     `<p>${startLocation ? 'Pickup: ' + startLocation + '<br>' : ''}` +
       `${endLocation ? 'Dropoff: ' + endLocation + '<br>' : ''}` +
       `${secondaryLocation ? 'Second: ' + secondaryLocation : ''}</p>`,
-
     `<p>Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}<br>` +
       `${escortFee ? 'Fee: $' + escortFee + '<br>' : ''}` +
       `${notes ? 'Notes: ' + notes : ''}</p>`,
@@ -1059,7 +1055,6 @@ function formatRequestDetails(details) {
   if (details.eventDate) parts.push(`Event Date: ${formatDateForDisplay(details.eventDate)}`);
   if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
   if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
-
   if (details.startLocation) parts.push(`Pickup: ${details.startLocation}`);
   if (details.endLocation) parts.push(`Dropoff: ${details.endLocation}`);
   if (details.secondaryLocation) parts.push(`Second: ${details.secondaryLocation}`);

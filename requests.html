@@ -2005,47 +2005,138 @@
         }
     }
 
-    function loadRidersForAssignment() {
-        // Show loading state
-        document.getElementById('ridersLoadingState').style.display = 'block';
-        document.getElementById('ridersAssignmentGrid').style.display = 'none';
-        document.getElementById('noRidersState').style.display = 'none';
-
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(handleRidersDataLoaded)
-                .withFailureHandler(handleRidersDataError)
-                .getPageDataForRiders(currentUser || {});
-        } else {
-            // Fallback for testing
-            handleRidersDataError({ message: "Google Apps Script not available." });
-        }
+function displayRidersForAssignment() {
+    console.log('🎨 Displaying riders for assignment...');
+    
+    const ridersGrid = document.getElementById('ridersAssignmentGrid');
+    if (!ridersGrid) {
+        console.error('❌ Riders grid element not found');
+        return;
     }
-
-    function handleRidersDataLoaded(data) {
-        document.getElementById('ridersLoadingState').style.display = 'none';
+    
+    const searchTerm = document.getElementById('riderSearchBox').value.toLowerCase();
+    const showAvailableOnly = document.getElementById('showAvailableOnly').checked;
+    
+    let filteredRiders = availableRiders;
+    
+    // Apply search filter
+    if (searchTerm) {
+        filteredRiders = filteredRiders.filter(rider => {
+            return (rider.name && rider.name.toLowerCase().includes(searchTerm)) ||
+                   (rider.jpNumber && rider.jpNumber.toLowerCase().includes(searchTerm)) ||
+                   (rider.phone && rider.phone.toLowerCase().includes(searchTerm));
+        });
+    }
+    
+    // Apply availability filter
+    if (showAvailableOnly) {
+        filteredRiders = filteredRiders.filter(rider => {
+            const availability = riderAvailability[rider.name] || 'Available';
+            return availability === 'Available';
+        });
+    }
+    
+    console.log(`📊 Displaying ${filteredRiders.length} riders after filtering`);
+    
+    if (filteredRiders.length === 0) {
+        ridersGrid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: #7f8c8d;">
+                <div>No riders match the current filters</div>
+                <div style="font-size: 0.9rem; margin-top: 0.5rem;">
+                    Try clearing the search or disabling "Show available only"
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    // Generate rider cards using the SAME format as assignments page
+    ridersGrid.innerHTML = filteredRiders.map(rider => {
+        const isSelected = selectedRiders.has(rider.name);
+        const availability = riderAvailability[rider.name] || 'Available';
+        const isAvailable = availability === 'Available';
         
-        if (data && data.success && data.riders) {
-            availableRiders = data.riders.filter(rider => 
-                rider.status === 'Active' || rider.status === 'Available' || !rider.status
-            );
+        return `
+            <div class="rider-card ${isSelected ? 'selected' : ''} ${!isAvailable ? 'unavailable' : ''}" 
+                 data-rider-name="${rider.name}" 
+                 onclick="toggleRiderSelection('${rider.name}')">
+                <div class="rider-header">
+                    <div class="rider-name">${rider.name}</div>
+                    <div class="rider-status status-${availability.toLowerCase()}">${availability}</div>
+                </div>
+                <div class="rider-details">
+                    <div class="rider-info">📞 ${rider.phone || 'No phone'}</div>
+                    <div class="rider-info">🆔 ${rider.jpNumber || 'No JP#'}</div>
+                    ${rider.email ? `<div class="rider-info">📧 ${rider.email}</div>` : ''}
+                </div>
+                ${!isAvailable ? `<div class="conflict-info">⚠️ ${availability}</div>` : ''}
+                ${isSelected ? '<div class="selection-indicator">✓ Selected</div>' : ''}
+            </div>
+        `;
+    }).join('');
+    
+    // Update selected count
+    updateSelectedRidersCount();
+}
+
+
+function handleRidersDataLoaded(data) {
+    console.log('📋 Processing rider data response:', data);
+    
+    document.getElementById('ridersLoadingState').style.display = 'none';
+    
+    if (data && data.success && data.riders) {
+        console.log(`📊 Received ${data.riders.length} total riders`);
+        
+        // Use the SAME filtering logic as assignments page
+        availableRiders = data.riders.filter(rider => {
+            // Include riders that are Active, Available, or have no status (default to active)
+            const status = rider.status;
+            const isActive = !status || status === 'Active' || status === 'Available';
+            const hasName = rider.name && rider.name.trim();
             
-            if (availableRiders.length > 0) {
-                document.getElementById('ridersAssignmentGrid').style.display = 'grid';
-                displayRidersForAssignment();
-                
-                // Check rider availability for this specific request
-                if (currentEditingRequest) {
-                    checkRiderAvailability();
-                }
-            } else {
-                document.getElementById('noRidersState').style.display = 'block';
+            console.log(`🧑‍💼 Rider: ${rider.name}, Status: ${status}, Active: ${isActive}, HasName: ${hasName}`);
+            
+            return isActive && hasName;
+        });
+        
+        console.log(`✅ Filtered to ${availableRiders.length} available riders`);
+        
+        if (availableRiders.length > 0) {
+            document.getElementById('ridersAssignmentGrid').style.display = 'grid';
+            document.getElementById('noRidersState').style.display = 'none';
+            displayRidersForAssignment();
+            
+            // Check rider availability for this specific request
+            if (currentEditingRequest) {
+                checkRiderAvailability();
             }
         } else {
+            console.log('⚠️ No available riders after filtering');
+            document.getElementById('ridersAssignmentGrid').style.display = 'none';
             document.getElementById('noRidersState').style.display = 'block';
-            showToast('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
+            
+            // Show debug info in no riders state
+            const noRidersDiv = document.getElementById('noRidersState');
+            noRidersDiv.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: #7f8c8d;">
+                    <div style="font-size: 1.2rem; margin-bottom: 1rem;">No riders available</div>
+                    <div style="font-size: 0.9rem; color: #95a5a6;">
+                        Received ${data.riders.length} total riders, but none are marked as "Active" or "Available"
+                    </div>
+                    <button onclick="debugRiderFiltering()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px;">
+                        🔍 Debug Rider Issues
+                    </button>
+                </div>
+            `;
         }
+    } else {
+        console.log('❌ Invalid data response:', data);
+        document.getElementById('ridersAssignmentGrid').style.display = 'none';
+        document.getElementById('noRidersState').style.display = 'block';
+        showToast('Failed to load riders: ' + (data ? data.error || 'Invalid response' : 'No response'), 'error');
     }
+}
 
     function handleRidersDataError(error) {
         document.getElementById('ridersLoadingState').style.display = 'none';
