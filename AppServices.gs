@@ -4312,7 +4312,11 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     }
 
     if (targetRowIndex === -1) {
-      throw new Error(`Request ${requestId} not found for rider assignment update`);
+      logError(
+        `Request ${requestId} not found for rider assignment update`,
+        new Error('RequestNotFound')
+      );
+      return; // Gracefully exit if request row is missing
     }
 
     const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
