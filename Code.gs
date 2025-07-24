@@ -20,11 +20,11 @@ function traceAuthFunction(functionName, email, source) {
     source: source || 'unknown'
   });
   
-  console.log(`🔍 AUTH TRACE: ${functionName} -> ${email} (${source})`);
+  debugLog(`🔍 AUTH TRACE: ${functionName} -> ${email} (${source})`);
   
   // If we see jpsotraffic@gmail.com, log it prominently
   if (email === 'jpsotraffic@gmail.com') {
-    console.log(`🚨 JPSOTRAFFIC DETECTED in ${functionName}!`);
+    debugLog(`🚨 JPSOTRAFFIC DETECTED in ${functionName}!`);
   }
 }
 
@@ -34,7 +34,7 @@ function traceAuthFunction(functionName, email, source) {
  */
 function getCurrentUser() {
   try {
-    console.log('🔍 getCurrentUser called from CoreUtils.gs');
+    debugLog('🔍 getCurrentUser called from CoreUtils.gs');
     
     // Delegate to the centralized authentication service
     if (typeof authenticateAndAuthorizeUser === 'function') {
@@ -51,7 +51,7 @@ function getCurrentUser() {
     }
 
     // Fallback to session information if the auth service fails
-    console.log('⚠️ getCurrentUser falling back to direct session...');
+    debugLog('⚠️ getCurrentUser falling back to direct session...');
     const userEmail = Session.getActiveUser().getEmail();
     const displayName = getUserDisplayName(userEmail);
     
@@ -59,7 +59,7 @@ function getCurrentUser() {
     
     return { email: userEmail, name: displayName, roles: ['guest'], permissions: ['view'] };
   } catch (error) {
-    console.log('❌ getCurrentUser error:', error);
+    debugLog('❌ getCurrentUser error:', error);
     traceAuthFunction('getCurrentUser->error', 'anonymous@example.com', 'error');
     logError('Error getting current user:', error);
     return { email: 'anonymous@example.com', name: 'Guest User', roles: ['guest'], permissions: ['view'] };
@@ -70,14 +70,14 @@ function getCurrentUser() {
  * Add this to your Code.gs and run it to see what's in your Settings sheet
  */
 function diagnoseSettingsSheet() {
-  console.log('🔍 === SETTINGS SHEET DIAGNOSTIC ===');
+  debugLog('🔍 === SETTINGS SHEET DIAGNOSTIC ===');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     
     // Check all sheet names
     const allSheets = spreadsheet.getSheets().map(sheet => sheet.getName());
-    console.log('📋 All sheet names:', allSheets);
+    debugLog('📋 All sheet names:', allSheets);
     
     // Check for different possible Settings sheet names
     const possibleNames = ['Settings', 'settings', 'SETTINGS', 'Config', 'Configuration'];
@@ -90,7 +90,7 @@ function diagnoseSettingsSheet() {
         if (sheet) {
           settingsSheet = sheet;
           actualName = name;
-          console.log(`✅ Found Settings sheet with name: "${actualName}"`);
+          debugLog(`✅ Found Settings sheet with name: "${actualName}"`);
           break;
         }
       } catch (e) {
@@ -99,8 +99,8 @@ function diagnoseSettingsSheet() {
     }
     
     if (!settingsSheet) {
-      console.log('❌ No Settings sheet found with any expected name');
-      console.log('📋 Available sheets:', allSheets);
+      debugLog('❌ No Settings sheet found with any expected name');
+      debugLog('📋 Available sheets:', allSheets);
       return {
         success: false,
         error: 'Settings sheet not found',
@@ -110,60 +110,60 @@ function diagnoseSettingsSheet() {
     }
     
     // Check what's in the Settings sheet
-    console.log(`\n📊 Reading data from "${actualName}" sheet...`);
+    debugLog(`\n📊 Reading data from "${actualName}" sheet...`);
     
     const dataRange = settingsSheet.getDataRange();
     const allData = dataRange.getValues();
     
-    console.log(`📐 Sheet dimensions: ${allData.length} rows x ${allData[0]?.length || 0} columns`);
+    debugLog(`📐 Sheet dimensions: ${allData.length} rows x ${allData[0]?.length || 0} columns`);
     
     // Show the raw data
-    console.log('\n📋 Raw sheet data:');
+    debugLog('\n📋 Raw sheet data:');
     allData.forEach((row, index) => {
-      console.log(`Row ${index + 1}:`, row);
+      debugLog(`Row ${index + 1}:`, row);
     });
     
     // Test specific ranges that the system tries to read
-    console.log('\n🔍 Testing admin email range (B2:B10):');
+    debugLog('\n🔍 Testing admin email range (B2:B10):');
     try {
       const adminRange = settingsSheet.getRange('B2:B10').getValues();
       const adminEmails = adminRange.flat().filter(email => email && email.trim());
-      console.log('Admin emails found:', adminEmails);
+      debugLog('Admin emails found:', adminEmails);
       
       if (adminEmails.includes('jpsotraffic@gmail.com')) {
-        console.log('✅ jpsotraffic@gmail.com is in the admin list (B2:B10)');
+        debugLog('✅ jpsotraffic@gmail.com is in the admin list (B2:B10)');
       } else {
-        console.log('⚠️ jpsotraffic@gmail.com NOT found in admin range B2:B10');
+        debugLog('⚠️ jpsotraffic@gmail.com NOT found in admin range B2:B10');
       }
     } catch (e) {
-      console.log('❌ Error reading B2:B10:', e.message);
+      debugLog('❌ Error reading B2:B10:', e.message);
     }
     
-    console.log('\n🔍 Testing dispatcher email range (C2:C10):');
+    debugLog('\n🔍 Testing dispatcher email range (C2:C10):');
     try {
       const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
       const dispatcherEmails = dispatcherRange.flat().filter(email => email && email.trim());
-      console.log('Dispatcher emails found:', dispatcherEmails);
+      debugLog('Dispatcher emails found:', dispatcherEmails);
     } catch (e) {
-      console.log('❌ Error reading C2:C10:', e.message);
+      debugLog('❌ Error reading C2:C10:', e.message);
     }
     
     // Check CONFIG reference
-    console.log('\n🔍 Checking CONFIG.sheets.settings:');
+    debugLog('\n🔍 Checking CONFIG.sheets.settings:');
     try {
       if (typeof CONFIG !== 'undefined' && CONFIG.sheets && CONFIG.sheets.settings) {
-        console.log('CONFIG.sheets.settings =', CONFIG.sheets.settings);
+        debugLog('CONFIG.sheets.settings =', CONFIG.sheets.settings);
         
         if (CONFIG.sheets.settings !== actualName) {
-          console.log(`⚠️ MISMATCH: CONFIG expects "${CONFIG.sheets.settings}" but sheet is named "${actualName}"`);
+          debugLog(`⚠️ MISMATCH: CONFIG expects "${CONFIG.sheets.settings}" but sheet is named "${actualName}"`);
         } else {
-          console.log('✅ CONFIG matches actual sheet name');
+          debugLog('✅ CONFIG matches actual sheet name');
         }
       } else {
-        console.log('⚠️ CONFIG.sheets.settings not defined');
+        debugLog('⚠️ CONFIG.sheets.settings not defined');
       }
     } catch (e) {
-      console.log('❌ Error checking CONFIG:', e.message);
+      debugLog('❌ Error checking CONFIG:', e.message);
     }
     
     return {
@@ -189,7 +189,7 @@ function diagnoseSettingsSheet() {
  * REPLACE your getAdminUsers function in Code.gs with this version
  */
 function getAdminUsers() {
-  console.log('🔍 getAdminUsers called...');
+  debugLog('🔍 getAdminUsers called...');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -202,7 +202,7 @@ function getAdminUsers() {
       try {
         settingsSheet = spreadsheet.getSheetByName(name);
         if (settingsSheet) {
-          console.log(`✅ Found Settings sheet: "${name}"`);
+          debugLog(`✅ Found Settings sheet: "${name}"`);
           break;
         }
       } catch (e) {
@@ -212,29 +212,29 @@ function getAdminUsers() {
     
     if (settingsSheet) {
       try {
-        console.log('📖 Reading admin emails from Settings sheet...');
+        debugLog('📖 Reading admin emails from Settings sheet...');
         const adminRange = settingsSheet.getRange('B2:B10').getValues();
         const adminEmails = adminRange.flat().filter(email => email && email.trim());
         
-        console.log('📧 Admin emails from sheet:', adminEmails);
+        debugLog('📧 Admin emails from sheet:', adminEmails);
         
         if (adminEmails.length > 0) {
           return adminEmails;
         } else {
-          console.log('⚠️ No admin emails found in Settings sheet, using fallback');
+          debugLog('⚠️ No admin emails found in Settings sheet, using fallback');
         }
       } catch (error) {
-        console.log('❌ Error reading Settings sheet:', error.message);
+        debugLog('❌ Error reading Settings sheet:', error.message);
       }
     } else {
-      console.log('⚠️ Settings sheet not found, using fallback');
+      debugLog('⚠️ Settings sheet not found, using fallback');
     }
   } catch (error) {
-    console.log('❌ Error accessing spreadsheet:', error.message);
+    debugLog('❌ Error accessing spreadsheet:', error.message);
   }
   
   // Fallback to hardcoded admin emails
-  console.log('📧 Using hardcoded admin fallback');
+  debugLog('📧 Using hardcoded admin fallback');
   return [
     'admin@yourdomain.com',
     'jpsotraffic@gmail.com',
@@ -247,19 +247,19 @@ function getAdminUsers() {
  * Run this function to restructure your Settings sheet properly
  */
 function fixSettingsSheetStructure() {
-  console.log('🛠️ Fixing Settings sheet structure...');
+  debugLog('🛠️ Fixing Settings sheet structure...');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const settingsSheet = spreadsheet.getSheetByName('Settings');
     
     if (!settingsSheet) {
-      console.log('❌ Settings sheet not found');
+      debugLog('❌ Settings sheet not found');
       return { success: false, error: 'Settings sheet not found' };
     }
     
     // Clear the existing problematic structure
-    console.log('🧹 Clearing existing data...');
+    debugLog('🧹 Clearing existing data...');
     settingsSheet.clear();
     
     // Set up clean structure with proper email separation
@@ -285,11 +285,11 @@ function fixSettingsSheetStructure() {
     ];
     
     // Write the new structure
-    console.log('📝 Writing new structure...');
+    debugLog('📝 Writing new structure...');
     settingsSheet.getRange(1, 1, newStructure.length, newStructure[0].length).setValues(newStructure);
     
     // Format headers
-    console.log('🎨 Formatting headers...');
+    debugLog('🎨 Formatting headers...');
     settingsSheet.getRange(1, 1, 1, newStructure[0].length)
       .setFontWeight('bold')
       .setBackground('#4285f4')
@@ -298,10 +298,10 @@ function fixSettingsSheetStructure() {
     // Auto-resize columns
     settingsSheet.autoResizeColumns(1, newStructure[0].length);
     
-    console.log('✅ Settings sheet structure fixed!');
+    debugLog('✅ Settings sheet structure fixed!');
     
     // Test the fix
-    console.log('\n🧪 Testing the fix...');
+    debugLog('\n🧪 Testing the fix...');
     const testResult = testAdminEmailReading();
     
     return {
@@ -324,16 +324,16 @@ function fixSettingsSheetStructure() {
  * REPLACE your getAdminUsers function with this version
  */
 function getAdminUsers() {
-  console.log('🔍 getAdminUsers called (robust version)...');
+  debugLog('🔍 getAdminUsers called (robust version)...');
   
   try {
     const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
     if (settingsSheet) {
-      console.log('📖 Reading admin emails from Settings sheet...');
+      debugLog('📖 Reading admin emails from Settings sheet...');
       
       // Read the range
       const adminRange = settingsSheet.getRange('B2:B11').getValues(); // Extended range
-      console.log('📊 Raw admin range data:', adminRange);
+      debugLog('📊 Raw admin range data:', adminRange);
       
       // Robust filtering to handle mixed data types
       const adminEmails = adminRange
@@ -358,22 +358,22 @@ function getAdminUsers() {
         })
         .map(email => email.trim()); // Clean up the emails
       
-      console.log('📧 Filtered admin emails:', adminEmails);
+      debugLog('📧 Filtered admin emails:', adminEmails);
       
       if (adminEmails.length > 0) {
         return adminEmails;
       } else {
-        console.log('⚠️ No valid admin emails found in Settings sheet');
+        debugLog('⚠️ No valid admin emails found in Settings sheet');
       }
     } else {
-      console.log('⚠️ Settings sheet not found');
+      debugLog('⚠️ Settings sheet not found');
     }
   } catch (error) {
-    console.log('❌ Error reading Settings sheet:', error.message);
+    debugLog('❌ Error reading Settings sheet:', error.message);
   }
   
   // Fallback to hardcoded admin emails
-  console.log('📧 Using hardcoded admin fallback');
+  debugLog('📧 Using hardcoded admin fallback');
   return [
     'dashort@gmail.com',
     'jpsotraffic@gmail.com',
@@ -385,15 +385,15 @@ function getAdminUsers() {
  * Robust dispatcher email reading function
  */
 function getDispatcherUsers() {
-  console.log('🔍 getDispatcherUsers called (robust version)...');
+  debugLog('🔍 getDispatcherUsers called (robust version)...');
   
   try {
     const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
     if (settingsSheet) {
-      console.log('📖 Reading dispatcher emails from Settings sheet...');
+      debugLog('📖 Reading dispatcher emails from Settings sheet...');
       
       const dispatcherRange = settingsSheet.getRange('C2:C11').getValues();
-      console.log('📊 Raw dispatcher range data:', dispatcherRange);
+      debugLog('📊 Raw dispatcher range data:', dispatcherRange);
       
       // Robust filtering
       const dispatcherEmails = dispatcherRange
@@ -417,14 +417,14 @@ function getDispatcherUsers() {
         })
         .map(email => email.trim());
       
-      console.log('📧 Filtered dispatcher emails:', dispatcherEmails);
+      debugLog('📧 Filtered dispatcher emails:', dispatcherEmails);
       
       if (dispatcherEmails.length > 0) {
         return dispatcherEmails;
       }
     }
   } catch (error) {
-    console.log('❌ Error reading dispatcher emails:', error.message);
+    debugLog('❌ Error reading dispatcher emails:', error.message);
   }
   
   // Fallback
@@ -434,113 +434,7 @@ function getDispatcherUsers() {
   ];
 }
 
-/**
- * Test admin email reading after fix
- */
-function testAdminEmailReading() {
-  console.log('🧪 === TESTING ADMIN EMAIL READING ===');
-  
-  try {
-    // Test admin emails
-    console.log('\n1. Testing getAdminUsers():');
-    const admins = getAdminUsers();
-    console.log('✅ Admin emails:', admins);
-    
-    // Test dispatcher emails  
-    console.log('\n2. Testing getDispatcherUsers():');
-    const dispatchers = getDispatcherUsers();
-    console.log('✅ Dispatcher emails:', dispatchers);
-    
-    // Test if jpsotraffic is in admin list
-    console.log('\n3. Checking jpsotraffic@gmail.com:');
-    const isJpsotrafficAdmin = admins.includes('jpsotraffic@gmail.com');
-    console.log(`jpsotraffic@gmail.com is admin: ${isJpsotrafficAdmin ? '✅ YES' : '❌ NO'}`);
-    
-    // Test authentication
-    console.log('\n4. Testing full authentication:');
-    const authResult = authenticateAndAuthorizeUser();
-    console.log('Auth success:', authResult.success);
-    console.log('Auth user email:', authResult.user?.email);
-    console.log('Auth user role:', authResult.user?.role);
-    
-    return {
-      success: true,
-      adminEmails: admins,
-      dispatcherEmails: dispatchers,
-      jpsotrafficIsAdmin: isJpsotrafficAdmin,
-      authResult: authResult
-    };
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
 
-/**
- * Quick fix - just clean the existing data without restructuring
- */
-function quickFixSettingsSheetEmails() {
-  console.log('🚀 Quick fix for Settings sheet emails...');
-  
-  try {
-    const settingsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Settings');
-    
-    // Just clean up the admin email column (B2:B11)
-    const cleanAdminEmails = [
-      ['dashort@gmail.com'],
-      ['jpsotraffic@gmail.com'], 
-      ['manager@example.com'],
-      [''], // Empty cells for additional emails
-      [''],
-      [''],
-      [''],
-      [''],
-      [''],
-      ['']
-    ];
-    
-    console.log('📝 Writing clean admin emails to B2:B11...');
-    settingsSheet.getRange('B2:B11').setValues(cleanAdminEmails);
-    
-    // Clean up dispatcher emails too
-    const cleanDispatcherEmails = [
-      ['dispatcher@example.com'],
-      ['jpdispatcher100@gmail.com'],
-      ['operator@example.com'],
-      [''],
-      [''],
-      [''],
-      [''],
-      [''],
-      [''],
-      ['']
-    ];
-    
-    console.log('📝 Writing clean dispatcher emails to C2:C11...');
-    settingsSheet.getRange('C2:C11').setValues(cleanDispatcherEmails);
-    
-    console.log('✅ Quick fix completed!');
-    
-    // Test the fix
-    const testResult = testAdminEmailReading();
-    return {
-      success: true,
-      message: 'Quick fix completed successfully',
-      testResult: testResult
-    };
-    
-  } catch (error) {
-    console.error('❌ Quick fix failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
 /**
  * Fixed getAdminUsersSafe function 
  * REPLACE your getAdminUsersSafe function in AccessControl.gs with this version
@@ -565,52 +459,22 @@ function getAdminUsersSafe() {
   }
 }
 
-/**
- * Test the fixed admin user functions
- */
-function testFixedAdminFunctions() {
-  console.log('🧪 === TESTING FIXED ADMIN FUNCTIONS ===');
-  
-  console.log('\n1. Testing getAdminUsers():');
-  try {
-    const admins1 = getAdminUsers();
-    console.log('Result:', admins1);
-  } catch (e) {
-    console.log('Error:', e.message);
-  }
-  
-  console.log('\n2. Testing getAdminUsersSafe():');
-  try {
-    const admins2 = getAdminUsersSafe();
-    console.log('Result:', admins2);
-  } catch (e) {
-    console.log('Error:', e.message);
-  }
-  
-  console.log('\n3. Testing authentication with fixed functions:');
-  try {
-    const authResult = authenticateAndAuthorizeUser();
-    console.log('Auth result:', JSON.stringify(authResult, null, 2));
-  } catch (e) {
-    console.log('Auth error:', e.message);
-  }
-}
 
 /**
  * Create or update Settings sheet with proper structure
  */
 function createOrUpdateSettingsSheet() {
-  console.log('🛠️ Creating/updating Settings sheet...');
+  debugLog('🛠️ Creating/updating Settings sheet...');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     let settingsSheet = spreadsheet.getSheetByName('Settings');
     
     if (!settingsSheet) {
-      console.log('📄 Creating new Settings sheet...');
+      debugLog('📄 Creating new Settings sheet...');
       settingsSheet = spreadsheet.insertSheet('Settings');
     } else {
-      console.log('📄 Updating existing Settings sheet...');
+      debugLog('📄 Updating existing Settings sheet...');
     }
     
     // Create the proper structure
@@ -644,12 +508,12 @@ function createOrUpdateSettingsSheet() {
     
     settingsSheet.autoResizeColumns(1, headers.length);
     
-    console.log('✅ Settings sheet created/updated successfully');
+    debugLog('✅ Settings sheet created/updated successfully');
     
     // Test reading from the updated sheet
-    console.log('\n🧪 Testing updated sheet:');
+    debugLog('\n🧪 Testing updated sheet:');
     const testAdmins = getAdminUsers();
-    console.log('Admin emails now:', testAdmins);
+    debugLog('Admin emails now:', testAdmins);
     
     return {
       success: true,
@@ -666,11 +530,11 @@ function createOrUpdateSettingsSheet() {
   }
 }
 function diagnoseAuthenticationIssue() {
-  console.log('🔍 === AUTHENTICATION DIAGNOSTIC REPORT ===');
+  debugLog('🔍 === AUTHENTICATION DIAGNOSTIC REPORT ===');
   
   try {
     // 1. Test raw Session methods
-    console.log('\n1. RAW SESSION TESTING:');
+    debugLog('\n1. RAW SESSION TESTING:');
     
     let activeUser = null;
     let activeUserEmail = '';
@@ -679,110 +543,110 @@ function diagnoseAuthenticationIssue() {
     
     try {
       activeUser = Session.getActiveUser();
-      console.log('✅ Session.getActiveUser() succeeded');
-      console.log('   Type:', typeof activeUser);
+      debugLog('✅ Session.getActiveUser() succeeded');
+      debugLog('   Type:', typeof activeUser);
       
       if (activeUser) {
         try {
           activeUserEmail = activeUser.getEmail();
-          console.log('✅ getEmail() succeeded:', activeUserEmail);
+          debugLog('✅ getEmail() succeeded:', activeUserEmail);
         } catch (e) {
-          console.log('❌ getEmail() failed:', e.message);
+          debugLog('❌ getEmail() failed:', e.message);
           activeUserEmail = activeUser.email || 'NO_EMAIL_PROPERTY';
-          console.log('   Fallback email property:', activeUserEmail);
+          debugLog('   Fallback email property:', activeUserEmail);
         }
       }
     } catch (e) {
-      console.log('❌ Session.getActiveUser() failed:', e.message);
+      debugLog('❌ Session.getActiveUser() failed:', e.message);
     }
     
     try {
       effectiveUser = Session.getEffectiveUser();
-      console.log('✅ Session.getEffectiveUser() succeeded');
+      debugLog('✅ Session.getEffectiveUser() succeeded');
       
       if (effectiveUser) {
         try {
           effectiveUserEmail = effectiveUser.getEmail();
-          console.log('✅ getEmail() succeeded:', effectiveUserEmail);
+          debugLog('✅ getEmail() succeeded:', effectiveUserEmail);
         } catch (e) {
-          console.log('❌ getEmail() failed:', e.message);
+          debugLog('❌ getEmail() failed:', e.message);
           effectiveUserEmail = effectiveUser.email || 'NO_EMAIL_PROPERTY';
-          console.log('   Fallback email property:', effectiveUserEmail);
+          debugLog('   Fallback email property:', effectiveUserEmail);
         }
       }
     } catch (e) {
-      console.log('❌ Session.getEffectiveUser() failed:', e.message);
+      debugLog('❌ Session.getEffectiveUser() failed:', e.message);
     }
     
     // 2. Test cached data
-    console.log('\n2. CACHED DATA TESTING:');
+    debugLog('\n2. CACHED DATA TESTING:');
     try {
       const properties = PropertiesService.getScriptProperties();
       const cachedEmail = properties.getProperty('CACHED_USER_EMAIL');
       const cachedName = properties.getProperty('CACHED_USER_NAME');
       
-      console.log('Cached Email:', cachedEmail || 'NONE');
-      console.log('Cached Name:', cachedName || 'NONE');
+      debugLog('Cached Email:', cachedEmail || 'NONE');
+      debugLog('Cached Name:', cachedName || 'NONE');
       
       if (cachedEmail && cachedEmail !== activeUserEmail && cachedEmail !== effectiveUserEmail) {
-        console.log('⚠️  WARNING: Cached email differs from session emails!');
-        console.log('   This might be causing the jpsotraffic@gmail.com issue');
+        debugLog('⚠️  WARNING: Cached email differs from session emails!');
+        debugLog('   This might be causing the jpsotraffic@gmail.com issue');
       }
     } catch (e) {
-      console.log('❌ Error reading cached data:', e.message);
+      debugLog('❌ Error reading cached data:', e.message);
     }
     
     // 3. Test enhanced user session
-    console.log('\n3. ENHANCED USER SESSION TESTING:');
+    debugLog('\n3. ENHANCED USER SESSION TESTING:');
     try {
       const enhancedSession = getEnhancedUserSession();
-      console.log('Enhanced session result:', JSON.stringify(enhancedSession, null, 2));
+      debugLog('Enhanced session result:', JSON.stringify(enhancedSession, null, 2));
       
       if (enhancedSession.email === 'jpsotraffic@gmail.com') {
-        console.log('🚨 FOUND THE PROBLEM: Enhanced session returning jpsotraffic@gmail.com');
-        console.log('   Source:', enhancedSession.source);
+        debugLog('🚨 FOUND THE PROBLEM: Enhanced session returning jpsotraffic@gmail.com');
+        debugLog('   Source:', enhancedSession.source);
       }
     } catch (e) {
-      console.log('❌ Enhanced session failed:', e.message);
+      debugLog('❌ Enhanced session failed:', e.message);
     }
     
     // 4. Test full authentication
-    console.log('\n4. FULL AUTHENTICATION TESTING:');
+    debugLog('\n4. FULL AUTHENTICATION TESTING:');
     try {
       const authResult = authenticateAndAuthorizeUser();
-      console.log('Auth result:', JSON.stringify(authResult, null, 2));
+      debugLog('Auth result:', JSON.stringify(authResult, null, 2));
       
       if (authResult.success && authResult.user.email === 'jpsotraffic@gmail.com') {
-        console.log('🚨 FOUND THE PROBLEM: Full auth returning jpsotraffic@gmail.com');
+        debugLog('🚨 FOUND THE PROBLEM: Full auth returning jpsotraffic@gmail.com');
       }
     } catch (e) {
-      console.log('❌ Full authentication failed:', e.message);
+      debugLog('❌ Full authentication failed:', e.message);
     }
     
     // 5. Test admin users list
-    console.log('\n5. ADMIN USERS TESTING:');
+    debugLog('\n5. ADMIN USERS TESTING:');
     try {
       const adminUsers = getAdminUsersSafe();
-      console.log('Admin users list:', adminUsers);
+      debugLog('Admin users list:', adminUsers);
       
       if (adminUsers.includes('jpsotraffic@gmail.com')) {
-        console.log('✅ jpsotraffic@gmail.com is legitimately in admin list');
+        debugLog('✅ jpsotraffic@gmail.com is legitimately in admin list');
       }
     } catch (e) {
-      console.log('❌ Error getting admin users:', e.message);
+      debugLog('❌ Error getting admin users:', e.message);
     }
     
     // 6. Summary and recommendations
-    console.log('\n6. SUMMARY:');
-    console.log('Active user email:', activeUserEmail || 'NONE');
-    console.log('Effective user email:', effectiveUserEmail || 'NONE');
+    debugLog('\n6. SUMMARY:');
+    debugLog('Active user email:', activeUserEmail || 'NONE');
+    debugLog('Effective user email:', effectiveUserEmail || 'NONE');
     
     if (!activeUserEmail && !effectiveUserEmail) {
-      console.log('🚨 PROBLEM: No user session detected at all');
-      console.log('📋 SOLUTION: User needs to sign in to Google first');
+      debugLog('🚨 PROBLEM: No user session detected at all');
+      debugLog('📋 SOLUTION: User needs to sign in to Google first');
     } else if (activeUserEmail && activeUserEmail !== 'jpsotraffic@gmail.com') {
-      console.log('✅ Good: Session shows correct user');
-      console.log('🔍 Need to check why enhanced session or auth is overriding this');
+      debugLog('✅ Good: Session shows correct user');
+      debugLog('🔍 Need to check why enhanced session or auth is overriding this');
     }
     
     return {
@@ -796,85 +660,19 @@ function diagnoseAuthenticationIssue() {
     return { error: error.message };
   }
 }
+
 /**
  * EMERGENCY AUTHENTICATION DEBUG FUNCTIONS
  * Add these functions to help diagnose and fix the permission issues
  */
 
-/**
- * Debug current authentication issue
- */
-function debugCurrentAuthIssue() {
-  console.log('=== AUTHENTICATION DEBUG ===');
-  
-  // Test 1: Check session
-  try {
-    const user = Session.getActiveUser();
-    const email = user.getEmail();
-    console.log('1. Current session email:', email);
-  } catch (e) {
-    console.log('1. Session error:', e.message);
-  }
-  
-  // Test 2: Check authentication function
-  try {
-    const auth = authenticateAndAuthorizeUser();
-    console.log('2. Auth result:', auth.success ? 'SUCCESS' : 'FAILED');
-    console.log('   User email:', auth.user?.email);
-    console.log('   User role:', auth.user?.role);
-    console.log('   Error:', auth.error || 'none');
-  } catch (e) {
-    console.log('2. Auth function error:', e.message);
-  }
-  
-  // Test 3: Check admin users
-  try {
-    const admins = getAdminUsers();
-    console.log('3. Admin users:', admins);
-  } catch (e) {
-    console.log('3. Admin users error:', e.message);
-  }
-  
-  // Test 4: Check permission function availability
-  try {
-    console.log('4. Permission function types:');
-    console.log('   typeof hasPermission:', typeof hasPermission);
-    console.log('   typeof hasHybridPermission:', typeof hasHybridPermission);
-  } catch (e) {
-    console.log('4. Permission function error:', e.message);
-  }
-  
-  // Test 5: Test permission check
-  try {
-    const testUser = { role: 'admin', email: 'test@example.com' };
-    const hasPerms = hasPermission(testUser, 'assignments', 'assign_any');
-    console.log('5. Permission test result:', hasPerms);
-  } catch (e) {
-    console.log('5. Permission function error:', e.message);
-  }
-  
-  // Test 6: Check Settings sheet
-  try {
-    const settingsResult = diagnoseSettingsSheet();
-    console.log('6. Settings sheet diagnosis:', settingsResult.success ? 'SUCCESS' : 'FAILED');
-    if (settingsResult.adminEmailsInB2B10) {
-      console.log('   Admin emails found:', settingsResult.adminEmailsInB2B10);
-    }
-  } catch (e) {
-    console.log('6. Settings sheet error:', e.message);
-  }
-  
-  return {
-    timestamp: new Date().toISOString(),
-    message: 'Debug completed - check console logs for details'
-  };
-}
+
 
 /**
  * Temporary bypass for permission checks (DEBUGGING ONLY)
  */
 function bypassPermissionCheck() {
-  console.log('⚠️ BYPASSING PERMISSION CHECK - FOR DEBUGGING ONLY');
+  debugLog('⚠️ BYPASSING PERMISSION CHECK - FOR DEBUGGING ONLY');
   return true;
 }
 
@@ -888,10 +686,10 @@ function clearAuthenticationCache() {
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
     PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
     
-    console.log('✅ Authentication cache cleared');
+    debugLog('✅ Authentication cache cleared');
     return { success: true };
   } catch (error) {
-    console.log('❌ Error clearing cache:', error);
+    debugLog('❌ Error clearing cache:', error);
     return { success: false, error: error.message };
   }
 }
@@ -900,25 +698,25 @@ function clearAuthenticationCache() {
  * Force refresh user session and test authentication
  */
 function forceRefreshAuthentication() {
-  console.log('🔄 Force refreshing authentication...');
+  debugLog('🔄 Force refreshing authentication...');
   
   try {
     // Step 1: Clear cache
     const clearResult = clearAuthenticationCache();
-    console.log('Cache clear result:', clearResult);
+    debugLog('Cache clear result:', clearResult);
     
     // Step 2: Get fresh session
     const session = getEnhancedUserSession();
-    console.log('Fresh session:', session);
+    debugLog('Fresh session:', session);
     
     // Step 3: Test authentication
     const auth = authenticateAndAuthorizeUser();
-    console.log('Auth test result:', auth);
+    debugLog('Auth test result:', auth);
     
     // Step 4: Test permission
     if (auth.success) {
       const permTest = hasPermission(auth.user, 'assignments', 'assign_any');
-      console.log('Permission test:', permTest);
+      debugLog('Permission test:', permTest);
     }
     
     return {
@@ -941,7 +739,7 @@ function forceRefreshAuthentication() {
  * Clear all authentication cache and force fresh session detection
  */
 function clearAllAuthenticationCache() {
-  console.log('🧹 Clearing all authentication cache...');
+  debugLog('🧹 Clearing all authentication cache...');
   
   try {
     const properties = PropertiesService.getScriptProperties();
@@ -958,13 +756,13 @@ function clearAllAuthenticationCache() {
     cacheKeys.forEach(key => {
       try {
         properties.deleteProperty(key);
-        console.log('✅ Cleared:', key);
+        debugLog('✅ Cleared:', key);
       } catch (e) {
-        console.log('⚠️  Could not clear:', key);
+        debugLog('⚠️  Could not clear:', key);
       }
     });
     
-    console.log('✅ Authentication cache cleared');
+    debugLog('✅ Authentication cache cleared');
     return { success: true, message: 'Cache cleared successfully' };
     
   } catch (error) {
@@ -977,7 +775,7 @@ function clearAllAuthenticationCache() {
  * Force fresh user session detection (bypasses all caching)
  */
 function getFreshUserSession() {
-  console.log('🔄 Getting fresh user session (no cache)...');
+  debugLog('🔄 Getting fresh user session (no cache)...');
   
   try {
     let userEmail = '';
@@ -989,10 +787,10 @@ function getFreshUserSession() {
       if (user && user.getEmail) {
         userEmail = user.getEmail();
         userName = user.getName ? user.getName() : '';
-        console.log('✅ Got user from Session.getActiveUser():', userEmail);
+        debugLog('✅ Got user from Session.getActiveUser():', userEmail);
       }
     } catch (e) {
-      console.log('⚠️  Session.getActiveUser() failed:', e.message);
+      debugLog('⚠️  Session.getActiveUser() failed:', e.message);
     }
     
     // Method 2: Try Session.getEffectiveUser() if needed
@@ -1002,10 +800,10 @@ function getFreshUserSession() {
         if (effectiveUser && effectiveUser.getEmail) {
           userEmail = effectiveUser.getEmail();
           userName = effectiveUser.getName ? effectiveUser.getName() : '';
-          console.log('✅ Got user from Session.getEffectiveUser():', userEmail);
+          debugLog('✅ Got user from Session.getEffectiveUser():', userEmail);
         }
       } catch (e) {
-        console.log('⚠️  Session.getEffectiveUser() failed:', e.message);
+        debugLog('⚠️  Session.getEffectiveUser() failed:', e.message);
       }
     }
     
@@ -1018,7 +816,7 @@ function getFreshUserSession() {
       timestamp: new Date().toISOString()
     };
     
-    console.log('Fresh session result:', JSON.stringify(result, null, 2));
+    debugLog('Fresh session result:', JSON.stringify(result, null, 2));
     return result;
     
   } catch (error) {
@@ -1034,84 +832,19 @@ function getFreshUserSession() {
   }
 }
 
-function debugPlaceholderIssues() {
-  const filesToCheck = ['index', 'requests', 'assignments', 'notifications', 'reports'];
-  
-  filesToCheck.forEach(fileName => {
-    try {
-      console.log(`\n=== DETAILED CHECK: ${fileName}.html ===`);
-      const content = HtmlService.createHtmlOutputFromFile(fileName).getContent();
-      
-      // Check for exact placeholder
-      const exactPlaceholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
-      const exactIndex = content.indexOf(exactPlaceholder);
-      console.log(`Exact placeholder found: ${exactIndex !== -1} (index: ${exactIndex})`);
-      
-      // Check for placeholder parts
-      const hasComment = content.includes('<!--');
-      const hasNavigation = content.includes('NAVIGATION');
-      const hasMenu = content.includes('MENU');
-      const hasPlaceholder = content.includes('PLACEHOLDER');
-      const hasClosingComment = content.includes('-->');
-      
-      console.log(`Has <!--: ${hasComment}`);
-      console.log(`Has NAVIGATION: ${hasNavigation}`);
-      console.log(`Has MENU: ${hasMenu}`);
-      console.log(`Has PLACEHOLDER: ${hasPlaceholder}`);
-      console.log(`Has -->: ${hasClosingComment}`);
-      
-      // Search for any navigation-related comments
-      const navCommentRegex = /<!--[^>]*NAVIGATION[^>]*-->/gi;
-      const navComments = content.match(navCommentRegex);
-      if (navComments) {
-        console.log(`Navigation comments found:`, navComments);
-      }
-      
-      // Check for common variations
-      const variations = [
-        '<!--NAVIGATION_MENU_PLACEHOLDER-->',
-        '<!-- NAVIGATION_MENU_PLACEHOLDER -->',
-        '<!--NAVIGATION_MENU_PLACEHOLDER -->',
-        '<!-- NAVIGATION_MENU_PLACEHOLDER-->',
-        '<!--NAV_PLACEHOLDER-->',
-        '<!--NAVIGATION PLACEHOLDER-->',
-        '<!--NAVIGATION-MENU-PLACEHOLDER-->'
-      ];
-      
-      variations.forEach(variation => {
-        if (content.includes(variation)) {
-          console.log(`Found variation: "${variation}"`);
-        }
-      });
-      
-      // Show character codes around any found navigation text
-      const navIndex = content.indexOf('NAVIGATION');
-      if (navIndex !== -1) {
-        const start = Math.max(0, navIndex - 20);
-        const end = Math.min(content.length, navIndex + 50);
-        const segment = content.substring(start, end);
-        console.log(`Context around NAVIGATION: "${segment}"`);
-        console.log(`Character codes:`, Array.from(segment).map(char => char.charCodeAt(0)));
-      }
-      
-    } catch (error) {
-      console.log(`Error checking ${fileName}: ${error.message}`);
-    }
-  });
-}
 function testMySetup() {
   const result = debugSystemSetup();
-  console.log('Debug result:', result);
+  debugLog('Debug result:', result);
   return result;
 }
 // ISSUE 2: doGet function problems
 // Your current doGet might have issues. Here's a corrected version:
 function testNavigationUrls() {
   const baseUrl = getWebAppUrl();
-  console.log('Web app URL:', baseUrl);
+  debugLog('Web app URL:', baseUrl);
   
   const nav = getNavigationHtmlWithDynamicUrls('requests');
-  console.log('Generated navigation:', nav);
+  debugLog('Generated navigation:', nav);
 }
 
 
@@ -1123,14 +856,14 @@ function testNavigationUrls() {
  */
 function getNavigationHtml(currentPage = '') {
   try {
-    console.log('getNavigationHtml: Called for page: ' + currentPage); // Added
-    console.log(`🧭 Getting navigation for page: ${currentPage}`);
+    debugLog('getNavigationHtml: Called for page: ' + currentPage); // Added
+    debugLog(`🧭 Getting navigation for page: ${currentPage}`);
     
     let navContent;
     try {
       navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-      console.log('getNavigationHtml: _navigation.html content length: ' + (navContent ? navContent.length : 'null')); // Added
-      console.log(`📄 Navigation file loaded: ${navContent.length} chars`);
+      debugLog('getNavigationHtml: _navigation.html content length: ' + (navContent ? navContent.length : 'null')); // Added
+      debugLog(`📄 Navigation file loaded: ${navContent.length} chars`);
     } catch (error) {
       console.error('❌ Could not load _navigation.html:', error);
       throw error;
@@ -1159,13 +892,13 @@ function getNavigationHtml(currentPage = '') {
         });
       });
     }
-    console.log('getNavigationHtml: Returning HTML (first 100 chars): ' + (navContent ? navContent.substring(0,100) : 'null')); // Added
+    debugLog('getNavigationHtml: Returning HTML (first 100 chars): ' + (navContent ? navContent.substring(0,100) : 'null')); // Added
     return navContent;
     
   } catch (error) {
     console.error('❌ Error in getNavigationHtml:', error);
     // Log error before returning fallback
-    console.log('getNavigationHtml: Returning HTML (first 100 chars): ' + 'null (error fallback)'); // Added for error path
+    debugLog('getNavigationHtml: Returning HTML (first 100 chars): ' + 'null (error fallback)'); // Added for error path
     
     // Return basic fallback navigation
     const baseUrl = getWebAppUrl();
@@ -1186,54 +919,54 @@ function getNavigationHtml(currentPage = '') {
  */
 function testCompleteNavigationFlow() {
   try {
-    console.log('=== COMPLETE NAVIGATION FLOW TEST ===');
+    debugLog('=== COMPLETE NAVIGATION FLOW TEST ===');
     
     // Test 1: _navigation.html file
-    console.log('1. Testing _navigation.html...');
+    debugLog('1. Testing _navigation.html...');
     const navFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-    console.log(`   ✅ File exists: ${navFile.length} chars`);
+    debugLog(`   ✅ File exists: ${navFile.length} chars`);
     
     // Test 2: getNavigationHtml function
-    console.log('2. Testing getNavigationHtml...');
+    debugLog('2. Testing getNavigationHtml...');
     const navHtml = getNavigationHtml('dashboard');
-    console.log(`   ✅ Function works: ${navHtml.length} chars`);
+    debugLog(`   ✅ Function works: ${navHtml.length} chars`);
     
     // Test 3: Test with each page file
-    console.log('3. Testing page files...');
+    debugLog('3. Testing page files...');
     const pages = ['index', 'requests', 'assignments', 'notifications', 'reports'];
     
     pages.forEach(page => {
       try {
         const content = HtmlService.createHtmlOutputFromFile(page).getContent();
         const hasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-        console.log(`   ${page}.html: ${hasPlaceholder ? '✅ HAS' : '❌ MISSING'} placeholder`);
+        debugLog(`   ${page}.html: ${hasPlaceholder ? '✅ HAS' : '❌ MISSING'} placeholder`);
         
         if (hasPlaceholder) {
           const injected = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navHtml);
           const hasNavAfter = injected.includes('<nav class="navigation">');
-          console.log(`   ${page}.html: Injection ${hasNavAfter ? '✅ SUCCESS' : '❌ FAILED'}`);
+          debugLog(`   ${page}.html: Injection ${hasNavAfter ? '✅ SUCCESS' : '❌ FAILED'}`);
         }
       } catch (error) {
-        console.log(`   ${page}.html: ❌ ERROR - ${error.message}`);
+        debugLog(`   ${page}.html: ❌ ERROR - ${error.message}`);
       }
     });
     
     // Test 4: Mock doGet call
-    console.log('4. Testing doGet simulation...');
+    debugLog('4. Testing doGet simulation...');
     const mockEvent = { parameter: { page: 'dashboard' } };
     try {
       const result = doGet(mockEvent);
-      console.log(`   ✅ doGet completed successfully`);
+      debugLog(`   ✅ doGet completed successfully`);
       
       const finalContent = result.getContent();
       const hasFinalNav = finalContent.includes('<nav class="navigation">');
-      console.log(`   Navigation in final output: ${hasFinalNav ? '✅ YES' : '❌ NO'}`);
+      debugLog(`   Navigation in final output: ${hasFinalNav ? '✅ YES' : '❌ NO'}`);
       
     } catch (error) {
-      console.log(`   ❌ doGet failed: ${error.message}`);
+      debugLog(`   ❌ doGet failed: ${error.message}`);
     }
     
-    console.log('=== TEST COMPLETE ===');
+    debugLog('=== TEST COMPLETE ===');
     
   } catch (error) {
     console.error('❌ Complete flow test failed:', error);
@@ -1252,7 +985,7 @@ function showExactPlaceholderLocations() {
   
   files.forEach(fileName => {
     try {
-      console.log(`\n=== ${fileName.toUpperCase()}.HTML ===`);
+      debugLog(`\n=== ${fileName.toUpperCase()}.HTML ===`);
       const content = HtmlService.createHtmlOutputFromFile(fileName).getContent();
       
       // Find common insertion points
@@ -1261,29 +994,29 @@ function showExactPlaceholderLocations() {
       const containerStart = content.indexOf('<div class="container">');
       const navigationStart = content.indexOf('<nav class="navigation">');
       
-      console.log(`File length: ${content.length} characters`);
-      console.log(`</header> found at: ${headerEnd}`);
-      console.log(`<body> found at: ${bodyStart}`);
-      console.log(`<div class="container"> found at: ${containerStart}`);
-      console.log(`<nav class="navigation"> found at: ${navigationStart}`);
+      debugLog(`File length: ${content.length} characters`);
+      debugLog(`</header> found at: ${headerEnd}`);
+      debugLog(`<body> found at: ${bodyStart}`);
+      debugLog(`<div class="container"> found at: ${containerStart}`);
+      debugLog(`<nav class="navigation"> found at: ${navigationStart}`);
       
       // Show the area where placeholder should go
       if (headerEnd !== -1) {
         const start = Math.max(0, headerEnd - 50);
         const end = Math.min(content.length, headerEnd + 100);
-        console.log(`Context around </header>:`);
-        console.log(`"${content.substring(start, end)}"`);
-        console.log(`\n>>> ADD PLACEHOLDER AFTER </header> AND BEFORE NEXT ELEMENT <<<`);
+        debugLog(`Context around </header>:`);
+        debugLog(`"${content.substring(start, end)}"`);
+        debugLog(`\n>>> ADD PLACEHOLDER AFTER </header> AND BEFORE NEXT ELEMENT <<<`);
       } else if (bodyStart !== -1) {
         const start = Math.max(0, bodyStart);
         const end = Math.min(content.length, bodyStart + 100);
-        console.log(`Context after <body>:`);
-        console.log(`"${content.substring(start, end)}"`);
-        console.log(`\n>>> ADD PLACEHOLDER AFTER <body> <<<`);
+        debugLog(`Context after <body>:`);
+        debugLog(`"${content.substring(start, end)}"`);
+        debugLog(`\n>>> ADD PLACEHOLDER AFTER <body> <<<`);
       }
       
     } catch (error) {
-      console.log(`Error reading ${fileName}: ${error.message}`);
+      debugLog(`Error reading ${fileName}: ${error.message}`);
     }
   });
 }
@@ -1330,21 +1063,21 @@ function createFallbackNavigation(currentPage = '') {
  */
 function verifyNavigationInjection() {
   try {
-    console.log('=== VERIFYING NAVIGATION INJECTION ===');
+    debugLog('=== VERIFYING NAVIGATION INJECTION ===');
     
     // Test the actual doGet function with different pages
     const testPages = ['dashboard', 'requests', 'assignments', 'notifications', 'reports'];
     
     testPages.forEach(pageName => {
-      console.log(`\n--- Testing ${pageName} page ---`);
+      debugLog(`\n--- Testing ${pageName} page ---`);
       
       try {
         const mockEvent = { parameter: { page: pageName === 'dashboard' ? undefined : pageName } };
         const result = doGet(mockEvent);
         const content = result.getContent();
         
-        console.log(`✅ Page loads: ${pageName}`);
-        console.log(`Content length: ${content.length} chars`);
+        debugLog(`✅ Page loads: ${pageName}`);
+        debugLog(`Content length: ${content.length} chars`);
         
         // Check for navigation elements
         const hasNavTag = content.includes('<nav class="navigation">');
@@ -1352,31 +1085,31 @@ function verifyNavigationInjection() {
         const hasDashboardLink = content.includes('📊 Dashboard');
         const hasRequestsLink = content.includes('📋 Requests');
         
-        console.log(`Has <nav> tag: ${hasNavTag ? '✅' : '❌'}`);
-        console.log(`Has nav buttons: ${hasNavButtons ? '✅' : '❌'}`);
-        console.log(`Has Dashboard link: ${hasDashboardLink ? '✅' : '❌'}`);
-        console.log(`Has Requests link: ${hasRequestsLink ? '✅' : '❌'}`);
+        debugLog(`Has <nav> tag: ${hasNavTag ? '✅' : '❌'}`);
+        debugLog(`Has nav buttons: ${hasNavButtons ? '✅' : '❌'}`);
+        debugLog(`Has Dashboard link: ${hasDashboardLink ? '✅' : '❌'}`);
+        debugLog(`Has Requests link: ${hasRequestsLink ? '✅' : '❌'}`);
         
         if (hasNavTag) {
           // Extract and show the navigation HTML
           const navStart = content.indexOf('<nav class="navigation">');
           const navEnd = content.indexOf('</nav>', navStart) + 6;
           const navHtml = content.substring(navStart, navEnd);
-          console.log(`Navigation HTML: ${navHtml.substring(0, 200)}...`);
+          debugLog(`Navigation HTML: ${navHtml.substring(0, 200)}...`);
         }
         
         // Check if navigation has active class for current page
         if (pageName !== 'dashboard') {
           const hasActiveClass = content.includes(`data-page="${pageName}"`) && content.includes('active');
-          console.log(`Has active class for ${pageName}: ${hasActiveClass ? '✅' : '❌'}`);
+          debugLog(`Has active class for ${pageName}: ${hasActiveClass ? '✅' : '❌'}`);
         }
         
       } catch (error) {
-        console.log(`❌ Error testing ${pageName}: ${error.message}`);
+        debugLog(`❌ Error testing ${pageName}: ${error.message}`);
       }
     });
     
-    console.log('\n=== VERIFICATION COMPLETE ===');
+    debugLog('\n=== VERIFICATION COMPLETE ===');
     
   } catch (error) {
     console.error('❌ Verification failed:', error);
@@ -1388,37 +1121,37 @@ function verifyNavigationInjection() {
  */
 function showActualWebAppOutput() {
   try {
-    console.log('=== ACTUAL WEB APP OUTPUT SAMPLE ===');
+    debugLog('=== ACTUAL WEB APP OUTPUT SAMPLE ===');
     
     const mockEvent = { parameter: {} }; // Dashboard
     const result = doGet(mockEvent);
     const content = result.getContent();
     
-    console.log(`Total content length: ${content.length} characters`);
+    debugLog(`Total content length: ${content.length} characters`);
     
     // Show the first part of the content (should include navigation)
     const firstPart = content.substring(0, 1000);
-    console.log('\nFirst 1000 characters of output:');
-    console.log('---START---');
-    console.log(firstPart);
-    console.log('---END---');
+    debugLog('\nFirst 1000 characters of output:');
+    debugLog('---START---');
+    debugLog(firstPart);
+    debugLog('---END---');
     
     // Look specifically for navigation
     const navIndex = content.indexOf('<nav');
     if (navIndex !== -1) {
-      console.log(`\nNavigation found at position: ${navIndex}`);
+      debugLog(`\nNavigation found at position: ${navIndex}`);
       const navSection = content.substring(navIndex, navIndex + 500);
-      console.log('Navigation section:');
-      console.log(navSection);
+      debugLog('Navigation section:');
+      debugLog(navSection);
     } else {
-      console.log('\n❌ No <nav> tag found in output');
+      debugLog('\n❌ No <nav> tag found in output');
     }
     
     // Check what injection strategy was used (look for console logs)
-    console.log('\nDeployment check:');
-    console.log('- If you see navigation HTML above, the injection worked');
-    console.log('- If not, there may be a deployment issue');
-    console.log('- Check your browser console for any errors');
+    debugLog('\nDeployment check:');
+    debugLog('- If you see navigation HTML above, the injection worked');
+    debugLog('- If not, there may be a deployment issue');
+    debugLog('- Check your web app deployment settings');
     
   } catch (error) {
     console.error('❌ Error showing output:', error);
@@ -1430,46 +1163,46 @@ function showActualWebAppOutput() {
  */
 function checkDeploymentStatus() {
   try {
-    console.log('=== DEPLOYMENT TROUBLESHOOTING ===');
+    debugLog('=== DEPLOYMENT TROUBLESHOOTING ===');
     
     // Get the web app URL
     const webAppUrl = getWebAppUrl();
-    console.log(`Web App URL: ${webAppUrl}`);
+    debugLog(`Web App URL: ${webAppUrl}`);
     
     // Check if we can create HTML outputs
     try {
       const testOutput = HtmlService.createHtmlOutput('<h1>Test</h1>');
-      console.log('✅ HTML Service working');
+      debugLog('✅ HTML Service working');
     } catch (error) {
-      console.log('❌ HTML Service error:', error.message);
+      debugLog('❌ HTML Service error:', error.message);
     }
     
     // Check if navigation file exists
     try {
       const navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-      console.log(`✅ Navigation file exists (${navContent.length} chars)`);
+      debugLog(`✅ Navigation file exists (${navContent.length} chars)`);
     } catch (error) {
-      console.log('❌ Navigation file error:', error.message);
+      debugLog('❌ Navigation file error:', error.message);
     }
     
     // Test the doGet function directly
     try {
       const result = doGet({ parameter: {} });
-      console.log('✅ doGet function works');
+      debugLog('✅ doGet function works');
       
       const content = result.getContent();
       const hasNav = content.includes('<nav');
-      console.log(`Navigation in output: ${hasNav ? '✅ YES' : '❌ NO'}`);
+      debugLog(`Navigation in output: ${hasNav ? '✅ YES' : '❌ NO'}`);
       
     } catch (error) {
-      console.log('❌ doGet function error:', error.message);
+      debugLog('❌ doGet function error:', error.message);
     }
     
-    console.log('\nNext steps:');
-    console.log('1. If everything shows ✅ above, check your browser');
-    console.log('2. Open your web app URL in a new private/incognito window');
-    console.log('3. Check browser console (F12) for any errors');
-    console.log('4. If still no navigation, you may need to redeploy the web app');
+    debugLog('\nNext steps:');
+    debugLog('1. If everything shows ✅ above, check your browser');
+    debugLog('2. Open your web app URL in a new private/incognito window');
+    debugLog('3. Check browser console (F12) for any errors');
+    debugLog('4. If still no navigation, you may need to redeploy the web app');
     
   } catch (error) {
     console.error('❌ Deployment check failed:', error);
@@ -1481,42 +1214,42 @@ function checkDeploymentStatus() {
 const clientDebugCode = `
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔍 CLIENT-SIDE NAVIGATION DEBUG');
+    debugLog('🔍 CLIENT-SIDE NAVIGATION DEBUG');
     
     // Check if navigation exists
     const nav = document.querySelector('nav.navigation');
-    console.log('Navigation element found:', !!nav);
+    debugLog('Navigation element found:', !!nav);
     
     if (nav) {
-        console.log('✅ Navigation HTML:', nav.outerHTML);
-        console.log('✅ Navigation visible:', nav.offsetHeight > 0);
-        console.log('✅ Navigation position:', nav.getBoundingClientRect());
+        debugLog('✅ Navigation HTML:', nav.outerHTML);
+        debugLog('✅ Navigation visible:', nav.offsetHeight > 0);
+        debugLog('✅ Navigation position:', nav.getBoundingClientRect());
         
         // Check nav buttons
         const buttons = nav.querySelectorAll('.nav-button');
-        console.log('✅ Number of nav buttons:', buttons.length);
+        debugLog('✅ Number of nav buttons:', buttons.length);
         
         buttons.forEach((btn, index) => {
-            console.log(\`Button \${index + 1}: \${btn.textContent.trim()}\`);
+            debugLog(\`Button \${index + 1}: \${btn.textContent.trim()}\`);
         });
         
     } else {
-        console.log('❌ Navigation not found in DOM');
+        debugLog('❌ Navigation not found in DOM');
         
         // Check if placeholder still exists
         const bodyHtml = document.body.innerHTML;
         if (bodyHtml.includes('NAVIGATION_MENU_PLACEHOLDER')) {
-            console.log('❌ Placeholder still exists - injection failed');
+            debugLog('❌ Placeholder still exists - injection failed');
         }
         
         // Check for any nav-related elements
         const navElements = document.querySelectorAll('[class*="nav"], [id*="nav"]');
-        console.log('Other nav elements found:', navElements.length);
+        debugLog('Other nav elements found:', navElements.length);
     }
     
     // Check page parameters
     const urlParams = new URLSearchParams(window.location.search);
-    console.log('Current page parameter:', urlParams.get('page') || 'dashboard');
+    debugLog('Current page parameter:', urlParams.get('page') || 'dashboard');
 });
 </script>
 `;
@@ -1547,22 +1280,22 @@ TESTING CHECKLIST:
  */
 function testForceInjection() {
   try {
-    console.log('=== TESTING FORCE INJECTION ===');
+    debugLog('=== TESTING FORCE INJECTION ===');
     
     const mockEvent = { parameter: { page: 'dashboard' } };
     const result = doGetWithForceInjection(mockEvent);
     const finalContent = result.getContent();
     
-    console.log(`Final content length: ${finalContent.length}`);
-    console.log(`Has navigation: ${finalContent.includes('<nav class="navigation">')}`);
-    console.log(`Has nav buttons: ${finalContent.includes('nav-button')}`);
+    debugLog(`Final content length: ${finalContent.length}`);
+    debugLog(`Has navigation: ${finalContent.includes('<nav class="navigation">')}`);
+    debugLog(`Has nav buttons: ${finalContent.includes('nav-button')}`);
     
     // Show navigation section
     const navStart = finalContent.indexOf('<nav class="navigation">');
     if (navStart !== -1) {
       const navEnd = finalContent.indexOf('</nav>', navStart) + 6;
-      console.log('Navigation HTML in final content:');
-      console.log(finalContent.substring(navStart, navEnd));
+      debugLog('Navigation HTML in final content:');
+      debugLog(finalContent.substring(navStart, navEnd));
     }
     
     return { success: true, hasNavigation: finalContent.includes('<nav class="navigation">') };
@@ -1584,25 +1317,25 @@ function testPlaceholderInFiles() {
       const placeholder = '<!--NAVIGATION_MENU_PLACEHOLDER-->';
       const placeholderIndex = content.indexOf(placeholder);
       
-      console.log(`${fileName}.html: Placeholder ${placeholderIndex !== -1 ? 'FOUND' : 'NOT FOUND'} at index ${placeholderIndex}`);
+      debugLog(`${fileName}.html: Placeholder ${placeholderIndex !== -1 ? 'FOUND' : 'NOT FOUND'} at index ${placeholderIndex}`);
       
       if (placeholderIndex !== -1) {
         const context = content.substring(placeholderIndex - 50, placeholderIndex + 100);
-        console.log(`Context: ${context}`);
+        debugLog(`Context: ${context}`);
       }
     } catch (error) {
-      console.log(`Error checking ${fileName}.html: ${error.message}`);
+      debugLog(`Error checking ${fileName}.html: ${error.message}`);
     }
   });
 }
 function testNavigationMenu() {
   try {
     const navContent = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-    console.log('Navigation file exists. Length:', navContent.length);
-    console.log('Content:', navContent);
+    debugLog('Navigation file exists. Length:', navContent.length);
+    debugLog('Content:', navContent);
     return navContent;
   } catch (error) {
-    console.log('Navigation file error:', error.message);
+    debugLog('Navigation file error:', error.message);
     return null;
   }
 }
@@ -1617,7 +1350,7 @@ function _onEdit(e) {
   const now = Date.now();
   const last = PropertiesService.getScriptProperties().getProperty('lastEditTime');
   if (last && (now - parseInt(last, 10)) < 1000) { // 1-second debounce.
-    console.log('_onEdit: Guard triggered, exiting.');
+    debugLog('_onEdit: Guard triggered, exiting.');
     return;
   }
   PropertiesService.getScriptProperties().setProperty('lastEditTime', now.toString());
@@ -1625,7 +1358,7 @@ function _onEdit(e) {
   const range = e.range;
   if (!range) {
     // This should ideally not happen if `e` is a valid edit event.
-    console.log('_onEdit: No range in event, exiting.');
+    debugLog('_onEdit: No range in event, exiting.');
     return;
   }
 
@@ -1635,11 +1368,11 @@ function _onEdit(e) {
   const row = range.getRow();
   const col = range.getColumn();
 
-  console.log(`_onEdit fired on sheet "${sheetName}", cell ${cellA1}`);
+  debugLog(`_onEdit fired on sheet "${sheetName}", cell ${cellA1}`);
 
   // Protection: Skip rider name column edits (Riders sheet, column B) and header row edits.
   if (sheetName === 'Riders' && (col === 2 || row === 1)) {
-    console.log('🛡️ _onEdit: Protecting rider name/header edit - skipping processing');
+    debugLog('🛡️ _onEdit: Protecting rider name/header edit - skipping processing');
     return;
   }
 
@@ -1676,11 +1409,11 @@ function _onEdit(e) {
 
   // Handle Dashboard sheet edits.
   if (sheetName === CONFIG.sheets.dashboard) {
-    console.log('_onEdit: Routing to dashboard logic');
+    debugLog('_onEdit: Routing to dashboard logic');
 
     // Handle filter dropdown changes (cell B9).
     if (cellA1 === CONFIG.dashboard.filterCell) {
-      console.log(`_onEdit: Filter cell changed to "${range.getValue()}", refreshing dashboard.`);
+      debugLog(`_onEdit: Filter cell changed to "${range.getValue()}", refreshing dashboard.`);
       const lock = LockService.getScriptLock();
       if (lock.tryLock(10000)) { // Attempt to acquire lock for 10 seconds.
         try {
@@ -1697,12 +1430,12 @@ function _onEdit(e) {
     // Handle notification column actions (column K - 11th column).
     const requestsDisplayStartRow = CONFIG.dashboard.requestsDisplayStartRow;
     if (col === 11 && row >= requestsDisplayStartRow) {
-      console.log(`_onEdit: Notification action selected at row ${row}`);
+      debugLog(`_onEdit: Notification action selected at row ${row}`);
       handleEnhancedNotificationAction(e, sheet, row);
       return;
     }
   }
-  console.log(`_onEdit: Edit on unrelated sheet "${sheetName}" or column, skipping.`);
+  debugLog(`_onEdit: Edit on unrelated sheet "${sheetName}" or column, skipping.`);
 }
 
 // =======================
@@ -1776,16 +1509,16 @@ function getNavigationHtml(currentPage = '') {
  */
 function doPost(e) {
   try {
-    console.log('📨 doPost called');
+    debugLog('📨 doPost called');
     
     // Log the incoming request for debugging
     if (e && e.parameter) {
-      console.log('📋 Parameters received:', JSON.stringify(e.parameter));
+      debugLog('📋 Parameters received:', JSON.stringify(e.parameter));
     }
     
     // Check if this is a Twilio SMS webhook
     if (e.parameter.webhook === 'sms' || e.parameter.From) {
-      console.log('📱 Detected SMS webhook from Twilio');
+      debugLog('📱 Detected SMS webhook from Twilio');
       return handleSMSWebhook(e);
     }
     
@@ -1793,7 +1526,7 @@ function doPost(e) {
     const action = e.parameter.action;
     const data = JSON.parse(e.parameter.data || '{}');
     
-    console.log(`🔧 doPost action: ${action}`);
+    debugLog(`🔧 doPost action: ${action}`);
     
     let result = {};
     
@@ -1858,7 +1591,7 @@ function doPost(e) {
  */
 function handleSMSWebhook(e) {
   try {
-    console.log('📱 Processing SMS webhook...');
+    debugLog('📱 Processing SMS webhook...');
     
     // Extract Twilio parameters
     const fromNumber = e.parameter.From || '';           // Rider's phone number (+15551234567)
@@ -1867,8 +1600,8 @@ function handleSMSWebhook(e) {
     const messageSid = e.parameter.MessageSid || '';     // Twilio message ID
     const accountSid = e.parameter.AccountSid || '';     // Twilio account ID
     
-    console.log(`📨 SMS from ${fromNumber} to ${toNumber}: "${messageBody}"`);
-    console.log(`📋 Message SID: ${messageSid}`);
+    debugLog(`📨 SMS from ${fromNumber} to ${toNumber}: "${messageBody}"`);
+    debugLog(`📋 Message SID: ${messageSid}`);
     
     // Verify this is from your Twilio account (security check)
     if (accountSid && accountSid !== CONFIG.twilio.accountSid) {
@@ -1882,7 +1615,7 @@ function handleSMSWebhook(e) {
     // Log the response for tracking
     logSMSResponse(fromNumber, messageBody, messageSid, responseResult);
     
-    console.log(`✅ SMS response processed: ${responseResult.action}`);
+    debugLog(`✅ SMS response processed: ${responseResult.action}`);
     
     // Return empty TwiML response (required by Twilio)
     return createTwiMLResponse();
@@ -1902,12 +1635,12 @@ function handleSMSWebhook(e) {
 function processSMSResponse(fromNumber, messageBody, messageSid) {
   try {
     const cleanMessage = messageBody.trim().toLowerCase();
-    console.log(`🔍 Processing message: "${cleanMessage}"`);
+    debugLog(`🔍 Processing message: "${cleanMessage}"`);
     
     // Find the rider by phone number
     const rider = findRiderByPhone(fromNumber);
     if (!rider) {
-      console.log(`⚠️ SMS from unknown number: ${fromNumber}`);
+      debugLog(`⚠️ SMS from unknown number: ${fromNumber}`);
       
       // Send helpful response to unknown numbers
       sendAutoReply(fromNumber, 'This number is not registered in our rider system. Please contact dispatch if you need assistance.');
@@ -1919,7 +1652,7 @@ function processSMSResponse(fromNumber, messageBody, messageSid) {
       };
     }
     
-    console.log(`👤 SMS from rider: ${rider.name}`);
+    debugLog(`👤 SMS from rider: ${rider.name}`);
     
     // Process different response types
     let action = 'unknown';
@@ -1955,7 +1688,7 @@ function processSMSResponse(fromNumber, messageBody, messageSid) {
     // Update assignment status if needed
     if (statusUpdate) {
       const updateResult = updateAssignmentStatus(rider.name, statusUpdate, 'SMS');
-      console.log(`📊 Status update result: ${updateResult.success ? 'Success' : 'Failed'}`);
+      debugLog(`📊 Status update result: ${updateResult.success ? 'Success' : 'Failed'}`);
     }
     
     // Send auto-reply
@@ -1993,7 +1726,7 @@ function findRiderByPhone(phoneNumber) {
     
     // Clean the search phone number (remove +1 and non-digits, get last 10 digits)
     const cleanSearchNumber = phoneNumber.replace(/\D/g, '').slice(-10);
-    console.log(`🔍 Searching for rider with phone ending in: ${cleanSearchNumber}`);
+    debugLog(`🔍 Searching for rider with phone ending in: ${cleanSearchNumber}`);
     
     for (let i = 0; i < ridersData.data.length; i++) {
       const row = ridersData.data[i];
@@ -2005,7 +1738,7 @@ function findRiderByPhone(phoneNumber) {
         const cleanRiderPhone = riderPhone.replace(/\D/g, '').slice(-10);
         
         if (cleanRiderPhone === cleanSearchNumber) {
-          console.log(`✅ Found rider: ${riderName}`);
+          debugLog(`✅ Found rider: ${riderName}`);
           return {
             name: riderName,
             phone: riderPhone,
@@ -2016,7 +1749,7 @@ function findRiderByPhone(phoneNumber) {
       }
     }
     
-    console.log(`❌ No rider found for phone: ${phoneNumber}`);
+    debugLog(`❌ No rider found for phone: ${phoneNumber}`);
     return null;
     
   } catch (error) {
@@ -2031,7 +1764,7 @@ function findRiderByPhone(phoneNumber) {
  */
 function updateAssignmentStatus(riderName, newStatus, method) {
   try {
-    console.log(`📊 Updating status for ${riderName} to ${newStatus}`);
+    debugLog(`📊 Updating status for ${riderName} to ${newStatus}`);
     
     const assignmentsData = getAssignmentsData(false); // Force fresh data
     const sheet = assignmentsData.sheet;
@@ -2061,7 +1794,7 @@ function updateAssignmentStatus(riderName, newStatus, method) {
           }
         }
         
-        console.log(`✅ Updated assignment ${assignmentId}: ${riderName} → ${newStatus}`);
+        debugLog(`✅ Updated assignment ${assignmentId}: ${riderName} → ${newStatus}`);
         logActivity(`SMS Response: Assignment ${assignmentId} status updated to ${newStatus} for ${riderName}`);
         updatedCount++;
       }
@@ -2122,7 +1855,7 @@ function updateAssignmentStatusById(assignmentId, newStatus, method) {
  */
 function getAssignmentDetails(riderName) {
   try {
-    console.log(`📋 Getting assignment details for ${riderName}`);
+    debugLog(`📋 Getting assignment details for ${riderName}`);
     
     const assignmentsData = getAssignmentsData();
     
@@ -2215,7 +1948,7 @@ function getAssignmentStatus(riderName) {
  */
 function sendAutoReply(toNumber, message) {
   try {
-    console.log(`📱 Sending auto-reply to ${toNumber}`);
+    debugLog(`📱 Sending auto-reply to ${toNumber}`);
     
     // Remove +1 country code for the sendSMS function
     const cleanNumber = toNumber.replace('+1', '');
@@ -2223,7 +1956,7 @@ function sendAutoReply(toNumber, message) {
     const result = sendSMS(cleanNumber, 'auto', message);
     
     if (result.success) {
-      console.log(`✅ Auto-reply sent successfully`);
+      debugLog(`✅ Auto-reply sent successfully`);
       logActivity(`Auto-reply sent to ${toNumber}: ${message.substring(0, 50)}...`);
     } else {
       console.error(`❌ Auto-reply failed: ${result.message}`);
@@ -2257,7 +1990,7 @@ function logSMSResponse(fromNumber, messageBody, messageSid, result) {
       result.autoReply ? 'Yes' : 'No'
     ]);
     
-    console.log(`📝 SMS response logged: ${result.action}`);
+    debugLog(`📝 SMS response logged: ${result.action}`);
     
   } catch (error) {
     console.error('❌ Error logging SMS response:', error);
@@ -2276,7 +2009,7 @@ function notifyAdminOfResponse(riderName, fromNumber, messageBody) {
     // Could also send email notification here if needed:
     // GmailApp.sendEmail('admin@yourdomain.com', 'SMS Response Needs Attention', logMessage);
     
-    console.log(`📧 Admin notified of response from ${riderName}`);
+    debugLog(`📧 Admin notified of response from ${riderName}`);
     
   } catch (error) {
     console.error('❌ Error notifying admin:', error);
@@ -2307,7 +2040,7 @@ function findRiderByEmail(emailAddress) {
       }
     }
 
-    console.log(`❌ No rider found for email: ${emailAddress}`);
+    debugLog(`❌ No rider found for email: ${emailAddress}`);
     return null;
 
   } catch (error) {
@@ -2393,6 +2126,7 @@ function extractRequestIdFromSubject(subject) {
     return '';
   }
 }
+
 /**
  * Log email responses to tracking sheet
  */
@@ -2411,7 +2145,7 @@ function logEmailResponse(fromEmail, messageBody, requestId, result) {
       result.action
     ]);
 
-    console.log(`📝 Email response logged: ${result.action}`);
+    debugLog(`📝 Email response logged: ${result.action}`);
 
   } catch (error) {
     console.error('❌ Error logging email response:', error);
@@ -2509,7 +2243,7 @@ function sendAllAssignedBoth() { sendBulkByStatus('Both', 'assigned'); }
  */
 function sendBulkByDateRange(notificationType, dateRange) {
   try {
-    console.log(`Bulk ${notificationType} for ${dateRange}`);
+    debugLog(`Bulk ${notificationType} for ${dateRange}`);
     
     // Calculate date range
     const today = new Date();
@@ -2571,7 +2305,7 @@ function sendBulkByDateRange(notificationType, dateRange) {
  */
 function sendBulkByStatus(notificationType, statusType) {
   try {
-    console.log(`Bulk ${notificationType} for ${statusType} status`);
+    debugLog(`Bulk ${notificationType} for ${statusType} status`);
     
     const assignmentsData = getAssignmentsData(); // This already retrieves formatted data
     let targetAssignments = [];
@@ -2631,7 +2365,7 @@ function sendBulkByStatus(notificationType, statusType) {
  */
 function processBulkNotifications(assignments, notificationType, description) {
   try {
-    console.log(`Processing ${assignments.length} bulk notifications: ${notificationType} for ${description}`);
+    debugLog(`Processing ${assignments.length} bulk notifications: ${notificationType} for ${description}`);
     
     const assignmentsData = getAssignmentsData(); // Get mapping
     let successfulCount = 0;
@@ -2643,7 +2377,7 @@ function processBulkNotifications(assignments, notificationType, description) {
       const riderName = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
       const requestId = getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
       
-      console.log(`Processing ${index + 1}/${assignments.length}: ${assignmentId} - ${riderName}`);
+      debugLog(`Processing ${index + 1}/${assignments.length}: ${assignmentId} - ${riderName}`);
       
       try {
         if (notificationType === 'SMS' || notificationType === 'Both') {
@@ -2702,7 +2436,7 @@ function processBulkNotifications(assignments, notificationType, description) {
  */
 function generateNotificationReport() {
   try {
-    console.log('Generating notification report');
+    debugLog('Generating notification report');
     
     const assignmentsData = getAssignmentsData(); // This already retrieves formatted data
     const allAssignments = assignmentsData.data.filter(assignment => {
@@ -2873,7 +2607,7 @@ function getDispatchNotifications() {
  */
 function generateReportData(filters) {
   try {
-    console.log('Generating report data with filters:', filters);
+    debugLog('Generating report data with filters:', filters);
     
     const requestsData = getRequestsData();
     const assignmentsData = getAssignmentsData();
@@ -3107,205 +2841,6 @@ function getRealisticEscortHours(assignment, columnMap) {
   // Default fallback
   return roundToQuarterHour(realisticEstimates['Other']);
 }
-/**
- * Debug function to diagnose assignment data issues in reports
- * Run this function to check what data is available for rider hours calculation
- * @return {Object} Debug information about assignments data
- */
-function debugAssignmentDataForReports() {
-  try {
-    const assignmentsData = getAssignmentsData();
-    const ridersData = getRidersData();
-    
-    console.log('=== ASSIGNMENT DATA DEBUG ===');
-    console.log(`Total assignments found: ${assignmentsData.data.length}`);
-    console.log(`Total riders found: ${ridersData.data.length}`);
-    
-    // Check first 5 assignments
-    console.log('\n=== SAMPLE ASSIGNMENTS ===');
-    for (let i = 0; i < Math.min(5, assignmentsData.data.length); i++) {
-      const assignment = assignmentsData.data[i];
-      console.log(`Assignment ${i + 1}:`, {
-        riderName: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName),
-        status: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status),
-        eventDate: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate),
-        startTime: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime),
-        endTime: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime),
-        requestId: getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)
-      });
-    }
-    
-    // Check status distribution
-    console.log('\n=== STATUS DISTRIBUTION ===');
-    const statusCounts = {};
-    assignmentsData.data.forEach(assignment => {
-      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-      const statusKey = status || 'EMPTY/NULL';
-      statusCounts[statusKey] = (statusCounts[statusKey] || 0) + 1;
-    });
-    console.log('Status distribution:', statusCounts);
-    
-    // Check rider distribution
-    console.log('\n=== RIDER DISTRIBUTION ===');
-    const riderCounts = {};
-    assignmentsData.data.forEach(assignment => {
-      const rider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-      const riderKey = rider || 'EMPTY/NULL';
-      riderCounts[riderKey] = (riderCounts[riderKey] || 0) + 1;
-    });
-    console.log('Top 10 riders by assignment count:');
-    Object.entries(riderCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10)
-      .forEach(([rider, count]) => {
-        console.log(`  ${rider}: ${count} assignments`);
-      });
-    
-    // Check actual completion data availability
-    console.log('\n=== ACTUAL COMPLETION DATA AVAILABILITY ===');
-    let assignmentsWithActualTimes = 0;
-    let assignmentsWithActualDuration = 0;
-    let assignmentsWithoutActualData = 0;
-    let pastEventAssignments = 0;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    assignmentsData.data.forEach(assignment => {
-      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-      const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
-      const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
-      
-      if (eventHasPassed) {
-        pastEventAssignments++;
-      }
-      
-      const actualStart = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime);
-      const actualEnd = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime);
-      const actualDuration = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
-      
-      if (actualDuration && !isNaN(parseFloat(actualDuration))) {
-        assignmentsWithActualDuration++;
-      } else if (actualStart && actualEnd) {
-        assignmentsWithActualTimes++;
-      } else {
-        assignmentsWithoutActualData++;
-      }
-    });
-    
-    console.log(`Total assignments with past event dates: ${pastEventAssignments}`);
-    console.log(`Assignments WITH actual duration recorded: ${assignmentsWithActualDuration}`);
-    console.log(`Assignments WITH actual start/end times: ${assignmentsWithActualTimes}`);
-    console.log(`Assignments WITHOUT actual completion data: ${assignmentsWithoutActualData}`);
-    
-    return {
-      success: true,
-      totalAssignments: assignmentsData.data.length,
-      totalRiders: ridersData.data.length,
-      statusDistribution: statusCounts,
-      riderDistribution: riderCounts,
-      actualCompletionDataStats: {
-        pastEventAssignments: pastEventAssignments,
-        withActualDuration: assignmentsWithActualDuration,
-        withActualTimes: assignmentsWithActualTimes,
-        withoutActualData: assignmentsWithoutActualData
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Error in debugAssignmentDataForReports:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-     }
- }
-/**
- * Test function to verify the actual completion time-based reports fix
- * This function tests the new logic that prioritizes actual completion data
- * @return {Object} Test results showing if escort hours are calculated from actual data
- */
-function testActualCompletionReportsFix() {
-  try {
-    console.log('🧪 Testing Actual Completion Time Reports Fix...');
-    
-    // Test with last 60 days to capture more data
-    const endDate = new Date();
-    const startDate = new Date(endDate);
-    startDate.getDate() - 60;
-    
-    const filters = {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
-    };
-    
-    console.log(`Testing with date range: ${filters.startDate} to ${filters.endDate}`);
-    
-    // First, run diagnostics to understand the data
-    console.log('\n🔍 Running diagnostic check...');
-    const debugInfo = debugAssignmentDataForReports();
-    
-    // Generate report data using the fixed function
-    const reportData = generateReportData(filters);
-    
-    // Check the results
-    const riderHours = reportData.tables.riderHours || [];
-    const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-    const totalHours = riderHours.reduce((sum, rider) => sum + rider.hours, 0);
-    
-    console.log('\n📊 TEST RESULTS:');
-    console.log(`Total riders with escort data: ${riderHours.length}`);
-    console.log(`Total escorts counted: ${totalEscorts}`);
-    console.log(`Total hours calculated: ${totalHours.toFixed(2)}`);
-    
-    // Analyze data sources
-    console.log('\n📈 DATA SOURCE ANALYSIS:');
-    console.log(`Past events that should have completion data: ${debugInfo.actualCompletionDataStats.pastEventAssignments}`);
-    console.log(`Assignments with recorded duration: ${debugInfo.actualCompletionDataStats.withActualDuration}`);
-    console.log(`Assignments with actual start/end times: ${debugInfo.actualCompletionDataStats.withActualTimes}`);
-    console.log(`Assignments missing actual completion data: ${debugInfo.actualCompletionDataStats.withoutActualData}`);
-    
-    if (riderHours.length > 0) {
-      console.log('\n🏍️ Top 5 riders by hours:');
-      riderHours.slice(0, 5).forEach((rider, i) => {
-        console.log(`  ${i + 1}. ${rider.name}: ${rider.escorts} escorts, ${rider.hours} hours`);
-      });
-    }
-    
-    // Provide guidance based on results
-    let guidance = '';
-    if (totalHours === 0) {
-      guidance = '⚠️ No hours calculated. Check if: 1) Assignments exist with past event dates, 2) Assignments have "Completed" status or past event dates with assigned riders';
-    } else if (debugInfo.actualCompletionDataStats.withActualDuration === 0 && debugInfo.actualCompletionDataStats.withActualTimes === 0) {
-      guidance = '⚠️ Hours are estimated only. For accurate reporting, start recording actual completion times in the "Actual Start Time", "Actual End Time", or "Actual Duration (Hours)" columns';
-    } else {
-      guidance = '✅ SUCCESS: Hours calculated using actual completion data where available!';
-    }
-    
-    const testResult = {
-      success: true,
-      ridersWithData: riderHours.length,
-      totalEscorts: totalEscorts,
-      totalHours: parseFloat(totalHours.toFixed(2)),
-      topRiders: riderHours.slice(0, 5),
-      dataSourceStats: debugInfo.actualCompletionDataStats,
-      statusDistribution: debugInfo.statusDistribution,
-      guidance: guidance,
-      message: guidance
-    };
-    
-    console.log('\n📋 Final Test Result:', testResult.message);
-    return testResult;
-    
-  } catch (error) {
-    console.error('❌ Error in testActualCompletionReportsFix:', error);
-    return {
-      success: false,
-      error: error.message,
-      message: '❌ ERROR: Test failed - check logs for details'
-    };
-  }
-}
 
 /**
  * Helper function to add actual completion time columns to the Assignments sheet
@@ -3314,7 +2849,7 @@ function testActualCompletionReportsFix() {
  */
 function setupActualCompletionTimeColumns() {
   try {
-    console.log('🛠️ Setting up Actual Completion Time columns in Assignments sheet...');
+    debugLog('🛠️ Setting up Actual Completion Time columns in Assignments sheet...');
     
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const assignmentsSheet = spreadsheet.getSheetByName(CONFIG.sheets.assignments);
@@ -3341,10 +2876,10 @@ function setupActualCompletionTimeColumns() {
       if (!headers.includes(columnName)) {
         assignmentsSheet.getRange(1, nextColumn).setValue(columnName);
         addedColumns.push(columnName);
-        console.log(`Added column: ${columnName} at position ${nextColumn}`);
+        debugLog(`Added column: ${columnName} at position ${nextColumn}`);
         nextColumn++;
       } else {
-        console.log(`Column already exists: ${columnName}`);
+        debugLog(`Column already exists: ${columnName}`);
       }
     });
     
@@ -3370,7 +2905,7 @@ function setupActualCompletionTimeColumns() {
       }
     }
     
-    console.log(`✅ Setup complete. Added ${addedColumns.length} new columns.`);
+    debugLog(`✅ Setup complete. Added ${addedColumns.length} new columns.`);
     
     // Instructions for users
     const instructions = [
@@ -3388,11 +2923,11 @@ function setupActualCompletionTimeColumns() {
       '',
       '📊 REPORTING: Reports will use actual data when available, estimates when not',
       '   - Funeral: 0.5 hours estimate',
-      '   - Wedding: 2.5 hours estimate',
+      '   - Wedding: 2.5 hours estimate', 
       '   - VIP/Float Movement: 4.0 hours estimate'
     ];
     
-    instructions.forEach(line => console.log(line));
+    instructions.forEach(line => debugLog(line));
     
     return {
       success: true,
@@ -3647,12 +3182,12 @@ function generateExecutiveSummary(startDate, endDate) {
  */
 function getRecentRequestsForWebApp(limit = 10) {
   try {
-    console.log(`📋 Getting ${limit} recent requests for web app...`);
+    debugLog(`📋 Getting ${limit} recent requests for web app...`);
     
     const requestsData = getRequestsData();
     
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      console.log('❌ No requests data found');
+      debugLog('❌ No requests data found');
       return [];
     }
     
@@ -3686,7 +3221,7 @@ function getRecentRequestsForWebApp(limit = 10) {
         validRequests.push(processedRequest);
         
       } catch (rowError) {
-        console.log(`⚠️ Error processing request row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing request row ${i}:`, rowError);
       }
     }
     
@@ -3712,7 +3247,7 @@ function getRecentRequestsForWebApp(limit = 10) {
     
     const recentRequests = sortedRequests.slice(0, limit);
     
-    console.log(`✅ Returning ${recentRequests.length} recent requests`);
+    debugLog(`✅ Returning ${recentRequests.length} recent requests`);
     return recentRequests;
     
   } catch (error) {
@@ -3733,7 +3268,7 @@ function getRecentRequestsForWebApp(limit = 10) {
  */
 function getPageDataForDashboard() {
   try {
-    console.log('🚀 Loading consolidated dashboard data...');
+    debugLog('🚀 Loading consolidated dashboard data...');
 
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
@@ -3787,11 +3322,10 @@ function getPageDataForDashboard() {
  */
 function getPageDataForRiders() {
   try {
-    console.log('🔄 Loading riders page data with enhanced debugging...');
+    debugLog('🔄 Loading riders page data with consistent counts...');
 
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
-      console.log('❌ Authentication failed:', auth.error);
       return {
         success: false,
         error: auth.error || 'UNAUTHORIZED',
@@ -3816,98 +3350,39 @@ function getPageDataForRiders() {
     const user = Object.assign({}, auth.user, {
       roles: auth.user.roles || [auth.user.role]
     });
-    
-    console.log('✅ Authentication successful for user:', user.email);
-    
-    // Check if riders sheet exists
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    if (!sheet) {
-      console.error('❌ Riders sheet not found:', CONFIG.sheets.riders);
-      return {
-        success: false,
-        error: `Riders sheet "${CONFIG.sheets.riders}" not found`,
-        user: user,
-        riders: [],
-        stats: {
-          totalRiders: 0,
-          activeRiders: 0,
-          inactiveRiders: 0,
-          onVacation: 0,
-          inTraining: 0,
-          partTimeRiders: 0
-        }
-      };
-    }
-    
-    console.log('✅ Riders sheet found, getting data...');
-    
-    // Get riders with enhanced error handling
-    let riders = [];
-    try {
-      riders = getRiders(); // Uses consistent filtering
-      console.log(`✅ getRiders() returned ${riders.length} riders`);
-      
-      // Log a sample rider for debugging
-      if (riders.length > 0) {
-        console.log('📋 Sample rider data:', {
-          name: riders[0].name || riders[0]['Full Name'],
-          id: riders[0].jpNumber || riders[0]['Rider ID'],
-          status: riders[0].status || riders[0]['Status'],
-          keys: Object.keys(riders[0])
-        });
-      }
-    } catch (ridersError) {
-      console.error('❌ Error getting riders:', ridersError);
-      return {
-        success: false,
-        error: 'Failed to fetch riders: ' + ridersError.message,
-        user: user,
-        riders: [],
-        stats: {
-          totalRiders: 0,
-          activeRiders: 0,
-          inactiveRiders: 0,
-          onVacation: 0,
-          inTraining: 0,
-          partTimeRiders: 0
-        }
-      };
-    }
+    const riders = getRiders(); // Uses consistent filtering
     
     // Calculate stats using consistent logic
-    const certifiedRiders = riders.filter(r => {
-      const cert = String(r.certification || r['Certification'] || '').toLowerCase();
-      return cert !== 'not certified' && cert !== '';
-    });
+    const certifiedRiders = riders.filter(r =>
+      String(r.certification || r['Certification'] || '').toLowerCase() !==
+      'not certified'
+    );
 
     const stats = {
       totalRiders: certifiedRiders.length, // Matches displayed count
-      activeRiders: certifiedRiders.filter(r => {
-        const status = String(r.status || '').toLowerCase();
-        return status === 'active' || status === 'available' || status.trim() === '';
-      }).length,
-      inactiveRiders: certifiedRiders.filter(r => {
-        const status = String(r.status || '').toLowerCase();
-        return status === 'inactive';
-      }).length,
-      onVacation: certifiedRiders.filter(r => {
-        const status = String(r.status || '').toLowerCase();
-        return status === 'vacation';
-      }).length,
-      inTraining: certifiedRiders.filter(r => {
-        const status = String(r.status || '').toLowerCase();
-        return status === 'training';
-      }).length,
-      partTimeRiders: certifiedRiders.filter(r => {
-        const partTime = String(r.partTime || '').toLowerCase();
-        return partTime === 'yes';
-      }).length
+      activeRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'active' ||
+        String(r.status || '').toLowerCase() === 'available' ||
+        String(r.status || '').trim() === ''
+      ).length,
+      inactiveRiders: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'inactive'
+      ).length,
+      onVacation: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'vacation'
+      ).length,
+
+      inTraining: certifiedRiders.filter(r =>
+        String(r.status || '').toLowerCase() === 'training'
+      ).length,
+      partTimeRiders: certifiedRiders.filter(r =>
+        String(r.partTime || '').toLowerCase() === 'yes'
+      ).length
     };
     
-    console.log('✅ Riders page data loaded successfully:', {
+    debugLog('✅ Riders page data loaded:', {
       userEmail: user.email,
       ridersCount: riders.length,
-      certifiedRidersCount: certifiedRiders.length,
       stats: stats
     });
     
@@ -3922,27 +3397,15 @@ function getPageDataForRiders() {
     console.error('❌ Error loading riders page data:', error);
     logError('Error in getPageDataForRiders', error);
     
-    // Try to get user info even if main function fails
-    let fallbackUser = {
-      name: 'System User',
-      email: '',
-      roles: ['user'],
-      permissions: []
-    };
-    
-    try {
-      const auth = authenticateAndAuthorizeUser();
-      if (auth.success && auth.user) {
-        fallbackUser = auth.user;
-      }
-    } catch (authError) {
-      console.warn('❌ Could not get user info for error response:', authError.message);
-    }
-    
     return {
       success: false,
       error: error.message,
-      user: fallbackUser,
+      user: {
+        name: 'System User',
+        email: '',
+        roles: ['system'],
+        permissions: []
+      },
       riders: [],
       stats: {
         totalRiders: 0,
@@ -3951,10 +3414,14 @@ function getPageDataForRiders() {
         onVacation: 0,
         inTraining: 0,
         partTimeRiders: 0
+
       }
     };
   }
 }
+
+
+
 /**
  * Get current user information
  */
@@ -3990,7 +3457,7 @@ function getCurrentUser() {
  */
 function getDashboardStats() {
   try {
-    console.log('📊 Calculating dashboard stats with consistent counts...');
+    debugLog('📊 Calculating dashboard stats with consistent counts...');
     
     const requestsData = getRequestsData();
     const ridersData = getRidersData();
@@ -4037,7 +3504,7 @@ function getDashboardStats() {
       weekAssignments: weekAssignments
     };
     
-    console.log('✅ Dashboard stats calculated:', stats);
+    debugLog('✅ Dashboard stats calculated:', stats);
     return stats;
     
   } catch (error) {
@@ -4105,7 +3572,7 @@ function ensureSheetsExist() {
   
   Object.values(CONFIG.sheets).forEach(sheetName => {
     if (!ss.getSheetByName(sheetName)) {
-      console.log(`Creating missing sheet: ${sheetName}`);
+      debugLog(`Creating missing sheet: ${sheetName}`);
       const newSheet = ss.insertSheet(sheetName);
       
       // Add headers based on sheet type
@@ -4227,7 +3694,7 @@ function logError(message, error) {
  * Log activity
  */
 function logActivity(message) {
-  console.log(message);
+  debugLog(message);
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const logSheet = ss.getSheetByName(CONFIG.sheets.log);
@@ -4238,178 +3705,7 @@ function logActivity(message) {
     console.error('Failed to log activity:', error);
   }
 }
-function debugNavigationUrls() {
-  try {
-    console.log('=== NAVIGATION URL DEBUG ===');
-    
-    const pages = ['dashboard', 'requests', 'assignments', 'notifications', 'reports'];
-    
-    pages.forEach(pageName => {
-      console.log(`\n--- Testing ${pageName} page ---`);
-      
-      // Test navigation generation
-      const nav = getNavigationHtmlWithDynamicUrls(pageName);
-      console.log('Generated navigation:');
-      console.log(nav);
-      
-      // Extract URLs from the navigation
-      const urlMatches = nav.match(/href="([^"]+)"/g);
-      if (urlMatches) {
-        console.log('URLs found:');
-        urlMatches.forEach(match => {
-          const url = match.replace('href="', '').replace('"', '');
-          console.log(`  ${url}`);
-        });
-      }
-      
-      // Test actual doGet call
-      const mockEvent = { parameter: pageName === 'dashboard' ? {} : { page: pageName } };
-      const result = doGet(mockEvent);
-      const content = result.getContent();
-      
-      // Check if navigation exists in final content
-      const finalNavExists = content.includes('<nav class="navigation">');
-      console.log(`Navigation in final content: ${finalNavExists ? '✅' : '❌'}`);
-      
-      if (finalNavExists) {
-        // Extract navigation from final content
-        const navStart = content.indexOf('<nav class="navigation">');
-        const navEnd = content.indexOf('</nav>', navStart) + 6;
-        const finalNav = content.substring(navStart, navEnd);
-        
-        // Check URLs in final navigation
-        const finalUrls = finalNav.match(/href="([^"]+)"/g);
-        if (finalUrls) {
-          console.log('Final URLs:');
-          finalUrls.forEach(match => {
-            const url = match.replace('href="', '').replace('"', '');
-            console.log(`  ${url}`);
-          });
-        }
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Debug failed:', error);
-  }
-}
-// ISSUE 4: Debug Function to Test Server Connection
-/**
- * Simple test function to verify server connectivity
- */
-function testServerConnection() {
-  try {
-    console.log('🧪 Testing server connection...');
-    ensureSheetsExist();
-    
-    const user = getCurrentUser();
-    console.log('✅ User data:', user);
-    
-    const requestsData = getRequestsData();
-    console.log('✅ Requests data loaded:', requestsData ? requestsData.data.length : 'Failed');
-    
-    const stats = getDashboardStats();
-    console.log('✅ Stats calculated:', stats);
-    
-    return {
-      success: true,
-      message: 'Server connection test passed',
-      user: user,
-      dataPoints: {
-        requests: requestsData ? requestsData.data.length : 0,
-        stats: stats
-      }
-    };
-  } catch (error) {
-    console.error('❌ Server connection test failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      stack: error.stack
-    };
-  }
-}
 
-// ===== TROUBLESHOOTING STEPS =====
-
-/*
-STEP 1: Check Web App Deployment
-1. Go to Deploy → Manage Deployments
-2. Make sure "Execute as" is set to "Me"
-3. Make sure "Who has access" is set to "Anyone"
-4. Copy the Web app URL and verify it matches your script
-
-STEP 2: Test Server Functions
-1. Run testServerConnection() in the Apps Script editor
-2. Check the execution transcript for errors
-3. Look at console.log outputs
-
-STEP 3: Check Sheet Structure
-1. Make sure your sheets exist with the names in CONFIG.sheets
-2. Verify column headers match CONFIG.columns
-3. Run ensureSheetsExist() if needed
-
-STEP 4: Test Web App
-1. Open your web app URL in browser
-2. Open browser Developer Tools (F12)
-3. Check Console tab for JavaScript errors
-4. Check Network tab to see if server calls are being made
-
-STEP 5: Add Debug Logging
-Add this to your index.html script section for more debugging:
-*/
-
-// Add this to index.html <script> section for debugging:
-const debugWebApp = `
-// Enhanced debug logging
-window.addEventListener('error', function(e) {
-    console.error('JavaScript Error:', e.error);
-});
-
-// Test server connection immediately
-if (typeof google !== 'undefined' && google.script && google.script.run) {
-    console.log('🧪 Testing server connection...');
-    google.script.run
-        .withSuccessHandler(result => {
-            console.log('✅ Server test successful:', result);
-        })
-        .withFailureHandler(error => {
-            console.error('❌ Server test failed:', error);
-        })
-        .testServerConnection();
-} else {
-    console.error('❌ Google Apps Script not available');
-}
-`;
-function debugNotificationsFile() {
-  try {
-    console.log('=== DEBUGGING NOTIFICATIONS.HTML ===');
-    
-    const content = HtmlService.createHtmlOutputFromFile('notifications').getContent();
-    console.log(`File length: ${content.length}`);
-    
-    // Count existing navigation
-    const navMatches = content.match(/<nav class="navigation">/g);
-    const navCount = navMatches ? navMatches.length : 0;
-    console.log(`Hardcoded navigation count: ${navCount}`);
-    
-    if (navCount > 0) {
-      console.log('⚠️ notifications.html has hardcoded navigation!');
-      console.log('This will cause duplicates when navigation is injected.');
-      console.log('Solution: Remove the hardcoded <nav class="navigation">...</nav> from notifications.html');
-    }
-    
-    // Check for placeholder
-    const hasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-    console.log(`Has placeholder: ${hasPlaceholder ? '✅' : '❌'}`);
-    
-    return { navCount, hasPlaceholder, length: content.length };
-    
-  } catch (error) {
-    console.error('❌ Debug failed:', error);
-    return { error: error.message };
-  }
-}
 
 /**
  * 🔧 USER MANAGEMENT ROUTING FIX
@@ -4419,7 +3715,7 @@ function debugNotificationsFile() {
 
 function doGet(e) {
   try {
-    console.log('🚀 doGet with cache-friendly headers...');
+    debugLog('🚀 doGet with cache-friendly headers...');
 
     if (e.parameter && e.parameter.action === 'respondAssignment') {
       const assignmentId = e.parameter.assignmentId;
@@ -4439,10 +3735,10 @@ function doGet(e) {
     const { user: authenticatedUser, rider } = authResult;
     const pageName = e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
     
-    console.log(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
+    debugLog(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
 
         if (pageName === 'auth-setup') {
-      console.log('🔐 Handling auth-setup page specifically');
+      debugLog('🔐 Handling auth-setup page specifically');
       
       if (authenticatedUser.role !== 'admin') {
         return createAccessDeniedPage('Only administrators can access authentication setup', authenticatedUser);
@@ -4453,7 +3749,7 @@ function doGet(e) {
     
     // Handle user-management page separately
     if (pageName === 'user-management') {
-      console.log('👥 Handling user-management page specifically');
+      debugLog('👥 Handling user-management page specifically');
       
       if (authenticatedUser.role !== 'admin') {
         return createAccessDeniedPage('Only administrators can access user management', authenticatedUser);
@@ -4486,7 +3782,7 @@ function doGet(e) {
     // Try to make the page more cache-friendly by avoiding dynamic elements
     // that prevent browser caching
     
-    console.log(`✅ Page ${pageName} ready with cache-friendly settings`);
+    debugLog(`✅ Page ${pageName} ready with cache-friendly settings`);
     return finalOutput;
       
   } catch (error) {
@@ -4673,7 +3969,7 @@ function createSimpleUserManagementPage() {
         }
         
         function handleUserDataSuccess(data) {
-            console.log('User data received:', data);
+            debugLog('User data received:', data);
             
             if (data && data.success) {
                 // Update statistics
@@ -4747,7 +4043,7 @@ function createSimpleUserManagementPage() {
                 google.script.run
                     .withSuccessHandler(function(result) {
                         updateStatus('System test completed. Check console for details.', 'success');
-                        console.log('System test result:', result);
+                        debugLog('System test result:', result);
                     })
                     .withFailureHandler(function(error) {
                         updateStatus('System test failed: ' + error, 'error');
@@ -4973,16 +4269,16 @@ function createErrorPageSimple(error) {
  */
 function testUserManagementRouting() {
   try {
-    console.log('🧪 Testing user management routing...');
+    debugLog('🧪 Testing user management routing...');
     
     // Simulate the user management request
     const e = { parameter: { page: 'user-management' } };
     
-    console.log('Testing doGet with user-management parameter...');
+    debugLog('Testing doGet with user-management parameter...');
     const result = doGet(e);
     
-    console.log('✅ doGet completed without errors');
-    console.log('Result type:', typeof result);
+    debugLog('✅ doGet completed without errors');
+    debugLog('Result type:', typeof result);
     
     return {
       success: true,
@@ -5002,7 +4298,7 @@ function testUserManagementRouting() {
  */
 function getPageFileNameSafe(pageName, userRole) {
   try {
-    console.log(`🗂️ Getting file for page: ${pageName}, role: ${userRole}`);
+    debugLog(`🗂️ Getting file for page: ${pageName}, role: ${userRole}`);
     
     // Role-specific page mapping
     const rolePageMap = {
@@ -5025,10 +4321,10 @@ function getPageFileNameSafe(pageName, userRole) {
       
       // Verify the file exists
       if (checkFileExists(fileName)) {
-        console.log(`✅ Using role-specific file: ${fileName}`);
+        debugLog(`✅ Using role-specific file: ${fileName}`);
         return fileName;
       } else {
-        console.log(`⚠️ Role-specific file ${fileName} not found, using default`);
+        debugLog(`⚠️ Role-specific file ${fileName} not found, using default`);
       }
     }
     
@@ -5048,11 +4344,11 @@ function getPageFileNameSafe(pageName, userRole) {
     
     // Double-check the file exists
     if (!checkFileExists(fileName)) {
-      console.log(`⚠️ File ${fileName} not found, falling back to index`);
+      debugLog(`⚠️ File ${fileName} not found, falling back to index`);
       fileName = 'index';
     }
     
-    console.log(`✅ Using file: ${fileName} for page: ${pageName}`);
+    debugLog(`✅ Using file: ${fileName} for page: ${pageName}`);
     return fileName;
     
   } catch (error) {
@@ -5384,6 +4680,8 @@ function addNavigationToContentSafe(content, navigationHtml) {
     return content;
   }
 }
+
+
 /**
  * Create a proper sign-in page that actually works
  */
@@ -5588,7 +4886,7 @@ function createSignInPage() {
         document.addEventListener('DOMContentLoaded', function() {
             // Check if we can detect a Google session
             if (typeof gapi !== 'undefined') {
-                console.log('Google APIs detected, attempting auto-signin');
+                debugLog('Google APIs detected, attempting auto-signin');
                 setTimeout(() => handleSignIn(document.querySelector('.signin-btn')), 1000);
             }
         });
@@ -5918,7 +5216,7 @@ function authenticateUser() {
     try {
       userName = user.getName ? user.getName() : (user.name || '');
     } catch (e) {
-      console.log('⚠️ getName() failed, trying alternatives...');
+      debugLog('⚠️ getName() failed, trying alternatives...');
       userName = user.name || user.displayName || '';
     }
     
@@ -5994,7 +5292,7 @@ function getDispatcherUsers() {
       return dispatcherRange.flat().filter(email => email && email.trim());
     }
   } catch (error) {
-    console.log('Settings sheet not found, using default dispatchers');
+    debugLog('Settings sheet not found, using default dispatchers');
   }
   
   return [
@@ -6127,7 +5425,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
 
 // 👤 User Information Injection
 function injectUserInfo(content, user, rider) {
-  console.log('Code.gs#injectUserInfo: Received user object: ' + JSON.stringify(user));
+  debugLog('Code.gs#injectUserInfo: Received user object: ' + JSON.stringify(user));
   // Replace user placeholders
   content = content.replace(/\{\{USER_NAME\}\}/g, user.name);
   content = content.replace(/\{\{USER_EMAIL\}\}/g, user.email);
@@ -6172,18 +5470,18 @@ function addUserDataInjection(htmlOutput, user, rider) {
 function injectUrlParameters(content, parameters) {
   try {
     if (!parameters || Object.keys(parameters).length === 0) {
-      console.log('📄 No URL parameters to inject');
+      debugLog('📄 No URL parameters to inject');
       return content;
     }
     
-    console.log('📄 Injecting URL parameters:', parameters);
+    debugLog('📄 Injecting URL parameters:', parameters);
     
     // Create a script that sets the URL parameters in the window object
     const paramScript = `
 <script>
 // URL Parameters injected by server-side doGet function
 window.urlParameters = ${JSON.stringify(parameters)};
-console.log('📄 URL parameters injected:', window.urlParameters);
+debugLog('📄 URL parameters injected:', window.urlParameters);
 
 // Update the browser's URL to include the parameters for client-side compatibility
 if (window.urlParameters && Object.keys(window.urlParameters).length > 0) {
@@ -6198,10 +5496,10 @@ if (window.urlParameters && Object.keys(window.urlParameters).length > 0) {
     // Update URL without triggering a page reload
     if (window.history && window.history.replaceState) {
       window.history.replaceState({}, '', url.toString());
-      console.log('📄 Browser URL updated with parameters');
+      debugLog('📄 Browser URL updated with parameters');
     }
   } catch (error) {
-    console.log('📄 Could not update browser URL:', error);
+    debugLog('📄 Could not update browser URL:', error);
   }
 }
 </script>`;
@@ -6232,31 +5530,31 @@ if (window.urlParameters && Object.keys(window.urlParameters).length > 0) {
  */
 function testHtmlOutputMethods() {
   try {
-    console.log('=== TESTING HTML OUTPUT METHODS ===');
+    debugLog('=== TESTING HTML OUTPUT METHODS ===');
     
     const testOutput = HtmlService.createHtmlOutput('<h1>Test</h1>');
     
     // Test what methods are available
-    console.log('Available methods on HtmlOutput:');
-    console.log('- append:', typeof testOutput.append);
-    console.log('- appendUntrusted:', typeof testOutput.appendUntrusted);
-    console.log('- setContent:', typeof testOutput.setContent);
-    console.log('- getContent:', typeof testOutput.getContent);
+    debugLog('Available methods on HtmlOutput:');
+    debugLog('- append:', typeof testOutput.append);
+    debugLog('- appendUntrusted:', typeof testOutput.appendUntrusted);
+    debugLog('- setContent:', typeof testOutput.setContent);
+    debugLog('- getContent:', typeof testOutput.getContent);
     
     // Test appendUntrusted
     try {
-      testOutput.appendUntrusted('<script>console.log("appendUntrusted works!");</script>');
-      console.log('✅ appendUntrusted method works');
+      testOutput.appendUntrusted('<script>debugLog("appendUntrusted works!");</script>');
+      debugLog('✅ appendUntrusted method works');
     } catch (error) {
-      console.log('❌ appendUntrusted failed:', error.message);
+      debugLog('❌ appendUntrusted failed:', error.message);
     }
     
     // Test append (should fail)
     try {
-      testOutput.append('<script>console.log("append test");</script>');
-      console.log('⚠️ append method worked (unexpected)');
+      testOutput.append('<script>debugLog("append test");</script>');
+      debugLog('⚠️ append method worked (unexpected)');
     } catch (error) {
-      console.log('✅ append method correctly fails:', error.message);
+      debugLog('✅ append method correctly fails:', error.message);
     }
     
     return {
@@ -6277,7 +5575,7 @@ function testHtmlOutputMethods() {
 
 function addMotorcycleLoaderToContent(content) {
   try {
-    console.log('🏍️ Adding motorcycle loader directly to HTML content');
+    debugLog('🏍️ Adding motorcycle loader directly to HTML content');
     
     const motorcycleHtml = `
 <!-- INSTANT MOTORCYCLE LOADER -->
@@ -6519,7 +5817,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
 <script>
 // MOBILE OPTIMIZATION JAVASCRIPT
 (function() {
-  console.log('📱 Mobile optimization package loading...');
+  debugLog('📱 Mobile optimization package loading...');
   
   // 1. DEVICE DETECTION
   function detectDevice() {
@@ -6538,7 +5836,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
   }
   
   const device = detectDevice();
-  console.log('📱 Device info:', device);
+  debugLog('📱 Device info:', device);
   
   // 2. MOBILE-SPECIFIC ENHANCEMENTS
   if (device.isMobile) {
@@ -6621,7 +5919,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
   
   // 6. INITIALIZE MOBILE OPTIMIZATIONS
   document.addEventListener('DOMContentLoaded', function() {
-    console.log('📱 Initializing mobile optimizations...');
+    debugLog('📱 Initializing mobile optimizations...');
     
     enhanceTablesForMobile();
     enhanceMobileNavigation();
@@ -6638,7 +5936,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     }
     document.body.classList.add(...classes);
     
-    console.log('✅ Mobile optimizations ready!');
+    debugLog('✅ Mobile optimizations ready!');
   });
   
   // 7. EXPOSE MOBILE UTILITIES
@@ -6648,7 +5946,7 @@ function addMobileOptimizations(htmlOutput, user, rider) {
     isTouchDevice: device.isTouchDevice
   };
   
-  console.log('✅ Mobile optimization package loaded');
+  debugLog('✅ Mobile optimization package loaded');
   
 })();
 </script>`;
@@ -6690,7 +5988,7 @@ function updateRiderLastLogin(riderId) {
   }
 }
 function createAuthMappingPage() {
-  console.log('🔐 Creating auth mapping page...');
+  debugLog('🔐 Creating auth mapping page...');
   
   const html = `
 <!DOCTYPE html>
@@ -6966,34 +6264,37 @@ function createAuthMappingPage() {
     .setTitle('Authentication Setup - Escort Management')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
 // 3. Check your dashboard navigation/buttons to ensure they link to the correct page:
+
 // Dashboard should have buttons like this:
 // <a href="?page=auth-setup" class="btn btn-primary">🔐 Auth Setup</a>
 // <a href="?page=user-management" class="btn btn-primary">👥 User Management</a>
+
 // 4. Testing function to verify the routing:
 
 function testAuthSetupRouting() {
   try {
-    console.log('=== TESTING AUTH SETUP ROUTING ===');
+    debugLog('=== TESTING AUTH SETUP ROUTING ===');
     
     // Test auth-setup page
     const authSetupEvent = { parameter: { page: 'auth-setup' } };
     const authResult = doGet(authSetupEvent);
     const authContent = authResult.getContent();
     
-    console.log('Auth setup page test:');
-    console.log(`- Content length: ${authContent.length}`);
-    console.log(`- Contains "Authentication Setup": ${authContent.includes('Authentication Setup') ? '✅' : '❌'}`);
-    console.log(`- Contains "Gmail Account Mapping": ${authContent.includes('Gmail Account Mapping') ? '✅' : '❌'}`);
+    debugLog('Auth setup page test:');
+    debugLog(`- Content length: ${authContent.length}`);
+    debugLog(`- Contains "Authentication Setup": ${authContent.includes('Authentication Setup') ? '✅' : '❌'}`);
+    debugLog(`- Contains "Gmail Account Mapping": ${authContent.includes('Gmail Account Mapping') ? '✅' : '❌'}`);
     
     // Test user-management page
     const userMgmtEvent = { parameter: { page: 'user-management' } };
     const userResult = doGet(userMgmtEvent);
     const userContent = userResult.getContent();
     
-    console.log('User management page test:');
-    console.log(`- Content length: ${userContent.length}`);
-    console.log(`- Contains "User Management": ${userContent.includes('User Management') ? '✅' : '❌'}`);
+    debugLog('User management page test:');
+    debugLog(`- Content length: ${userContent.length}`);
+    debugLog(`- Contains "User Management": ${userContent.includes('User Management') ? '✅' : '❌'}`);
     
     return {
       authSetup: {
@@ -7007,6 +6308,629 @@ function testAuthSetupRouting() {
     
   } catch (error) {
     console.error('❌ Test failed:', error);
+    return { error: error.message };
+  }
+}
+// 🚫 Error Pages
+function createAuthErrorPage(errorType) {
+  const signInUrl = getWebAppUrl();
+  
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Sign In Required - Escort Management</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          text-align: center; 
+          padding: 50px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+        .container {
+          background: rgba(255, 255, 255, 0.95);
+          color: #333;
+          padding: 40px;
+          border-radius: 15px;
+          max-width: 500px;
+          margin: 0 auto;
+        }
+        .btn {
+          background: #3498db;
+          color: white;
+          padding: 15px 30px;
+          border: none;
+          border-radius: 25px;
+          font-size: 16px;
+          cursor: pointer;
+          text-decoration: none;
+          display: inline-block;
+          margin-top: 20px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🔐 Authentication Required</h2>
+        <p>Please sign in with your authorized Google account to access the system.</p>
+        <a href="${signInUrl}" class="btn">🔑 Sign In with Google</a>
+        <p style="margin-top: 30px; font-size: 14px; color: #666;">
+          Contact your administrator if you need access.
+        </p>
+      </div>
+    </body>
+    </html>
+  `).setTitle('Sign In Required');
+}
+
+function createAccessDeniedPage(reason, user) {
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Access Denied - Escort Management</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          text-align: center; 
+          padding: 50px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+        }
+        .container {
+          background: rgba(255, 255, 255, 0.95);
+          color: #333;
+          padding: 40px;
+          border-radius: 15px;
+          max-width: 500px;
+          margin: 0 auto;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🏍️ Motorcycle Escort Management</h1>
+        <h2>🚫 Access Denied</h2>
+        <p>Hello ${user.name},</p>
+        <p>${reason}</p>
+        <p>Your role: <strong>${user.role}</strong></p>
+        <a href="${getWebAppUrl()}" style="color: #3498db;">← Back to Dashboard</a>
+      </div>
+    </body>
+    </html>
+  `).setTitle('Access Denied');
+}
+
+// Keep your existing addNavigationToContent function but enhance it
+function addNavigationToContent(content, navigationHtml) {
+  // Remove any existing navigation
+  content = content.replace(/<nav class="navigation">[\s\S]*?<\/nav>/g, '');
+  
+  // Add enhanced navigation CSS for roles
+  if (!content.includes('.navigation') || !content.includes('.nav-button')) {
+    const navCSS = `
+.navigation {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 1rem;
+    margin: 0 auto 2rem auto !important;
+    flex-wrap: wrap;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 15px 15px;
+}
+.nav-button {
+    padding: 0.75rem 1.5rem !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+    border: none !important;
+    border-radius: 25px !important;
+    color: #2c3e50 !important;
+    text-decoration: none !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+}
+.nav-button:hover, .nav-button.active {
+    background: #3498db !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3) !important;
+}
+`;
+    
+    // Add CSS to head
+    if (content.includes('<head>')) {
+      content = content.replace('<head>', `<head><style>${navCSS}</style>`);
+    } else if (content.includes('<style>')) {
+      content = content.replace('</style>', `${navCSS}</style>`);
+    } else {
+      content = `<style>${navCSS}</style>${content}`;
+    }
+  }
+  
+  // Add navigation HTML
+  if (content.includes('<body>')) {
+    content = content.replace('<body>', `<body>${navigationHtml}`);
+  } else {
+    content = `${navigationHtml}${content}`;
+  }
+  
+  return content;
+}
+
+/**
+ * STEP 2: Automatic fix based on diagnosis
+ */
+function autoFixRidersIssue() {
+  try {
+    debugLog('🔧 Starting automatic fix for riders issue...');
+    
+    // First, get diagnosis
+    const diagnosis = diagnoseRealRidersIssue();
+    
+    if (!diagnosis.recommendations || diagnosis.recommendations.length === 0) {
+      debugLog('✅ No issues found that need fixing');
+      return { success: true, message: 'No fixes needed' };
+    }
+    
+    const fixResults = {
+      success: true,
+      appliedFixes: [],
+      errors: []
+    };
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    
+    // Apply fixes based on recommendations
+    for (const recommendation of diagnosis.recommendations) {
+      debugLog(`🔧 Applying fix: ${recommendation.fix}`);
+      
+      try {
+        switch (recommendation.fix) {
+          case 'addSampleRiders':
+            // Add sample riders if no data exists
+            const sampleRiders = [
+              ['RIDER001', 'John Smith', '555-0101', 'john@example.com', 'Active', 'Standard', 0, ''],
+              ['RIDER002', 'Jane Doe', '555-0102', 'jane@example.com', 'Active', 'Advanced', 0, ''],
+              ['RIDER003', 'Bob Wilson', '555-0103', 'bob@example.com', 'Active', 'Standard', 0, '']
+            ];
+            
+            sampleRiders.forEach(rider => {
+              sheet.appendRow(rider);
+            });
+            
+            fixResults.appliedFixes.push('Added 3 sample riders');
+            debugLog('✅ Added sample riders');
+            break;
+            
+          case 'fixColumnHeaders':
+            // Fix headers to match CONFIG expectations
+            const expectedHeaders = Object.values(CONFIG.columns.riders);
+            sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+            
+            fixResults.appliedFixes.push('Fixed column headers');
+            debugLog('✅ Fixed column headers');
+            break;
+            
+          case 'setActiveStatuses':
+            // Set empty statuses to 'Active'
+            const data = sheet.getDataRange().getValues();
+            const headers = data[0];
+            const statusColIndex = headers.indexOf(CONFIG.columns.riders.status);
+            const nameColIndex = headers.indexOf(CONFIG.columns.riders.name);
+            
+            if (statusColIndex >= 0 && nameColIndex >= 0) {
+              let fixedCount = 0;
+              for (let i = 1; i < data.length; i++) {
+                const name = data[i][nameColIndex];
+                const status = data[i][statusColIndex];
+                
+                if (name && String(name).trim() && (!status || String(status).trim() === '')) {
+                  sheet.getRange(i + 1, statusColIndex + 1).setValue('Active');
+                  fixedCount++;
+                }
+              }
+              
+              fixResults.appliedFixes.push(`Set ${fixedCount} riders to Active status`);
+              debugLog(`✅ Set ${fixedCount} riders to Active status`);
+            }
+            break;
+            
+          case 'addRiderNames':
+            // Add placeholder names where missing
+            const allData = sheet.getDataRange().getValues();
+            const allHeaders = allData[0];
+            const nameCol = allHeaders.indexOf(CONFIG.columns.riders.name);
+            const idCol = allHeaders.indexOf(CONFIG.columns.riders.jpNumber);
+            
+            if (nameCol >= 0) {
+              let addedNames = 0;
+              for (let i = 1; i < allData.length; i++) {
+                const name = allData[i][nameCol];
+                const id = allData[i][idCol];
+                
+                if ((!name || String(name).trim() === '') && id && String(id).trim()) {
+                  sheet.getRange(i + 1, nameCol + 1).setValue(`Rider ${id}`);
+                  addedNames++;
+                }
+              }
+              
+              fixResults.appliedFixes.push(`Added names to ${addedNames} riders`);
+              debugLog(`✅ Added names to ${addedNames} riders`);
+            }
+            break;
+        }
+        
+      } catch (fixError) {
+        console.error(`❌ Fix ${recommendation.fix} failed:`, fixError);
+        fixResults.errors.push(`${recommendation.fix}: ${fixError.message}`);
+      }
+    }
+    
+    // Clear cache after fixes
+    dataCache.clear('sheet_' + CONFIG.sheets.riders);
+    fixResults.appliedFixes.push('Cleared data cache');
+    
+    // Test the result
+    try {
+      const testRiders = getActiveRidersForAssignments();
+      fixResults.testResult = {
+        success: testRiders.length > 0,
+        ridersFound: testRiders.length,
+        sampleRider: testRiders[0] || null
+      };
+      
+      debugLog(`🧪 Test result: Found ${testRiders.length} active riders`);
+      
+    } catch (testError) {
+      fixResults.testResult = {
+        success: false,
+        error: testError.message
+      };
+    }
+    
+    debugLog('🔧 Auto-fix complete:', fixResults);
+    return fixResults;
+    
+  } catch (error) {
+    console.error('❌ Auto-fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * STEP 3: Simple test to verify riders are working
+ */
+function testRidersAreWorking() {
+  try {
+    debugLog('🧪 Testing if riders are working...');
+    
+    const tests = {
+      timestamp: new Date().toISOString(),
+      results: {}
+    };
+    
+    // Test 1: Basic data access
+    try {
+      const ridersData = getRidersData(false);
+      tests.results.getRidersData = {
+        success: true,
+        dataFound: !!(ridersData && ridersData.data && ridersData.data.length > 0),
+        rowCount: ridersData?.data?.length || 0
+      };
+    } catch (error) {
+      tests.results.getRidersData = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Test 2: Active riders for assignments
+    try {
+      const activeRiders = getActiveRidersForAssignments();
+      tests.results.getActiveRidersForAssignments = {
+        success: true,
+        ridersFound: activeRiders.length,
+        hasRealRiders: activeRiders.length > 0 && !activeRiders[0].name.includes('System'),
+        sampleRider: activeRiders[0] || null
+      };
+    } catch (error) {
+      tests.results.getActiveRidersForAssignments = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Test 3: Web app riders
+    try {
+      const webAppRiders = getActiveRidersForWebApp();
+      tests.results.getActiveRidersForWebApp = {
+        success: true,
+        ridersFound: webAppRiders.length,
+        hasRealRiders: webAppRiders.length > 0 && !webAppRiders[0].name.includes('System'),
+        sampleRider: webAppRiders[0] || null
+      };
+    } catch (error) {
+      tests.results.getActiveRidersForWebApp = {
+        success: false,
+        error: error.message
+      };
+    }
+    
+    // Overall assessment
+    const hasRealRiders = tests.results.getActiveRidersForAssignments?.hasRealRiders === true;
+    tests.overallSuccess = hasRealRiders;
+    tests.message = hasRealRiders 
+      ? '✅ Riders are working correctly!' 
+      : '❌ Still showing fallback/system riders - real data issue remains';
+    
+    debugLog('🧪 Test complete:', tests);
+    return tests;
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * STEP 4: Complete solution - diagnose and fix in one go
+ */
+function fixRidersCompletely() {
+  try {
+    debugLog('🚀 === COMPLETE RIDERS FIX ===');
+    
+    const solution = {
+      timestamp: new Date().toISOString(),
+      steps: []
+    };
+    
+    // Step 1: Diagnose
+    debugLog('🔍 Step 1: Diagnosing issue...');
+    const diagnosis = diagnoseRealRidersIssue();
+    solution.steps.push({
+      step: 'diagnosis',
+      result: diagnosis,
+      success: !diagnosis.error
+    });
+    
+    // Step 2: Apply fixes
+    debugLog('🔧 Step 2: Applying fixes...');
+    const fixes = autoFixRidersIssue();
+    solution.steps.push({
+      step: 'fixes',
+      result: fixes,
+      success: fixes.success
+    });
+    
+    // Step 3: Test result
+    debugLog('🧪 Step 3: Testing result...');
+    const test = testRidersAreWorking();
+    solution.steps.push({
+      step: 'test',
+      result: test,
+      success: test.overallSuccess
+    });
+    
+    solution.overallSuccess = test.overallSuccess;
+    solution.finalMessage = test.message;
+    
+    debugLog('🚀 Complete fix result:', solution);
+    
+    if (solution.overallSuccess) {
+      debugLog('🎉 SUCCESS! Riders should now work properly. Refresh your web app.');
+    } else {
+      debugLog('❌ Issue persists. Check the diagnosis for more details.');
+    }
+    
+    return solution;
+    
+  } catch (error) {
+    console.error('❌ Complete fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+/**
+ * Handle user management page
+ */
+function handleUserManagementPage(e) {
+  try {
+    debugLog('🔐 Handling user management page...');
+    
+    // Check authentication first
+    const authResult = authenticateAndAuthorizeUser();
+    
+    if (!authResult.success) {
+      debugLog('❌ User management auth failed:', authResult.error);
+      return createSignInPage();
+    }
+    
+    // Check if user is admin
+    if (authResult.user.role !== 'admin') {
+      debugLog('❌ User management access denied for role:', authResult.user.role);
+      return createAccessDeniedPage('Only administrators can access user management', authResult.user);
+    }
+    
+    debugLog('✅ User management access granted for admin:', authResult.user.name);
+    
+    // Check if user-management.html file exists
+    if (checkFileExists('user-management')) {
+      debugLog('✅ Loading user-management.html file');
+      
+      // Load the HTML file normally
+      let htmlOutput = HtmlService.createHtmlOutputFromFile('user-management');
+      let content = htmlOutput.getContent();
+      
+      // Add navigation and user info
+      const navigationHtml = getRoleBasedNavigationSafe('user-management', authResult.user, authResult.rider);
+      content = injectUserInfoSafe(content, authResult.user, authResult.rider);
+      content = addNavigationToContentSafe(content, navigationHtml);
+      htmlOutput.setContent(content);
+      addUserDataInjectionSafe(htmlOutput, authResult.user, authResult.rider);
+
+      return htmlOutput
+        .setTitle('User Management - Escort Management')
+        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+        
+    } else {
+      debugLog('❌ user-management.html file not found, creating dynamic page');
+      // Fall back to the dynamic version we created earlier
+      return createUserManagementDashboard();
+    }
+    
+  } catch (error) {
+    console.error('❌ User management page error:', error);
+    return createErrorPageWithSignIn(error);
+  }
+}
+
+/**
+ * Handle auth setup page
+ */
+function handleAuthSetupPage(e) {
+  try {
+    debugLog('🔐 Handling auth setup page...');
+    
+    const authResult = authenticateAndAuthorizeUser();
+    
+    if (!authResult.success || authResult.user.role !== 'admin') {
+      return createAccessDeniedPage('Only administrators can access authentication setup', 
+        authResult.user || { name: 'Unknown', role: 'unknown' });
+    }
+    
+    // Return the auth mapping page we created
+    return createAuthMappingPage();
+    
+  } catch (error) {
+    console.error('❌ Auth setup page error:', error);
+    return createErrorPageWithSignIn(error);
+  }
+}
+
+/**
+ * Enhanced navigation that includes user management
+ */
+function getRoleBasedNavigationSafe(currentPage, user, rider) {
+  try {
+    const baseUrl = getWebAppUrlSafe();
+    
+    const navigationMenus = {
+      admin: [
+        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
+        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
+        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+        { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
+        { page: 'user-management', label: '🔐 User Management', url: `${baseUrl}?page=user-management` },
+        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
+        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+      ],
+      dispatcher: [
+        { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
+        { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
+        { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+        { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
+        { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+      ],
+      rider: [
+        { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
+        { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
+        { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
+      ]
+    };
+    
+    const menuItems = navigationMenus[user.role] || navigationMenus.rider;
+    
+    let navHtml = '<nav class="navigation" style="display: flex; justify-content: center; align-items: center;">';
+    
+    menuItems.forEach(item => {
+      const isActive = item.page === currentPage ? 'active' : '';
+      navHtml += `
+        <a href="${item.url}"
+           class="nav-button ${isActive}"
+           data-page="${item.page}"
+           target="_top">
+          ${item.label}
+        </a>
+      `;
+    });
+    
+    navHtml += '</nav>';
+    
+    return navHtml;
+    
+  } catch (error) {
+    console.error('❌ Error in getRoleBasedNavigationSafe:', error);
+    return '<nav>Navigation error</nav>';
+  }
+}
+
+/**
+ * Log out the current user and return a Google sign-out URL
+ */
+function logout() {
+  try {
+    if (typeof logoutUser === 'function') {
+      logoutUser();
+    }
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
+    PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
+  } catch (error) {
+    console.error('Error clearing cached user info during logout:', error);
+  }
+
+  const baseUrl = getWebAppUrlSafe();
+  return `https://accounts.google.com/Logout?continue=${encodeURIComponent(baseUrl)}`;
+}
+
+/**
+ * Test function - run this to debug your setup
+ */
+function debugSystemSetup() {
+  debugLog('🧪 Debugging system setup...');
+  
+  try {
+    debugLog('=== Testing Authentication ===');
+    const authResult = authenticateAndAuthorizeUser();
+    debugLog('Auth result:', authResult);
+    
+    debugLog('=== Testing Admin Dashboard Data ===');
+    const dashboardData = getAdminDashboardData();
+    debugLog('Dashboard data:', dashboardData);
+    
+    debugLog('=== Testing User Management Data ===');
+    const userMgmtData = getUserManagementData();
+    debugLog('User management data:', userMgmtData);
+    
+    debugLog('=== Testing File Existence ===');
+    const files = ['index', 'admin-dashboard', 'user-management', 'requests', 'assignments'];
+    files.forEach(file => {
+      const exists = checkFileExists(file);
+      debugLog(`${exists ? '✅' : '❌'} ${file}.html`);
+    });
+    
+    return {
+      auth: authResult,
+      dashboard: dashboardData,
+      userMgmt: userMgmtData,
+      filesExist: files.map(f => ({ file: f, exists: checkFileExists(f) }))
+    };
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
     return { error: error.message };
   }
 }

@@ -19,15 +19,15 @@
  */
 function diagnosePartTimeColumn() {
   try {
-    console.log('=== PART-TIME COLUMN DIAGNOSTIC ===');
+    debugLog('=== PART-TIME COLUMN DIAGNOSTIC ===');
     
     // Get raw sheet data
     const ridersData = getRidersData();
-    console.log('Available headers:', ridersData.headers);
-    console.log('Column mapping:', ridersData.columnMap);
+    debugLog('Available headers:', ridersData.headers);
+    debugLog('Column mapping:', ridersData.columnMap);
     
     // Check what CONFIG expects
-    console.log('CONFIG expects part-time column:', CONFIG.columns.riders.partTime);
+    debugLog('CONFIG expects part-time column:', CONFIG.columns.riders.partTime);
     
     // Check all possible part-time columns
     const partTimeColumns = [
@@ -38,19 +38,19 @@ function diagnosePartTimeColumn() {
       'PartTime'
     ];
     
-    console.log('Looking for these part-time columns:', partTimeColumns);
+    debugLog('Looking for these part-time columns:', partTimeColumns);
     
     partTimeColumns.forEach(colName => {
       const index = ridersData.columnMap[colName];
-      console.log(`  "${colName}" -> index ${index} ${index !== undefined ? '✅' : '❌'}`);
+      debugLog(`  "${colName}" -> index ${index} ${index !== undefined ? '✅' : '❌'}`);
     });
     
     // Get first few riders and show their part-time values
-    console.log('\nFirst 5 riders part-time detection:');
+    debugLog('\nFirst 5 riders part-time detection:');
     for (let i = 0; i < Math.min(5, ridersData.data.length); i++) {
       const row = ridersData.data[i];
       const rider = mapRowToRiderObject(row, ridersData.columnMap, ridersData.headers);
-      console.log(`  ${rider.name}: partTime="${rider.partTime}" (from row: [${row.join(', ')}])`);
+      debugLog(`  ${rider.name}: partTime="${rider.partTime}" (from row: [${row.join(', ')}])`);
     }
     
     return {
@@ -266,7 +266,7 @@ function getPageDataForRiders(user, filters = {}) {
       return { success: false, error: 'Authentication required' };
     }
     
-    if (!canAccessPage(user, 'riders') && !hasPermission(user, 'assignments', 'assign_any')) {
+    if (!canAccessPage(user, 'riders')) {
       return { success: false, error: 'Access denied to riders' };
     }
     
@@ -435,7 +435,7 @@ function deleteRequestSecured(user, requestId) {
 function assignRidersToRequestSecured(user, requestId, riderNames) {
   try {
     // Enhanced permission check with debugging
-    console.log('🔒 Checking permission for user:', user.email, 'role:', user.role);
+    debugLog('🔒 Checking permission for user:', user.email, 'role:', user.role);
     
     let hasAssignPermission = false;
     try {
@@ -445,7 +445,7 @@ function assignRidersToRequestSecured(user, requestId, riderNames) {
       // Enhanced fallback - check multiple conditions
       if (user.role === 'admin' || user.role === 'dispatcher') {
         hasAssignPermission = true;
-        console.log('✅ Permission granted via role-based fallback');
+        debugLog('✅ Permission granted via role-based fallback');
       } else {
         // Check if user is in emergency session
         try {
@@ -454,19 +454,19 @@ function assignRidersToRequestSecured(user, requestId, riderNames) {
             const emergencySession = JSON.parse(emergencySessionStr);
             if (emergencySession.expires > Date.now()) {
               hasAssignPermission = true;
-              console.log('✅ Permission granted via emergency session');
+              debugLog('✅ Permission granted via emergency session');
             }
           }
         } catch (e) {
-          console.log('No emergency session found');
+          debugLog('No emergency session found');
         }
       }
     }
     
-    console.log('🔒 Permission result:', hasAssignPermission);
+    debugLog('🔒 Permission result:', hasAssignPermission);
     
     if (!hasAssignPermission) {
-      console.log('❌ Permission denied for user:', user.email, 'role:', user.role);
+      debugLog('❌ Permission denied for user:', user.email, 'role:', user.role);
       return { 
         success: false, 
         error: 'You do not have permission to assign riders. Try running fixAuthenticationIssues() or emergencyAdminAccess() from the script editor.' 
@@ -654,28 +654,9 @@ function getRiderNotifications(riderId) {
  */
 function getPageDataForRiders(user) { // Added user parameter
   try {
-    console.log('🔄 Loading riders page data...');
-
-    // Support calls without a user parameter
-    if (!user) {
-      try {
-        user = getCurrentUser();
-      } catch (e) {
-        console.warn('⚠️ getCurrentUser failed:', e);
-      }
-    }
-
-    if (!user || !user.email) {
-      const auth = (typeof authenticateAndAuthorizeUser === 'function')
-        ? authenticateAndAuthorizeUser()
-        : { success: false };
-      if (auth && auth.success) {
-        user = auth.user;
-      } else {
-        return { success: false, error: 'Authentication required' };
-      }
-    }
-
+    debugLog('🔄 Loading riders page data...');
+    
+    // const user = getCurrentUser(); // Removed: user is now a parameter
     const riders = getRiders(); // This should work now with our previous fixes
     
     // Calculate stats using the same filtered data
@@ -706,7 +687,7 @@ function getPageDataForRiders(user) { // Added user parameter
       ).length
     };
     
-    console.log('✅ Riders page data loaded:', {
+    debugLog('✅ Riders page data loaded:', {
       userEmail: user.email,
       ridersCount: riders.length,
       stats: stats
@@ -753,17 +734,17 @@ function getPageDataForRiders(user) { // Added user parameter
  */
 function getUpcomingAssignmentsForWebApp(user) {
   try {
-    console.log('📋 Getting upcoming assignments for web app...');
-    console.log('User parameter received:', user);
+    debugLog('📋 Getting upcoming assignments for web app...');
+    debugLog('User parameter received:', user);
 
     const assignmentsData = getAssignmentsData();
 
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      console.log('❌ No assignments data found');
+      debugLog('❌ No assignments data found');
       return [];
     }
 
-    console.log(`✅ Found ${assignmentsData.data.length} total assignments`);
+    debugLog(`✅ Found ${assignmentsData.data.length} total assignments`);
 
     const columnMap = assignmentsData.columnMap;
     const today = new Date();
@@ -832,10 +813,10 @@ function getUpcomingAssignmentsForWebApp(user) {
       })
       .slice(0, 10);
 
-    console.log(`✅ Returning ${upcomingAssignments.length} upcoming assignments`);
+    debugLog(`✅ Returning ${upcomingAssignments.length} upcoming assignments`);
 
     if (upcomingAssignments.length > 0) {
-      console.log('Sample assignment:', {
+      debugLog('Sample assignment:', {
         id: upcomingAssignments[0].assignmentId,
         requestId: upcomingAssignments[0].requestId,
         eventDate: upcomingAssignments[0].eventDate,
@@ -860,12 +841,12 @@ function getUpcomingAssignmentsForWebApp(user) {
  */
 function getAllActiveAssignmentsForWebApp() {
   try {
-    console.log('📋 Getting all active assignments...');
+    debugLog('📋 Getting all active assignments...');
 
     const assignmentsData = getAssignmentsData();
 
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      console.log('❌ No assignments data found');
+      debugLog('❌ No assignments data found');
       return [];
     }
 
@@ -897,13 +878,13 @@ function getAllActiveAssignmentsForWebApp() {
         activeAssignments.push(assignment);
 
       } catch (rowError) {
-        console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing assignment row ${i}:`, rowError);
       }
     }
 
     const limitedAssignments = activeAssignments.slice(0, 10);
 
-    console.log(`✅ Returning ${limitedAssignments.length} active assignments`);
+    debugLog(`✅ Returning ${limitedAssignments.length} active assignments`);
     return limitedAssignments;
 
   } catch (error) {
@@ -922,7 +903,7 @@ function getAllActiveAssignmentsForWebApp() {
  */
 function getActiveRidersForWebApp() {
   try {
-    console.log('🌐 Getting active riders for web app...');
+    debugLog('🌐 Getting active riders for web app...');
     
     // Use the enhanced assignment function as the base
     const assignmentRiders = getActiveRidersForAssignments();
@@ -937,7 +918,7 @@ function getActiveRidersForWebApp() {
       partTime: rider.partTime || 'No'
     }));
     
-    console.log(`✅ Returning ${webAppRiders.length} active riders for web app`);
+    debugLog(`✅ Returning ${webAppRiders.length} active riders for web app`);
     return webAppRiders;
     
   } catch (error) {
@@ -1021,12 +1002,12 @@ function getDashboardData(user) { // Added user parameter
  */
 function getRiderAssignments(riderId, riderName) {
   try {
-    console.log(`🔍 Getting assignments for rider: ${riderName} (ID: ${riderId})`);
+    debugLog(`🔍 Getting assignments for rider: ${riderName} (ID: ${riderId})`);
     
     const assignmentsData = getAssignmentsData();
     
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      console.log('❌ No assignments data found');
+      debugLog('❌ No assignments data found');
       return [];
     }
     
@@ -1097,7 +1078,7 @@ function getRiderAssignments(riderId, riderName) {
         riderAssignments.push(assignment);
         
       } catch (rowError) {
-        console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing assignment row ${i}:`, rowError);
       }
     }
     
@@ -1114,15 +1095,15 @@ function getRiderAssignments(riderId, riderName) {
         
         return dateA.getTime() - dateB.getTime();
       } catch (sortError) {
-        console.log('⚠️ Error sorting assignments:', sortError);
+        debugLog('⚠️ Error sorting assignments:', sortError);
         return 0;
       }
     });
     
-    console.log(`✅ Found ${riderAssignments.length} assignments for ${riderName}`);
+    debugLog(`✅ Found ${riderAssignments.length} assignments for ${riderName}`);
     
     if (riderAssignments.length > 0) {
-      console.log('Sample assignment:', riderAssignments[0]);
+      debugLog('Sample assignment:', riderAssignments[0]);
     }
     
     return riderAssignments;
@@ -1139,7 +1120,7 @@ function getRiderAssignments(riderId, riderName) {
  */
 function getRiderAssignmentsByName(riderName) {
   try {
-    console.log(`🔍 Getting assignments for rider by name: ${riderName}`);
+    debugLog(`🔍 Getting assignments for rider by name: ${riderName}`);
     
     // Find the rider ID first
     const ridersData = getRidersData();
@@ -1339,7 +1320,7 @@ function isRiderAvailable(riderName, dateStr, startTimeStr) {
   
   // Skip availability check for NOPD riders - they are always considered available
   if (rider && (rider.organization === 'NOPD' || rider['Organization'] === 'NOPD')) {
-    console.log(`⚠️ Skipping availability check for NOPD rider: ${riderName}`);
+    debugLog(`⚠️ Skipping availability check for NOPD rider: ${riderName}`);
     return true;
   }
   
@@ -1514,7 +1495,7 @@ function renderEscortSidebarForWebApp() {
  */
 function getPageDataForRequests(filter = 'All') {
   try {
-    console.log(`📋 getPageDataForRequests called with filter: ${filter}`);
+    debugLog(`📋 getPageDataForRequests called with filter: ${filter}`);
 
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
@@ -1537,7 +1518,7 @@ function getPageDataForRequests(filter = 'All') {
 
     // Get requests using the enhanced function
     const requests = getFilteredRequestsForWebApp(user, filter); // Pass user and filter correctly
-    console.log(`✅ Requests retrieved: ${requests?.length || 0} items with filter: ${filter}`);
+    debugLog(`✅ Requests retrieved: ${requests?.length || 0} items with filter: ${filter}`);
     
     // Ensure we return an array
     const safeRequests = Array.isArray(requests) ? requests : [];
@@ -1548,7 +1529,7 @@ function getPageDataForRequests(filter = 'All') {
       requests: safeRequests
     };
     
-    console.log('✅ getPageDataForRequests result:', {
+    debugLog('✅ getPageDataForRequests result:', {
       success: result.success,
       userName: result.user?.name,
       requestsCount: result.requests?.length || 0
@@ -1580,10 +1561,10 @@ function getPageDataForRequests(filter = 'All') {
  */
 function getRequestsForWebAppDirect(filter = 'All') {
   try {
-    console.log(`🔄 Direct requests call with filter: ${filter}`);
+    debugLog(`🔄 Direct requests call with filter: ${filter}`);
     
     const result = getFilteredRequestsForWebApp(filter);
-    console.log(`📊 Direct result: ${result?.length || 0} requests`);
+    debugLog(`📊 Direct result: ${result?.length || 0} requests`);
     
     return result || [];
     
@@ -1598,7 +1579,7 @@ function getRequestsForWebAppDirect(filter = 'All') {
  */
 function testSimpleRequestsData() {
   try {
-    console.log('🧪 Testing simple requests data...');
+    debugLog('🧪 Testing simple requests data...');
     
     // Try to get raw sheet data
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
@@ -1609,7 +1590,7 @@ function testSimpleRequestsData() {
     const range = sheet.getDataRange();
     const values = range.getValues();
     
-    console.log('✅ Got sheet data:', values.length, 'rows');
+    debugLog('✅ Got sheet data:', values.length, 'rows');
     
     // Return first few rows as simple objects
     const simpleRequests = [];
@@ -1632,7 +1613,7 @@ function testSimpleRequestsData() {
       });
     }
     
-    console.log('✅ Returning', simpleRequests.length, 'simple requests');
+    debugLog('✅ Returning', simpleRequests.length, 'simple requests');
     return simpleRequests;
     
   } catch (error) {
@@ -1645,7 +1626,7 @@ function testSimpleRequestsData() {
  */
 function testRequestsAccess() {
   try {
-    console.log('🧪 Testing basic requests access...');
+    debugLog('🧪 Testing basic requests access...');
     
     // Test 1: Can we access the sheet?
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
@@ -1657,17 +1638,17 @@ function testRequestsAccess() {
     const range = sheet.getDataRange();
     const values = range.getValues();
     
-    console.log('✅ Sheet found:', sheet.getName());
-    console.log('✅ Rows found:', values.length);
-    console.log('✅ Headers:', values[0]);
+    debugLog('✅ Sheet found:', sheet.getName());
+    debugLog('✅ Rows found:', values.length);
+    debugLog('✅ Headers:', values[0]);
     
     // Test 3: Try getRequestsData function
     const requestsData = getRequestsData();
-    console.log('✅ getRequestsData works:', !!requestsData);
+    debugLog('✅ getRequestsData works:', !!requestsData);
     
     // Test 4: Try the filter function
     const filtered = getFilteredRequestsForWebApp('All');
-    console.log('✅ getFilteredRequestsForWebApp works:', !!filtered);
+    debugLog('✅ getFilteredRequestsForWebApp works:', !!filtered);
     
     return {
       success: true,
@@ -1696,36 +1677,36 @@ function testRequestsAccess() {
  */
 function getFilteredRequestsForAssignments(user) {
   try {
-    console.log('📋 Getting filtered requests for assignments page...');
-    console.log('User parameter:', user);
+    debugLog('📋 Getting filtered requests for assignments page...');
+    debugLog('User parameter:', user);
     const requestsData = getRequestsData();
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      console.log('❌ No requests data found');
+      debugLog('❌ No requests data found');
       return [];
     }
     const columnMap = requestsData.columnMap;
-    console.log('Column map:', columnMap);
-    console.log('Looking for Request ID column:', CONFIG.columns.requests.id);
-    console.log('Request ID column index:', columnMap[CONFIG.columns.requests.id]);
+    debugLog('Column map:', columnMap);
+    debugLog('Looking for Request ID column:', CONFIG.columns.requests.id);
+    debugLog('Request ID column index:', columnMap[CONFIG.columns.requests.id]);
 
     const assignableRequests = [];
     for (let i = 0; i < requestsData.data.length; i++) {
       try {
         const row = requestsData.data[i];
         if (i < 3) {
-          console.log(`Row ${i} data:`, row);
-          console.log(`Row ${i} Request ID:`, getColumnValue(row, columnMap, CONFIG.columns.requests.id));
+          debugLog(`Row ${i} data:`, row);
+          debugLog(`Row ${i} Request ID:`, getColumnValue(row, columnMap, CONFIG.columns.requests.id));
         }
         const requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
         const requesterName = getColumnValue(row, columnMap, CONFIG.columns.requests.requesterName);
         const status = getColumnValue(row, columnMap, CONFIG.columns.requests.status);
         const eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate);
         if (!requestId) {
-          console.log(`⚠️ Missing Request ID in row ${i}:`, { requestId, requesterName, rawRow: row.slice(0, 5) });
+          debugLog(`⚠️ Missing Request ID in row ${i}:`, { requestId, requesterName, rawRow: row.slice(0, 5) });
           continue;
         }
         if (!requesterName) {
-          console.log(`⚠️ Missing requester name in row ${i} for Request ID: ${requestId}`);
+          debugLog(`⚠️ Missing requester name in row ${i} for Request ID: ${requestId}`);
           continue;
         }
         if (!['New', 'Pending', 'Assigned', 'Unassigned', 'In Progress'].includes(status)) {
@@ -1744,7 +1725,7 @@ function getFilteredRequestsForAssignments(user) {
           status: status || 'New'
         });
       } catch (rowError) {
-        console.log(`⚠️ Error processing request row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing request row ${i}:`, rowError);
       }
     }
     const sortedRequests = assignableRequests.sort((a, b) => {
@@ -1761,8 +1742,8 @@ function getFilteredRequestsForAssignments(user) {
         return dateB.getTime() - dateA.getTime();
       } catch (sortError) { return 0; }
     });
-    console.log(`✅ Returning ${sortedRequests.length} assignable requests`);
-    if (sortedRequests.length > 0) console.log('First processed request:', sortedRequests[0]);
+    debugLog(`✅ Returning ${sortedRequests.length} assignable requests`);
+    if (sortedRequests.length > 0) debugLog('First processed request:', sortedRequests[0]);
     return sortedRequests;
   } catch (error) {
     console.error('❌ Error getting filtered requests for assignments:', error);
@@ -1780,18 +1761,18 @@ function getFilteredRequestsForAssignments(user) {
  */
 function getActiveRidersForAssignments() {
   try {
-    console.log('🏍️ Getting active riders for assignments page with enhanced logic...');
+    debugLog('🏍️ Getting active riders for assignments page with enhanced logic...');
     
     const ridersData = getRidersData();
     
     if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
-      console.log('❌ No riders data found');
+      debugLog('❌ No riders data found');
       return [];
     }
     
-    console.log(`📊 Total riders in sheet: ${ridersData.data.length}`);
-    console.log('📋 Available columns:', ridersData.headers);
-    console.log('🗂️ Column mapping:', ridersData.columnMap);
+    debugLog(`📊 Total riders in sheet: ${ridersData.data.length}`);
+    debugLog('📋 Available columns:', ridersData.headers);
+    debugLog('🗂️ Column mapping:', ridersData.columnMap);
     
     const columnMap = ridersData.columnMap;
     const activeRiders = [];
@@ -1856,16 +1837,16 @@ function getActiveRidersForAssignments() {
     const emailColIndex = getColumnIndex(emailColumns);
     const partTimeColIndex = getColumnIndex(partTimeColumns);
     
-    console.log('🔍 Column detection results:');
-    console.log(`  Name column: index ${nameColIndex} (${nameColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
-    console.log(`  Status column: index ${statusColIndex} (${statusColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
-    console.log(`  JP Number column: index ${jpNumberColIndex} (${jpNumberColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
+    debugLog('🔍 Column detection results:');
+    debugLog(`  Name column: index ${nameColIndex} (${nameColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
+    debugLog(`  Status column: index ${statusColIndex} (${statusColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
+    debugLog(`  JP Number column: index ${jpNumberColIndex} (${jpNumberColumns.find(n => columnMap[n] !== undefined) || 'NOT FOUND'})`);
     
     // Fallback: if no proper columns found, use positional indexing
     const usePositionalFallback = nameColIndex === -1;
     
     if (usePositionalFallback) {
-      console.log('⚠️ Using positional fallback (assuming standard column order)');
+      debugLog('⚠️ Using positional fallback (assuming standard column order)');
     }
     
     for (let i = 0; i < ridersData.data.length; i++) {
@@ -1894,7 +1875,7 @@ function getActiveRidersForAssignments() {
         
         // Debug first few riders
         if (i < 3) {
-          console.log(`🔍 Rider ${i + 1}:`, {
+          debugLog(`🔍 Rider ${i + 1}:`, {
             name: riderName,
             jpNumber: jpNumber,
             status: status,
@@ -1906,7 +1887,7 @@ function getActiveRidersForAssignments() {
         
         // Check if rider has a name (essential requirement)
         if (!riderName || String(riderName).trim().length === 0) {
-          if (i < 5) console.log(`⚠️ Skipping rider ${i + 1}: No name`);
+          if (i < 5) debugLog(`⚠️ Skipping rider ${i + 1}: No name`);
           continue;
         }
         
@@ -1929,7 +1910,7 @@ function getActiveRidersForAssignments() {
                         (!['inactive', 'disabled', 'suspended', 'no', 'false', '0'].includes(riderStatus));
         
         if (!isActive) {
-          if (i < 5) console.log(`⚠️ Skipping rider ${i + 1}: Status '${status}' considered inactive`);
+          if (i < 5) debugLog(`⚠️ Skipping rider ${i + 1}: Status '${status}' considered inactive`);
           continue;
         }
         
@@ -1945,36 +1926,36 @@ function getActiveRidersForAssignments() {
         });
         
         if (i < 3) {
-          console.log(`✅ Added rider ${i + 1}: ${riderName} (${jpNumber || `R${i}`})`);
+          debugLog(`✅ Added rider ${i + 1}: ${riderName} (${jpNumber || `R${i}`})`);
         }
         
       } catch (rowError) {
-        console.log(`⚠️ Error processing rider row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing rider row ${i}:`, rowError);
       }
     }
     
-    console.log(`✅ Found ${activeRiders.length} active riders out of ${ridersData.data.length} total riders`);
+    debugLog(`✅ Found ${activeRiders.length} active riders out of ${ridersData.data.length} total riders`);
     
     // If still no active riders, provide detailed debugging info
     if (activeRiders.length === 0) {
-      console.log('❌ NO ACTIVE RIDERS FOUND - DETAILED ANALYSIS:');
+      debugLog('❌ NO ACTIVE RIDERS FOUND - DETAILED ANALYSIS:');
       
-      console.log('📊 Sample of first 5 rows (raw data):');
+      debugLog('📊 Sample of first 5 rows (raw data):');
       for (let i = 0; i < Math.min(5, ridersData.data.length); i++) {
         const row = ridersData.data[i];
-        console.log(`  Row ${i + 1}:`, row);
+        debugLog(`  Row ${i + 1}:`, row);
       }
       
-      console.log('📊 Sample processed data:');
+      debugLog('📊 Sample processed data:');
       for (let i = 0; i < Math.min(3, ridersData.data.length); i++) {
         const row = ridersData.data[i];
         const name = nameColIndex >= 0 ? row[nameColIndex] : row[1];
         const status = statusColIndex >= 0 ? row[statusColIndex] : row[4];
-        console.log(`  Row ${i + 1}: name="${name}" status="${status}" hasName=${!!(name && String(name).trim())}`);
+        debugLog(`  Row ${i + 1}: name="${name}" status="${status}" hasName=${!!(name && String(name).trim())}`);
       }
       
       // Return a fallback rider for testing if absolutely no riders found
-      console.log('🔧 Creating fallback test rider...');
+      debugLog('🔧 Creating fallback test rider...');
       return [{
         name: 'Test Rider',
         jpNumber: 'TEST001',
@@ -1985,7 +1966,7 @@ function getActiveRidersForAssignments() {
       }];
       
     } else {
-      console.log('📋 Sample active riders:', activeRiders.slice(0, 3));
+      debugLog('📋 Sample active riders:', activeRiders.slice(0, 3));
     }
     
     return activeRiders;
@@ -2011,7 +1992,7 @@ function getActiveRidersForAssignments() {
  */
 function debugRidersIssue() {
   try {
-    console.log('🔍 Starting simple riders debug...');
+    debugLog('🔍 Starting simple riders debug...');
     
     // Test 1: Get raw riders data
     const ridersData = getRidersData();
@@ -2098,7 +2079,7 @@ function debugRidersIssue() {
       result.analysis.uniqueStatuses = uniqueStatuses;
     }
     
-    console.log('✅ Debug completed:', result);
+    debugLog('✅ Debug completed:', result);
     return result;
     
   } catch (error) {
@@ -2117,7 +2098,7 @@ function debugRidersIssue() {
  */
 function getAllRidersRegardlessOfStatus() {
   try {
-    console.log('🔧 Getting ALL riders regardless of status...');
+    debugLog('🔧 Getting ALL riders regardless of status...');
     
     const ridersData = getRidersData();
     
@@ -2162,7 +2143,7 @@ function getAllRidersRegardlessOfStatus() {
       });
     }
     
-    console.log(`✅ Found ${allRiders.length} riders (ignoring status)`);
+    debugLog(`✅ Found ${allRiders.length} riders (ignoring status)`);
     return allRiders;
     
   } catch (error) {
@@ -2179,10 +2160,10 @@ function getAllRidersRegardlessOfStatus() {
  */
 function getUpcomingAssignmentsForAssignmentsPage(user) {
   try {
-    console.log('📋 Getting upcoming assignments for assignments page...');
+    debugLog('📋 Getting upcoming assignments for assignments page...');
     const assignmentsData = getAssignmentsData();
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      console.log('❌ No assignments data found');
+      debugLog('❌ No assignments data found');
       return [];
     }
     const columnMap = assignmentsData.columnMap;
@@ -2215,7 +2196,7 @@ function getUpcomingAssignmentsForAssignmentsPage(user) {
           riderName, startLocation: displayLocation, status: status || 'Assigned',
           notificationStatus: determineNotificationStatus(row, columnMap)
         });
-      } catch (rowError) { console.log(`⚠️ Error processing assignment row ${i}:`, rowError); }
+      } catch (rowError) { debugLog(`⚠️ Error processing assignment row ${i}:`, rowError); }
     }
     const sortedAssignments = upcomingAssignments.sort((a, b) => {
       try {
@@ -2225,7 +2206,7 @@ function getUpcomingAssignmentsForAssignmentsPage(user) {
         return dateA.getTime() - dateB.getTime();
       } catch (sortError) { return 0; }
     });
-    console.log(`✅ Returning ${sortedAssignments.length} upcoming assignments`);
+    debugLog(`✅ Returning ${sortedAssignments.length} upcoming assignments`);
     return sortedAssignments;
   } catch (error) {
     console.error('❌ Error getting upcoming assignments for assignments page:', error);
@@ -2234,30 +2215,6 @@ function getUpcomingAssignmentsForAssignmentsPage(user) {
   }
 }
 
-/**
- * A debugging function to test data retrieval for the assignments page.
- * Fetches requests, riders, and assignments and logs counts and sample data.
- * @return {object} An object containing samples of requests, riders, assignments, and counts.
- */
-function debugAssignmentsPageData() {
-  try {
-    console.log('=== DEBUGGING ASSIGNMENTS PAGE DATA ===');
-    const requests = getFilteredRequestsForAssignments({roles: ['admin']});
-    const riders = getActiveRidersForAssignments();
-    const assignments = getUpcomingAssignmentsForAssignmentsPage({roles: ['admin']});
-    console.log('Requests count:', requests.length, 'Riders count:', riders.length, 'Assignments count:', assignments.length);
-    if (requests.length > 0) console.log('Sample request:', requests[0]);
-    if (riders.length > 0) console.log('Sample rider:', riders[0]);
-    if (assignments.length > 0) console.log('Sample assignment:', assignments[0]);
-    return {
-      requests: requests.slice(0,3), riders: riders.slice(0,3), assignments: assignments.slice(0,3),
-      summary: { requestsCount: requests.length, ridersCount: riders.length, assignmentsCount: assignments.length }
-    };
-  } catch (error) {
-    console.error('Error in debugAssignmentsPageData:', error);
-    return { error: error.message };
-  }
-}
 
 /**
  * NEW WRAPPER FUNCTIONS FOR CONSOLIDATED CLIENT-SIDE DATA REQUESTS
@@ -2302,7 +2259,7 @@ function getPageDataForDashboard(user) { // Added user parameter
  */
 function getPageDataForAssignments(requestIdToLoad) {
   try {
-    console.log('🔄 Loading assignments page data...', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
+    debugLog('🔄 Loading assignments page data...', requestIdToLoad ? `Pre-selecting: ${requestIdToLoad}` : '');
 
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
@@ -2336,26 +2293,26 @@ function getPageDataForAssignments(requestIdToLoad) {
     // Get assignable requests
     try {
       result.requests = getFilteredRequestsForAssignments(result.user);
-      console.log(`✅ Loaded ${result.requests.length} assignable requests`);
+      debugLog(`✅ Loaded ${result.requests.length} assignable requests`);
     } catch (requestsError) {
-      console.log('⚠️ Could not load requests:', requestsError);
+      debugLog('⚠️ Could not load requests:', requestsError);
       result.requests = [];
     }
     
     // Get active riders
     try {
       result.riders = getActiveRidersForWebApp();
-      console.log(`✅ Loaded ${result.riders.length} active riders`);
+      debugLog(`✅ Loaded ${result.riders.length} active riders`);
     } catch (ridersError) {
-      console.log('⚠️ Could not load riders:', ridersError);
+      debugLog('⚠️ Could not load riders:', ridersError);
       result.riders = [];
     }
 
     try {
       result.assignmentOrder = getAssignmentRotation();
-      console.log(`✅ Loaded assignment rotation with ${result.assignmentOrder.length} riders`);
+      debugLog(`✅ Loaded assignment rotation with ${result.assignmentOrder.length} riders`);
     } catch (orderError) {
-      console.log('⚠️ Could not load assignment order:', orderError);
+      debugLog('⚠️ Could not load assignment order:', orderError);
       result.assignmentOrder = [];
     }
     
@@ -2367,7 +2324,7 @@ function getPageDataForAssignments(requestIdToLoad) {
         const directlyFetchedRequest = getRequestDetails(cleanedRequestIdToLoad); // Assuming getRequestDetails is available
         if (directlyFetchedRequest) {
           result.initialRequestDetails = directlyFetchedRequest;
-          console.log(`✅ Successfully fetched initial request details directly for ID: "${cleanedRequestIdToLoad}"`);
+          debugLog(`✅ Successfully fetched initial request details directly for ID: "${cleanedRequestIdToLoad}"`);
         } else {
           console.warn(`⚠️ Requested ID "${cleanedRequestIdToLoad}" for pre-selection was not found through direct fetch.`);
         }
@@ -2393,54 +2350,6 @@ function getPageDataForAssignments(requestIdToLoad) {
   }
 }
 
-/**
- * Test function to check server function availability
- * @return {object} Test result
- */
-function testServerFunctionAvailability() {
-  try {
-    console.log('🧪 Testing server function availability...');
-    
-    const result = {
-      timestamp: new Date().toISOString(),
-      functions: {},
-      sheets: {},
-      success: true
-    };
-
-    // Test function availability
-    try {
-      result.functions.authenticateAndAuthorizeUser = typeof authenticateAndAuthorizeUser === 'function';
-      result.functions.getFilteredRequestsForAssignments = typeof getFilteredRequestsForAssignments === 'function';
-      result.functions.getActiveRidersForAssignments = typeof getActiveRidersForAssignments === 'function';
-      result.functions.getPageDataForAssignments = typeof getPageDataForAssignments === 'function';
-    } catch (funcError) {
-      result.functions.error = funcError.message;
-    }
-
-    // Test sheet access
-    try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sheets = ss.getSheets();
-      result.sheets.totalSheets = sheets.length;
-      result.sheets.sheetNames = sheets.map(sheet => sheet.getName());
-      result.sheets.hasRequestsSheet = result.sheets.sheetNames.includes(CONFIG.sheets.requests);
-      result.sheets.hasRidersSheet = result.sheets.sheetNames.includes(CONFIG.sheets.riders);
-    } catch (sheetError) {
-      result.sheets.error = sheetError.message;
-    }
-
-    console.log('✅ Server function availability test completed:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Server function availability test failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    };
-  }
-}
 
 /**
  * Simple test function to verify server connection
@@ -2448,7 +2357,7 @@ function testServerFunctionAvailability() {
  */
 function testConnection() {
   try {
-    console.log('🌐 Testing server connection...');
+    debugLog('🌐 Testing server connection...');
     
     const result = {
       success: true,
@@ -2461,7 +2370,7 @@ function testConnection() {
       }
     };
     
-    console.log('✅ Server connection test passed:', result);
+    debugLog('✅ Server connection test passed:', result);
     return result;
   } catch (error) {
     console.error('❌ Server connection test failed:', error);
@@ -2479,7 +2388,7 @@ function testConnection() {
  */
 function createSampleDataForAssignments() {
   try {
-    console.log('🔧 Creating sample data for assignments testing...');
+    debugLog('🔧 Creating sample data for assignments testing...');
     
     const result = {
       success: true,
@@ -2497,7 +2406,7 @@ function createSampleDataForAssignments() {
       
       // If sheet is empty or has only headers, create sample data
       if (requestsData.length <= 1) {
-        console.log('📋 Creating sample requests...');
+        debugLog('📋 Creating sample requests...');
         
         const headers = [
           'Request ID', 'Requester Name', 'Requester Email', 'Type', 
@@ -2538,7 +2447,7 @@ function createSampleDataForAssignments() {
         requestsSheet.getRange(2, 1, sampleRequests.length, headers.length).setValues(sampleRequests);
         
         result.created.requests = sampleRequests.length;
-        console.log(`✅ Created ${sampleRequests.length} sample requests`);
+        debugLog(`✅ Created ${sampleRequests.length} sample requests`);
       }
     } catch (requestsError) {
       result.errors.push('Requests creation failed: ' + requestsError.message);
@@ -2552,7 +2461,7 @@ function createSampleDataForAssignments() {
       
       // If sheet is empty or has only headers, create sample data
       if (ridersData.length <= 1) {
-        console.log('🏍️ Creating sample riders...');
+        debugLog('🏍️ Creating sample riders...');
         
         const headers = [
           'Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status',
@@ -2588,7 +2497,7 @@ function createSampleDataForAssignments() {
         ridersSheet.getRange(2, 1, sampleRiders.length, headers.length).setValues(sampleRiders);
         
         result.created.riders = sampleRiders.length;
-        console.log(`✅ Created ${sampleRiders.length} sample riders`);
+        debugLog(`✅ Created ${sampleRiders.length} sample riders`);
       }
     } catch (ridersError) {
       result.errors.push('Riders creation failed: ' + ridersError.message);
@@ -2598,12 +2507,12 @@ function createSampleDataForAssignments() {
     // Clear any cached data
     try {
       clearDataCache();
-      console.log('✅ Cleared data cache');
+      debugLog('✅ Cleared data cache');
     } catch (cacheError) {
       console.warn('⚠️ Failed to clear cache:', cacheError);
     }
 
-    console.log('🎯 Sample data creation completed:', result);
+    debugLog('🎯 Sample data creation completed:', result);
     return result;
     
   } catch (error) {
@@ -2626,7 +2535,7 @@ function getOrCreateSheet(sheetName) {
   let sheet = ss.getSheetByName(sheetName);
   
   if (!sheet) {
-    console.log(`📄 Creating new sheet: ${sheetName}`);
+    debugLog(`📄 Creating new sheet: ${sheetName}`);
     sheet = ss.insertSheet(sheetName);
   }
   
@@ -2644,17 +2553,17 @@ function getOrCreateSheet(sheetName) {
  */
 function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = null) { // Added user, rawRequestsInput
   try {
-    console.log(`📋 Getting filtered requests for web app with filter: ${filter} for user: ${user ? user.name : 'Unknown'}`);
+    debugLog(`📋 Getting filtered requests for web app with filter: ${filter} for user: ${user ? user.name : 'Unknown'}`);
     
     // Get the raw requests data
     const requestsData = rawRequestsInput || getRequestsData(); // Use input or fetch
     
     if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      console.log('❌ No requests data found');
+      debugLog('❌ No requests data found');
       return [];
     }
     
-    console.log(`✅ Found ${requestsData.data.length} total requests in sheet`);
+    debugLog(`✅ Found ${requestsData.data.length} total requests in sheet`);
     
     const columnMap = requestsData.columnMap;
     const filteredRequests = [];
@@ -2671,7 +2580,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
         
         // Skip rows without essential data
         if (!requestId || !requesterName) {
-          console.log(`⚠️ Skipping row ${i}: Missing ID or requester name`);
+          debugLog(`⚠️ Skipping row ${i}: Missing ID or requester name`);
           continue;
         }
         
@@ -2702,6 +2611,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
           escortFee: getColumnValue(row, columnMap, CONFIG.columns.requests.escortFee) || '',
           status: status || 'New',
+          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
@@ -2713,7 +2623,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
         
         // Log first few for debugging
         if (i < 3) {
-          console.log(`✅ Processed request ${i}:`, {
+          debugLog(`✅ Processed request ${i}:`, {
             id: formattedRequest.requestId,
             requester: formattedRequest.requesterName,
             status: formattedRequest.status,
@@ -2722,7 +2632,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
         }
         
       } catch (rowError) {
-        console.log(`⚠️ Error processing request row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing request row ${i}:`, rowError);
       }
     }
     
@@ -2738,15 +2648,15 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
         
         return dateB.getTime() - dateA.getTime();
       } catch (sortError) {
-        console.log('⚠️ Error sorting requests:', sortError);
+        debugLog('⚠️ Error sorting requests:', sortError);
         return 0;
       }
     });
     
-    console.log(`✅ Returning ${filteredRequests.length} filtered requests for filter: ${filter}`);
+    debugLog(`✅ Returning ${filteredRequests.length} filtered requests for filter: ${filter}`);
     
     if (filteredRequests.length > 0) {
-      console.log('Sample filtered request:', filteredRequests[0]);
+      debugLog('Sample filtered request:', filteredRequests[0]);
     }
     
     return filteredRequests;
@@ -2766,11 +2676,11 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
  */
 function debugRequestsData() {
   try {
-    console.log('=== DEBUGGING REQUESTS DATA ===');
+    debugLog('=== DEBUGGING REQUESTS DATA ===');
     
     // Test basic data retrieval
     const requestsData = getRequestsData();
-    console.log('Raw requests data:', {
+    debugLog('Raw requests data:', {
       hasData: !!requestsData,
       dataLength: requestsData?.data?.length || 0,
       headers: requestsData?.headers || [],
@@ -2779,28 +2689,28 @@ function debugRequestsData() {
     
     // Test column mapping
     if (requestsData?.columnMap) {
-      console.log('Column mappings:');
+      debugLog('Column mappings:');
       Object.entries(CONFIG.columns.requests).forEach(([key, columnName]) => {
         const index = requestsData.columnMap[columnName];
-        console.log(`  ${key} (${columnName}): column ${index}`);
+        debugLog(`  ${key} (${columnName}): column ${index}`);
       });
     }
     
     // Test sample data processing
     if (requestsData?.data?.length > 0) {
-      console.log('Sample raw row:', requestsData.data[0]);
+      debugLog('Sample raw row:', requestsData.data[0]);
       
       const sampleProcessed = {
         requestId: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.id),
         requesterName: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.requesterName),
         status: getColumnValue(requestsData.data[0], requestsData.columnMap, CONFIG.columns.requests.status)
       };
-      console.log('Sample processed data:', sampleProcessed);
+      debugLog('Sample processed data:', sampleProcessed);
     }
     
     // Test the actual function
     const filtered = getFilteredRequestsForWebApp('All');
-    console.log('Filtered result:', {
+    debugLog('Filtered result:', {
       type: typeof filtered,
       isArray: Array.isArray(filtered),
       length: filtered?.length || 0,
@@ -2828,25 +2738,25 @@ function debugRequestsData() {
  */
 function testRequestsPageData() {
   try {
-    console.log('🧪 Testing requests data...');
+    debugLog('🧪 Testing requests data...');
     
     // Test basic data access
     const requestsData = getRequestsData();
-    console.log('Raw requests data:', requestsData);
+    debugLog('Raw requests data:', requestsData);
     
     if (requestsData && requestsData.data) {
-      console.log('Found', requestsData.data.length, 'raw request rows');
+      debugLog('Found', requestsData.data.length, 'raw request rows');
       
       // Show first few rows
       if (requestsData.data.length > 0) {
-        console.log('First request row:', requestsData.data[0]);
-        console.log('Column mapping:', requestsData.columnMap);
+        debugLog('First request row:', requestsData.data[0]);
+        debugLog('Column mapping:', requestsData.columnMap);
       }
     }
     
     // Test the filtered function
     const filtered = getFilteredRequestsForWebApp('All');
-    console.log('Filtered requests:', filtered);
+    debugLog('Filtered requests:', filtered);
     
     return {
       success: true,
@@ -2868,22 +2778,22 @@ function testRequestsPageData() {
  * Test function to debug requests page data
  */
 function testRequestsPageData() {
-  console.log('🧪 Testing requests page data...');
+  debugLog('🧪 Testing requests page data...');
   
   try {
     const result = getPageDataForRequests('All');
-    console.log('✅ Success:', result.success);
-    console.log('👤 User:', result.user?.name);
-    console.log('📋 Requests count:', result.requests?.length);
+    debugLog('✅ Success:', result.success);
+    debugLog('👤 User:', result.user?.name);
+    debugLog('📋 Requests count:', result.requests?.length);
     
     if (result.requests && result.requests.length > 0) {
-      console.log('📋 Sample request:', result.requests[0]);
-      console.log('📋 Request fields available:', Object.keys(result.requests[0]));
+      debugLog('📋 Sample request:', result.requests[0]);
+      debugLog('📋 Request fields available:', Object.keys(result.requests[0]));
     }
     
     // Test with filter
     const filteredResult = getPageDataForRequests('New');
-    console.log('📋 New requests count:', filteredResult.requests?.length);
+    debugLog('📋 New requests count:', filteredResult.requests?.length);
     
     return result;
     
@@ -2906,7 +2816,7 @@ function testRequestsPageData() {
  */
 function getPageDataForNotifications(user) {
   try {
-    console.log('🔄 Loading notifications page data...');
+    debugLog('🔄 Loading notifications page data...');
     
     // Use passed user or get current user
     let currentUser = user;
@@ -2920,7 +2830,7 @@ function getPageDataForNotifications(user) {
           permissions: ['send_notifications']
         };
       } catch (userError) {
-        console.log('⚠️ Could not authenticate user:', userError);
+        debugLog('⚠️ Could not authenticate user:', userError);
         currentUser = {
           name: 'System User',
           email: 'user@system.com',
@@ -2941,18 +2851,18 @@ function getPageDataForNotifications(user) {
     // Get all assignments for notifications
     try {
       result.assignments = getAllAssignmentsForNotifications(false);
-      console.log(`✅ Loaded ${result.assignments.length} assignments for notifications`);
+      debugLog(`✅ Loaded ${result.assignments.length} assignments for notifications`);
     } catch (assignmentsError) {
-      console.log('⚠️ Could not load assignments:', assignmentsError);
+      debugLog('⚠️ Could not load assignments:', assignmentsError);
       result.assignments = [];
     }
     
     // Calculate notification stats
     try {
       result.stats = calculateNotificationStats(result.assignments);
-      console.log('✅ Calculated notification stats:', result.stats);
+      debugLog('✅ Calculated notification stats:', result.stats);
     } catch (statsError) {
-      console.log('⚠️ Could not calculate stats:', statsError);
+      debugLog('⚠️ Could not calculate stats:', statsError);
       result.stats = {
         totalAssignments: 0,
         pendingNotifications: 0,
@@ -2964,9 +2874,9 @@ function getPageDataForNotifications(user) {
     // Get recent notification activity
     try {
       result.recentActivity = getRecentNotificationActivity(result.assignments);
-      console.log(`✅ Found ${result.recentActivity.length} recent activities`);
+      debugLog(`✅ Found ${result.recentActivity.length} recent activities`);
     } catch (activityError) {
-      console.log('⚠️ Could not load recent activity:', activityError);
+      debugLog('⚠️ Could not load recent activity:', activityError);
       result.recentActivity = [];
     }
     
@@ -2996,7 +2906,7 @@ function getPageDataForNotifications(user) {
 }
 function debugAssignmentLoading() {
   try {
-    console.log('🔍 DEBUGGING ASSIGNMENT LOADING...');
+    debugLog('🔍 DEBUGGING ASSIGNMENT LOADING...');
     
     const result = {
       step1_rawData: null,
@@ -3007,7 +2917,7 @@ function debugAssignmentLoading() {
     };
     
     // STEP 1: Check raw assignments data
-    console.log('\n--- STEP 1: Raw Assignments Data ---');
+    debugLog('\n--- STEP 1: Raw Assignments Data ---');
     const assignmentsData = getAssignmentsData();
     result.step1_rawData = {
       dataExists: !!assignmentsData,
@@ -3017,7 +2927,7 @@ function debugAssignmentLoading() {
       columnMapKeys: assignmentsData?.columnMap ? Object.keys(assignmentsData.columnMap) : []
     };
     
-    console.log('Raw data check:', result.step1_rawData);
+    debugLog('Raw data check:', result.step1_rawData);
     
     if (!assignmentsData || !assignmentsData.data) {
       result.issues.push('No assignments data found - check getAssignmentsData()');
@@ -3025,7 +2935,7 @@ function debugAssignmentLoading() {
     }
     
     // STEP 2: Check first 5 assignments in detail
-    console.log('\n--- STEP 2: Sample Assignment Analysis ---');
+    debugLog('\n--- STEP 2: Sample Assignment Analysis ---');
     const sampleSize = Math.min(5, assignmentsData.data.length);
     result.step2_filtering = [];
     
@@ -3057,11 +2967,11 @@ function debugAssignmentLoading() {
       }
       
       result.step2_filtering.push(analysis);
-      console.log(`Assignment ${i}:`, analysis);
+      debugLog(`Assignment ${i}:`, analysis);
     }
     
     // STEP 3: Check status distribution
-    console.log('\n--- STEP 3: Status Distribution ---');
+    debugLog('\n--- STEP 3: Status Distribution ---');
     const statusCounts = {};
     const riderNameCounts = {};
     
@@ -3078,20 +2988,20 @@ function debugAssignmentLoading() {
       riderDistribution: riderNameCounts
     };
     
-    console.log('Status distribution:', statusCounts);
-    console.log('Rider distribution:', riderNameCounts);
+    debugLog('Status distribution:', statusCounts);
+    debugLog('Rider distribution:', riderNameCounts);
     
     // STEP 4: Test the actual getAllAssignmentsForNotifications function
-    console.log('\n--- STEP 4: Testing getAllAssignmentsForNotifications ---');
+    debugLog('\n--- STEP 4: Testing getAllAssignmentsForNotifications ---');
     const filteredAssignments = getAllAssignmentsForNotifications(false);
     result.step4_finalResult = {
       filteredCount: filteredAssignments.length,
       sampleAssignments: filteredAssignments.slice(0, 3)
     };
     
-    console.log(`Filtered assignments count: ${filteredAssignments.length}`);
+    debugLog(`Filtered assignments count: ${filteredAssignments.length}`);
     if (filteredAssignments.length > 0) {
-      console.log('Sample filtered assignment:', filteredAssignments[0]);
+      debugLog('Sample filtered assignment:', filteredAssignments[0]);
     }
     
     // STEP 5: Identify issues
@@ -3131,31 +3041,31 @@ function debugAssignmentLoading() {
  */
 function testNotificationsData() {
   try {
-    console.log('🧪 Testing notifications data loading...');
+    debugLog('🧪 Testing notifications data loading...');
     
     // Test user authentication
     const auth = authenticateAndAuthorizeUser();
-    console.log('Auth result:', auth.success);
+    debugLog('Auth result:', auth.success);
     
     // Test assignments loading
     const assignments = getAllAssignmentsForNotifications(false);
-    console.log(`Assignments found: ${assignments.length}`);
+    debugLog(`Assignments found: ${assignments.length}`);
     
     if (assignments.length > 0) {
-      console.log('Sample assignment:', assignments[0]);
+      debugLog('Sample assignment:', assignments[0]);
     }
     
     // Test stats calculation
     const stats = calculateNotificationStats(assignments);
-    console.log('Stats:', stats);
+    debugLog('Stats:', stats);
     
     // Test recent activity
     const activity = getRecentNotificationActivity(assignments);
-    console.log(`Recent activities: ${activity.length}`);
+    debugLog(`Recent activities: ${activity.length}`);
     
     // Test complete data loading
     const pageData = getPageDataForNotifications(auth.user);
-    console.log('Page data success:', pageData.success);
+    debugLog('Page data success:', pageData.success);
     
     return {
       success: true,
@@ -3179,15 +3089,15 @@ function testNotificationsData() {
  */
 function getAllAssignmentsForNotifications(useCache = true) {
   try {
-    console.log('📋 [FIXED] Getting all assignments for notifications...');
+    debugLog('📋 [FIXED] Getting all assignments for notifications...');
 
     const assignmentsData = getAssignmentsData(useCache);
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length <= 1) {
-      console.log('⚠️ No assignments data found or only headers');
+      debugLog('⚠️ No assignments data found or only headers');
       return [];
     }
     
-    console.log(`📊 Processing ${assignmentsData.data.length - 1} assignment rows`);
+    debugLog(`📊 Processing ${assignmentsData.data.length - 1} assignment rows`);
     
     const columnMap = assignmentsData.columnMap;
     const assignments = [];
@@ -3271,18 +3181,18 @@ function getAllAssignmentsForNotifications(useCache = true) {
         }
         
       } catch (rowError) {
-        console.log(`⚠️ Error processing assignment row ${i}:`, rowError);
+        debugLog(`⚠️ Error processing assignment row ${i}:`, rowError);
       }
     }
     
-    console.log(`✅ [FIXED] Found ${assignments.length} assignments for notifications`);
+    debugLog(`✅ [FIXED] Found ${assignments.length} assignments for notifications`);
     
     // Debug output if no assignments found
     if (assignments.length === 0 && assignmentsData.data.length > 1) {
-      console.log('🔍 No assignments found. Debugging first row:');
+      debugLog('🔍 No assignments found. Debugging first row:');
       const firstRow = assignmentsData.data[1];
-      console.log('🔍 Row data:', firstRow.slice(0, 10));
-      console.log('🔍 Column map keys:', Object.keys(columnMap));
+      debugLog('🔍 Row data:', firstRow.slice(0, 10));
+      debugLog('🔍 Column map keys:', Object.keys(columnMap));
     }
     
     return assignments;
@@ -3345,7 +3255,7 @@ function getRiderCarrier(riderName) {
 
 function calculateNotificationStats(assignments) {
   try {
-    console.log('📊 Calculating notification stats...');
+    debugLog('📊 Calculating notification stats...');
     
     if (!assignments || !Array.isArray(assignments)) {
       return {
@@ -3404,7 +3314,7 @@ function calculateNotificationStats(assignments) {
       emailToday
     };
     
-    console.log('✅ Notification stats calculated:', stats);
+    debugLog('✅ Notification stats calculated:', stats);
     return stats;
     
   } catch (error) {
@@ -3423,7 +3333,7 @@ function calculateNotificationStats(assignments) {
  */
 function getRecentNotificationActivity(assignments) {
   try {
-    console.log('📝 Getting recent notification activity...');
+    debugLog('📝 Getting recent notification activity...');
     
     if (!assignments || !Array.isArray(assignments)) {
       return [];
@@ -3476,7 +3386,7 @@ function getRecentNotificationActivity(assignments) {
     // Sort by most recent first
     activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     
-    console.log(`✅ Found ${activities.length} recent notification activities`);
+    debugLog(`✅ Found ${activities.length} recent notification activities`);
     return activities.slice(0, 10); // Return last 10 activities
     
   } catch (error) {
@@ -3494,7 +3404,7 @@ function getRecentNotificationActivity(assignments) {
  */
 function getPageDataForReports(filters) {
   try {
-    console.log('🔄 Loading reports page data...', filters);
+    debugLog('🔄 Loading reports page data...', filters);
 
     const auth = authenticateAndAuthorizeUser();
     if (!auth.success) {
@@ -3648,12 +3558,12 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
       return [];
     }
 
-    // console.log(`🏍️ Getting mobile assignments for rider: ${userEmail}`);
+    // debugLog(`🏍️ Getting mobile assignments for rider: ${userEmail}`);
 
     const assignmentsData = getAssignmentsData(); // Assumes this function exists and returns { data: [], columnMap: {} }
 
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      // console.log('❌ No assignments data found in getMobileAssignmentsForRider.');
+      // debugLog('❌ No assignments data found in getMobileAssignmentsForRider.');
       return [];
     }
 
@@ -3685,7 +3595,7 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
           const currentUserName = user.name; // Use user.name from parameter
           if (assignedRiderName && currentUserName && String(assignedRiderName).trim().toLowerCase() === String(currentUserName).trim().toLowerCase()){
             riderIdentifierFound = true;
-            // console.log(`Matched assignment by name for ${currentUserName} as email was not found or didn't match.`);
+            // debugLog(`Matched assignment by name for ${currentUserName} as email was not found or didn't match.`);
           }
         } else {
            // console.warn(`Configured riderName column "${assignedRiderNameColumn}" not found in Assignments sheet columnMap.`);
@@ -3763,9 +3673,9 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
       return dateA - dateB;
     });
 
-    // console.log(`✅ Returning ${riderAssignments.length} assignments for rider ${userEmail}.`);
+    // debugLog(`✅ Returning ${riderAssignments.length} assignments for rider ${userEmail}.`);
     // if (riderAssignments.length > 0) {
-      // console.log('Sample mobile assignment:', riderAssignments[0]);
+      // debugLog('Sample mobile assignment:', riderAssignments[0]);
     // }
     return riderAssignments;
 
@@ -3794,29 +3704,8 @@ function getMobileAssignmentsForRider(user) { // Added user parameter
  */
 function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
   try {
-    console.log(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
-    console.log('Selected riders:', JSON.stringify(selectedRiders, null, 2));
-    
-    // Log the operation for monitoring
-    logAssignmentOperation('ASSIGNMENT_START', requestId, { 
-      riderCount: selectedRiders.length, 
-      riderNames: selectedRiders.map(r => r.name).join(', ') 
-    });
-    
-    // Validate sheet integrity before starting
-    const validation = validateAssignmentsSheet();
-    if (!validation.valid) {
-      console.warn('⚠️ Assignments sheet validation issues:', validation.issues);
-      logAssignmentOperation('VALIDATION_WARNING', requestId, validation);
-    }
-    
-    // Create backup before making changes
-    const backup = createAssignmentsBackup();
-    if (backup.success) {
-      console.log(`💾 Created backup with ${backup.rowCount} rows at ${backup.timestamp}`);
-    } else {
-      console.warn('⚠️ Failed to create backup:', backup.error);
-    }
+    debugLog(`🏍️ Starting assignment process for request ${requestId} with ${selectedRiders.length} riders`);
+    debugLog('Selected riders:', JSON.stringify(selectedRiders, null, 2));
     
     if (!requestId || !selectedRiders) {
       throw new Error('Request ID is required for assignment');
@@ -3828,16 +3717,13 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
       throw new Error(`Request ${requestId} not found`);
     }
 
-    console.log('Request details found:', requestDetails);
+    debugLog('Request details found:', requestDetails);
 
     // Remove any existing assignments for this request first
     const existingAssignments = getAssignmentsForRequest(requestId);
     if (existingAssignments.length > 0) {
-      console.log(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
-      const removedNames = removeExistingAssignments(requestId);
-      console.log(`✅ Successfully removed assignments for riders: ${removedNames.join(', ')}`);
-    } else {
-      console.log(`ℹ️ No existing assignments to remove for request ${requestId}`);
+      debugLog(`🗑️ Removing ${existingAssignments.length} existing assignments for request ${requestId}`);
+      removeExistingAssignments(requestId);
     }
 
     // Create new assignments using batch operation
@@ -3845,12 +3731,12 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     const assignedRiderNames = [];
     const assignmentRows = [];
 
-    console.log(`📝 Preparing ${selectedRiders.length} assignments for batch creation`);
+    debugLog(`📝 Preparing ${selectedRiders.length} assignments for batch creation`);
     
     // First, prepare all assignment rows in memory
     for (let i = 0; i < selectedRiders.length; i++) {
       const rider = selectedRiders[i];
-      console.log(`📝 Preparing assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
+      debugLog(`📝 Preparing assignment ${i + 1}/${selectedRiders.length} for rider: ${rider.name}`);
       
       try {
         const assignmentId = generateAssignmentId();
@@ -3865,7 +3751,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
           status: 'success'
         });
         
-        console.log(`✅ Prepared assignment ${assignmentId} for rider ${rider.name}`);
+        debugLog(`✅ Prepared assignment ${assignmentId} for rider ${rider.name}`);
         
       } catch (riderError) {
         console.error(`❌ Failed to prepare assignment for rider ${rider.name}:`, riderError);
@@ -3885,7 +3771,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
           throw new Error('Assignments sheet not found');
         }
         
-        console.log(`🔄 Batch inserting ${assignmentRows.length} assignments...`);
+        debugLog(`🔄 Batch inserting ${assignmentRows.length} assignments...`);
         
         // Get the range starting from the next available row
         const lastRow = assignmentsSheet.getLastRow();
@@ -3895,7 +3781,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
         const range = assignmentsSheet.getRange(startRow, 1, assignmentRows.length, numCols);
         range.setValues(assignmentRows);
         
-        console.log(`✅ Successfully batch inserted ${assignmentRows.length} assignments`);
+        debugLog(`✅ Successfully batch inserted ${assignmentRows.length} assignments`);
         
       } catch (batchError) {
         console.error(`❌ Batch insert failed, falling back to individual inserts:`, batchError);
@@ -3924,7 +3810,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
     const successCount = assignmentResults.filter(r => r.status === 'success').length;
     const failCount = assignmentResults.filter(r => r.status === 'failed').length;
 
-    console.log(`✅ Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
+    debugLog(`✅ Assignment process completed for ${requestId}: ${successCount} successful, ${failCount} failed`);
 
     // Return immediately to prevent timeout - defer non-critical operations
     const response = {
@@ -3938,7 +3824,7 @@ function processAssignmentAndPopulate(requestId, selectedRiders, usePriority) {
 
     // Defer rotation updates and other non-critical operations to background
     try {
-      console.log('🔄 Scheduling background operations...');
+      debugLog('🔄 Scheduling background operations...');
       
       // Use a time-driven trigger to execute background operations
       if (assignedRiderNames.length > 0) {
@@ -4154,35 +4040,19 @@ function buildAssignmentRow(assignmentId, requestId, rider, requestDetails) {
 }
 
 /**
- * Removes existing assignments for a request using safer row deletion instead of clearing entire sheet.
+ * Removes existing assignments for a request.
  * @param {string} requestId - The request ID to clear assignments for.
- * @return {Array<string>} - Array of removed rider names
+ * @return {void}
  */
 function removeExistingAssignments(requestId) {
   try {
-    console.log(`🗑️ Starting SAFE removal of assignments for request ${requestId}`);
-    
-    // Log the removal operation
-    logAssignmentOperation('REMOVAL_START', requestId);
-    
-    // Validate input
-    if (!requestId || String(requestId).trim() === '') {
-      console.log('⚠️ Empty requestId provided, skipping removal');
-      logAssignmentOperation('REMOVAL_SKIPPED', requestId, { reason: 'empty_request_id' });
-      return [];
-    }
-
+    debugLog(`🗑️ Starting batch removal of assignments for request ${requestId}`);
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
     if (!assignmentsSheet) {
       throw new Error('Assignments sheet not found');
     }
 
     const data = assignmentsSheet.getDataRange().getValues();
-    if (data.length <= 1) {
-      console.log('ℹ️ No data rows to process (only headers or empty sheet)');
-      return [];
-    }
-
     const headers = data[0];
     const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
     const riderNameCol = headers.indexOf(CONFIG.columns.assignments.riderName);
@@ -4191,50 +4061,42 @@ function removeExistingAssignments(requestId) {
       throw new Error('Request ID column not found in assignments sheet');
     }
 
-    // Find rows to delete (in reverse order to maintain indices)
-    const rowsToDelete = [];
+    // Filter out rows that match the requestId and collect removed names
+    const rowsToKeep = [headers]; // Always keep the header row
     const removedNames = [];
-    const targetRequestId = String(requestId).trim();
+    let removedCount = 0;
 
     for (let i = 1; i < data.length; i++) { // Skip header row
-      const rowRequestId = String(data[i][requestIdCol] || '').trim();
-      if (rowRequestId === targetRequestId) {
-        rowsToDelete.push(i + 1); // Convert to 1-based sheet row number
+      const rowRequestId = String(data[i][requestIdCol]).trim();
+      if (rowRequestId === String(requestId).trim()) {
+        // This row should be removed
+        removedCount++;
         if (riderNameCol !== -1) {
-          const name = String(data[i][riderNameCol] || '').trim();
+          const name = String(data[i][riderNameCol]).trim();
           if (name) removedNames.push(name);
         }
+      } else {
+        // Keep this row
+        rowsToKeep.push(data[i]);
       }
     }
 
-    if (rowsToDelete.length === 0) {
-      console.log(`ℹ️ No existing assignments found for request ${requestId}`);
-      return [];
-    }
-
-    // Delete rows in reverse order to maintain correct indices
-    console.log(`🔄 SAFELY removing ${rowsToDelete.length} assignment rows for request ${requestId}`);
-    rowsToDelete.reverse().forEach(rowNumber => {
-      try {
-        assignmentsSheet.deleteRow(rowNumber);
-        console.log(`✅ Deleted row ${rowNumber}`);
-      } catch (error) {
-        console.error(`❌ Failed to delete row ${rowNumber}:`, error);
-        // Continue with other rows instead of failing completely
+    if (removedCount > 0) {
+      // Clear the sheet and rewrite with only the rows we want to keep
+      debugLog(`🔄 Batch removing ${removedCount} assignments using full sheet rewrite`);
+      assignmentsSheet.clear();
+      
+      if (rowsToKeep.length > 1) { // More than just header
+        const range = assignmentsSheet.getRange(1, 1, rowsToKeep.length, headers.length);
+        range.setValues(rowsToKeep);
+      } else {
+        // Only header row remains
+        assignmentsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       }
-    });
-    
-    console.log(`✅ SAFELY removed ${rowsToDelete.length} existing assignments for request ${requestId}`);
-
-    // Log successful removal
-    logAssignmentOperation('REMOVAL_COMPLETE', requestId, { 
-      removedCount: rowsToDelete.length,
-      removedRiders: removedNames.join(', ')
-    });
-
-    // Clear cache to ensure fresh data on next read
-    if (typeof dataCache !== 'undefined' && dataCache.clear) {
-      dataCache.clear('sheet_' + CONFIG.sheets.assignments);
+      
+      debugLog(`✅ Batch removed ${removedCount} existing assignments for request ${requestId}`);
+    } else {
+      debugLog(`ℹ️ No existing assignments found for request ${requestId}`);
     }
 
     if (removedNames.length > 0) {
@@ -4244,7 +4106,6 @@ function removeExistingAssignments(requestId) {
     return removedNames;
 
   } catch (error) {
-    console.error('❌ Error in SAFE removeExistingAssignments:', error);
     logError('Error removing existing assignments', error);
     throw new Error(`Failed to remove existing assignments: ${error.message}`);
   }
@@ -4321,7 +4182,7 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
       requestsSheet.getRange(sheetRowNumber, lastUpdatedCol + 1).setValue(new Date());
     }
 
-    console.log(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
+    debugLog(`📝 Updated request ${requestId} with ${riderNames.length} assigned riders`);
 
     if (typeof clearRequestsCache === 'function') {
       clearRequestsCache();
@@ -4342,295 +4203,11 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
 }
 
 /**
- * Alternative assignment function for testing/debugging.
- * @param {string} requestId - The request ID.
- * @param {Array<object>} riders - Array of rider objects.
- * @return {object} Result object.
- */
-function testAssignmentProcess(requestId, riders) {
-  console.log('🧪 Test assignment process called');
-  console.log('Request ID:', requestId);
-  console.log('Riders:', riders);
-  
-  return {
-    success: true,
-    message: 'Test assignment completed',
-    requestId: requestId,
-    riderCount: riders ? riders.length : 0
-  };
-}
-/**
- * Add these debugging functions to your Code.gs or AppServices.gs file
- * These will help diagnose why no active riders are being returned
- */
-
-/**
- * Comprehensive debugging function for active riders issue
- * Add this to your Code.gs or AppServices.gs file
- */
-function debugActiveRidersIssue() {
-  try {
-    console.log('🔍 === DEBUGGING ACTIVE RIDERS ISSUE ===');
-    
-    const result = {
-      timestamp: new Date().toISOString(),
-      tests: {},
-      recommendations: []
-    };
-    
-    // Test 1: Raw sheet access
-    console.log('🧪 Test 1: Raw sheet access...');
-    try {
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-      const range = sheet.getDataRange();
-      const values = range.getValues();
-      
-      result.tests.rawSheetAccess = {
-        success: true,
-        sheetName: sheet.getName(),
-        totalRows: values.length,
-        totalColumns: values.length > 0 ? values[0].length : 0,
-        headers: values.length > 0 ? values[0] : [],
-        sampleDataRow: values.length > 1 ? values[1] : null
-      };
-      
-      console.log('✅ Raw sheet access successful');
-    } catch (error) {
-      result.tests.rawSheetAccess = {
-        success: false,
-        error: error.message
-      };
-      console.error('❌ Raw sheet access failed:', error);
-    }
-    
-    // Test 2: getRidersData function
-    console.log('🧪 Test 2: getRidersData function...');
-    try {
-      const ridersData = getRidersData();
-      
-      result.tests.getRidersData = {
-        success: true,
-        hasData: !!ridersData,
-        dataLength: ridersData?.data?.length || 0,
-        headersLength: ridersData?.headers?.length || 0,
-        headers: ridersData?.headers || [],
-        columnMap: ridersData?.columnMap || {},
-        sampleRow: ridersData?.data?.[0] || null
-      };
-      
-      console.log('✅ getRidersData successful');
-    } catch (error) {
-      result.tests.getRidersData = {
-        success: false,
-        error: error.message
-      };
-      console.error('❌ getRidersData failed:', error);
-    }
-    
-    // Test 3: Column mapping check
-    console.log('🧪 Test 3: Column mapping check...');
-    try {
-      const ridersData = getRidersData();
-      const expectedColumns = {
-        name: CONFIG.columns.riders.name,
-        status: CONFIG.columns.riders.status,
-        jpNumber: CONFIG.columns.riders.jpNumber,
-        phone: CONFIG.columns.riders.phone,
-        email: CONFIG.columns.riders.email
-      };
-      
-      const columnMappingResult = {};
-      Object.entries(expectedColumns).forEach(([key, columnName]) => {
-        const index = ridersData?.columnMap?.[columnName];
-        columnMappingResult[key] = {
-          expectedColumnName: columnName,
-          foundAtIndex: index,
-          exists: index !== undefined
-        };
-      });
-      
-      result.tests.columnMapping = {
-        success: true,
-        expectedColumns: expectedColumns,
-        mapping: columnMappingResult,
-        allColumnsFound: Object.values(columnMappingResult).every(col => col.exists)
-      };
-      
-      console.log('✅ Column mapping check complete');
-    } catch (error) {
-      result.tests.columnMapping = {
-        success: false,
-        error: error.message
-      };
-      console.error('❌ Column mapping check failed:', error);
-    }
-    
-    // Test 4: Status analysis
-    console.log('🧪 Test 4: Rider status analysis...');
-    try {
-      const ridersData = getRidersData();
-      const statusAnalysis = {
-        totalRiders: 0,
-        statusCounts: {},
-        ridersWithoutNames: 0,
-        ridersWithoutStatus: 0,
-        sampleRiders: []
-      };
-      
-      if (ridersData?.data) {
-        statusAnalysis.totalRiders = ridersData.data.length;
-        
-        ridersData.data.forEach((row, index) => {
-          const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-          const status = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.status);
-          const jpNumber = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber);
-          
-          // Count statuses
-          const statusKey = status || 'NO_STATUS';
-          statusAnalysis.statusCounts[statusKey] = (statusAnalysis.statusCounts[statusKey] || 0) + 1;
-          
-          // Count missing data
-          if (!name || String(name).trim() === '') {
-            statusAnalysis.ridersWithoutNames++;
-          }
-          
-          if (!status || String(status).trim() === '') {
-            statusAnalysis.ridersWithoutStatus++;
-          }
-          
-          // Sample first 5 riders
-          if (index < 5) {
-            statusAnalysis.sampleRiders.push({
-              index: index,
-              name: name || 'NO_NAME',
-              status: status || 'NO_STATUS',
-              jpNumber: jpNumber || 'NO_JP_NUMBER',
-              hasName: !!(name && String(name).trim()),
-              hasStatus: !!(status && String(status).trim())
-            });
-          }
-        });
-      }
-      
-      result.tests.statusAnalysis = {
-        success: true,
-        ...statusAnalysis
-      };
-      
-      console.log('✅ Status analysis complete');
-    } catch (error) {
-      result.tests.statusAnalysis = {
-        success: false,
-        error: error.message
-      };
-      console.error('❌ Status analysis failed:', error);
-    }
-    
-    // Test 5: Test the actual functions
-    console.log('🧪 Test 5: Testing actual rider functions...');
-    try {
-      const functionTests = {};
-      
-      // Test getRiders
-      try {
-        const allRiders = getRiders();
-        functionTests.getRiders = {
-          success: true,
-          count: allRiders?.length || 0,
-          sample: allRiders?.[0] || null
-        };
-      } catch (error) {
-        functionTests.getRiders = {
-          success: false,
-          error: error.message
-        };
-      }
-      
-      // Test getActiveRidersForAssignments
-      try {
-        const activeRiders = getActiveRidersForAssignments();
-        functionTests.getActiveRidersForAssignments = {
-          success: true,
-          count: activeRiders?.length || 0,
-          sample: activeRiders?.[0] || null
-        };
-      } catch (error) {
-        functionTests.getActiveRidersForAssignments = {
-          success: false,
-          error: error.message
-        };
-      }
-      
-      // Test getActiveRidersForWebApp
-      try {
-        const webAppRiders = getActiveRidersForWebApp();
-        functionTests.getActiveRidersForWebApp = {
-          success: true,
-          count: webAppRiders?.length || 0,
-          sample: webAppRiders?.[0] || null
-        };
-      } catch (error) {
-        functionTests.getActiveRidersForWebApp = {
-          success: false,
-          error: error.message
-        };
-      }
-      
-      result.tests.functionTests = functionTests;
-      console.log('✅ Function tests complete');
-    } catch (error) {
-      result.tests.functionTests = {
-        success: false,
-        error: error.message
-      };
-      console.error('❌ Function tests failed:', error);
-    }
-    
-    // Generate recommendations
-    console.log('🧪 Generating recommendations...');
-    
-    if (result.tests.statusAnalysis?.success) {
-      const statusCounts = result.tests.statusAnalysis.statusCounts;
-      const totalWithoutStatus = result.tests.statusAnalysis.ridersWithoutStatus;
-      
-      if (totalWithoutStatus > 0) {
-        result.recommendations.push(`${totalWithoutStatus} riders have no status - consider setting them to 'Active'`);
-      }
-      
-      if (!statusCounts['Active'] && !statusCounts['active']) {
-        result.recommendations.push('No riders have "Active" status - this may be why no active riders are found');
-      }
-      
-      if (statusCounts['NO_STATUS'] > 0) {
-        result.recommendations.push(`${statusCounts['NO_STATUS']} riders have empty status - these may need to be set to 'Active'`);
-      }
-    }
-    
-    if (result.tests.columnMapping?.success && !result.tests.columnMapping.allColumnsFound) {
-      result.recommendations.push('Some expected columns are missing - check your sheet headers match CONFIG settings');
-    }
-    
-    console.log('✅ Debug analysis complete');
-    console.log('📊 Final result:', result);
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Debug function failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      stack: error.stack
-    };
-  }
-}
-
-/**
  * Simple function to get all riders regardless of status (for testing)
  */
 function getAllRidersIgnoreStatus() {
   try {
-    console.log('🔧 Getting ALL riders regardless of status...');
+    debugLog('🔧 Getting ALL riders regardless of status...');
     
     const ridersData = getRidersData();
     
@@ -4677,7 +4254,7 @@ function getAllRidersIgnoreStatus() {
       });
     }
     
-    console.log(`✅ Found ${allRiders.length} riders (ignoring status)`);
+    debugLog(`✅ Found ${allRiders.length} riders (ignoring status)`);
     return allRiders;
     
   } catch (error) {
@@ -4691,7 +4268,7 @@ function getAllRidersIgnoreStatus() {
  */
 function setAllRidersToActive() {
   try {
-    console.log('🔧 Setting all riders to Active status...');
+    debugLog('🔧 Setting all riders to Active status...');
     
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
     if (!sheet) {
@@ -4722,7 +4299,7 @@ function setAllRidersToActive() {
       }
     }
     
-    console.log(`✅ Updated ${updatedCount} riders to Active status`);
+    debugLog(`✅ Updated ${updatedCount} riders to Active status`);
     
     // Clear cache
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
@@ -4747,7 +4324,7 @@ function setAllRidersToActive() {
  */
 function testActiveRidersFix() {
   try {
-    console.log('🧪 Testing active riders fix...');
+    debugLog('🧪 Testing active riders fix...');
     
     const result = {
       beforeFix: {},
@@ -4764,11 +4341,11 @@ function testActiveRidersFix() {
       activeRiders: activeRiders.length
     };
     
-    console.log('Before fix:', result.beforeFix);
+    debugLog('Before fix:', result.beforeFix);
     
     // Apply fix if no active riders found
     if (activeRiders.length === 0 && allRiders.length > 0) {
-      console.log('🔧 Applying fix...');
+      debugLog('🔧 Applying fix...');
       const fixResult = setAllRidersToActive();
       
       if (fixResult.success) {
@@ -4788,8 +4365,8 @@ function testActiveRidersFix() {
       result.success = true;
     }
     
-    console.log('After fix:', result.afterFix);
-    console.log('Fix successful:', result.success);
+    debugLog('After fix:', result.afterFix);
+    debugLog('Fix successful:', result.success);
     
     return result;
     
@@ -5037,18 +4614,18 @@ function checkRotationStatus() {
     const currentOrder = getAssignmentRotation();
     const activeRiders = getActiveRidersForAssignments();
     
-    console.log('=== ROTATION STATUS CHECK ===');
-    console.log(`Current rotation has ${currentOrder.length} riders`);
-    console.log('Riders in rotation:', currentOrder);
+    debugLog('=== ROTATION STATUS CHECK ===');
+    debugLog(`Current rotation has ${currentOrder.length} riders`);
+    debugLog('Riders in rotation:', currentOrder);
     
     // Check each rider in rotation
     currentOrder.forEach(name => {
       const rider = activeRiders.find(r => r.name === name);
       if (!rider) {
-        console.log(`⚠️  ${name} - NOT FOUND in active riders`);
+        debugLog(`⚠️  ${name} - NOT FOUND in active riders`);
       } else {
         const isPartTime = String(rider.partTime || 'No').toLowerCase() === 'yes';
-        console.log(`${isPartTime ? '❌' : '✅'} ${name} - Part-time: ${rider.partTime || 'No'}`);
+        debugLog(`${isPartTime ? '❌' : '✅'} ${name} - Part-time: ${rider.partTime || 'No'}`);
       }
     });
     
@@ -5069,7 +4646,7 @@ function checkRotationStatus() {
  */
 function cleanAssignmentRotation() {
   try {
-    console.log('🧹 Cleaning assignment rotation to remove part-time riders...');
+    debugLog('🧹 Cleaning assignment rotation to remove part-time riders...');
     
     // Get current active riders
     const activeRiders = getActiveRidersForAssignments();
@@ -5087,8 +4664,8 @@ function cleanAssignmentRotation() {
     // Save the clean order
     PropertiesService.getScriptProperties().setProperty('ASSIGNMENT_ORDER', cleanOrder.join('\n'));
     
-    console.log(`✅ Assignment rotation cleaned. ${cleanOrder.length} full-time riders in rotation.`);
-    console.log('Full-time riders in rotation:', cleanOrder);
+    debugLog(`✅ Assignment rotation cleaned. ${cleanOrder.length} full-time riders in rotation.`);
+    debugLog('Full-time riders in rotation:', cleanOrder);
     
     return {
       success: true,
@@ -5179,7 +4756,7 @@ function getAssignmentOrderForWeb() {
  */
 function executePostAssignmentCleanup(requestId, assignedRiderNames) {
   try {
-    console.log(`🧹 Starting post-assignment cleanup for request ${requestId}`);
+    debugLog(`🧹 Starting post-assignment cleanup for request ${requestId}`);
     
     // Clear caches to ensure fresh data
     if (typeof clearRequestsCache === 'function') {
@@ -5193,13 +4770,13 @@ function executePostAssignmentCleanup(requestId, assignedRiderNames) {
     if (typeof postAssignmentsToCalendar === 'function') {
       try {
         postAssignmentsToCalendar();
-        console.log(`✅ Calendar sync completed for request ${requestId}`);
+        debugLog(`✅ Calendar sync completed for request ${requestId}`);
       } catch (calendarError) {
         logError('Failed to post assignments to calendar during cleanup', calendarError);
       }
     }
     
-    console.log(`🧹 Post-assignment cleanup completed for request ${requestId}`);
+    debugLog(`🧹 Post-assignment cleanup completed for request ${requestId}`);
     
   } catch (error) {
     logError('Error in executePostAssignmentCleanup', error);
@@ -5213,7 +4790,7 @@ function executePostAssignmentCleanup(requestId, assignedRiderNames) {
  */
 function executeBackgroundAssignmentProcessing() {
   try {
-    console.log('🔄 Starting background assignment processing...');
+    debugLog('🔄 Starting background assignment processing...');
     
     // Get all pending background data
     const properties = PropertiesService.getScriptProperties();
@@ -5233,16 +4810,16 @@ function executeBackgroundAssignmentProcessing() {
           if (age > maxAge) {
             // Too old, skip and clean up
             properties.deleteProperty(key);
-            console.log(`⏰ Skipped expired background data for ${backgroundData.requestId}`);
+            debugLog(`⏰ Skipped expired background data for ${backgroundData.requestId}`);
             continue;
           }
           
-          console.log(`🔄 Processing background operations for request ${backgroundData.requestId}`);
+          debugLog(`🔄 Processing background operations for request ${backgroundData.requestId}`);
           
           // Execute the deferred operations
           if (backgroundData.usePriority !== false && backgroundData.assignedRiderNames.length > 0) {
             updateAssignmentRotation(backgroundData.assignedRiderNames);
-            console.log(`✅ Updated rotation for ${backgroundData.assignedRiderNames.length} riders`);
+            debugLog(`✅ Updated rotation for ${backgroundData.assignedRiderNames.length} riders`);
           }
           
           // Log the activity
@@ -5257,14 +4834,14 @@ function executeBackgroundAssignmentProcessing() {
                 logError(`Failed to update stats for rider ${riderName}`, statsError);
               }
             }
-            console.log(`📊 Updated assignment statistics for ${backgroundData.assignedRiderNames.length} riders`);
+            debugLog(`📊 Updated assignment statistics for ${backgroundData.assignedRiderNames.length} riders`);
           }
           
           // Clean up the processed data
           properties.deleteProperty(key);
           processedCount++;
           
-          console.log(`✅ Completed background processing for request ${backgroundData.requestId}`);
+          debugLog(`✅ Completed background processing for request ${backgroundData.requestId}`);
           
         } catch (dataError) {
           logError(`Error processing background assignment data for ${key}`, dataError);
@@ -5274,7 +4851,7 @@ function executeBackgroundAssignmentProcessing() {
       }
     }
     
-    console.log(`🏁 Background assignment processing completed. Processed ${processedCount} requests.`);
+    debugLog(`🏁 Background assignment processing completed. Processed ${processedCount} requests.`);
     
     // Clean up old triggers to prevent accumulation
     cleanupOldAssignmentTriggers();
@@ -5301,407 +4878,10 @@ function cleanupOldAssignmentTriggers() {
     }
     
     if (cleanedCount > 0) {
-      console.log(`🧹 Cleaned up ${cleanedCount} old assignment processing triggers`);
+      debugLog(`🧹 Cleaned up ${cleanedCount} old assignment processing triggers`);
     }
     
   } catch (error) {
     logError('Error cleaning up assignment triggers', error);
-  }
-}
-
-/**
- * Creates a backup of the assignments sheet data before making changes
- * @return {object} Backup data object
- */
-function createAssignmentsBackup() {
-  try {
-    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
-    if (!assignmentsSheet) {
-      return { success: false, error: 'Assignments sheet not found' };
-    }
-
-    const data = assignmentsSheet.getDataRange().getValues();
-    const timestamp = new Date().toISOString();
-    
-    return {
-      success: true,
-      timestamp: timestamp,
-      data: data,
-      rowCount: data.length,
-      backup: JSON.stringify(data)
-    };
-  } catch (error) {
-    console.error('❌ Error creating assignments backup:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Monitors assignment operations and logs activity
- * @param {string} operation - The operation being performed
- * @param {string} requestId - The request ID involved
- * @param {object} details - Additional details
- */
-function logAssignmentOperation(operation, requestId, details = {}) {
-  try {
-    const timestamp = new Date().toISOString();
-    const logEntry = {
-      timestamp: timestamp,
-      operation: operation,
-      requestId: requestId,
-      details: details,
-      user: getCurrentUser()?.email || 'unknown'
-    };
-    
-    console.log(`📊 ASSIGNMENT OPERATION: ${operation} for request ${requestId}`, logEntry);
-    
-    // Store in a log sheet if it exists
-    try {
-      const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignment_Logs');
-      if (logSheet) {
-        logSheet.appendRow([
-          timestamp,
-          operation,
-          requestId,
-          JSON.stringify(details),
-          logEntry.user
-        ]);
-      }
-    } catch (logError) {
-      // Log sheet doesn't exist or can't write - that's okay
-    }
-    
-  } catch (error) {
-    console.error('❌ Error logging assignment operation:', error);
-  }
-}
-
-/**
- * Validates the assignments sheet integrity
- * @return {object} Validation result
- */
-function validateAssignmentsSheet() {
-  try {
-    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.assignments);
-    if (!assignmentsSheet) {
-      return { valid: false, error: 'Assignments sheet not found' };
-    }
-
-    const data = assignmentsSheet.getDataRange().getValues();
-    const issues = [];
-    
-    // Check if sheet has data
-    if (data.length === 0) {
-      issues.push('Sheet is completely empty');
-    } else if (data.length === 1) {
-      issues.push('Sheet only has headers, no data rows');
-    }
-    
-    // Check headers
-    if (data.length > 0) {
-      const headers = data[0];
-      const requiredColumns = [
-        CONFIG.columns.assignments.requestId,
-        CONFIG.columns.assignments.riderName,
-        CONFIG.columns.assignments.status
-      ];
-      
-      const missingColumns = requiredColumns.filter(col => !headers.includes(col));
-      if (missingColumns.length > 0) {
-        issues.push(`Missing required columns: ${missingColumns.join(', ')}`);
-      }
-    }
-    
-    // Check for duplicate assignment IDs
-    if (data.length > 1) {
-      const assignmentIds = new Set();
-      const duplicates = [];
-      const idColIndex = data[0].indexOf(CONFIG.columns.assignments.id);
-      
-      if (idColIndex !== -1) {
-        for (let i = 1; i < data.length; i++) {
-          const id = data[i][idColIndex];
-          if (id && assignmentIds.has(id)) {
-            duplicates.push(id);
-          } else if (id) {
-            assignmentIds.add(id);
-          }
-        }
-        
-        if (duplicates.length > 0) {
-          issues.push(`Duplicate assignment IDs found: ${duplicates.join(', ')}`);
-        }
-      }
-    }
-    
-    return {
-      valid: issues.length === 0,
-      issues: issues,
-      rowCount: data.length,
-      dataRows: data.length - 1,
-      timestamp: new Date().toISOString()
-    };
-    
-  } catch (error) {
-    return {
-      valid: false,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    };
-  }
-}
-
-/**
- * Comprehensive diagnostic function for assignment deletion issues
- * Call this function to check for potential problems and get recommendations
- * @return {object} Diagnostic report
- */
-function diagnoseAssignmentDeletionIssues() {
-  try {
-    console.log('🔍 Starting comprehensive assignment deletion diagnosis...');
-    
-    const report = {
-      timestamp: new Date().toISOString(),
-      sheetStatus: {},
-      configurationStatus: {},
-      recentActivity: {},
-      recommendations: [],
-      issues: [],
-      warnings: []
-    };
-
-    // 1. Check sheet integrity
-    console.log('🔍 Checking assignments sheet integrity...');
-    const validation = validateAssignmentsSheet();
-    report.sheetStatus = validation;
-    
-    if (!validation.valid) {
-      report.issues.push('Assignments sheet integrity issues detected');
-      report.recommendations.push('Fix assignments sheet structure before making changes');
-    }
-
-    // 2. Check configuration
-    console.log('🔍 Checking configuration...');
-    const configIssues = [];
-    
-    if (!CONFIG?.sheets?.assignments) {
-      configIssues.push('CONFIG.sheets.assignments not defined');
-    }
-    
-    if (!CONFIG?.columns?.assignments?.requestId) {
-      configIssues.push('CONFIG.columns.assignments.requestId not defined');
-    }
-    
-    if (!CONFIG?.columns?.assignments?.riderName) {
-      configIssues.push('CONFIG.columns.assignments.riderName not defined');
-    }
-    
-    report.configurationStatus = {
-      valid: configIssues.length === 0,
-      issues: configIssues
-    };
-    
-    if (configIssues.length > 0) {
-      report.issues.push('Configuration issues detected');
-      report.recommendations.push('Review and fix CONFIG settings');
-    }
-
-    // 3. Check for potential data loss indicators
-    console.log('🔍 Checking for data loss indicators...');
-    try {
-      const assignmentsData = getAssignmentsData(false); // Force fresh data
-      const rowCount = assignmentsData?.data?.length || 0;
-      
-      report.sheetStatus.currentRowCount = rowCount;
-      
-      if (rowCount <= 1) {
-        report.warnings.push('Assignments sheet has no data rows (only headers or empty)');
-        report.recommendations.push('Check if assignments were accidentally deleted');
-      } else if (rowCount < 10) {
-        report.warnings.push(`Only ${rowCount - 1} assignment rows found - this seems low`);
-        report.recommendations.push('Verify if this is the expected number of assignments');
-      }
-      
-    } catch (error) {
-      report.issues.push(`Error reading assignments data: ${error.message}`);
-    }
-
-    // 4. Check recent assignment operations (if log sheet exists)
-    console.log('🔍 Checking recent assignment operations...');
-    try {
-      const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignment_Logs');
-      if (logSheet) {
-        const logData = logSheet.getDataRange().getValues();
-        const recentLogs = logData.slice(-20); // Last 20 entries
-        
-        const removalOperations = recentLogs.filter(row => 
-          row[1] && row[1].toString().includes('REMOVAL')
-        );
-        
-        report.recentActivity = {
-          totalLogEntries: logData.length,
-          recentEntries: recentLogs.length,
-          recentRemovals: removalOperations.length,
-          lastRemoval: removalOperations.length > 0 ? removalOperations[removalOperations.length - 1][0] : 'None'
-        };
-        
-        if (removalOperations.length > 5) {
-          report.warnings.push(`High number of recent removal operations: ${removalOperations.length}`);
-          report.recommendations.push('Review recent removal operations to ensure they were intentional');
-        }
-        
-      } else {
-        report.recentActivity = { message: 'No Assignment_Logs sheet found - consider creating one for monitoring' };
-        report.recommendations.push('Create Assignment_Logs sheet to monitor operations');
-      }
-    } catch (error) {
-      report.recentActivity = { error: error.message };
-    }
-
-    // 5. Check for common problematic patterns
-    console.log('🔍 Checking for problematic patterns...');
-    try {
-      const assignmentsData = getAssignmentsData(false);
-      if (assignmentsData?.data?.length > 1) {
-        const headers = assignmentsData.data[0];
-        const requestIdCol = headers.indexOf(CONFIG.columns.assignments.requestId);
-        
-        if (requestIdCol !== -1) {
-          const emptyRequestIds = [];
-          const nullRequestIds = [];
-          
-          for (let i = 1; i < assignmentsData.data.length; i++) {
-            const requestId = assignmentsData.data[i][requestIdCol];
-            if (!requestId || requestId === '') {
-              emptyRequestIds.push(i + 1);
-            } else if (requestId === null || requestId === undefined) {
-              nullRequestIds.push(i + 1);
-            }
-          }
-          
-          if (emptyRequestIds.length > 0) {
-            report.warnings.push(`Found ${emptyRequestIds.length} assignments with empty request IDs at rows: ${emptyRequestIds.join(', ')}`);
-            report.recommendations.push('Fix or remove assignments with empty request IDs');
-          }
-          
-          if (nullRequestIds.length > 0) {
-            report.warnings.push(`Found ${nullRequestIds.length} assignments with null request IDs at rows: ${nullRequestIds.join(', ')}`);
-            report.recommendations.push('Fix or remove assignments with null request IDs');
-          }
-        }
-      }
-    } catch (error) {
-      report.issues.push(`Error checking for problematic patterns: ${error.message}`);
-    }
-
-    // 6. Generate overall assessment
-    if (report.issues.length === 0 && report.warnings.length === 0) {
-      report.overallStatus = 'HEALTHY';
-      report.message = 'No issues detected with assignment deletion functionality';
-    } else if (report.issues.length === 0) {
-      report.overallStatus = 'CAUTION';
-      report.message = 'Minor warnings detected - review recommendations';
-    } else {
-      report.overallStatus = 'CRITICAL';
-      report.message = 'Critical issues detected - immediate attention required';
-    }
-
-    console.log(`✅ Diagnosis complete. Status: ${report.overallStatus}`);
-    console.log('📊 Full report:', JSON.stringify(report, null, 2));
-    
-    return report;
-    
-  } catch (error) {
-    console.error('❌ Error during assignment deletion diagnosis:', error);
-    return {
-      timestamp: new Date().toISOString(),
-      overallStatus: 'ERROR',
-      error: error.message,
-      message: 'Failed to complete diagnosis'
-    };
-  }
-}
-
-/**
- * Quick fix function for common assignment issues
- * @return {object} Fix result
- */
-function quickFixAssignmentIssues() {
-  try {
-    console.log('🔧 Starting quick fix for assignment issues...');
-    
-    const fixes = [];
-    const errors = [];
-    
-    // 1. Validate and fix sheet structure
-    try {
-      const validation = validateAssignmentsSheet();
-      if (!validation.valid) {
-        fixes.push('Sheet validation issues identified');
-        // Create assignments sheet if missing
-        if (validation.error && validation.error.includes('not found')) {
-          const sheet = getOrCreateSheet(CONFIG.sheets.assignments, [
-            CONFIG.columns.assignments.id,
-            CONFIG.columns.assignments.requestId,
-            CONFIG.columns.assignments.riderName,
-            CONFIG.columns.assignments.status,
-            CONFIG.columns.assignments.eventDate,
-            CONFIG.columns.assignments.startTime
-          ]);
-          fixes.push('Created missing assignments sheet');
-        }
-      }
-    } catch (error) {
-      errors.push(`Sheet validation fix failed: ${error.message}`);
-    }
-    
-    // 2. Create monitoring log sheet if missing
-    try {
-      const logSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignment_Logs');
-      if (!logSheet) {
-        const newLogSheet = getOrCreateSheet('Assignment_Logs', [
-          'Timestamp',
-          'Operation',
-          'Request ID',
-          'Details',
-          'User'
-        ]);
-        fixes.push('Created Assignment_Logs sheet for monitoring');
-      }
-    } catch (error) {
-      errors.push(`Log sheet creation failed: ${error.message}`);
-    }
-    
-    // 3. Clear any corrupted cache
-    try {
-      if (typeof dataCache !== 'undefined' && dataCache.clear) {
-        dataCache.clear('sheet_' + CONFIG.sheets.assignments);
-        fixes.push('Cleared assignments cache');
-      }
-    } catch (error) {
-      errors.push(`Cache clearing failed: ${error.message}`);
-    }
-    
-    const result = {
-      success: errors.length === 0,
-      timestamp: new Date().toISOString(),
-      fixesApplied: fixes,
-      errors: errors,
-      message: errors.length === 0 ? 
-        `Quick fix completed successfully. ${fixes.length} fixes applied.` :
-        `Quick fix completed with ${errors.length} errors. ${fixes.length} fixes applied.`
-    };
-    
-    console.log('✅ Quick fix result:', JSON.stringify(result, null, 2));
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Error during quick fix:', error);
-    return {
-      success: false,
-      timestamp: new Date().toISOString(),
-      error: error.message,
-      message: 'Quick fix failed'
-    };
   }
 }

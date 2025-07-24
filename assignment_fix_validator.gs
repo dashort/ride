@@ -3,52 +3,6 @@
  * Tests the fixes for getAllAssignmentsForNotifications and creates sample data if needed
  */
 
-// Provide a minimal CONFIG fallback when running this file by itself
-if (typeof CONFIG === 'undefined') {
-  console.warn('CONFIG is not defined. Using fallback values for validator.');
-
-  this.CONFIG = {
-    sheets: {
-      assignments: 'Assignments',
-      riders: 'Riders',
-    },
-    columns: {
-      assignments: {
-        id: 'Assignment ID',
-        requestId: 'Request ID',
-        eventDate: 'Event Date',
-        startTime: 'Start Time',
-        endTime: 'End Time',
-        startLocation: 'Start Location',
-        endLocation: 'Second Location',
-        secondaryLocation: 'Final Location',
-        riderName: 'Rider Name',
-        jpNumber: 'JP Number',
-        status: 'Status',
-        createdDate: 'Created Date',
-        notified: 'Notified',
-        notificationStatus: 'Notification Status',
-        smsSent: 'SMS Sent',
-        emailSent: 'Email Sent',
-        confirmedDate: 'Confirmed Date',
-        confirmationMethod: 'Confirmation Method',
-        completedDate: 'Completed Date',
-        actualStartTime: 'Actual Start Time',
-        actualEndTime: 'Actual End Time',
-        actualDuration: 'Actual Duration (Hours)',
-        calendarEventId: 'Calendar Event ID',
-        notes: 'Notes',
-      },
-      riders: {
-        name: 'Full Name',
-        phone: 'Phone Number',
-        email: 'Email',
-        carrier: 'Carrier',
-      },
-    },
-  };
-}
-
 function validateAndFixAssignments() {
   console.log('🔍 Validating assignment fixes...');
   

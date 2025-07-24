@@ -88,7 +88,7 @@ function formatDateSafe(dateValue) {
     return String(dateValue);
     
   } catch (error) {
-    console.log('Error formatting date:', dateValue, error);
+    debugLog('Error formatting date:', dateValue, error);
     return String(dateValue || '');
   }
 }
@@ -132,7 +132,7 @@ function formatTimeSafe(timeValue) {
     return String(timeValue);
     
   } catch (error) {
-    console.log('Error formatting time:', timeValue, error);
+    debugLog('Error formatting time:', timeValue, error);
     return String(timeValue || '');
   }
 }
@@ -236,67 +236,6 @@ function formatDateTimeForDisplay(dateTimeValue) {
   }
 }
 
-// --- Content from Logger.js ---
-/**
- * Logs a debug message to both the console and a designated "Log" sheet.
- * @param {string} message The primary debug message.
- * @param {string} [details=''] Additional details or stringified objects to include in the log.
- * @return {void}
- */
-function debugLogToSheet(message, details = '') {
-  if (isDebugLoggingInProgress) {
-    console.warn(`[WARNING] Recursive call to debugLogToSheet prevented. Message: ${message}`);
-    return;
-  }
-  isDebugLoggingInProgress = true;
-  try {
-    const debugLogSheet = getOrCreateSheet(CONFIG.sheets.log, ['Timestamp', 'Type', 'Message', 'Details']); // getOrCreateSheet from SheetServices.gs
-    if (debugLogSheet) {
-      const rowData = [new Date(), 'DEBUG', message, details];
-      console.log(`[DEBUG] Attempting to append to ${CONFIG.sheets.log} sheet. Data: ${JSON.stringify(rowData)}`);
-      debugLogSheet.appendRow(rowData);
-    } else {
-      console.error(`ERROR: Log sheet '${CONFIG.sheets.log}' is null, cannot write debug log. Fallback DEBUG LOG: ${message} - ${details}`);
-    }
-  } catch (e) {
-    console.error(`ERROR WRITING TO DEBUG_LOG SHEET (caught within itself): ${message} - ${details}. Actual error: ${e.message}`);
-  } finally {
-    isDebugLoggingInProgress = false;
-  }
-}
-
-/**
- * Log activity to system log sheet and console.
- * @param {string} message The log message.
- * @param {string} [details=''] Additional details.
- * @return {void}
- */
-function logActivity(message, details = '') {
-  console.log(`[ACTIVITY] ${message}`, details);
-  try {
-    const logSheet = getOrCreateSheet(CONFIG.sheets.log, ['Timestamp', 'Type', 'Message', 'Details']);
-    logSheet.appendRow([new Date(), 'INFO', message, details]);
-  } catch (error) {
-    console.error('Failed to log activity:', error);
-  }
-}
-
-/**
- * Log error to system log sheet and console.
- * @param {string} message The error message.
- * @param {Error|object|null} [error=null] The error object or additional error information.
- * @return {void}
- */
-function logError(message, error = null) {
-  const errorDetails = error ? error.toString() + (error.stack ? '\n' + error.stack : '') : '';
-  console.error(`[ERROR] ${message}`, errorDetails);
-  try {
-    const logSheet = getOrCreateSheet(CONFIG.sheets.log, ['Timestamp', 'Type', 'Message', 'Details']);
-    logSheet.appendRow([new Date(), 'ERROR', message, errorDetails]);
-  } catch (logErrorEx) { // Renamed to avoid conflict with outer 'error'
-    console.error('Failed to log error to sheet:', logErrorEx);
-  }
-}
 
 // --- Content from CacheManager.js ---
 /**
@@ -477,14 +416,14 @@ function getSmsGatewayEmail(phone, carrier) {
  */
 function testServerConnection() {
   try {
-    console.log('🔧 Testing server connection...');
+    debugLog('🔧 Testing server connection...');
     const testData = {
       timestamp: new Date().toISOString(),
       activeSpreadsheet: SpreadsheetApp.getActiveSpreadsheet().getName(),
       sheetsCount: SpreadsheetApp.getActiveSpreadsheet().getSheets().length,
       serverStatus: 'OK'
     };
-    console.log('✅ Server connection test successful:', testData);
+    debugLog('✅ Server connection test successful:', testData);
     return testData;
   } catch (error) {
     console.error('❌ Server connection test failed:', error);
@@ -500,4 +439,22 @@ function testServerConnection() {
 function roundToQuarterHour(hours) {
   if (typeof hours !== 'number' || isNaN(hours)) return 0;
   return Math.round(hours * 4) / 4;
+}
+// Optimized debug logging that checks CONFIG
+function debugLog(message, ...args) {
+  if (CONFIG.performance?.enableDebugLogging || CONFIG.system?.enableDebugLogging) {
+    console.log(`[DEBUG] ${message}`, ...args);
+  }
+}
+
+// Simplified error handling for production
+function handleError(operation, error, context = {}) {
+  const errorMessage = `${operation}: ${error.message}`;
+  debugLog(errorMessage, context);
+  return {
+    success: false,
+    error: errorMessage,
+    operation,
+    timestamp: new Date().toISOString()
+  };
 }

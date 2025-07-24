@@ -753,6 +753,11 @@
                     </div>
                     
                     <div class="form-group">
+                        <label for="editSpecialRequirements">Special Requirements</label>
+                        <textarea id="editSpecialRequirements" placeholder="Enter any special requirements or notes..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="editNotes">Notes</label>
                         <textarea id="editNotes" placeholder="Additional notes..."></textarea>
                     </div>
@@ -876,7 +881,7 @@
      * @property {string} [escortFee]
      * @property {string} status
      * @property {string} [courtesy] - 'Yes' or 'No'
-    
+     * @property {string} [specialRequirements]
      * @property {string} [notes]
      * @property {string} [ridersAssigned] - Comma-separated string of rider names.
      * @property {string} [lastUpdated] - ISO DateTime string.
@@ -1484,7 +1489,7 @@
         document.getElementById('editEscortFee').value = request.escortFee || '';
         document.getElementById('editStatus').value = request.status || 'New';
         document.getElementById('editCourtesy').checked = (request.courtesy === 'Yes' || String(request.courtesy).toLowerCase() === 'true');
-
+        document.getElementById('editSpecialRequirements').value = request.specialRequirements || '';
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
@@ -1582,6 +1587,7 @@
             escortFee: document.getElementById('editEscortFee').value,
             status: document.getElementById('editStatus').value,
             courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
+            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
             notes: document.getElementById('editNotes').value.trim()
         };
 
@@ -1649,6 +1655,7 @@
             escortFee: document.getElementById('editEscortFee').value,
             status: 'Completed',
             courtesy: document.getElementById('editCourtesy').checked ? 'Yes' : 'No',
+            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
             notes: document.getElementById('editNotes').value.trim()
         };
 
@@ -2018,46 +2025,10 @@
     function handleRidersDataLoaded(data) {
         document.getElementById('ridersLoadingState').style.display = 'none';
         
-        console.log('🔍 Full riders data response:', data);
-
-        const ridersList = (data && data.riders) || (data && data.data && data.data.riders);
-        
-        if (!ridersList) {
-            console.log('🔍 Riders list not found in data. Data structure:', Object.keys(data || {}));
-        }
-
-        if (data && data.success && Array.isArray(ridersList)) {
-            console.log('🔍 Raw riders data:', ridersList.length, 'riders loaded');
-            
-            // Debug: Log all unique status values
-            const allStatuses = [...new Set(ridersList.map(r => r.status || 'empty'))];
-            console.log('🔍 All rider status values found:', allStatuses);
-            
-            availableRiders = ridersList.filter(rider => {
-                const status = String(rider.status || '').toLowerCase().trim();
-                // Include riders with Active status (case insensitive) or empty status
-                // Also exclude only clearly inactive statuses
-                const isAvailable = status === '' || 
-                                   status === 'active' || 
-                                   status.startsWith('active') ||
-                                   status.startsWith('available') ||
-                                   // More inclusive: exclude only specific inactive statuses
-                                   (status !== 'inactive' && 
-                                    status !== 'suspended' && 
-                                    status !== 'vacation' &&
-                                    status !== 'training');
-                
-                if (!isAvailable) {
-                    console.log('🔍 Filtering out rider:', rider.name, 'with status:', rider.status);
-                }
-                
-                return isAvailable;
-            });
-            
-            console.log('🔍 After filtering:', availableRiders.length, 'available riders');
-            if (availableRiders.length > 0) {
-                console.log('🔍 Available riders:', availableRiders.map(r => `${r.name} (${r.status})`));
-            }
+        if (data && data.success && data.riders) {
+            availableRiders = data.riders.filter(rider => 
+                rider.status === 'Active' || rider.status === 'Available' || !rider.status
+            );
             
             if (availableRiders.length > 0) {
                 document.getElementById('ridersAssignmentGrid').style.display = 'grid';

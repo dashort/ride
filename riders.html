@@ -540,25 +540,13 @@
                     <option value="Suspended">Suspended</option>
                 </select>
                 <select class="filter-select" id="motorFilter" onchange="filterRiders()">
-                    <option value="All" selected>All</option>
-                    <option value="Motors">Motors</option>
+                    <option value="Motors" selected>Motors</option>
+                    <option value="All">All</option>
                 </select>
             </div>
             
             <button onclick="exportRiders()" class="btn btn-info">
                 📊 Export CSV
-            </button>
-            
-            <button onclick="debugRidersLoad()" class="btn btn-secondary">
-                🔍 Debug Load
-            </button>
-            
-            <button onclick="fixRidersData()" class="btn btn-success">
-                🔧 Fix Data
-            </button>
-            
-            <button onclick="testSimpleLoad()" class="btn btn-info">
-                🚀 Simple Load
             </button>
             
             <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">
@@ -780,136 +768,10 @@
         }
     }
 
-    function debugRidersLoad() {
-        console.log('🔍 Running debug riders load...');
-        showLoading('Running diagnostics...');
-        
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    hideLoading();
-                    console.log('🔍 Debug result:', result);
-                    
-                    if (result.success) {
-                        showSuccess('Debug successful! Check console for details.');
-                        console.log('✅ Riders found:', result.riders.length);
-                        console.log('📊 Stats:', result.stats);
-                    } else {
-                        showError('Debug failed: ' + result.error);
-                        console.log('❌ Debug error:', result.error);
-                        if (result.diagnostic) {
-                            console.log('📋 Diagnostic info:', result.diagnostic);
-                        }
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    hideLoading();
-                    console.error('❌ Debug function failed:', error);
-                    showError('Debug function failed: ' + error.message);
-                })
-                .debugGetPageDataForRiders();
-        } else {
-            hideLoading();
-            showError('Google Apps Script not available for debugging');
-        }
-    }
-
-    function fixRidersData() {
-        console.log('🔧 Running riders data fix...');
-        showLoading('Fixing riders data...');
-        
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    hideLoading();
-                    console.log('🔧 Fix result:', result);
-                    
-                    if (result.success) {
-                        showSuccess('Data fixed! Found ' + result.ridersCount + ' riders. Reloading page...');
-                        // Reload the page after a short delay
-                        setTimeout(function() {
-                            window.location.reload();
-                        }, 2000);
-                    } else {
-                        showError('Fix failed: ' + result.error);
-                        console.log('❌ Fix error:', result.error);
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    hideLoading();
-                    console.error('❌ Fix function failed:', error);
-                    showError('Fix function failed: ' + error.message);
-                })
-                .fixRidersDataIssue();
-        } else {
-            hideLoading();
-            showError('Google Apps Script not available for fixing');
-        }
-    }
-
-    function testSimpleLoad() {
-        console.log('🚀 Testing simple riders load...');
-        showLoading('Testing simple load...');
-        
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    hideLoading();
-                    console.log('🚀 Simple load result:', result);
-                    
-                    if (result.success) {
-                        showSuccess('Simple load successful! Found ' + result.riders.length + ' riders.');
-                        
-                        // Try to update the page with the loaded data
-                        app.user = result.user;
-                        app.riders = result.riders || [];
-                        app.filteredRiders = [...app.riders];
-                        
-                        updateUserInfo(result.user);
-                        updateStats(result.stats);
-                        renderRidersTable(app.filteredRiders);
-                        showTable();
-                        
-                        console.log('✅ Page updated with simple load data');
-                    } else {
-                        showError('Simple load failed: ' + result.error);
-                        console.log('❌ Simple load error:', result.error);
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    hideLoading();
-                    console.error('❌ Simple load function failed:', error);
-                    showError('Simple load function failed: ' + error.message);
-                })
-                .getPageDataForRidersSimple();
-        } else {
-            hideLoading();
-            showError('Google Apps Script not available for simple load test');
-        }
-    }
-
     function handleRidersDataFailure(error) {
         hideLoading();
         console.error('❌ Error loading riders:', error);
         showError('Error loading riders: ' + (error.message || error));
-        
-        // Show the empty state with helpful troubleshooting
-        showEmptyState();
-        document.getElementById('emptyStateDiv').innerHTML = `
-            <h3>❌ Failed to Load Riders</h3>
-            <p>Error: ${error.message || error}</p>
-            <div style="margin-top: 20px;">
-                <button onclick="debugRidersLoad()" class="btn btn-secondary">
-                    🔍 Debug Issue
-                </button>
-                <button onclick="fixRidersData()" class="btn btn-primary" style="margin-left: 10px;">
-                    🔧 Try to Fix
-                </button>
-                <button onclick="loadRidersData()" class="btn btn-info" style="margin-left: 10px;">
-                    🔄 Retry
-                </button>
-            </div>
-        `;
     }
 
     function updateUserInfo(user) {
@@ -1025,10 +887,9 @@ function filterRiders() {
       let matchesMotor = true;
       if (motorFilter_value === 'Motors') {
         const certLower = certification.toLowerCase();
-        matchesMotor =
-          certLower === 'standard' ||
-          certLower === 'instructor' ||
-          certLower === 'advanced';
+
+
+matchesMotor = certLower === 'standard' || certLower === 'instructor';
 
       }
 
@@ -1412,16 +1273,12 @@ function handleRidersDataSuccess(data) {
   
   if (data && data.success) {
     console.log('✅ Riders data loaded:', data);
-    const riders = data.riders || (data.data && data.data.riders) || [];
-    const user = data.user || (data.data && data.data.user) || {};
-    const stats = data.stats || (data.data && data.data.stats) || {};
-
-    app.user = user;
-    app.riders = riders;
+    app.user = data.user;
+    app.riders = data.riders || [];
     app.filteredRiders = [...app.riders]; // Initialize filtered riders
-
-    updateUserInfo(user);
-    updateStats(stats);
+    
+    updateUserInfo(data.user);
+    updateStats(data.stats);
     renderRidersTable(app.filteredRiders); // Use filtered riders
     showTable();
     fetchAssignmentCountsForRiders(app.filteredRiders);
@@ -1449,36 +1306,6 @@ function handleRidersDataSuccess(data) {
   } else {
     console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
     showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
-    
-    // Show enhanced empty state with debugging options
-    showEmptyState();
-    document.getElementById('emptyStateDiv').innerHTML = `
-        <h3>❌ No Riders Data Loaded</h3>
-        <p>The system returned: ${data ? data.error : 'No data'}</p>
-        <div style="margin-top: 20px;">
-            <button onclick="debugRidersLoad()" class="btn btn-secondary">
-                🔍 Debug Issue
-            </button>
-            <button onclick="fixRidersData()" class="btn btn-primary" style="margin-left: 10px;">
-                🔧 Try to Fix
-            </button>
-            <button onclick="loadRidersData()" class="btn btn-info" style="margin-left: 10px;">
-                🔄 Retry Loading
-            </button>
-        </div>
-        <details style="margin-top: 20px; text-align: left;">
-            <summary style="cursor: pointer; font-weight: bold;">🔧 Troubleshooting Steps</summary>
-            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; margin-top: 10px;">
-                <ol>
-                    <li>Check if you're properly logged in</li>
-                    <li>Verify your user role has access to riders</li>
-                    <li>Ensure the "Riders" sheet exists in the spreadsheet</li>
-                    <li>Check if there's data in the Riders sheet</li>
-                    <li>Try refreshing the page</li>
-                </ol>
-            </div>
-        </details>
-    `;
   }
 }
 
@@ -1731,37 +1558,8 @@ if (typeof handleRiderOperationFailure === 'undefined') {
 function renderRidersTable(riders) {
   const tbody = document.getElementById('ridersTableBody');
   
-  console.log('🎨 renderRidersTable called with:', riders ? riders.length : 'null', 'riders');
-  
   if (!riders || riders.length === 0) {
-    console.log('⚠️ No riders to render, showing empty state');
     showEmptyState();
-    document.getElementById('emptyStateDiv').innerHTML = `
-        <h3>No Riders Available</h3>
-        <p>No riders found matching your current filters.</p>
-        <div style="margin-top: 20px;">
-            <button onclick="debugRidersLoad()" class="btn btn-secondary">
-                🔍 Debug Issue
-            </button>
-            <button onclick="fixRidersData()" class="btn btn-primary" style="margin-left: 10px;">
-                🔧 Try to Fix
-            </button>
-            <button onclick="loadRidersData()" class="btn btn-info" style="margin-left: 10px;">
-                🔄 Reload Data
-            </button>
-        </div>
-        <details style="margin-top: 20px; text-align: left;">
-            <summary style="cursor: pointer; font-weight: bold;">💡 Possible Causes</summary>
-            <div style="padding: 10px; background: #f8f9fa; border-radius: 5px; margin-top: 10px;">
-                <ul>
-                    <li>No riders have been added to the system yet</li>
-                    <li>All riders may be filtered out by status or certification</li>
-                    <li>There may be an issue with the Riders sheet data</li>
-                    <li>Authentication or permission issues</li>
-                </ul>
-            </div>
-        </details>
-    `;
     return;
   }
 

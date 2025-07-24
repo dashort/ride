@@ -18,13 +18,23 @@ let isDebugLoggingInProgress = false;
  * Updated for Twilio SMS integration with cleaned up structure.
  */
 const CONFIG = {
-// Performance and Debug Configuration
+// Production Performance Configuration
   performance: {
-    enableDebugLogging: PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true',
-    enablePerformanceTracking: true,
-    batchSize: 100, // For batch operations
-    maxCacheAge: 30 * 60 * 1000, // 30 minutes instead of 5
-    enableSmartCaching: true
+    enableDebugLogging: false,  // Disabled for production - major performance boost
+    enablePerformanceTracking: false,  // Disabled for production
+    batchSize: 100, // Keep this - good for batch operations
+    maxCacheAge: 30 * 60 * 1000, // Keep this - 30 minutes is good
+    enableSmartCaching: true  // Keep this - helps performance
+  },
+  
+  // Add system settings if not already present
+  system: {
+    enableDebugLogging: false,
+    enablePerformanceLogging: false,
+    enableActivityLogging: false,
+    timezone: 'America/Chicago',
+    dateFormat: 'MM/dd/yyyy',
+    timeFormat: 'hh:mm a'
   },
 
 // Twilio SMS Configuration
@@ -70,6 +80,7 @@ const CONFIG = {
       secondaryLocation: 'Final Location',
       ridersNeeded: 'Riders Needed',
       escortFee: 'Escort Fee',
+      requirements: 'Special Requirements',
       status: 'Status',
       notes: 'Notes',
       ridersAssigned: 'Riders Assigned',

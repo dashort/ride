@@ -460,6 +460,7 @@ function updateExistingRequest(requestData) {
       escortFee: CONFIG.columns.requests.escortFee,
       status: CONFIG.columns.requests.status,
       courtesy: CONFIG.columns.requests.courtesy,
+      specialRequirements: CONFIG.columns.requests.requirements,
       notes: CONFIG.columns.requests.notes
     };
 

@@ -184,7 +184,6 @@ function sendPreAssignmentEmail(requestId, riderName) {
     const ridersData = getRidersData();
     const nameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
     const emailIdx = ridersData.columnMap[CONFIG.columns.riders.email];
-    const jpNumberIdx = ridersData.columnMap[CONFIG.columns.riders.jpNumber];
     const riderRow = ridersData.data.find(r => r[nameIdx] === riderName);
     if (!riderRow) {
       return { success: false, message: 'Rider not found' };
@@ -195,32 +194,13 @@ function sendPreAssignmentEmail(requestId, riderName) {
       return { success: false, message: 'No email for rider' };
     }
 
-    const jpNumber = riderRow[jpNumberIdx] || '';
+    const dateStr = formatDateForDisplay(request.eventDate);
+    const timeStr = formatTimeForDisplay(request.startTime);
+    const msg =
+      `You have been proposed for escort request ${request.id} on ${dateStr} at ${timeStr}.\n` +
+      `Start: ${request.startLocation || ''}${request.endLocation ? ' → ' + request.endLocation : ''}`;
 
-    // Use the same format as the notification page by calling formatEmailNotification
-    const currentRider = { name: riderName, jpNumber: jpNumber };
-    const allRiders = [currentRider];
-
-    // Generate temporary assignment ID for confirm/decline URLs
-    const tempAssignmentId = `temp_${requestId}_${riderName.replace(/\s+/g, '_')}`;
-    const confirmUrl = `${getWebAppUrl()}?action=respondAssignment&assignmentId=${tempAssignmentId}&response=confirm`;
-    const declineUrl = `${getWebAppUrl()}?action=respondAssignment&assignmentId=${tempAssignmentId}&response=decline`;
-
-    const requestDetails = getRequestDetailsForNotification(requestId) || {};
-    const formatted = formatEmailNotification({
-      requestId: request.id,
-      eventDate: requestDetails.eventDate || request.eventDate,
-      startTime: requestDetails.startTime || request.startTime,
-      startLocation: requestDetails.startLocation || request.startLocation,
-      endLocation: requestDetails.endLocation || request.endLocation,
-      secondaryLocation: requestDetails.secondaryLocation,
-      requesterName: requestDetails.requesterName,
-      requesterContact: requestDetails.requesterContact,
-      escortFee: requestDetails.escortFee,
-      notes: requestDetails.notes
-    }, allRiders, confirmUrl, declineUrl);
-
-    return sendEmail(email, `Assignment ${tempAssignmentId} - ${request.id}`, formatted.text, formatted.html);
+    return sendEmail(email, `Proposed Escort Assignment ${request.id}`, msg, msg);
   } catch (err) {
     logError('Error sending pre-assignment email', err);
     return { success: false, message: err.message };
@@ -1034,6 +1014,7 @@ function formatRequestDetails(details) {
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.escortFee) parts.push(`💰 Escort Fee: ${details.escortFee}`);
+  if (details.requirements) parts.push(`Requirements: ${details.requirements}`);
   if (details.notes) parts.push(`Notes: ${details.notes}`);
   if (details.courtesy) {
     if (String(details.courtesy).toLowerCase() === 'yes') {
@@ -1572,6 +1553,7 @@ function getRequestDetailsForNotification(requestId) {
           secondaryLocation: getColumnValue(row, columnMap, CONFIG.columns.requests.secondaryLocation) || '',
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || '',
           ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
+          requirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
           status: getColumnValue(row, columnMap, CONFIG.columns.requests.status) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',
