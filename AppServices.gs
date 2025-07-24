@@ -4293,30 +4293,55 @@ function removeExistingAssignments(requestId) {
  */
 function updateRequestWithAssignedRiders(requestId, riderNames) {
   try {
-    const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
+    if (!requestId) {
+      throw new Error('Request ID is required for rider assignment update');
+    }
+
+    if (!riderNames) {
+      riderNames = [];
+    }
+
+    debugLog(`🔄 Updating request ${requestId} with riders: [${riderNames.join(', ')}]`);
+
+    const requestsSheet = getSheet(CONFIG.sheets.requests);
     if (!requestsSheet) {
       throw new Error('Requests sheet not found');
+    }
+
+    // Clear cache and get fresh data to avoid stale data issues
+    if (typeof clearRequestsCache === 'function') {
+      clearRequestsCache();
     }
 
     const requestsData = getRequestsData(false); // Don't use cache
     const columnMap = requestsData.columnMap;
 
-    // Find the request row
+    // Find the request row with enhanced logging for debugging
     let targetRowIndex = -1;
+    debugLog(`🔍 Searching for request ${requestId} in ${requestsData.data.length} rows`);
+    
     for (let i = 0; i < requestsData.data.length; i++) {
       const rowRequestId = getColumnValue(requestsData.data[i], columnMap, CONFIG.columns.requests.id);
-      if (String(rowRequestId).trim() === String(requestId).trim()) {
+      const trimmedRowId = String(rowRequestId).trim();
+      const trimmedSearchId = String(requestId).trim();
+      
+      debugLog(`  Row ${i}: ID = "${trimmedRowId}" (comparing with "${trimmedSearchId}")`);
+      
+      if (trimmedRowId === trimmedSearchId) {
         targetRowIndex = i;
+        debugLog(`✅ Found request at row index ${targetRowIndex}`);
         break;
       }
     }
 
     if (targetRowIndex === -1) {
+
       logError(
         `Request ${requestId} not found for rider assignment update`,
         new Error('RequestNotFound')
       );
       return; // Gracefully exit if request row is missing
+
     }
 
     const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
@@ -5061,5 +5086,207 @@ function cleanupOldAssignmentTriggers() {
     
   } catch (error) {
     logError('Error cleaning up assignment triggers', error);
+  }
+}
+
+/**
+ * Diagnostic function to troubleshoot assignment issues
+ * This function helps identify and fix common problems with request assignments
+ */
+function diagnoseAssignmentIssues(requestId = null) {
+  try {
+    console.log('🔍 Starting assignment issues diagnosis...');
+    
+    // Clear all caches first
+    if (typeof clearRequestsCache === 'function') {
+      clearRequestsCache();
+    }
+    
+    const issues = [];
+    const fixes = [];
+    
+    // Check if sheets exist
+    const requestsSheet = getSheet(CONFIG.sheets.requests);
+    const assignmentsSheet = getSheet(CONFIG.sheets.assignments);
+    
+    if (!requestsSheet) {
+      issues.push('Requests sheet not found');
+      return { success: false, issues, fixes };
+    }
+    
+    if (!assignmentsSheet) {
+      issues.push('Assignments sheet not found');
+      return { success: false, issues, fixes };
+    }
+    
+    // Get requests data
+    const requestsData = getRequestsData(false);
+    console.log(`📊 Found ${requestsData.data.length} requests in sheet`);
+    
+    // If specific request ID provided, focus on that
+    if (requestId) {
+      console.log(`🎯 Focusing diagnosis on request: ${requestId}`);
+      
+      const trimmedRequestId = String(requestId).trim();
+      let foundRequest = null;
+      
+      for (let i = 0; i < requestsData.data.length; i++) {
+        const row = requestsData.data[i];
+        const rowId = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+        const trimmedRowId = String(rowId).trim();
+        
+        if (trimmedRowId === trimmedRequestId) {
+          foundRequest = {
+            index: i,
+            sheetRow: i + 2,
+            data: row,
+            id: rowId
+          };
+          break;
+        }
+      }
+      
+      if (!foundRequest) {
+        issues.push(`Request ${requestId} not found in requests sheet`);
+        
+        // Show similar IDs
+        const similarIds = requestsData.data.map(row => {
+          const id = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+          return String(id).trim();
+        }).filter(id => {
+          const searchPrefix = trimmedRequestId.substring(0, Math.min(3, trimmedRequestId.length));
+          return id.includes(searchPrefix) && id !== trimmedRequestId;
+        });
+        
+        if (similarIds.length > 0) {
+          console.log(`🔍 Similar request IDs found: ${similarIds.join(', ')}`);
+          fixes.push(`Check if request ID should be one of: ${similarIds.join(', ')}`);
+        }
+        
+        // Show all request IDs for debugging
+        const allIds = requestsData.data.map(row => {
+          const id = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+          return String(id).trim();
+        }).filter(id => id.length > 0).slice(0, 20);
+        
+        console.log(`📋 Available request IDs (first 20): ${allIds.join(', ')}`);
+        
+      } else {
+        console.log(`✅ Found request ${requestId} at row ${foundRequest.sheetRow}`);
+        
+        // Check request details
+        const status = getColumnValue(foundRequest.data, requestsData.columnMap, CONFIG.columns.requests.status);
+        const ridersAssigned = getColumnValue(foundRequest.data, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+        const ridersNeeded = getColumnValue(foundRequest.data, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded);
+        
+        console.log(`  Status: ${status}`);
+        console.log(`  Riders Assigned: ${ridersAssigned}`);
+        console.log(`  Riders Needed: ${ridersNeeded}`);
+        
+        // Check for orphaned assignments
+        const assignments = getAssignmentsForRequest(requestId);
+        console.log(`  Assignments found: ${assignments.length}`);
+        
+        if (assignments.length > 0) {
+          const assignedRiderNames = assignments.map(a => a.riderName).filter(name => name);
+          const ridersAssignedInRequest = String(ridersAssigned || '').split(',').map(name => name.trim()).filter(name => name);
+          
+          if (assignedRiderNames.length !== ridersAssignedInRequest.length) {
+            issues.push(`Mismatch between assignments (${assignedRiderNames.length}) and request riders (${ridersAssignedInRequest.length})`);
+            fixes.push(`Run syncAssignmentsWithRequest('${requestId}') to fix`);
+          }
+        }
+      }
+    }
+    
+    // General data integrity checks
+    console.log('🔧 Running general data integrity checks...');
+    
+    // Check for duplicate request IDs
+    const requestIds = requestsData.data.map(row => {
+      const id = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+      return String(id).trim();
+    }).filter(id => id.length > 0);
+    
+    const duplicateIds = requestIds.filter((id, index) => requestIds.indexOf(id) !== index);
+    if (duplicateIds.length > 0) {
+      issues.push(`Duplicate request IDs found: ${[...new Set(duplicateIds)].join(', ')}`);
+      fixes.push('Remove duplicate request rows or update IDs to be unique');
+    }
+    
+    // Check for empty request IDs
+    const emptyIdCount = requestsData.data.filter(row => {
+      const id = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+      return !id || String(id).trim().length === 0;
+    }).length;
+    
+    if (emptyIdCount > 0) {
+      issues.push(`${emptyIdCount} requests have empty or missing IDs`);
+      fixes.push('Add valid IDs to requests missing them');
+    }
+    
+    const result = {
+      success: issues.length === 0,
+      issues,
+      fixes,
+      requestsCount: requestsData.data.length,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log(`📋 Diagnosis complete. Issues found: ${issues.length}`);
+    if (issues.length > 0) {
+      console.log('❌ Issues:', issues);
+      console.log('🔧 Suggested fixes:', fixes);
+    } else {
+      console.log('✅ No issues found');
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error during diagnosis:', error);
+    return {
+      success: false,
+      issues: [`Diagnosis failed: ${error.message}`],
+      fixes: ['Check console logs for detailed error information'],
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Function to sync assignments with request data
+ * This helps fix discrepancies between the assignments sheet and request riders
+ */
+function syncAssignmentsWithRequest(requestId) {
+  try {
+    console.log(`🔄 Syncing assignments for request ${requestId}...`);
+    
+    // Get assignments for this request
+    const assignments = getAssignmentsForRequest(requestId);
+    const assignedRiderNames = assignments.map(a => a.riderName).filter(name => name && name.trim());
+    
+    console.log(`Found ${assignments.length} assignments for request ${requestId}`);
+    console.log(`Rider names: ${assignedRiderNames.join(', ')}`);
+    
+    // Update the request with the current assignments
+    updateRequestWithAssignedRiders(requestId, assignedRiderNames);
+    
+    console.log(`✅ Successfully synced request ${requestId} with ${assignedRiderNames.length} riders`);
+    
+    return {
+      success: true,
+      message: `Synced request ${requestId} with ${assignedRiderNames.length} assigned riders`,
+      requestId,
+      riderNames: assignedRiderNames
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error syncing request ${requestId}:`, error);
+    return {
+      success: false,
+      error: error.message,
+      requestId
+    };
   }
 }
