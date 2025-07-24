@@ -1007,8 +1007,8 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
     `Assigned Riders: ${riders}`,
     '',
     `First Location: ${startLocation || ''}`,
+    `Dropoff Location: ${secondaryLocation || ''}`,
     `Second Location: ${endLocation || ''}`,
-    `Final Location: ${secondaryLocation || ''}`,
     '',
     `Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}`,
     escortFee ? `Fee: $${escortFee}` : '',
@@ -1024,8 +1024,8 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
     `<p><strong>Escort ${requestId}</strong></p>`,
     `<p>Date: ${dateStr}<br>Time: ${timeStr}<br>Assigned Riders: ${riders}</p>`,
     `<p>${startLocation ? 'First Location: ' + startLocation + '<br>' : ''}` +
-      `${endLocation ? 'Second Location: ' + endLocation + '<br>' : ''}` +
-      `${secondaryLocation ? 'Final Location: ' + secondaryLocation : ''}</p>`,
+      `${secondaryLocation ? 'Dropoff Location: ' + secondaryLocation + '<br>' : ''}` +
+      `${endLocation ? 'Second Location: ' + endLocation : ''}</p>`,
     `<p>Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}<br>` +
       `${escortFee ? 'Fee: $' + escortFee + '<br>' : ''}` +
       `${notes ? 'Notes: ' + notes : ''}</p>`,
@@ -1056,8 +1056,8 @@ function formatRequestDetails(details) {
   if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
   if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
   if (details.startLocation) parts.push(`Start Location: ${details.startLocation}`);
+  if (details.secondaryLocation) parts.push(`Dropoff Location: ${details.secondaryLocation}`);
   if (details.endLocation) parts.push(`Second Location: ${details.endLocation}`);
-  if (details.secondaryLocation) parts.push(`Final Location: ${details.secondaryLocation}`);
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.escortFee) parts.push(`💰 Escort Fee: ${details.escortFee}`);
