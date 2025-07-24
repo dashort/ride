@@ -1024,8 +1024,8 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
     `<p><strong>Escort ${requestId}</strong></p>`,
     `<p>Date: ${dateStr}<br>Time: ${timeStr}<br>Assigned Riders: ${riders}</p>`,
     `<p>${startLocation ? 'Pickup: ' + startLocation + '<br>' : ''}` +
-      `${endLocation ? 'Dropoff: ' + endLocation + '<br>' : ''}` +
-      `${secondaryLocation ? 'Second: ' + secondaryLocation : ''}</p>`,
+      `${endLocation ? 'Second: ' + endLocation + '<br>' : ''}` +
+      `${secondaryLocation ? 'Dropoff: ' + secondaryLocation : ''}</p>`,
     `<p>Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}<br>` +
       `${escortFee ? 'Fee: $' + escortFee + '<br>' : ''}` +
       `${notes ? 'Notes: ' + notes : ''}</p>`,
@@ -1056,8 +1056,8 @@ function formatRequestDetails(details) {
   if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
   if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
   if (details.startLocation) parts.push(`Pickup: ${details.startLocation}`);
-  if (details.endLocation) parts.push(`Dropoff: ${details.endLocation}`);
-  if (details.secondaryLocation) parts.push(`Second: ${details.secondaryLocation}`);
+  if (details.endLocation) parts.push(`Second: ${details.endLocation}`);
+  if (details.secondaryLocation) parts.push(`Dropoff: ${details.secondaryLocation}`);
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.escortFee) parts.push(`💰 Escort Fee: ${details.escortFee}`);
