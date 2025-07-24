@@ -170,6 +170,7 @@ function sendIndividualNotification(requestId, riderName, type) {
 
 /**
  * Sends a provisional email notification to a rider before the assignment is saved.
+ * NOW USES THE SAME EMAIL FORMAT AS THE NOTIFICATION PAGE
  * @param {string} requestId The request ID.
  * @param {string} riderName The rider's full name.
  * @return {{success:boolean,message:string}} Result object.
@@ -194,13 +195,59 @@ function sendPreAssignmentEmail(requestId, riderName) {
       return { success: false, message: 'No email for rider' };
     }
 
-    const dateStr = formatDateForDisplay(request.eventDate);
-    const timeStr = formatTimeForDisplay(request.startTime);
-    const msg =
-      `You have been proposed for escort request ${request.id} on ${dateStr} at ${timeStr}.\n` +
-      `Start: ${request.startLocation || ''}${request.endLocation ? ' → ' + request.endLocation : ''}`;
+    // CREATE A TEMPORARY ASSIGNMENT ID FOR THE EMAIL
+    const tempAssignmentId = `TEMP-${requestId}-${riderName.replace(/\s+/g, '')}`;
 
-    return sendEmail(email, `Proposed Escort Assignment ${request.id}`, msg, msg);
+    // USE THE SAME MESSAGE FORMATTING AS THE NOTIFICATION PAGE
+    const emailMessage = formatNotificationMessage({
+      assignmentId: tempAssignmentId,
+      requestId: requestId,
+      riderName: riderName,
+      eventDate: request.eventDate,
+      startTime: request.startTime,
+      startLocation: request.startLocation,
+      endLocation: request.endLocation
+    }, true);
+
+    // BUILD HTML EMAIL VERSION (SAME AS NOTIFICATION PAGE)
+    let emailHtml = null;
+    try {
+      // Get additional request details for comprehensive email
+      const requestDetails = getRequestDetailsForNotification(requestId) || {};
+      
+      // Create confirmation URLs (even though this is pre-assignment)
+      const confirmUrl = `${getWebAppUrl()}?action=respondRequest&requestId=${requestId}&rider=${encodeURIComponent(riderName)}&response=confirm`;
+      const declineUrl = `${getWebAppUrl()}?action=respondRequest&requestId=${requestId}&rider=${encodeURIComponent(riderName)}&response=decline`;
+
+      const formatted = formatEmailNotification({
+        requestId,
+        eventDate: requestDetails.eventDate || request.eventDate,
+        startTime: requestDetails.startTime || request.startTime,
+        startLocation: requestDetails.startLocation || request.startLocation,
+        endLocation: requestDetails.endLocation || request.endLocation,
+        secondaryLocation: requestDetails.secondaryLocation,
+        requesterName: requestDetails.requesterName,
+        requesterContact: requestDetails.requesterContact,
+        escortFee: requestDetails.escortFee,
+        notes: requestDetails.notes
+      }, [{ name: riderName, jpNumber: '' }], confirmUrl, declineUrl);
+
+      emailHtml = formatted.html;
+    } catch (formatError) {
+      debugLog('⚠️ Could not format HTML email, using plain text only:', formatError);
+    }
+
+    // SEND EMAIL USING SAME METHOD AS NOTIFICATION PAGE
+    const subject = `Escort Assignment Proposal - ${requestId}`;
+    const result = sendEmail(email, subject, emailMessage, emailHtml);
+
+    if (result.success) {
+      // Log the pre-assignment email activity
+      logActivity(`Pre-assignment email sent to ${riderName} for ${requestId}`);
+    }
+
+    return result;
+
   } catch (err) {
     logError('Error sending pre-assignment email', err);
     return { success: false, message: err.message };
