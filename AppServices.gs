@@ -4335,31 +4335,13 @@ function updateRequestWithAssignedRiders(requestId, riderNames) {
     }
 
     if (targetRowIndex === -1) {
-      // Enhanced error handling: provide more context
-      const availableIds = requestsData.data.map((row, index) => {
-        const id = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-        return `Row ${index}: "${String(id).trim()}"`;
-      }).slice(0, 10); // Show first 10 for debugging
-      
-      const errorMsg = `Request ${requestId} not found for rider assignment update. Available request IDs (first 10): ${availableIds.join(', ')}`;
-      logError('Request not found error', { 
-        searchedId: requestId, 
-        trimmedId: String(requestId).trim(),
-        totalRows: requestsData.data.length,
-        availableIds: availableIds 
-      });
-      
-      // Try to find similar IDs to help with debugging
-      const similarIds = requestsData.data.map(row => {
-        const id = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
-        return String(id).trim();
-      }).filter(id => id.includes(String(requestId).trim().substring(0, 3))); // Find IDs with similar prefix
-      
-      if (similarIds.length > 0) {
-        logError('Similar request IDs found', { similarIds });
-      }
-      
-      throw new Error(errorMsg);
+
+      logError(
+        `Request ${requestId} not found for rider assignment update`,
+        new Error('RequestNotFound')
+      );
+      return; // Gracefully exit if request row is missing
+
     }
 
     const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
