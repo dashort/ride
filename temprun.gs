@@ -732,4 +732,136 @@ function showRequestsSheetStatus() {
     console.error('❌ Error checking status:', error);
   }
 }
+/**
+ * Custom function to update specific header names
+ * Change the headerChanges object below to specify your desired changes
+ */
+function updateSpecificHeaders() {
+  console.log('🔧 Updating specific header names...');
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const requestsSheet = ss.getSheetByName('Requests');
+    
+    if (!requestsSheet) {
+      console.log('❌ Requests sheet not found');
+      return { success: false, message: 'Requests sheet not found' };
+    }
+    
+    // MODIFY THIS OBJECT TO CHANGE YOUR HEADERS
+    // Format: 'Old Header Name': 'New Header Name'
+    const headerChanges = {
+      'Start Location': 'Pickup',                 // Change start location to pickup
+      'Secondary Location': 'Second',             // Change secondary location to second
+      'End Location': 'Dropoff'                  // Change end location to dropoff
+    };
+    
+    // Get current headers
+    const headerRange = requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn());
+    const currentHeaders = headerRange.getValues()[0];
+    
+    console.log('📋 Current headers:', currentHeaders);
+    
+    // Apply changes
+    let changesApplied = 0;
+    const newHeaders = currentHeaders.map(header => {
+      if (headerChanges[header]) {
+        console.log(`✏️ Changing "${header}" to "${headerChanges[header]}"`);
+        changesApplied++;
+        return headerChanges[header];
+      }
+      return header;
+    });
+    
+    if (changesApplied === 0) {
+      console.log('ℹ️ No matching headers found to change');
+      return { 
+        success: true, 
+        message: 'No changes needed',
+        availableHeaders: currentHeaders 
+      };
+    }
+    
+    // Update the headers in the sheet
+    headerRange.setValues([newHeaders]);
+    
+    // Reapply header formatting
+    headerRange.setFontWeight('bold')
+              .setBackground('#4285f4')
+              .setFontColor('white')
+              .setHorizontalAlignment('center');
+    
+    console.log(`✅ Successfully updated ${changesApplied} headers`);
+    console.log('📋 New headers:', newHeaders);
+    
+    // Protect the updated headers
+    try {
+      const protection = headerRange.protect();
+      protection.setDescription('🛡️ Request Headers - Protected');
+      protection.setWarningOnly(true);
+      console.log('🛡️ Headers protected');
+    } catch (protectionError) {
+      console.log('⚠️ Could not protect headers:', protectionError.message);
+    }
+    
+    return {
+      success: true,
+      message: `Successfully updated ${changesApplied} headers`,
+      changesApplied: changesApplied,
+      oldHeaders: currentHeaders,
+      newHeaders: newHeaders
+    };
+    
+  } catch (error) {
+    console.error('❌ Error updating headers:', error);
+    return { success: false, error: error.message };
+  }
+}
 
+/**
+ * Preview what headers will be changed without actually changing them
+ */
+function previewHeaderChanges() {
+  console.log('👀 Previewing header changes...');
+  
+  // MODIFY THIS TO MATCH YOUR DESIRED CHANGES
+  const headerChanges = {
+    'Start Location': 'Pickup',
+    'Secondary Location': 'Second', 
+    'End Location': 'Dropoff'
+  };
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const requestsSheet = ss.getSheetByName('Requests');
+    
+    if (!requestsSheet) {
+      console.log('❌ Requests sheet not found');
+      return;
+    }
+    
+    const currentHeaders = requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0];
+    
+    console.log('📋 Preview of changes:');
+    console.log('Current headers:', currentHeaders);
+    
+    let changesFound = 0;
+    currentHeaders.forEach((header, index) => {
+      if (headerChanges[header]) {
+        console.log(`Column ${index + 1}: "${header}" → "${headerChanges[header]}"`);
+        changesFound++;
+      }
+    });
+    
+    if (changesFound === 0) {
+      console.log('ℹ️ No matching headers found for changes');
+      console.log('💡 Available headers to change:', currentHeaders);
+    } else {
+      console.log(`✅ Found ${changesFound} headers that will be changed`);
+      console.log('💡 Run updateSpecificHeaders() to apply these changes');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error previewing changes:', error);
+  }
+}
