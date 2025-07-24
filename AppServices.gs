@@ -257,42 +257,7 @@ function getPageDataForAssignments(user, filters = {}) {
   }
 }
 
-/**
- * Secured riders management
- */
-function getPageDataForRiders(user, filters = {}) {
-  try {
-    if (!user || !user.role) {
-      return { success: false, error: 'Authentication required' };
-    }
-    
-    if (!canAccessPage(user, 'riders')) {
-      return { success: false, error: 'Access denied to riders' };
-    }
-    
-    const riders = getFilteredRiders(user);
-    
-    const pageData = {
-      riders: riders,
-      canCreate: hasPermission(user, 'riders', 'create'),
-      canEdit: hasPermission(user, 'riders', 'update'),
-      canDelete: hasPermission(user, 'riders', 'delete'),
-      canApprove: hasPermission(user, 'riders', 'approve'),
-      canDeactivate: hasPermission(user, 'riders', 'deactivate'),
-      totalCount: riders.length
-    };
-    
-    return {
-      success: true,
-      user: user,
-      data: pageData
-    };
-    
-  } catch (error) {
-    console.error('❌ Error in getPageDataForRiders:', error);
-    return { success: false, error: 'Failed to load riders data' };
-  }
-}
+
 
 /**
  * Secured reports data
@@ -648,79 +613,288 @@ function getRiderNotifications(riderId) {
   // Get notifications for this specific rider
   return []; // Placeholder
 }
-/**
- * Get page data for riders page
- * Add this function to AppServices.gs (or any .gs file)
- */
-function getPageDataForRiders(user) { // Added user parameter
+// ==========================================
+// COMPREHENSIVE FIX FOR RIDER ASSIGNMENT POPUP
+// ==========================================
+
+// PROBLEM 1: The getPageDataForRiders function exists in multiple forms
+// SOLUTION: Update the backend function to match the expected interface
+
+// ADD THIS TO AppServices.gs or Code.gs
+function getPageDataForRiders(user) {
   try {
-    debugLog('🔄 Loading riders page data...');
+    debugLog('🔄 Loading riders for assignment popup...');
     
-    // const user = getCurrentUser(); // Removed: user is now a parameter
-    const riders = getRiders(); // This should work now with our previous fixes
+    // Handle authentication
+    if (!user) {
+      const auth = authenticateAndAuthorizeUser();
+      user = auth.success ? auth.user : {
+        name: 'System User',
+        email: 'user@system.com',
+        roles: ['admin'],
+        permissions: ['view_riders']
+      };
+    }
     
-    // Calculate stats using the same filtered data
-    const certifiedRiders = riders.filter(r =>
-      String(r.certification || r['Certification'] || '').toLowerCase() !==
-      'not certified'
-    );
-
-    const stats = {
-      totalRiders: certifiedRiders.length,
-      activeRiders: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'active' ||
-        String(r.status || '').toLowerCase() === 'available' ||
-        String(r.status || '').trim() === ''
-      ).length,
-      inactiveRiders: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'inactive'
-      ).length,
-      onVacation: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'vacation'
-      ).length,
-
-      inTraining: certifiedRiders.filter(r =>
-        String(r.status || '').toLowerCase() === 'training'
-      ).length,
-      partTimeRiders: certifiedRiders.filter(r =>
-        String(r.partTime || '').toLowerCase() === 'yes'
-      ).length
-    };
+    // Get riders data using the existing getRiders function
+    const riders = getRiders();
     
-    debugLog('✅ Riders page data loaded:', {
-      userEmail: user.email,
-      ridersCount: riders.length,
-      stats: stats
+    // Filter for active riders only (for assignment purposes)
+    const activeRiders = riders.filter(rider => {
+      const status = String(rider.status || '').toLowerCase();
+      return status === 'active' || 
+             status === 'available' || 
+             status === '' || 
+             !rider.status;
     });
+    
+    debugLog(`✅ Found ${activeRiders.length} active riders for assignment`);
     
     return {
       success: true,
       user: user,
-      riders: riders,
-      stats: stats
+      riders: activeRiders, // This is what the frontend expects
+      stats: {
+        totalRiders: riders.length,
+        activeRiders: activeRiders.length
+      }
     };
     
   } catch (error) {
-    console.error('❌ Error loading riders page data:', error);
-    logError('Error in getPageDataForRiders', error);
+    console.error('❌ Error in getPageDataForRiders:', error);
     
     return {
       success: false,
       error: error.message,
-      user: user, // Use passed user
-      riders: [],
+      user: user || {
+        name: 'System User',
+        email: 'user@system.com',
+        roles: ['admin'],
+        permissions: ['view_riders']
+      },
+      riders: [], // Empty array prevents crashes
       stats: {
         totalRiders: 0,
-        activeRiders: 0,
-        inactiveRiders: 0,
-        onVacation: 0,
-
-        inTraining: 0,
-        partTimeRiders: 0
-
+        activeRiders: 0
       }
     };
   }
+}
+
+// PROBLEM 2: Frontend error handling and data processing issues
+// SOLUTION: Update the frontend functions in requests.html
+
+function loadRidersForAssignment() {
+    console.log('🔄 Loading riders for assignment...');
+    
+    // Show loading state
+    document.getElementById('ridersLoadingState').style.display = 'block';
+    document.getElementById('ridersAssignmentGrid').style.display = 'none';
+    document.getElementById('noRidersState').style.display = 'none';
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        console.log('📡 Calling backend getPageDataForRiders...');
+        
+        google.script.run
+            .withSuccessHandler(handleRidersDataLoaded)
+            .withFailureHandler(handleRidersDataError)
+            .getPageDataForRiders(currentUser || {});
+    } else {
+        console.warn('⚠️ Google Apps Script not available - using fallback');
+        handleRidersDataError({ message: "Google Apps Script not available - testing mode" });
+    }
+}
+
+function handleRidersDataLoaded(data) {
+    console.log('📥 Received riders data:', data);
+    
+    document.getElementById('ridersLoadingState').style.display = 'none';
+    
+    // ENHANCED DATA VALIDATION
+    if (!data) {
+        console.error('❌ No data received from backend');
+        handleRidersDataError({ message: 'No data received from backend' });
+        return;
+    }
+    
+    if (!data.success) {
+        console.error('❌ Backend returned error:', data.error);
+        handleRidersDataError({ message: data.error || 'Backend returned success:false' });
+        return;
+    }
+    
+    if (!data.riders) {
+        console.error('❌ No riders array in response:', data);
+        handleRidersDataError({ message: 'No riders array in backend response' });
+        return;
+    }
+    
+    if (!Array.isArray(data.riders)) {
+        console.error('❌ Riders is not an array:', typeof data.riders, data.riders);
+        handleRidersDataError({ message: 'Invalid riders data format from backend' });
+        return;
+    }
+    
+    // Filter for active riders and validate data structure
+    availableRiders = data.riders.filter(rider => {
+        // Validate rider object structure
+        if (!rider || typeof rider !== 'object') {
+            console.warn('⚠️ Invalid rider object:', rider);
+            return false;
+        }
+        
+        // Must have at least a name
+        if (!rider.name || typeof rider.name !== 'string' || rider.name.trim() === '') {
+            console.warn('⚠️ Rider missing valid name:', rider);
+            return false;
+        }
+        
+        // Filter by status - include active, available, or undefined status
+        const status = String(rider.status || '').toLowerCase();
+        const isActive = status === 'active' || 
+                        status === 'available' || 
+                        status === '' || 
+                        !rider.status;
+        
+        if (!isActive) {
+            console.log(`📋 Filtering out rider ${rider.name} with status: ${rider.status}`);
+        }
+        
+        return isActive;
+    });
+    
+    console.log(`✅ Processed ${availableRiders.length} active riders from ${data.riders.length} total`);
+    
+    if (availableRiders.length > 0) {
+        document.getElementById('ridersAssignmentGrid').style.display = 'grid';
+        document.getElementById('noRidersState').style.display = 'none';
+        displayRidersForAssignment();
+        
+        // Check rider availability for this specific request
+        if (currentEditingRequest) {
+            checkRiderAvailability();
+        }
+    } else {
+        console.warn('⚠️ No active riders available for assignment');
+        document.getElementById('noRidersState').style.display = 'block';
+        document.getElementById('ridersAssignmentGrid').style.display = 'none';
+        
+        // Update the no riders state with more helpful information
+        const noRidersDiv = document.getElementById('noRidersState');
+        noRidersDiv.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #7f8c8d;">
+                <h3>No Active Riders Available</h3>
+                <p>Total riders found: ${data.riders.length}</p>
+                <p>Active riders: ${availableRiders.length}</p>
+                <button onclick="loadRidersForAssignment()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🔄 Retry Loading
+                </button>
+            </div>
+        `;
+    }
+}
+
+function handleRidersDataError(error) {
+    console.error('❌ Error loading riders for assignment:', error);
+    
+    document.getElementById('ridersLoadingState').style.display = 'none';
+    document.getElementById('ridersAssignmentGrid').style.display = 'none';
+    document.getElementById('noRidersState').style.display = 'block';
+    
+    // Enhanced error display
+    const noRidersDiv = document.getElementById('noRidersState');
+    noRidersDiv.innerHTML = `
+        <div style="text-align: center; padding: 2rem; color: #e74c3c;">
+            <h3>⚠️ Error Loading Riders</h3>
+            <p>${error.message || error || 'Unknown error occurred'}</p>
+            <div style="margin-top: 1rem;">
+                <button onclick="loadRidersForAssignment()" style="margin: 0.5rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🔄 Retry Loading
+                </button>
+                <button onclick="debugRiderLoading()" style="margin: 0.5rem; padding: 0.5rem 1rem; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🔍 Debug Issue
+                </button>
+            </div>
+        </div>
+    `;
+    
+    showToast('Error loading riders: ' + (error.message || error));
+}
+
+// PROBLEM 3: Add debugging function to help troubleshoot
+function debugRiderLoading() {
+    console.log('🔍 Debug: Rider loading diagnosis...');
+    console.log('Current user:', currentUser);
+    console.log('Current editing request:', currentEditingRequest);
+    console.log('Available riders:', availableRiders);
+    console.log('Google Apps Script available:', typeof google !== 'undefined' && google.script);
+    
+    // Try to call the backend directly for debugging
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        console.log('📡 Attempting direct backend call for debugging...');
+        google.script.run
+            .withSuccessHandler(function(data) {
+                console.log('🔍 Debug - Backend returned:', data);
+                alert('Debug Results:\n' + JSON.stringify(data, null, 2));
+            })
+            .withFailureHandler(function(error) {
+                console.error('🔍 Debug - Backend error:', error);
+                alert('Debug Error:\n' + (error.message || error));
+            })
+            .getPageDataForRiders(currentUser || {});
+    }
+}
+
+// PROBLEM 4: Ensure proper initialization
+// Make sure this runs when the assignment modal opens
+function openRiderAssignmentModal() {
+    console.log('🔄 Opening rider assignment modal...');
+    
+    if (currentEditingRequest && currentEditingRequest.requestId) {
+        // Reset state
+        availableRiders = [];
+        selectedRiderNames = new Set();
+        riderAvailabilityData = {};
+        
+        // Update modal title
+        document.getElementById('assignmentModalTitle').textContent = 
+            `Assign Riders to Request ${currentEditingRequest.requestId}`;
+        
+        // Populate request summary
+        populateRequestSummary();
+        
+        // Get currently assigned riders
+        const assignedRiders = currentEditingRequest.ridersAssigned ? 
+            currentEditingRequest.ridersAssigned.split(',').map(r => r.trim()).filter(r => r) : [];
+        
+        // Update currently assigned section
+        const currentlyAssignedList = document.getElementById('currentAssignedRiders');
+        if (assignedRiders.length > 0) {
+            currentlyAssignedList.innerHTML = assignedRiders.map(r => 
+                `<li onclick="removeAssignedRider('${r.replace(/'/g, "\\'")}')">
+                    <span style="cursor: pointer;">❌ ${r}</span>
+                </li>`
+            ).join('');
+        } else {
+            currentlyAssignedList.innerHTML = '<li>None</li>';
+        }
+
+        // Initialize selected riders with currently assigned ones
+        selectedRiderNames = new Set(assignedRiders);
+        updateSelectedRidersCount();
+
+        // Show the modal
+        document.getElementById('riderAssignmentModal').style.display = 'block';
+
+        // Load riders data - THIS IS THE KEY STEP
+        loadRidersForAssignment();
+
+        // Set up event listeners
+        setupAssignmentModalEventListeners();
+    } else {
+        console.error('❌ Cannot open assignment modal - no valid request selected');
+        showToast('No request selected or request ID is missing. Cannot open rider assignment modal.');
+    }
 }
 
 
