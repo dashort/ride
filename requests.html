@@ -1186,7 +1186,9 @@
                     updateSelection();
                 });
 
-                item.addEventListener('click', () => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     selectRequester(data);
                 });
 
@@ -1235,7 +1237,10 @@
         function selectRequester(data) {
             input.value = data.name;
             contactField.value = data.contact;
+            
+            // Hide dropdown immediately and clear content
             dropdown.style.display = 'none';
+            dropdown.innerHTML = '';
             currentSelection = -1;
             
             // Show confirmation message
@@ -1248,10 +1253,20 @@
             }
         }
 
+        // Hide dropdown when input loses focus
+        input.addEventListener('blur', function(e) {
+            // Small delay to allow click events to process first
+            setTimeout(() => {
+                dropdown.style.display = 'none';
+                currentSelection = -1;
+            }, 150);
+        });
+
         // Hide dropdown when clicking outside
         document.addEventListener('click', function(e) {
             if (!input.parentElement.contains(e.target)) {
                 dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
                 currentSelection = -1;
             }
         });
@@ -1354,7 +1369,9 @@
                     updateSelection();
                 });
 
-                item.addEventListener('click', () => {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     selectLocation(data.value);
                 });
 
@@ -1408,17 +1425,30 @@
 
         function selectLocation(locationValue) {
             input.value = locationValue;
+            
+            // Hide dropdown immediately and clear content
             dropdown.style.display = 'none';
+            dropdown.innerHTML = '';
             currentSelection = -1;
             
             // Trigger change event for any listeners
             input.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
+        // Hide dropdown when input loses focus
+        input.addEventListener('blur', function(e) {
+            // Small delay to allow click events to process first
+            setTimeout(() => {
+                dropdown.style.display = 'none';
+                currentSelection = -1;
+            }, 150);
+        });
+
         // Hide dropdown when clicking outside
         document.addEventListener('click', function(e) {
             if (!input.parentElement.contains(e.target)) {
                 dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
                 currentSelection = -1;
             }
         });
