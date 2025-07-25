@@ -585,7 +585,7 @@ function setupRequestsDataValidationCorrected(sheet, headers) {
     if (typeColIndex >= 0 && lastRow > 1) {
       const typeRange = sheet.getRange(2, typeColIndex + 1, lastRow - 1, 1);
       const typeValidation = SpreadsheetApp.newDataValidation()
-        .requireValueInList(['Funeral', 'Wedding', 'Parade', 'VIP', 'Emergency', 'Training', 'Other'])
+        .requireValueInList(CONFIG.options.requestTypes)
         .setAllowInvalid(false)
         .setHelpText('Select request type')
         .build();
