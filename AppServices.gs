@@ -2409,9 +2409,9 @@ function createSampleDataForAssignments() {
         debugLog('📋 Creating sample requests...');
         
         const headers = [
-          'Request ID', 'Requester Name', 'Requester Email', 'Type', 
-          'Event Date', 'Start Time', 'End Time', 'Start Location', 
-          'End Location', 'Riders Needed', 'Riders Assigned', 'Status', 
+          'Request ID', 'Requester Name', 'Requester Email', 'Type',
+          'Event Date', 'Start Time', 'End Time', 'Pickup Location',
+          'Dropoff', 'Riders Needed', 'Riders Assigned', 'Status',
           'Notes', 'Created Date'
         ];
         

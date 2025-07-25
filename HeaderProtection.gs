@@ -25,8 +25,8 @@ function protectAllSheetHeadersFixed() {
         name: 'Requests',
         headers: [
           'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
-          'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location',
-          'Secondary Location', 'Request Type', 'Riders Needed', 'Escort Fee',
+          'Event Date', 'Start Time', 'End Time', 'Pickup Location', 'Second',
+          'Dropoff', 'Request Type', 'Riders Needed', 'Escort Fee',
           'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
         ]
       },
@@ -41,7 +41,7 @@ function protectAllSheetHeadersFixed() {
         name: 'Assignments',
         headers: [
           'Assignment ID', 'Request ID', 'Event Date', 'Start Time', 'End Time',
-          'Start Location', 'End Location', 'Rider Name', 'JP Number',
+          'Pickup Location', 'Second', 'Dropoff', 'Rider Name', 'JP Number',
           'Status', 'Created Date', 'Notified', 'SMS Sent', 'Email Sent', 'Notes'
         ]
       }
@@ -393,9 +393,9 @@ function dailyHeaderValidation() {
   
   try {
     const criticalSheets = [
-      { name: 'Requests', headers: ['Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact', 'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location', 'Secondary Location', 'Request Type', 'Riders Needed', 'Escort Fee', 'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'] },
+      { name: 'Requests', headers: ['Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact', 'Event Date', 'Start Time', 'End Time', 'Pickup Location', 'Second', 'Dropoff', 'Request Type', 'Riders Needed', 'Escort Fee', 'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'] },
       { name: 'Riders', headers: ['Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status', 'Certification', 'Total Assignments', 'Last Assignment Date'] },
-      { name: 'Assignments', headers: ['Assignment ID', 'Request ID', 'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location', 'Rider Name', 'JP Number', 'Status', 'Created Date', 'Notified', 'SMS Sent', 'Email Sent', 'Notes'] }
+      { name: 'Assignments', headers: ['Assignment ID', 'Request ID', 'Event Date', 'Start Time', 'End Time', 'Pickup Location', 'Second', 'Dropoff', 'Rider Name', 'JP Number', 'Status', 'Created Date', 'Notified', 'SMS Sent', 'Email Sent', 'Notes'] }
     ];
     
     let totalIssues = 0;

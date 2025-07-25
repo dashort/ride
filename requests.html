@@ -625,9 +625,9 @@
                         <th id="endTimeHeader">End Time</th>
                         <th>Requester</th>
                         <th>Type</th>
-                        <th>Start Location</th>
-                        <th>Second Location</th>
-                        <th>Final Location</th>
+                        <th>Pickup Location</th>
+                        <th>Second</th>
+                        <th>Dropoff</th>
                         <th>Riders Needed</th>
                         <th>Escort Fee</th>
                         <th>Status</th>
@@ -705,17 +705,17 @@
                         
                         <div>
                             <div class="form-group">
-                                <label for="editStartLocation">Start Location *</label>
+                                <label for="editStartLocation">Pickup Location *</label>
                                 <input type="text" id="editStartLocation" required />
                             </div>
                             
                             <div class="form-group">
-                                <label for="editEndLocation">Second Location</label>
+                                <label for="editEndLocation">Second</label>
                                 <input type="text" id="editEndLocation" />
                             </div>
 
                             <div class="form-group">
-                                <label for="editSecondaryLocation">Final Location *</label>
+                                <label for="editSecondaryLocation">Dropoff *</label>
                                 <input type="text" id="editSecondaryLocation" required />
                             </div>
                             
@@ -798,10 +798,10 @@
                             <strong>Riders Needed:</strong> <span id="assignmentRidersNeeded"></span>
                         </div>
                         <div>
-                            <strong>Start Location:</strong> <span id="assignmentStartLocation"></span>
+                            <strong>Pickup Location:</strong> <span id="assignmentStartLocation"></span>
                         </div>
                         <div>
-                            <strong>Second Location:</strong> <span id="assignmentEndLocation"></span>
+                            <strong>Second:</strong> <span id="assignmentEndLocation"></span>
                         </div>
                     </div>
                 </div>
@@ -1877,7 +1877,7 @@
         }
 
         const headers = ['Request ID', 'Event Date', 'Start Time', 'End Time', 'Requester', 'Type',
-                   'Start Location', 'Second Location', 'Final Location', 'Riders Needed', 'Escort Fee', 'Status', 'Assigned', 'Notes'];
+                   'Pickup Location', 'Second', 'Dropoff', 'Riders Needed', 'Escort Fee', 'Status', 'Assigned', 'Notes'];
 
         const csvRows = [headers.join(',')];
 

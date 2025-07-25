@@ -417,8 +417,8 @@ function sendAssignmentNotification(assignmentId, type) {
     const riderNameColIdx = assignmentsHeaders.indexOf('Rider Name');
     const eventDateColIdx = assignmentsHeaders.indexOf('Event Date');
     const startTimeColIdx = assignmentsHeaders.indexOf('Start Time');
-    const startLocationColIdx = assignmentsHeaders.indexOf('Start Location');
-    const endLocationColIdx = assignmentsHeaders.indexOf('Second Location');
+    const startLocationColIdx = assignmentsHeaders.indexOf('Pickup Location');
+    const endLocationColIdx = assignmentsHeaders.indexOf('Second');
     const smsColIdx = assignmentsHeaders.indexOf('SMS Sent');
     const emailColIdx = assignmentsHeaders.indexOf('Email Sent');
     const notifiedColIdx = assignmentsHeaders.indexOf('Notified');
@@ -1006,9 +1006,9 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
     `Time: ${timeStr}`,
     `Assigned Riders: ${riders}`,
     '',
-    `First Location: ${startLocation || ''}`,
-    `Second Location: ${endLocation || ''}`,
-    `Final Location: ${secondaryLocation || ''}`,
+    `Pickup Location: ${startLocation || ''}`,
+    `Second: ${endLocation || ''}`,
+    `Dropoff: ${secondaryLocation || ''}`,
     '',
     `Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}`,
     escortFee ? `Fee: $${escortFee}` : '',
@@ -1023,9 +1023,9 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
   const htmlLines = [
     `<p><strong>Escort ${requestId}</strong></p>`,
     `<p>Date: ${dateStr}<br>Time: ${timeStr}<br>Assigned Riders: ${riders}</p>`,
-    `<p>${startLocation ? 'First Location: ' + startLocation + '<br>' : ''}` +
-      `${endLocation ? 'Second Location: ' + endLocation + '<br>' : ''}` +
-      `${secondaryLocation ? 'Final Location: ' + secondaryLocation : ''}</p>`,
+    `<p>${startLocation ? 'Pickup Location: ' + startLocation + '<br>' : ''}` +
+      `${endLocation ? 'Second: ' + endLocation + '<br>' : ''}` +
+      `${secondaryLocation ? 'Dropoff: ' + secondaryLocation : ''}</p>`,
     `<p>Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}<br>` +
       `${escortFee ? 'Fee: $' + escortFee + '<br>' : ''}` +
       `${notes ? 'Notes: ' + notes : ''}</p>`,
@@ -1055,9 +1055,9 @@ function formatRequestDetails(details) {
   if (details.eventDate) parts.push(`Event Date: ${formatDateForDisplay(details.eventDate)}`);
   if (details.startTime) parts.push(`Start Time: ${formatTimeForDisplay(details.startTime)}`);
   if (details.endTime) parts.push(`End Time: ${formatTimeForDisplay(details.endTime)}`);
-  if (details.startLocation) parts.push(`Start Location: ${details.startLocation}`);
-  if (details.endLocation) parts.push(`Second Location: ${details.endLocation}`);
-  if (details.secondaryLocation) parts.push(`Final Location: ${details.secondaryLocation}`);
+  if (details.startLocation) parts.push(`Pickup Location: ${details.startLocation}`);
+  if (details.endLocation) parts.push(`Second: ${details.endLocation}`);
+  if (details.secondaryLocation) parts.push(`Dropoff: ${details.secondaryLocation}`);
   if (details.ridersNeeded) parts.push(`Riders Needed: ${details.ridersNeeded}`);
   if (details.ridersAssigned) parts.push(`Riders Assigned: ${details.ridersAssigned}`);
   if (details.escortFee) parts.push(`💰 Escort Fee: ${details.escortFee}`);
