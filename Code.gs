@@ -2112,15 +2112,30 @@ function handleEmailMessage(fromEmail, messageBody) {
 
 /**
  * Extract the request ID from an email subject line.
- * Expected subject format: "Assignment <assignmentId> - <requestId>".
+ * Expected subject format: "Escort Assignment Proposal - <requestId>".
  * @param {string} subject The email subject line.
  * @return {string} The request ID if found, else an empty string.
  */
 function extractRequestIdFromSubject(subject) {
   try {
     if (!subject) return '';
-    const match = subject.match(/Assignment\s+[^-]+-\s*([^\s]+)/i);
-    return match ? match[1].trim() : '';
+    
+    // Handle the actual subject format: "Escort Assignment Proposal - {requestId}"
+    // This pattern allows for flexible whitespace and handles various formats
+    const primaryMatch = subject.match(/Escort\s+Assignment\s+Proposal\s*[-–—]\s*([^\s]+)/i);
+    if (primaryMatch) {
+      return primaryMatch[1].trim();
+    }
+    
+    // Handle simpler format: "Assignment Proposal - {requestId}"
+    const simpleMatch = subject.match(/Assignment\s+Proposal\s*[-–—]\s*([^\s]+)/i);
+    if (simpleMatch) {
+      return simpleMatch[1].trim();
+    }
+    
+    // Fallback to original pattern for backwards compatibility
+    const fallbackMatch = subject.match(/Assignment\s+[^-]+-\s*([^\s]+)/i);
+    return fallbackMatch ? fallbackMatch[1].trim() : '';
   } catch (error) {
     logError('Error extracting request ID', error);
     return '';
@@ -7116,5 +7131,89 @@ function updateSingleRequestWithResponse(requestId, riderName, action, timestamp
   } catch (error) {
     console.error('❌ Error updating single request with response:', error);
     logError('Error updating single request with response', error);
+  }
+}
+
+/**
+ * Reprocess email responses that may have failed due to request ID extraction issues
+ * This function attempts to fix responses where requestId is empty by re-parsing the original emails
+ */
+function reprocessEmailResponsesWithFixedExtraction() {
+  try {
+    console.log('🔧 Reprocessing email responses with improved request ID extraction...');
+    
+    // Get the Email_Responses sheet
+    const responseSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Email_Responses');
+    if (!responseSheet) {
+      console.log('❌ Email_Responses sheet not found');
+      return { success: false, message: 'Email_Responses sheet not found' };
+    }
+    
+    // Get all response data
+    const responseData = responseSheet.getDataRange().getValues();
+    if (responseData.length <= 1) {
+      console.log('📋 No response data to process');
+      return { success: true, message: 'No response data to process' };
+    }
+    
+    // Column indices - A=Timestamp, B=From Email, C=Rider Name, D=Message Body, E=Request ID, F=Action
+    const timestampCol = 0;
+    const fromEmailCol = 1;
+    const riderCol = 2;
+    const messageBodyCol = 3;
+    const requestIdCol = 4;
+    const actionCol = 5;
+    
+    let reprocessedCount = 0;
+    let updatedCount = 0;
+    
+    // Check for responses missing request IDs
+    console.log('🔍 Checking for responses with missing request IDs...');
+    
+    for (let i = 1; i < responseData.length; i++) {
+      const row = responseData[i];
+      const timestamp = row[timestampCol];
+      const fromEmail = row[fromEmailCol];
+      const riderName = row[riderCol];
+      const messageBody = row[messageBodyCol];
+      let requestId = row[requestIdCol];
+      const action = row[actionCol];
+      
+      // Skip if we already have a request ID
+      if (requestId && String(requestId).trim()) {
+        continue;
+      }
+      
+      // Skip if missing essential data
+      if (!riderName || !action) {
+        continue;
+      }
+      
+      console.log(`📧 Found response with missing request ID from ${riderName} - Action: ${action}`);
+      reprocessedCount++;
+    }
+    
+    // Run the standard update process to ensure all current responses are processed
+    console.log('🔄 Running standard request update process...');
+    const updateResult = updateRequestsWithResponseInfo();
+    
+    console.log(`🎉 Reprocessing complete!`);
+    console.log(`   📧 Responses checked: ${reprocessedCount}`);
+    console.log(`   📝 Requests updated: ${updateResult.updatedCount || 0}`);
+    
+    return {
+      success: true,
+      message: `Checked ${reprocessedCount} responses and updated ${updateResult.updatedCount || 0} requests`,
+      checkedCount: reprocessedCount,
+      updatedCount: updateResult.updatedCount || 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Error reprocessing email responses:', error);
+    logError('Error reprocessing email responses', error);
+    return {
+      success: false,
+      message: 'Failed to reprocess email responses: ' + error.message
+    };
   }
 }
