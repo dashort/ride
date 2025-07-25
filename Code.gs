@@ -2147,6 +2147,11 @@ function logEmailResponse(fromEmail, messageBody, requestId, result) {
 
     debugLog(`📝 Email response logged: ${result.action}`);
 
+    // Automatically update the request with this response
+    if (requestId && result.rider && result.action) {
+      updateSingleRequestWithResponse(requestId, result.rider, result.action, new Date());
+    }
+
   } catch (error) {
     console.error('❌ Error logging email response:', error);
     logError('Error logging email response', error);
@@ -2175,6 +2180,11 @@ function logLinkResponse(riderName, requestId, action) {
     ]);
 
     debugLog(`📝 Link response logged: ${action}`);
+
+    // Automatically update the request with this response
+    if (requestId && riderName && action) {
+      updateSingleRequestWithResponse(requestId, riderName, action, new Date());
+    }
 
   } catch (error) {
     console.error('❌ Error logging link response:', error);
@@ -4984,34 +4994,18 @@ function createErrorPageWithSignIn(error) {
             color: white;
         }
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            padding: 40px;
-            border-radius: 15px;
-            max-width: 500px;
-            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 500px; margin: 0 auto;
         }
         .btn {
-            background: #3498db;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 25px;
-            font-size: 16px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin: 10px;
+            background: #3498db; color: white; padding: 15px 30px;
+            border: none; border-radius: 25px; font-size: 16px;
+            cursor: pointer; text-decoration: none; display: inline-block; margin: 10px;
         }
         .error-details {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 12px;
-            text-align: left;
+            background: #f8d7da; color: #721c24; padding: 15px;
+            border-radius: 8px; margin: 20px 0; font-family: monospace;
+            font-size: 12px; text-align: left;
         }
     </style>
 </head>
@@ -5036,7 +5030,7 @@ function createErrorPageWithSignIn(error) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// 🛡️ SAFE WRAPPER FUNCTIONS (add these to prevent errors)
+// 🛡️ SAFE WRAPPER FUNCTIONS
 
 function getRiderByGoogleEmailSafe(email) {
   try {
@@ -5350,7 +5344,8 @@ function getRoleBasedNavigation(currentPage, user, rider) {
     navHtml += `
       <a href="${item.url}"
          class="nav-button ${isActive}"
-         data-page="${item.page}">
+         data-page="${item.page}"
+         target="_top">
         ${item.label}
       </a>
     `;
@@ -6870,5 +6865,256 @@ function debugSystemSetup() {
   } catch (error) {
     console.error('❌ Debug failed:', error);
     return { error: error.message };
+  }
+}
+
+/**
+ * Update requests with email response information
+ * Adds response info like "Joe Smith confirmed at 7-25-25 1441 hrs" to request notes
+ */
+function updateRequestsWithResponseInfo() {
+  try {
+    debugLog('🔄 Starting to update requests with response information...');
+    
+    // Get the Email_Responses sheet
+    const responseSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Email_Responses');
+    if (!responseSheet) {
+      debugLog('❌ Email_Responses sheet not found');
+      return { success: false, message: 'Email_Responses sheet not found' };
+    }
+    
+    // Get all response data
+    const responseData = responseSheet.getDataRange().getValues();
+    if (responseData.length <= 1) {
+      debugLog('📋 No response data to process');
+      return { success: true, message: 'No response data to process' };
+    }
+    
+    // Parse headers - Column A=Timestamp, C=Rider, E=Request ID, F=Action
+    const headers = responseData[0];
+    const timestampCol = 0; // Column A
+    const riderCol = 2;     // Column C
+    const requestIdCol = 4; // Column E
+    const actionCol = 5;    // Column F
+    
+    // Get requests data
+    const requestsData = getRequestsData(false);
+    if (!requestsData || !requestsData.sheet) {
+      throw new Error('Could not access requests data');
+    }
+    
+    const requestsSheet = requestsData.sheet;
+    const columnMap = requestsData.columnMap;
+    const notesCol = columnMap[CONFIG.columns.requests.notes];
+    const requestIdColumnIndex = columnMap[CONFIG.columns.requests.id];
+    
+    let updatedCount = 0;
+    const processedResponses = new Set();
+    
+    // Process each response (skip header row)
+    for (let i = 1; i < responseData.length; i++) {
+      const row = responseData[i];
+      const timestamp = row[timestampCol];
+      const riderName = row[riderCol];
+      const requestId = row[requestIdCol];
+      const action = row[actionCol];
+      
+      // Skip if missing required data
+      if (!timestamp || !riderName || !requestId || !action) {
+        continue;
+      }
+      
+      // Create unique key for this response to avoid duplicates
+      const responseKey = `${requestId}-${riderName}-${action}-${timestamp.getTime()}`;
+      if (processedResponses.has(responseKey)) {
+        continue;
+      }
+      processedResponses.add(responseKey);
+      
+      // Format the response info: "Joe Smith confirmed at 7-25-25 1441 hrs"
+      const responseDate = new Date(timestamp);
+      const formattedDate = Utilities.formatDate(responseDate, CONFIG.system.timezone, 'M-dd-yy HHmm');
+      const responseInfo = `${riderName} ${action.toLowerCase()} at ${formattedDate} hrs`;
+      
+      // Find the request row
+      let targetRowIndex = -1;
+      for (let j = 0; j < requestsData.data.length; j++) {
+        const rowRequestId = getColumnValue(requestsData.data[j], columnMap, CONFIG.columns.requests.id);
+        if (String(rowRequestId).trim() === String(requestId).trim()) {
+          targetRowIndex = j;
+          break;
+        }
+      }
+      
+      if (targetRowIndex === -1) {
+        debugLog(`⚠️ Request ${requestId} not found for response: ${responseInfo}`);
+        continue;
+      }
+      
+      const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
+      
+      // Get current notes
+      let currentNotes = '';
+      if (notesCol !== undefined) {
+        const notesCell = requestsSheet.getRange(sheetRowNumber, notesCol + 1);
+        currentNotes = String(notesCell.getValue() || '').trim();
+      }
+      
+      // Check if this response is already in the notes
+      if (currentNotes.includes(responseInfo)) {
+        debugLog(`📋 Response already exists in notes for ${requestId}: ${responseInfo}`);
+        continue;
+      }
+      
+      // Add the response info to notes
+      const updatedNotes = currentNotes ? 
+        `${currentNotes}\n${responseInfo}` : 
+        responseInfo;
+      
+      if (notesCol !== undefined) {
+        requestsSheet.getRange(sheetRowNumber, notesCol + 1).setValue(updatedNotes);
+        updatedCount++;
+        debugLog(`✅ Updated request ${requestId} with response: ${responseInfo}`);
+      } else {
+        debugLog(`⚠️ Notes column not found, cannot update request ${requestId}`);
+      }
+    }
+    
+    debugLog(`🎉 Updated ${updatedCount} requests with response information`);
+    
+    return {
+      success: true,
+      message: `Updated ${updatedCount} requests with response information`,
+      updatedCount: updatedCount
+    };
+    
+  } catch (error) {
+    console.error('❌ Error updating requests with response info:', error);
+    logError('Error updating requests with response info', error);
+    return {
+      success: false,
+      message: 'Failed to update requests with response info: ' + error.message
+    };
+  }
+}
+
+/**
+ * Get email responses from the Email_Responses sheet
+ * @param {number} limit Optional limit on number of responses to return
+ * @return {Array} Array of response objects
+ */
+function getEmailResponses(limit = null) {
+  try {
+    const responseSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Email_Responses');
+    if (!responseSheet) {
+      return [];
+    }
+    
+    const data = responseSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return [];
+    }
+    
+    const headers = data[0];
+    const responses = [];
+    
+    // Process data rows
+    const rowsToProcess = limit ? Math.min(data.length - 1, limit) : data.length - 1;
+    for (let i = 1; i <= rowsToProcess; i++) {
+      const row = data[i];
+      responses.push({
+        timestamp: row[0],
+        fromEmail: row[1],
+        riderName: row[2],
+        messageBody: row[3],
+        requestId: row[4],
+        action: row[5]
+      });
+    }
+    
+    return responses;
+    
+  } catch (error) {
+    console.error('❌ Error getting email responses:', error);
+    logError('Error getting email responses', error);
+    return [];
+  }
+}
+
+/**
+ * Update a single request with response information
+ * @param {string} requestId The request ID to update
+ * @param {string} riderName The rider who responded
+ * @param {string} action The action taken (Confirmed or Declined)
+ * @param {Date} timestamp When the response was made
+ */
+function updateSingleRequestWithResponse(requestId, riderName, action, timestamp) {
+  try {
+    if (!requestId || !riderName || !action) {
+      debugLog('⚠️ Missing required parameters for updateSingleRequestWithResponse');
+      return;
+    }
+
+    // Get requests data
+    const requestsData = getRequestsData(false);
+    if (!requestsData || !requestsData.sheet) {
+      debugLog('❌ Could not access requests data');
+      return;
+    }
+
+    const requestsSheet = requestsData.sheet;
+    const columnMap = requestsData.columnMap;
+    const notesCol = columnMap[CONFIG.columns.requests.notes];
+
+    // Find the request row
+    let targetRowIndex = -1;
+    for (let j = 0; j < requestsData.data.length; j++) {
+      const rowRequestId = getColumnValue(requestsData.data[j], columnMap, CONFIG.columns.requests.id);
+      if (String(rowRequestId).trim() === String(requestId).trim()) {
+        targetRowIndex = j;
+        break;
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      debugLog(`⚠️ Request ${requestId} not found for response update`);
+      return;
+    }
+
+    const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
+
+    // Format the response info: "Joe Smith confirmed at 7-25-25 1441 hrs"
+    const responseDate = new Date(timestamp);
+    const formattedDate = Utilities.formatDate(responseDate, CONFIG.system.timezone, 'M-dd-yy HHmm');
+    const responseInfo = `${riderName} ${action.toLowerCase()} at ${formattedDate} hrs`;
+
+    // Get current notes
+    let currentNotes = '';
+    if (notesCol !== undefined) {
+      const notesCell = requestsSheet.getRange(sheetRowNumber, notesCol + 1);
+      currentNotes = String(notesCell.getValue() || '').trim();
+    }
+
+    // Check if this response is already in the notes
+    if (currentNotes.includes(responseInfo)) {
+      debugLog(`📋 Response already exists in notes for ${requestId}: ${responseInfo}`);
+      return;
+    }
+
+    // Add the response info to notes
+    const updatedNotes = currentNotes ? 
+      `${currentNotes}\n${responseInfo}` : 
+      responseInfo;
+
+    if (notesCol !== undefined) {
+      requestsSheet.getRange(sheetRowNumber, notesCol + 1).setValue(updatedNotes);
+      debugLog(`✅ Updated request ${requestId} with response: ${responseInfo}`);
+    } else {
+      debugLog(`⚠️ Notes column not found, cannot update request ${requestId}`);
+    }
+
+  } catch (error) {
+    console.error('❌ Error updating single request with response:', error);
+    logError('Error updating single request with response', error);
   }
 }
