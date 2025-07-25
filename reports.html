@@ -932,6 +932,14 @@ function displayRiderActivityReport(result) {
                 rows += '<tr><td>' + escapeHtml(t) + '</td><td>' + escapeHtml(types[t]) + '</td></tr>';
             }
 
+            var riderRows = '';
+            var riders = result.data.riders || [];
+            for (var i = 0; i < riders.length; i++) {
+                var r = riders[i];
+                riderRows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' +
+                    escapeHtml(r.hours) + '</td><td>' + escapeHtml(r.average) + '</td></tr>';
+            }
+
             var html = '<!DOCTYPE html><html><head><title>Executive Summary</title>' +
                 '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
                 'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
@@ -941,6 +949,9 @@ function displayRiderActivityReport(result) {
                 '<p>Total Hours: ' + escapeHtml(result.data.totalHours) + '</p>' +
                 '<h3>Request Type Distribution</h3>' +
                 '<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+                '<h3>Rider Activity</h3>' +
+                '<table><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th><th>Avg/Escort</th></tr></thead><tbody>' +
+                riderRows + '</tbody></table>' +
                 '</body></html>';
 
             var reportWindow = window.open('', '_blank');
