@@ -2046,7 +2046,11 @@ function sendPreNotify(riderName, evt) {
             hideLoading();
             showError('Error: ' + error.message);
         })
-        .sendPreAssignmentEmail(selectedRequest.id, riderName);
+        .sendPreAssignmentEmail(
+            selectedRequest.id,
+            riderName,
+            Array.from(selectedRiders)
+        );
 }
 
 
