@@ -196,3 +196,138 @@ function setupAndTestEmailResponseSystem() {
   
   return testResult;
 }
+
+/**
+ * Test the request update functionality with sample response data
+ * This will help verify that responses are being added to request notes properly
+ */
+function testRequestResponseUpdate() {
+  try {
+    console.log('🧪 Testing request response update functionality...');
+    
+    // First check if we have any sample data to work with
+    const responses = getEmailResponses(5);
+    console.log(`📊 Found ${responses.length} email responses to test with`);
+    
+    if (responses.length === 0) {
+      console.log('⚠️ No email responses found. Creating sample data for testing...');
+      
+      // Create sample response data for testing
+      const sampleResponses = [
+        {
+          riderName: 'Joe Smith',
+          requestId: 'TEST-001',
+          action: 'Confirmed',
+          timestamp: new Date()
+        },
+        {
+          riderName: 'Jane Doe',
+          requestId: 'TEST-002', 
+          action: 'Declined',
+          timestamp: new Date(Date.now() - 60000) // 1 minute ago
+        }
+      ];
+      
+      console.log('📝 Testing with sample data:');
+      sampleResponses.forEach((sample, index) => {
+        console.log(`   ${index + 1}. ${sample.riderName} ${sample.action} for ${sample.requestId}`);
+        updateSingleRequestWithResponse(sample.requestId, sample.riderName, sample.action, sample.timestamp);
+      });
+    } else {
+      console.log('📝 Testing with actual email response data...');
+      
+      // Test updating requests with the first few responses
+      responses.slice(0, 3).forEach((response, index) => {
+        if (response.requestId && response.riderName && response.action) {
+          console.log(`   ${index + 1}. ${response.riderName} ${response.action} for ${response.requestId}`);
+          updateSingleRequestWithResponse(response.requestId, response.riderName, response.action, response.timestamp);
+        }
+      });
+    }
+    
+    console.log('✅ Request response update test completed');
+    
+    // Now test the bulk update function
+    console.log('🔄 Testing bulk update function...');
+    const result = updateRequestsWithResponseInfo();
+    console.log('📊 Bulk update result:', JSON.stringify(result, null, 2));
+    
+    return {
+      success: true,
+      message: 'Request response update test completed successfully',
+      responsesProcessed: responses.length
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in testRequestResponseUpdate:', error);
+    return {
+      success: false,
+      message: 'Test failed: ' + error.message
+    };
+  }
+}
+
+/**
+ * Verify that request notes contain response information
+ * @param {string} requestId Optional specific request ID to check
+ */
+function verifyRequestResponseUpdates(requestId = null) {
+  try {
+    console.log('🔍 Verifying request response updates...');
+    
+    const requestsData = getRequestsData(false);
+    if (!requestsData || !requestsData.data) {
+      throw new Error('Could not access requests data');
+    }
+    
+    const columnMap = requestsData.columnMap;
+    const notesCol = columnMap[CONFIG.columns.requests.notes];
+    const requestIdCol = columnMap[CONFIG.columns.requests.id];
+    
+    if (notesCol === undefined || requestIdCol === undefined) {
+      throw new Error('Required columns not found in requests sheet');
+    }
+    
+    let requestsWithResponses = 0;
+    let totalRequests = 0;
+    
+    requestsData.data.forEach((row, index) => {
+      const rowRequestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
+      const notes = getColumnValue(row, columnMap, CONFIG.columns.requests.notes);
+      
+      if (!rowRequestId) return;
+      
+      totalRequests++;
+      
+      // Skip if we're looking for a specific request ID
+      if (requestId && String(rowRequestId).trim() !== String(requestId).trim()) {
+        return;
+      }
+      
+      // Check if notes contain response information (looking for patterns like "confirmed at" or "declined at")
+      if (notes && (String(notes).includes('confirmed at') || String(notes).includes('declined at'))) {
+        requestsWithResponses++;
+        console.log(`✅ Request ${rowRequestId} has response info in notes:`);
+        console.log(`   Notes: ${String(notes).substring(0, 100)}${String(notes).length > 100 ? '...' : ''}`);
+      } else if (requestId) {
+        console.log(`📋 Request ${rowRequestId} notes: ${notes || 'No notes'}`);
+      }
+    });
+    
+    console.log(`📊 Summary: ${requestsWithResponses} out of ${totalRequests} requests have response information`);
+    
+    return {
+      success: true,
+      totalRequests: totalRequests,
+      requestsWithResponses: requestsWithResponses,
+      percentage: totalRequests > 0 ? Math.round((requestsWithResponses / totalRequests) * 100) : 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Error verifying request response updates:', error);
+    return {
+      success: false,
+      message: 'Verification failed: ' + error.message
+    };
+  }
+}

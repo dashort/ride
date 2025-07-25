@@ -68,3 +68,57 @@ Timestamp | From Email | Rider Name | Message Body | Request ID | Action
 
 After running the setup function, automated email processing will log each response to this sheet and append the raw message text to the rider's assignment notes. The request ID is extracted from the email subject line (e.g. `Assignment 123 - A-01-24`) and stored for reference.
 
+## Email Response Integration
+
+### Automatic Request Updates
+
+When riders respond to notification requests via email or confirmation links, their responses are now automatically added to the relevant request's notes. This provides a complete audit trail of rider responses directly in the request record.
+
+#### How It Works
+
+1. **Response Logging**: All rider responses (email replies and link clicks) are logged in the `Email_Responses` sheet with columns:
+   - Column A: Timestamp when they responded
+   - Column C: Rider name  
+   - Column E: Request ID
+   - Column F: Response action (Confirm or Decline)
+
+2. **Automatic Updates**: When a response is logged, the system automatically:
+   - Finds the corresponding request using the Request ID
+   - Formats the response as: `"Joe Smith confirmed at 7-25-25 1441 hrs"`
+   - Adds this information to the request's Notes field
+   - Prevents duplicate entries for the same response
+
+3. **Manual Updates**: You can also manually update all requests with response information using:
+   - **Menu**: 🏍️ Escort Management → 📧 Email Response Tracking → 📝 Update Requests with Responses
+   - **Function**: `updateRequestsWithResponseInfo()`
+
+#### Response Format
+
+Response information is added to request notes in this format:
+```
+Joe Smith confirmed at 7-25-25 1441 hrs
+Jane Doe declined at 7-25-25 1445 hrs
+```
+
+Where:
+- **Name**: The rider who responded
+- **Action**: "confirmed" or "declined" 
+- **Date/Time**: MM-dd-yy HHmm format in system timezone
+
+#### Testing and Verification
+
+Test the functionality with these functions:
+- `testRequestResponseUpdate()` - Tests the update mechanism
+- `verifyRequestResponseUpdates()` - Verifies that requests contain response info
+- `verifyRequestResponseUpdates('REQUEST-ID')` - Check a specific request
+
+#### Manual Processing
+
+If you need to process responses that weren't automatically updated:
+
+1. Go to **🏍️ Escort Management** → **📧 Email Response Tracking** → **📝 Update Requests with Responses**
+2. Or run `updateRequestsWithResponseInfo()` in the script editor
+3. The function will process all responses in the Email_Responses sheet and update corresponding requests
+
+This ensures that request managers have complete visibility into rider responses directly within the request record, eliminating the need to cross-reference multiple sheets.
+

@@ -66,6 +66,7 @@ function createMenu() {
       .addItem('🚀 Setup Email Response Tracking', 'setupEmailResponseTracking')
       .addItem('📊 Check Tracking Status', 'checkEmailResponseTrackingStatus')
       .addItem('🔧 Process Emails Manually', 'processEmailResponsesManually')
+      .addItem('📝 Update Requests with Responses', 'updateRequestsWithResponseInfo')
       .addItem('🗑️ Remove Email Triggers', 'deleteEmailResponseTriggers')
     )
     .addSeparator()
