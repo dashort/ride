@@ -173,9 +173,10 @@ function sendIndividualNotification(requestId, riderName, type) {
  * NOW USES THE SAME EMAIL FORMAT AS THE NOTIFICATION PAGE
  * @param {string} requestId The request ID.
  * @param {string} riderName The rider's full name.
+ * @param {string[]} [allRiderNames] List of all rider names selected for the request.
  * @return {{success:boolean,message:string}} Result object.
  */
-function sendPreAssignmentEmail(requestId, riderName) {
+function sendPreAssignmentEmail(requestId, riderName, allRiderNames) {
   try {
     const request = getRequestDetails(requestId);
     if (!request) {
@@ -183,9 +184,10 @@ function sendPreAssignmentEmail(requestId, riderName) {
     }
 
     const ridersData = getRidersData();
-    const nameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
-    const emailIdx = ridersData.columnMap[CONFIG.columns.riders.email];
-    const riderRow = ridersData.data.find(r => r[nameIdx] === riderName);
+  const nameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
+  const emailIdx = ridersData.columnMap[CONFIG.columns.riders.email];
+  const jpIdx = ridersData.columnMap[CONFIG.columns.riders.jpNumber];
+  const riderRow = ridersData.data.find(r => r[nameIdx] === riderName);
     if (!riderRow) {
       return { success: false, message: 'Rider not found' };
     }
@@ -195,19 +197,22 @@ function sendPreAssignmentEmail(requestId, riderName) {
       return { success: false, message: 'No email for rider' };
     }
 
-    // CREATE A TEMPORARY ASSIGNMENT ID FOR THE EMAIL
     const tempAssignmentId = `TEMP-${requestId}-${riderName.replace(/\s+/g, '')}`;
 
-    // USE THE SAME MESSAGE FORMATTING AS THE NOTIFICATION PAGE
-    const emailMessage = formatNotificationMessage({
-      assignmentId: tempAssignmentId,
-      requestId: requestId,
-      riderName: riderName,
-      eventDate: request.eventDate,
-      startTime: request.startTime,
-      startLocation: request.startLocation,
-      endLocation: request.endLocation
-    }, true);
+    // Build list of assigned riders for email formatting
+    let assignedRiders = [];
+    if (Array.isArray(allRiderNames) && allRiderNames.length) {
+      const unique = Array.from(new Set(allRiderNames.concat([riderName])));
+      assignedRiders = unique.map(name => {
+        const row = ridersData.data.find(r => r[nameIdx] === name) || [];
+        const jp = row[jpIdx] || '';
+        return { name: name, jpNumber: jp };
+      });
+    } else {
+      assignedRiders = [{ name: riderName, jpNumber: riderRow[jpIdx] || '' }];
+    }
+
+    let emailMessage = '';
 
     // BUILD HTML EMAIL VERSION (SAME AS NOTIFICATION PAGE)
     let emailHtml = null;
@@ -230,8 +235,9 @@ function sendPreAssignmentEmail(requestId, riderName) {
         requesterContact: requestDetails.requesterContact,
         escortFee: requestDetails.escortFee,
         notes: requestDetails.notes
-      }, [{ name: riderName, jpNumber: '' }], confirmUrl, declineUrl);
+      }, assignedRiders, confirmUrl, declineUrl);
 
+      emailMessage = formatted.text;
       emailHtml = formatted.html;
     } catch (formatError) {
       debugLog('⚠️ Could not format HTML email, using plain text only:', formatError);
