@@ -437,6 +437,24 @@
             font-style: italic;
         }
 
+        /* Location Autocomplete Styles */
+        .location-autocomplete-dropdown {
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .location-autocomplete-dropdown .autocomplete-item {
+            transition: background-color 0.2s ease;
+        }
+
+        .location-autocomplete-dropdown .autocomplete-item:hover {
+            background-color: #e8f4f8 !important;
+        }
+
+        .location-autocomplete-dropdown .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
         .search-box {
             width: 100%;
             padding: 0.75rem;
@@ -902,6 +920,7 @@
      * @type {Map<string, string>}
      */
     let requesterLookupCache = new Map();
+    let locationLookupCache = new Map();
 
     /**
      * Initializes the page on DOM content loaded: loads requests and sets up event listeners.
@@ -1012,6 +1031,76 @@
         });
         
         console.log('📞 Built requester lookup cache with', requesterLookupCache.size, 'unique requesters');
+    }
+
+    /**
+     * Builds a cache of unique locations from all location fields
+     * @param {Array<RequestFull>} requests - Array of all requests
+     */
+    function buildLocationLookupCache(requests) {
+        locationLookupCache.clear();
+        
+        // Sort requests by date to get most recent usage
+        const sortedRequests = [...requests].sort((a, b) => {
+            const dateA = new Date(a.eventDate || '');
+            const dateB = new Date(b.eventDate || '');
+            return dateB - dateA; // Most recent first
+        });
+
+        const locationFrequency = new Map();
+
+        sortedRequests.forEach(request => {
+            const locations = [
+                { value: String(request.startLocation || '').trim(), type: 'pickup' },
+                { value: String(request.endLocation || '').trim(), type: 'dropoff' },
+                { value: String(request.secondaryLocation || '').trim(), type: 'secondary' }
+            ];
+
+            locations.forEach(({ value, type }) => {
+                if (value && value.length > 1) {
+                    const key = value.toLowerCase();
+                    if (!locationFrequency.has(key)) {
+                        locationFrequency.set(key, {
+                            originalValue: value,
+                            count: 0,
+                            lastUsed: request.eventDate,
+                            types: new Set()
+                        });
+                    }
+                    const existing = locationFrequency.get(key);
+                    existing.count++;
+                    existing.types.add(type);
+                    
+                    // Update to most recent format and date
+                    if (new Date(request.eventDate) > new Date(existing.lastUsed)) {
+                        existing.originalValue = value;
+                        existing.lastUsed = request.eventDate;
+                    }
+                }
+            });
+        });
+
+        // Convert to final cache format, sorted by frequency and recency
+        const sortedLocations = Array.from(locationFrequency.entries())
+            .sort((a, b) => {
+                // Primary sort: frequency (more used = higher priority)
+                if (b[1].count !== a[1].count) {
+                    return b[1].count - a[1].count;
+                }
+                // Secondary sort: recency
+                return new Date(b[1].lastUsed) - new Date(a[1].lastUsed);
+            });
+
+        sortedLocations.forEach(([key, data]) => {
+            locationLookupCache.set(key, {
+                value: data.originalValue,
+                count: data.count,
+                lastUsed: data.lastUsed,
+                types: Array.from(data.types)
+            });
+        });
+        
+        console.log('📍 Built location lookup cache with', locationLookupCache.size, 'unique locations');
     }
 
     /**
@@ -1169,6 +1258,173 @@
     }
 
     /**
+     * Sets up autocomplete functionality for location input fields
+     * @param {string} inputId - The ID of the input field
+     */
+    function setupLocationAutocomplete(inputId) {
+        const input = document.getElementById(inputId);
+        
+        if (!input) {
+            console.warn('Could not find input field for location autocomplete setup:', inputId);
+            return;
+        }
+
+        // Create autocomplete dropdown
+        const dropdown = document.createElement('div');
+        dropdown.className = 'location-autocomplete-dropdown';
+        dropdown.style.cssText = `
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        `;
+        
+        // Make input container relative positioned
+        input.parentElement.style.position = 'relative';
+        input.parentElement.appendChild(dropdown);
+
+        let currentSelection = -1;
+
+        // Handle input changes
+        input.addEventListener('input', function() {
+            const value = this.value.toLowerCase().trim();
+            dropdown.innerHTML = '';
+            currentSelection = -1;
+
+            if (value.length < 2) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const matches = Array.from(locationLookupCache.entries())
+                .filter(([key, data]) => key.includes(value) || data.value.toLowerCase().includes(value))
+                .slice(0, 8); // Limit to 8 results for locations
+
+            if (matches.length === 0) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            matches.forEach(([key, data], index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.style.cssText = `
+                    padding: 8px 12px;
+                    cursor: pointer;
+                    border-bottom: 1px solid #eee;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                `;
+                
+                // Create type badges
+                const typeBadges = data.types.map(type => {
+                    const colors = {
+                        pickup: '#28a745',
+                        dropoff: '#dc3545', 
+                        secondary: '#fd7e14'
+                    };
+                    const labels = {
+                        pickup: 'P',
+                        dropoff: 'D',
+                        secondary: 'S'
+                    };
+                    return `<span style="background: ${colors[type]}; color: white; padding: 1px 4px; border-radius: 2px; font-size: 10px; margin-left: 2px;">${labels[type]}</span>`;
+                }).join('');
+                
+                item.innerHTML = `
+                    <div>
+                        <strong>${data.value}</strong>
+                        ${typeBadges}
+                        <br><small style="color: #666;">Used ${data.count} time${data.count > 1 ? 's' : ''}</small>
+                    </div>
+                    <small style="color: #999;">Last: ${data.lastUsed || 'Unknown'}</small>
+                `;
+
+                item.addEventListener('mouseenter', () => {
+                    currentSelection = index;
+                    updateSelection();
+                });
+
+                item.addEventListener('click', () => {
+                    selectLocation(data.value);
+                });
+
+                dropdown.appendChild(item);
+            });
+
+            dropdown.style.display = 'block';
+            updateSelection();
+        });
+
+        // Handle keyboard navigation
+        input.addEventListener('keydown', function(e) {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                currentSelection = Math.min(currentSelection + 1, items.length - 1);
+                updateSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                currentSelection = Math.max(currentSelection - 1, -1);
+                updateSelection();
+            } else if (e.key === 'Enter' && currentSelection >= 0) {
+                e.preventDefault();
+                const matches = Array.from(locationLookupCache.entries())
+                    .filter(([key, data]) => {
+                        const inputValue = input.value.toLowerCase().trim();
+                        return key.includes(inputValue) || data.value.toLowerCase().includes(inputValue);
+                    })
+                    .slice(0, 8);
+                
+                if (matches[currentSelection]) {
+                    selectLocation(matches[currentSelection][1].value);
+                }
+            } else if (e.key === 'Escape') {
+                dropdown.style.display = 'none';
+                currentSelection = -1;
+            }
+        });
+
+        function updateSelection() {
+            const items = dropdown.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                if (index === currentSelection) {
+                    item.style.backgroundColor = '#e8f4f8';
+                } else {
+                    item.style.backgroundColor = 'white';
+                }
+            });
+        }
+
+        function selectLocation(locationValue) {
+            input.value = locationValue;
+            dropdown.style.display = 'none';
+            currentSelection = -1;
+            
+            // Trigger change event for any listeners
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!input.parentElement.contains(e.target)) {
+                dropdown.style.display = 'none';
+                currentSelection = -1;
+            }
+        });
+    }
+
+    /**
      * Looks up and pre-fills contact information for a requester name
      * @param {string} requesterName - The name to look up
      * @param {string} contactFieldId - The ID of the contact field to populate
@@ -1229,6 +1485,7 @@
         if (result && result.success && result.requests) {
             console.log('📚 Loading historical data for lookup cache:', result.requests.length, 'total requests');
             buildRequesterLookupCache(result.requests);
+            buildLocationLookupCache(result.requests);
         } else {
             console.warn('Could not load historical data for lookup cache:', result);
         }
@@ -1264,8 +1521,9 @@
                 allRequests = allRequests.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled');
             }
 
-            // Build the requester lookup cache from all requests data
+            // Build the requester and location lookup caches from all requests data
             buildRequesterLookupCache(requests || []);
+            buildLocationLookupCache(requests || []);
 
             if (allRequests.length === 0) {
                 showNoData();
@@ -1494,6 +1752,9 @@
         // Set up autocomplete for requester name field after modal is visible
         setTimeout(() => {
             setupRequesterAutocomplete('editRequesterName', 'editRequesterContact');
+            setupLocationAutocomplete('editStartLocation');
+            setupLocationAutocomplete('editEndLocation');
+            setupLocationAutocomplete('editSecondaryLocation');
         }, 100);
     }
 
@@ -1521,6 +1782,9 @@
         // Set up autocomplete for requester name field after modal is visible
         setTimeout(() => {
             setupRequesterAutocomplete('editRequesterName', 'editRequesterContact');
+            setupLocationAutocomplete('editStartLocation');
+            setupLocationAutocomplete('editEndLocation');
+            setupLocationAutocomplete('editSecondaryLocation');
         }, 100);
     }
 
