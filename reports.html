@@ -532,6 +532,7 @@
         
         function loadInitialReportData() {
             generateReports();
+            loadMonthlyRiderSummary();
         }
 
         function setDefaultDates() {
@@ -783,14 +784,20 @@
 
             if (tables.riderHours) {
                 var hoursRows = '';
+                var totalEscorts = 0;
+                var totalHours = 0;
                 for (var i = 0; i < tables.riderHours.length; i++) {
                     var r = tables.riderHours[i];
                     var escorts = (r.escorts !== undefined) ? r.escorts : 0;
                     var hours = (r.hours !== undefined) ? r.hours : 0;
+                    totalEscorts += escorts;
+                    totalHours += parseFloat(hours) || 0;
                     hoursRows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
                 }
                 if (tables.riderHours.length === 0) {
                     hoursRows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
+                } else {
+                    hoursRows += '<tr style="font-weight:bold;"><td>Total</td><td>' + totalEscorts + '</td><td>' + totalHours.toFixed(2) + '</td></tr>';
                 }
                 var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
@@ -1031,6 +1038,49 @@ function displayRiderActivityReport(result) {
             setTimeout(function () {
                 notification.remove();
             }, 3000);
+        }
+
+        // Load a one-month summary of rider activity on page load
+        function loadMonthlyRiderSummary() {
+            var today = new Date();
+            var startDate = new Date(today);
+            startDate.setDate(today.getDate() - DEFAULT_REPORT_RANGE_DAYS);
+            var startStr = formatDateForInput(startDate);
+            var endStr = formatDateForInput(today);
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        if (result && result.success) {
+                            renderRiderSummaryTable(result.data);
+                        } else {
+                            console.error('Failed to load rider summary', result);
+                        }
+                    })
+                    .withFailureHandler(handleError)
+                    .generateRiderActivityReport(startStr, endStr);
+            }
+        }
+
+        function renderRiderSummaryTable(data) {
+            var rows = '';
+            var totalEscorts = 0;
+            var totalHours = 0;
+            for (var i = 0; i < data.length; i++) {
+                var r = data[i];
+                var escorts = r.escorts || 0;
+                var hours = parseFloat(r.hours) || 0;
+                totalEscorts += escorts;
+                totalHours += hours;
+                rows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
+            }
+            if (data.length === 0) {
+                rows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider data for this period</td></tr>';
+            } else {
+                rows += '<tr style="font-weight:bold;"><td>Total</td><td>' + totalEscorts + '</td><td>' + totalHours.toFixed(2) + '</td></tr>';
+            }
+            var tableHtml = '<table class="stats-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + rows + '</tbody></table>';
+            document.getElementById('riderHoursTable').innerHTML = tableHtml;
         }
 
         function showError(message) {
