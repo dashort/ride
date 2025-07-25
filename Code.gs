@@ -3198,6 +3198,24 @@ function generateExecutiveSummary(startDate, endDate) {
 
     totalHours = Math.round(totalHours * 100) / 100;
 
+    // Get rider activity within the same period
+    let riders = [];
+    try {
+      const startStr = Utilities.formatDate(start, CONFIG.system.timezone, 'yyyy-MM-dd');
+      const endStr = Utilities.formatDate(end, CONFIG.system.timezone, 'yyyy-MM-dd');
+      const riderReport = generateRiderActivityReport(startStr, endStr);
+      if (riderReport && riderReport.success && Array.isArray(riderReport.data)) {
+        riders = riderReport.data.map(r => ({
+          name: r.name,
+          escorts: r.escorts,
+          hours: r.hours,
+          average: r.escorts > 0 ? Math.round((r.hours / r.escorts) * 100) / 100 : 0
+        }));
+      }
+    } catch (riderErr) {
+      console.warn('Error generating rider activity for executive summary:', riderErr);
+    }
+
     return {
       success: true,
       data: {
@@ -3205,7 +3223,8 @@ function generateExecutiveSummary(startDate, endDate) {
         end: formatDateForDisplay(end),
         completedEscorts: completed,
         totalHours: totalHours,
-        requestTypes: typeMap
+        requestTypes: typeMap,
+        riders: riders
       }
     };
   } catch (error) {
