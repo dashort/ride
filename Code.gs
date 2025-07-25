@@ -3689,26 +3689,66 @@ function doGet(e) {
   try {
     debugLog('🚀 doGet with cache-friendly headers...');
 
+    // Handle email response actions WITHOUT authentication - this prevents Google OAuth prompts
     if (e.parameter && e.parameter.action === 'respondRequest') {
       const requestId = e.parameter.requestId;
       const riderName = e.parameter.rider;
       const resp = String(e.parameter.response || '').toLowerCase();
       const action = resp === 'confirm' ? 'Confirmed' : 'Declined';
-      logLinkResponse(riderName, requestId, action);
-      return HtmlService.createHtmlOutput(`<p>Your response has been recorded as ${action}.</p>`)
-        .setTitle('Escort Response');
+      
+      try {
+        logLinkResponse(riderName, requestId, action);
+        return HtmlService.createHtmlOutput(`
+          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; background: #f5f5f5; border-radius: 8px;">
+            <h2 style="color: #2e7d32;">✅ Response Recorded</h2>
+            <p style="font-size: 16px; color: #333;">Your response has been recorded as <strong>${action}</strong>.</p>
+            <p style="color: #666; font-size: 14px;">Thank you for your response!</p>
+          </div>
+        `).setTitle('Escort Response');
+      } catch (error) {
+        console.error('Error recording request response:', error);
+        return HtmlService.createHtmlOutput(`
+          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; background: #ffebee; border-radius: 8px;">
+            <h2 style="color: #c62828;">❌ Error</h2>
+            <p style="font-size: 16px; color: #333;">Unable to record your response. Please contact support.</p>
+          </div>
+        `).setTitle('Response Error');
+      }
     }
 
     if (e.parameter && e.parameter.action === 'respondAssignment') {
       const assignmentId = e.parameter.assignmentId;
       const resp = String(e.parameter.response || '').toLowerCase();
       const status = resp === 'confirm' ? 'Confirmed' : 'Declined';
-      const result = updateAssignmentStatusById(assignmentId, status, 'Link');
-      const message = result.success ? `Your response has been recorded as ${status}.` : 'Unable to record response.';
-      return HtmlService.createHtmlOutput(`<p>${message}</p>`).setTitle('Escort Response');
+      
+      try {
+        const result = updateAssignmentStatusById(assignmentId, status, 'Link');
+        const message = result.success ? 
+          `Your response has been recorded as <strong>${status}</strong>.` : 
+          'Unable to record response. Please contact support.';
+        const bgColor = result.success ? '#f5f5f5' : '#ffebee';
+        const textColor = result.success ? '#2e7d32' : '#c62828';
+        const icon = result.success ? '✅' : '❌';
+        
+        return HtmlService.createHtmlOutput(`
+          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; background: ${bgColor}; border-radius: 8px;">
+            <h2 style="color: ${textColor};">${icon} ${result.success ? 'Response Recorded' : 'Error'}</h2>
+            <p style="font-size: 16px; color: #333;">${message}</p>
+            <p style="color: #666; font-size: 14px;">Thank you for your response!</p>
+          </div>
+        `).setTitle('Escort Response');
+      } catch (error) {
+        console.error('Error recording assignment response:', error);
+        return HtmlService.createHtmlOutput(`
+          <div style="font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; text-align: center; background: #ffebee; border-radius: 8px;">
+            <h2 style="color: #c62828;">❌ Error</h2>
+            <p style="font-size: 16px; color: #333;">Unable to record your response. Please contact support.</p>
+          </div>
+        `).setTitle('Response Error');
+      }
     }
 
-    // Authentication and page logic (your existing code)
+    // Authentication and page logic (your existing code) - only for actual web app pages
     const authResult = authenticateAndAuthorizeUser();
     if (!authResult.success) {
       return createSignInPageEnhanced();
