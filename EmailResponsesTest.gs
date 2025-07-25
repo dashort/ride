@@ -331,3 +331,94 @@ function verifyRequestResponseUpdates(requestId = null) {
     };
   }
 }
+
+/**
+ * Test the extractRequestIdFromSubject function with various subject formats
+ * This ensures the function can correctly parse request IDs from actual email subjects
+ */
+function testRequestIdExtraction() {
+  try {
+    console.log('🧪 Testing request ID extraction from email subjects...');
+    console.log('=' .repeat(60));
+    
+    // Test cases with various subject formats
+    const testCases = [
+      {
+        subject: 'Escort Assignment Proposal - A-01-24',
+        expected: 'A-01-24',
+        description: 'Current format'
+      },
+      {
+        subject: 'Escort Assignment Proposal - REQ-123',
+        expected: 'REQ-123',
+        description: 'Current format with different ID'
+      },
+      {
+        subject: 'Assignment Proposal - B-02-24',
+        expected: 'B-02-24',
+        description: 'Simplified format'
+      },
+      {
+        subject: 'Escort Assignment Proposal — C-03-24',
+        expected: 'C-03-24',
+        description: 'With em dash'
+      },
+      {
+        subject: 'Assignment 123 - D-04-24',
+        expected: 'D-04-24',
+        description: 'Original legacy format'
+      },
+      {
+        subject: 'Random subject without request ID',
+        expected: '',
+        description: 'No request ID'
+      },
+      {
+        subject: '',
+        expected: '',
+        description: 'Empty subject'
+      }
+    ];
+    
+    let passedTests = 0;
+    let totalTests = testCases.length;
+    
+    testCases.forEach((testCase, index) => {
+      const result = extractRequestIdFromSubject(testCase.subject);
+      const passed = result === testCase.expected;
+      
+      console.log(`\n${index + 1}. ${testCase.description}:`);
+      console.log(`   Subject: "${testCase.subject}"`);
+      console.log(`   Expected: "${testCase.expected}"`);
+      console.log(`   Result: "${result}"`);
+      console.log(`   Status: ${passed ? '✅ PASS' : '❌ FAIL'}`);
+      
+      if (passed) {
+        passedTests++;
+      }
+    });
+    
+    console.log('\n' + '=' .repeat(60));
+    console.log(`📊 Test Results: ${passedTests}/${totalTests} tests passed`);
+    
+    if (passedTests === totalTests) {
+      console.log('🎉 All tests passed! Request ID extraction is working correctly.');
+    } else {
+      console.log('⚠️ Some tests failed. The extractRequestIdFromSubject function may need adjustment.');
+    }
+    
+    return {
+      success: passedTests === totalTests,
+      passedTests: passedTests,
+      totalTests: totalTests,
+      percentage: Math.round((passedTests / totalTests) * 100)
+    };
+    
+  } catch (error) {
+    console.error('❌ Error testing request ID extraction:', error);
+    return {
+      success: false,
+      message: 'Test failed: ' + error.message
+    };
+  }
+}
