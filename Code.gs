@@ -2154,6 +2154,35 @@ function logEmailResponse(fromEmail, messageBody, requestId, result) {
 }
 
 /**
+ * Log confirmation or declination via web link
+ * @param {string} riderName Rider's name
+ * @param {string} requestId Related request ID
+ * @param {string} action Action taken (Confirmed or Declined)
+ */
+function logLinkResponse(riderName, requestId, action) {
+  try {
+    const sheet = getOrCreateSheet('Email_Responses', [
+      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Request ID', 'Action'
+    ]);
+
+    sheet.appendRow([
+      new Date(),
+      'link',
+      riderName || 'Unknown',
+      '',
+      requestId || '',
+      action
+    ]);
+
+    debugLog(`📝 Link response logged: ${action}`);
+
+  } catch (error) {
+    console.error('❌ Error logging link response:', error);
+    logError('Error logging link response', error);
+  }
+}
+
+/**
  * Append an email response to the rider's assignment notes
  * @param {string} riderName Rider name associated with the assignments
  * @param {string} messageBody Full email body text
@@ -3615,6 +3644,16 @@ function logActivity(message) {
 function doGet(e) {
   try {
     debugLog('🚀 doGet with cache-friendly headers...');
+
+    if (e.parameter && e.parameter.action === 'respondRequest') {
+      const requestId = e.parameter.requestId;
+      const riderName = e.parameter.rider;
+      const resp = String(e.parameter.response || '').toLowerCase();
+      const action = resp === 'confirm' ? 'Confirmed' : 'Declined';
+      logLinkResponse(riderName, requestId, action);
+      return HtmlService.createHtmlOutput(`<p>Your response has been recorded as ${action}.</p>`)
+        .setTitle('Escort Response');
+    }
 
     if (e.parameter && e.parameter.action === 'respondAssignment') {
       const assignmentId = e.parameter.assignmentId;
