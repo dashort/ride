@@ -2642,6 +2642,13 @@ function getDispatchNotifications() {
  * Generates report data based on filters.
  * @param {object} filters An object containing filter criteria (startDate, endDate, requestType, status).
  * @return {object} Structured report data for display.
+ * Generate report data for the reports page
+ * FIXED: Now pulls data from requests instead of assignments for accurate reporting
+ * - Rider performance is based on completed requests (not assignments)
+ * - Hours calculation is based on request duration or realistic estimates
+ * - Location data comes directly from requests
+ * @param {Object} filters - Filter criteria for date range, request type, status
+ * @return {Object} Report data containing summary, charts, and tables
  * @throws {Error} If an error occurs during report generation.
  */
 function generateReportData(filters) {
@@ -2698,42 +2705,39 @@ function generateReportData(filters) {
       requestTypes[type] = (requestTypes[type] || 0) + 1;
     });
     
-    // Calculate rider performance
+    // Calculate rider performance based on completed requests (not assignments)
     const riderPerformance = [];
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName) return;
       
-      const assignments = assignmentsData.data.filter(assignment => {
-        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      // Count requests where this rider was assigned and filter by date
+      const riderRequests = filteredRequests.filter(request => {
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+        const assignedRidersList = String(ridersAssigned).split(',').map(name => name.trim().toLowerCase()).filter(name => name);
         
-        let matchesDate = true;
-        if (eventDate instanceof Date) {
-          matchesDate = eventDate >= startDate && eventDate <= endDate;
-        }
+        // Check if this rider was assigned to the request
+        const riderAssigned = assignedRidersList.some(assignedName => 
+          assignedName === riderName.toString().trim().toLowerCase()
+        );
         
-        // Match rider names with trimming and case-insensitive comparison
-        const riderMatch = assignmentRider && riderName && 
-          assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase();
-        
-        return riderMatch && matchesDate;
+        return riderAssigned;
       });
       
-      if (assignments.length > 0) {
-        const completed = assignments.filter(assignment =>
-          getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) === 'Completed'
+      if (riderRequests.length > 0) {
+        const completed = riderRequests.filter(request =>
+          getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
         ).length;
         
         riderPerformance.push({
           name: riderName,
-          assignments: assignments.length,
-          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
+          assignments: riderRequests.length,
+          completionRate: riderRequests.length > 0 ? Math.round((completed / riderRequests.length) * 100) : 0
         });
       }
     });
 
-    // Calculate escort count and total hours per rider within the period
+    // Calculate escort count and total hours per rider based on completed requests
     const riderHours = [];
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
@@ -2742,64 +2746,60 @@ function generateReportData(filters) {
       let totalHours = 0;
       let escorts = 0;
 
-      assignmentsData.data.forEach(assignment => {
-        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      // Count requests where this rider was assigned
+      filteredRequests.forEach(request => {
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+        const assignedRidersList = String(ridersAssigned).split(',').map(name => name.trim().toLowerCase()).filter(name => name);
+        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+        
+        // Check if this rider was assigned to the request
+        const riderAssigned = assignedRidersList.some(assignedName => 
+          assignedName === riderName.toString().trim().toLowerCase()
+        );
 
-        let dateMatches = true;
-        if (eventDate instanceof Date) {
-          dateMatches = eventDate >= startDate && eventDate <= endDate;
-        }
-
-        // Match rider names (case-insensitive, trimmed)
-        if (assignmentRider && riderName && 
-            assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase() && 
-            dateMatches) {
-          
+        if (riderAssigned) {
           // OPTIMIZED: More flexible status matching for better counting
           const statusLower = (status || '').toLowerCase().trim();
+          const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
           const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
           
-          // Count valid escort assignments - expanded criteria
-          const validStatuses = ['completed', 'in progress', 'assigned', 'confirmed', 'en route'];
+          // Count valid escort requests - expanded criteria
+          const validStatuses = ['completed', 'in progress', 'assigned', 'confirmed'];
           const hasValidStatus = validStatuses.includes(statusLower);
           const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
           
           // Count if:
-          // 1. Assignment has a valid working status AND event is in our date range
+          // 1. Request has a valid working status
           // 2. OR event has passed and was assigned (indicating work was likely done)
-          const shouldCount = (hasValidStatus && dateMatches) || 
-                             (eventHasPassed && dateMatches && statusLower && statusLower !== 'cancelled');
+          const shouldCount = hasValidStatus || 
+                             (eventHasPassed && statusLower && statusLower !== 'cancelled');
           
           if (shouldCount) {
             escorts++;
             
-            // Priority 1: Use actual completion times if available
-            const actualStart = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime);
-            const actualEnd = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime);
-            const actualDuration = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
+            // Calculate hours based on request start/end time or realistic estimates
+            const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+            const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+            const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
             
             let hoursToAdd = 0;
             
-            if (actualDuration && !isNaN(parseFloat(actualDuration))) {
-              // Use recorded duration if available
-              hoursToAdd = roundToQuarterHour(parseFloat(actualDuration));
-              debugLog(`Using recorded duration: ${hoursToAdd} hours for ${assignmentRider}`);
-            } else if (actualStart && actualEnd) {
-              // Calculate from actual start/end times
-              const startTime = parseTimeString(actualStart);
-              const endTime = parseTimeString(actualEnd);
-              if (startTime && endTime && endTime > startTime) {
-                hoursToAdd = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
-                debugLog(`Calculated from actual times: ${hoursToAdd} hours for ${assignmentRider}`);
+            if (startTime && endTime) {
+              // Calculate from request start/end times
+              const startTimeObj = parseTimeString(startTime);
+              const endTimeObj = parseTimeString(endTime);
+              if (startTimeObj && endTimeObj && endTimeObj > startTimeObj) {
+                hoursToAdd = roundToQuarterHour((endTimeObj.getTime() - startTimeObj.getTime()) / (1000 * 60 * 60));
+                debugLog(`Calculated from request times: ${hoursToAdd} hours for ${riderName} on ${requestType}`);
               }
-            } else {
-              // OPTIMIZED: Use estimated hours for all countable assignments
-              hoursToAdd = getRealisticEscortHours(assignment, assignmentsData.columnMap);
-              debugLog(`Using realistic estimate: ${hoursToAdd} hours for ${assignmentRider}`);
+            } 
+            
+            if (hoursToAdd === 0) {
+              // Use realistic estimate based on request type
+              hoursToAdd = getRealisticEscortHoursFromRequestType(requestType);
+              debugLog(`Using realistic estimate: ${hoursToAdd} hours for ${riderName} on ${requestType}`);
             }
             
             totalHours += hoursToAdd;
@@ -2814,34 +2814,19 @@ function generateReportData(filters) {
       });
     });
 
-    // Calculate popular locations from completed assignments
+    // Calculate popular locations from filtered requests
     const locationCounts = {};
-    assignmentsData.data.forEach(assignment => {
-      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+    filteredRequests.forEach(request => {
+      // Get location from the request (using multiple possible location fields)
+      const startLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startLocation);
+      const endLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endLocation);
+      const secondaryLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.secondaryLocation);
       
-      // Filter by date range
-      let matchesDate = true;
-      if (eventDate instanceof Date) {
-        matchesDate = eventDate >= startDate && eventDate <= endDate;
-      }
+      // Use the most specific location available
+      const location = startLocation || endLocation || secondaryLocation || 'Unknown Location';
       
-      if (matchesDate) {
-        // Get location from the associated request
-        const requestId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
-        if (requestId) {
-          const request = requestsData.data.find(r => 
-            getColumnValue(r, requestsData.columnMap, CONFIG.columns.requests.id) === requestId
-          );
-          
-          if (request) {
-            const location = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.location) || 
-                           getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.destination) ||
-                           'Unknown Location';
-            
-            locationCounts[location] = (locationCounts[location] || 0) + 1;
-          }
-        }
+      if (location && location !== 'Unknown Location') {
+        locationCounts[location] = (locationCounts[location] || 0) + 1;
       }
     });
 
@@ -2927,6 +2912,25 @@ function getRealisticEscortHours(assignment, columnMap) {
   
   // Default fallback
   return roundToQuarterHour(realisticEstimates['Other']);
+}
+
+/**
+ * Get realistic escort hours based on request type for reports
+ * @param {string} requestType - The type of request
+ * @return {number} Realistic hours estimate based on request type
+ */
+function getRealisticEscortHoursFromRequestType(requestType) {
+  // Realistic hour estimates based on actual escort experience
+  const realisticEstimates = {
+    'Funeral': 0.5,        // Short, focused escorts
+    'Wedding': 2.5,        // Moderate duration with setup/ceremony/departure
+    'VIP': 4.0,           // Longer, more complex routes
+    'Float Movement': 4.0, // Extended transport/logistics
+    'Other': 2.0          // General default
+  };
+  
+  const estimatedHours = realisticEstimates[requestType] || realisticEstimates['Other'];
+  return roundToQuarterHour(estimatedHours);
 }
 
 /**
