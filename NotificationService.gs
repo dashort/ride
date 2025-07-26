@@ -979,11 +979,11 @@ function formatNotificationMessage(assignment, includeLinks = true) {
 }
 
 /**
- * Format assignment details for email with confirm/decline links.
+ * Format assignment details for email notification.
  * @param {Object} params - Details for the assignment and request.
  * @param {{name:string,jpNumber:(string|undefined)}[]} assignedRiders - List of assigned riders with optional JP numbers.
- * @param {string} confirmUrl - URL for confirming the assignment.
- * @param {string} declineUrl - URL for declining the assignment.
+ * @param {string} confirmUrl - URL for confirming the assignment (unused, kept for compatibility).
+ * @param {string} declineUrl - URL for declining the assignment (unused, kept for compatibility).
  * @return {{text:string,html:string}} Plain text and HTML message bodies.
  */
 function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl) {
@@ -1018,10 +1018,7 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
     '',
     `Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}`,
     escortFee ? `Fee: $${escortFee}` : '',
-    notes ? `Notes: ${notes}` : '',
-    '',
-    `Confirm: ${confirmUrl}`,
-    `Decline: ${declineUrl}`
+    notes ? `Notes: ${notes}` : ''
   ].filter(Boolean);
 
   const textBody = lines.join('\n');
@@ -1034,11 +1031,7 @@ function formatEmailNotification(params, assignedRiders, confirmUrl, declineUrl)
       `${secondaryLocation ? 'Dropoff: ' + secondaryLocation : ''}</p>`,
     `<p>Contact: ${requesterName || ''}${requesterContact ? ' - ' + requesterContact : ''}<br>` +
       `${escortFee ? 'Fee: $' + escortFee + '<br>' : ''}` +
-      `${notes ? 'Notes: ' + notes : ''}</p>`,
-    `<p>` +
-      `<a href="${confirmUrl}" style="background:#4CAF50;color:#fff;padding:8px 12px;text-decoration:none;border-radius:4px">Confirm</a>` +
-      ` <a href="${declineUrl}" style="background:#f44336;color:#fff;padding:8px 12px;text-decoration:none;border-radius:4px;margin-left:10px">Decline</a>` +
-    `</p>`
+      `${notes ? 'Notes: ' + notes : ''}</p>`
   ];
 
   const htmlBody = htmlLines.join('\n');
