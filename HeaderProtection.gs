@@ -24,7 +24,7 @@ function protectAllSheetHeadersFixed() {
       {
         name: 'Requests',
         headers: [
-          'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
+          'Request ID', 'Date', 'Requester Name', 'Requester Contact',
           'Event Date', 'Start Time', 'End Time', 'Start', 'Dropoff',
           'Second', 'Request Type', 'Riders Needed', 'Escort Fee',
           'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
