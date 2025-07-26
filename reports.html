@@ -375,7 +375,6 @@
     <div class="container">
         <div class="reports-header">
             <h2 class="page-title">📊 Reports & Analytics</h2>
-            <div id="lastUpdated" style="font-size: 0.9rem; color: #7f8c8d; margin-bottom: 1rem;"></div>
             
             <div class="date-controls">
                 <label style="font-weight: 600;">Report Period:</label>
@@ -394,10 +393,6 @@
                 
                 <button class="btn btn-primary" onclick="generateReports()">
                     📊 Generate Reports
-                </button>
-                
-                <button class="btn btn-success" onclick="showCurrentFilters()" style="margin-left: 0.5rem;">
-                    📋 Show Filters
                 </button>
             </div>
 
@@ -522,7 +517,6 @@
         let reportData = {};
         let currentPeriod = { start: null, end: null };
         const DEFAULT_REPORT_RANGE_DAYS = 30;
-        const DEBUG_REPORTS = true; // Set to false in production
 
         document.addEventListener('DOMContentLoaded', function() {
             setDefaultDates();
@@ -547,32 +541,11 @@
             document.getElementById('quickPeriod').addEventListener('change', function(e) {
                 if (e.target.value) {
                     setQuickPeriod(e.target.value);
-                } else {
-                    // If "Custom Range" is selected, just regenerate reports with current dates
-                    generateReports();
                 }
             });
 
-            document.getElementById('startDate').addEventListener('change', function() {
-                // Reset quick period to custom when dates are manually changed
-                document.getElementById('quickPeriod').value = '';
-                updatePeriod();
-            });
-            
-            document.getElementById('endDate').addEventListener('change', function() {
-                // Reset quick period to custom when dates are manually changed
-                document.getElementById('quickPeriod').value = '';
-                updatePeriod();
-            });
-            
-            // Auto-regenerate reports when filters change
-            document.getElementById('requestTypeFilter').addEventListener('change', function() {
-                generateReports();
-            });
-            
-            document.getElementById('statusFilter').addEventListener('change', function() {
-                generateReports();
-            });
+            document.getElementById('startDate').addEventListener('change', updatePeriod);
+            document.getElementById('endDate').addEventListener('change', updatePeriod);
         }
 
         function setQuickPeriod(period) {
@@ -602,7 +575,6 @@
 
             document.getElementById('startDate').value = formatDateForInput(startDate);
             document.getElementById('endDate').value = formatDateForInput(endDate);
-            // updatePeriod() will automatically call generateReports() now
             updatePeriod();
         }
 
@@ -612,8 +584,6 @@
             
             if (startDate && endDate) {
                 currentPeriod = { start: startDate, end: endDate };
-                // Automatically regenerate reports when date range changes
-                generateReports();
             }
         }
 
@@ -622,15 +592,6 @@
             var endDate = document.getElementById('endDate').value;
             var requestType = document.getElementById('requestTypeFilter').value;
             var status = document.getElementById('statusFilter').value;
-
-            if (DEBUG_REPORTS) {
-                console.log('🔄 generateReports() called with:', {
-                    startDate: startDate,
-                    endDate: endDate,
-                    requestType: requestType,
-                    status: status
-                });
-            }
 
             if (!startDate || !endDate) {
                 showError('Please select both start and end dates');
@@ -646,10 +607,6 @@
                 status: status
             };
 
-            if (DEBUG_REPORTS) {
-                console.log('📊 Calling getPageDataForReports with filters:', filters);
-            }
-
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(handlePageDataSuccess)
@@ -663,10 +620,6 @@
 
         function handlePageDataSuccess(data) {
             hideLoading();
-
-            if (DEBUG_REPORTS) {
-                console.log('✅ handlePageDataSuccess received data:', data);
-            }
 
             if (data && data.success) {
                 updateUserInfoSafely(data.user);
@@ -718,22 +671,9 @@
             hideLoading();
             reportData = data;
             
-            if (DEBUG_REPORTS) {
-                console.log('📊 handleReportData processing:', data);
-            }
-            
             updateSummaryStats(data.summary);
             updateCharts(data.charts);
             updateTables(data.tables);
-            
-            // Update last updated timestamp
-            var now = new Date();
-            var timestamp = 'Last updated: ' + now.toLocaleString();
-            document.getElementById('lastUpdated').textContent = timestamp;
-            
-            if (DEBUG_REPORTS) {
-                console.log('✅ Report data updated successfully at', timestamp);
-            }
         }
 
         function updateSummaryStats(summary) {
@@ -748,18 +688,12 @@
                     '<div style="padding: 2rem; text-align: center;">' +
                     '<h4>Request Volume Data</h4>' +
                     '<p>Total: ' + charts.requestVolume.total + '</p>' +
-                    '<p>Peak Day: ' + (charts.requestVolume.peakDay || 'N/A') + '</p>' +
-                    '<p>Trend: ' + (charts.requestVolume.trend || 'N/A') + '</p>' +
-                    '</div>';
-            } else {
-                document.getElementById('requestVolumeChart').innerHTML = 
-                    '<div style="padding: 2rem; text-align: center; color: #7f8c8d;">' +
-                    '<h4>Request Volume Data</h4>' +
-                    '<p>No data available for the selected period</p>' +
+                    '<p>Peak Day: ' + charts.requestVolume.peakDay + '</p>' +
+                    '<p>Trend: ' + charts.requestVolume.trend + '</p>' +
                     '</div>';
             }
 
-            if (charts.requestTypes && Object.keys(charts.requestTypes).length > 0) {
+            if (charts.requestTypes) {
                 var totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
                 var typesHtml = '<div style="padding: 2rem;"><h4>Request Types</h4>';
                 for (var type in charts.requestTypes) {
@@ -769,12 +703,6 @@
                 }
                 typesHtml += '</div>';
                 document.getElementById('requestTypesChart').innerHTML = typesHtml;
-            } else {
-                document.getElementById('requestTypesChart').innerHTML = 
-                    '<div style="padding: 2rem; text-align: center; color: #7f8c8d;">' +
-                    '<h4>Request Types</h4>' +
-                    '<p>No request types data available for the selected period</p>' +
-                    '</div>';
             }
 
         }
@@ -785,32 +713,25 @@
                 var hoursRows = '';
                 for (var i = 0; i < tables.riderHours.length; i++) {
                     var r = tables.riderHours[i];
-                    var escorts = (r.escorts !== undefined) ? r.escorts : 0;
-                    var hours = (r.hours !== undefined) ? r.hours : 0;
-                    hoursRows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
+                    var escorts = (r.escorts !== undefined) ? r.escorts : '';
+                    hoursRows += '<tr><td>' + r.name + '</td><td>' + escorts + '</td><td>' + r.hours + '</td></tr>';
                 }
                 if (tables.riderHours.length === 0) {
-                    hoursRows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
+                    hoursRows = '<tr><td colspan="3" style="text-align:center;">No hours recorded</td></tr>';
                 }
                 var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
-            } else {
-                document.getElementById('riderHoursTable').innerHTML = 
-                    '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
             }
 
 
-            if (tables.locations && tables.locations.length > 0) {
+            if (tables.locations) {
                 var locRows = '';
                 for (var i = 0; i < tables.locations.length; i++) {
                     var loc = tables.locations[i];
-                    locRows += '<tr><td>' + escapeHtml(loc.name) + '</td><td>' + loc.count + '</td></tr>';
+                    locRows += '<tr><td>' + loc.name + '</td><td>' + loc.count + '</td></tr>';
                 }
                 var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
                 document.getElementById('locationHotspots').innerHTML = locationsTable;
-            } else {
-                document.getElementById('locationHotspots').innerHTML = 
-                    '<div class="loading" style="color: #7f8c8d;">No location data available for the selected period</div>';
             }
         }
 
@@ -932,14 +853,6 @@ function displayRiderActivityReport(result) {
                 rows += '<tr><td>' + escapeHtml(t) + '</td><td>' + escapeHtml(types[t]) + '</td></tr>';
             }
 
-            var riderRows = '';
-            var riders = result.data.riders || [];
-            for (var i = 0; i < riders.length; i++) {
-                var r = riders[i];
-                riderRows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' +
-                    escapeHtml(r.hours) + '</td><td>' + escapeHtml(r.average) + '</td></tr>';
-            }
-
             var html = '<!DOCTYPE html><html><head><title>Executive Summary</title>' +
                 '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
                 'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
@@ -949,9 +862,6 @@ function displayRiderActivityReport(result) {
                 '<p>Total Hours: ' + escapeHtml(result.data.totalHours) + '</p>' +
                 '<h3>Request Type Distribution</h3>' +
                 '<table><thead><tr><th>Type</th><th>Count</th></tr></thead><tbody>' + rows + '</tbody></table>' +
-                '<h3>Rider Activity</h3>' +
-                '<table><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th><th>Avg/Escort</th></tr></thead><tbody>' +
-                riderRows + '</tbody></table>' +
                 '</body></html>';
 
             var reportWindow = window.open('', '_blank');
@@ -965,54 +875,10 @@ function displayRiderActivityReport(result) {
 
         function showLoading(message) {
             console.log('Loading:', message);
-            
-            // Create or update loading overlay
-            let loadingOverlay = document.getElementById('loadingOverlay');
-            if (!loadingOverlay) {
-                loadingOverlay = document.createElement('div');
-                loadingOverlay.id = 'loadingOverlay';
-                loadingOverlay.style.cssText = `
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.5);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 10000;
-                `;
-                
-                const loadingContent = document.createElement('div');
-                loadingContent.style.cssText = `
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 10px;
-                    text-align: center;
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-                `;
-                
-                loadingContent.innerHTML = `
-                    <div style="font-size: 2rem; margin-bottom: 1rem;">⏳</div>
-                    <div id="loadingMessage" style="font-weight: 600; color: #2c3e50;"></div>
-                `;
-                
-                loadingOverlay.appendChild(loadingContent);
-                document.body.appendChild(loadingOverlay);
-            }
-            
-            document.getElementById('loadingMessage').textContent = message || 'Loading...';
-            loadingOverlay.style.display = 'flex';
         }
 
         function hideLoading() {
             console.log('Loading complete');
-            
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            if (loadingOverlay) {
-                loadingOverlay.style.display = 'none';
-            }
         }
 
         function showNotification(message, color) {
@@ -1051,49 +917,6 @@ function displayRiderActivityReport(result) {
                 window.location.href = 'https://accounts.google.com/Logout';
             }
         }
-
-        // Helper function for testing report generation
-        function testReportGeneration() {
-            if (DEBUG_REPORTS) {
-                console.log('🧪 Testing report generation...');
-                console.log('Current date values:', {
-                    startDate: document.getElementById('startDate').value,
-                    endDate: document.getElementById('endDate').value,
-                    requestType: document.getElementById('requestTypeFilter').value,
-                    status: document.getElementById('statusFilter').value
-                });
-                generateReports();
-            }
-        }
-
-        // Show current filter settings for debugging
-        function showCurrentFilters() {
-            var startDate = document.getElementById('startDate').value;
-            var endDate = document.getElementById('endDate').value;
-            var requestType = document.getElementById('requestTypeFilter').value;
-            var status = document.getElementById('statusFilter').value;
-            var quickPeriod = document.getElementById('quickPeriod').value;
-            
-            var filterSummary = 'Current Report Filters:\n\n' +
-                'Date Range: ' + (startDate || 'Not set') + ' to ' + (endDate || 'Not set') + '\n' +
-                'Quick Period: ' + (quickPeriod || 'Custom Range') + '\n' +
-                'Request Type: ' + (requestType || 'All Types') + '\n' +
-                'Status: ' + (status || 'All Statuses') + '\n\n' +
-                'Click OK to regenerate reports with these filters.';
-                
-            if (confirm(filterSummary)) {
-                generateReports();
-            }
-        }
-
-        // Add keyboard shortcuts for debugging
-        document.addEventListener('keydown', function(e) {
-            if (DEBUG_REPORTS && e.ctrlKey && e.shiftKey && e.key === 'R') {
-                e.preventDefault();
-                console.log('🔄 Manual report generation triggered');
-                testReportGeneration();
-            }
-        });
     </script>
 </body>
 </html>
