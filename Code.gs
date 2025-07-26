@@ -2147,9 +2147,48 @@ function logEmailResponse(fromEmail, messageBody, requestId, result) {
 
     debugLog(`📝 Email response logged: ${result.action}`);
 
+    // Automatically update the request with this response
+    if (requestId && result.rider && result.action) {
+      updateSingleRequestWithResponse(requestId, result.rider, result.action, new Date());
+    }
+
   } catch (error) {
     console.error('❌ Error logging email response:', error);
     logError('Error logging email response', error);
+  }
+}
+
+/**
+ * Log confirmation or declination via web link
+ * @param {string} riderName Rider's name
+ * @param {string} requestId Related request ID
+ * @param {string} action Action taken (Confirmed or Declined)
+ */
+function logLinkResponse(riderName, requestId, action) {
+  try {
+    const sheet = getOrCreateSheet('Email_Responses', [
+      'Timestamp', 'From Email', 'Rider Name', 'Message Body', 'Request ID', 'Action'
+    ]);
+
+    sheet.appendRow([
+      new Date(),
+      'link',
+      riderName || 'Unknown',
+      '',
+      requestId || '',
+      action
+    ]);
+
+    debugLog(`📝 Link response logged: ${action}`);
+
+    // Automatically update the request with this response
+    if (requestId && riderName && action) {
+      updateSingleRequestWithResponse(requestId, riderName, action, new Date());
+    }
+
+  } catch (error) {
+    console.error('❌ Error logging link response:', error);
+    logError('Error logging link response', error);
   }
 }
 
@@ -3611,959 +3650,92 @@ function logActivity(message) {
  * Replace your doGet function with this simplified version that handles user management properly
  */
 
-/**
- * COMPLETE ENHANCED doGet FUNCTION
- * Replace your existing doGet function in Code.gs with this enhanced version
- * This includes all your existing functionality PLUS the new confirmation handling
- */
+
 function doGet(e) {
   try {
-    const action = e.parameter?.action;
-const response = e.parameter?.response;
+    debugLog('🚀 doGet with cache-friendly headers...');
 
-// Handle public confirmations WITHOUT any authentication required
-if (action === 'respondRequest' || action === 'respondAssignment' || action === 'quickConfirm') {
-  console.log('📧 Handling public confirmation bypass - no authentication required');
-  console.log('Action:', action, 'Response:', response);
-  
-  try {
-    if (action === 'quickConfirm') {
-      // Handle secure token-based confirmations
-      return handleQuickConfirmation(e.parameter);
-    } else {
-      // Handle basic confirmations
-      return handlePublicConfirmation(e.parameter);
+    if (e.parameter && e.parameter.action === 'respondRequest') {
+      const requestId = e.parameter.requestId;
+      const riderName = e.parameter.rider;
+      const resp = String(e.parameter.response || '').toLowerCase();
+      const action = resp === 'confirm' ? 'Confirmed' : 'Declined';
+      logLinkResponse(riderName, requestId, action);
+      return HtmlService.createHtmlOutput(`<p>Your response has been recorded as ${action}.</p>`)
+        .setTitle('Escort Response');
     }
-  } catch (confirmError) {
-    console.error('❌ Confirmation handling error:', confirmError);
-    return createSimpleErrorPage('Error processing confirmation. Please try again or contact your dispatcher.');
-  }
-}
-    debugLog('🌐 doGet called with parameters:', e.parameter);
-    
 
-    const requestId = e.parameter?.requestId;
-    const assignmentId = e.parameter?.assignmentId;
-    const riderParam = e.parameter?.rider;
-    
-    // ✅ NEW: Handle public confirmations WITHOUT authentication
-    if (action === 'respondRequest' || action === 'respondAssignment') {
-      debugLog('📧 Handling public confirmation:', { action, response, requestId, assignmentId, riderParam });
-      return handlePublicConfirmation(e.parameter);
+    if (e.parameter && e.parameter.action === 'respondAssignment') {
+      const assignmentId = e.parameter.assignmentId;
+      const resp = String(e.parameter.response || '').toLowerCase();
+      const status = resp === 'confirm' ? 'Confirmed' : 'Declined';
+      const result = updateAssignmentStatusById(assignmentId, status, 'Link');
+      const message = result.success ? `Your response has been recorded as ${status}.` : 'Unable to record response.';
+      return HtmlService.createHtmlOutput(`<p>${message}</p>`).setTitle('Escort Response');
     }
-    
-    // ✅ NEW: Handle secure one-click confirmations WITHOUT authentication
-    if (action === 'quickConfirm') {
-      debugLog('🔒 Handling secure confirmation:', { action, response });
-      return handleQuickConfirmation(e.parameter);
-    }
-    
-    // Handle sign-in actions
-    if (action === 'signin' || action === 'login') {
-      debugLog('🔐 Handling login action');
-      return createLoginPage();
-    }
-    
-    // Get current user session
-    debugLog('👤 Getting user session...');
-    const userSession = getEnhancedUserSession();
-    
-    if (!userSession || !userSession.hasEmail) {
-      debugLog('❌ No valid user session, redirecting to login');
-      return createLoginPage();
-    }
-    
-    debugLog('✅ User session found:', { email: userSession.email, name: userSession.name });
-    
-    // Authenticate and authorize user
-    debugLog('🔒 Authenticating and authorizing user...');
+
+    // Authentication and page logic (your existing code)
     const authResult = authenticateAndAuthorizeUser();
-    
     if (!authResult.success) {
-      debugLog('❌ Authentication failed:', authResult.error);
-      if (authResult.error === 'UNAUTHORIZED') {
-        return createUnauthorizedPage(userSession.email, userSession.name);
-      } else {
-        return createLoginPage();
+      return createSignInPageEnhanced();
+    }
+    
+    const { user: authenticatedUser, rider } = authResult;
+    const pageName = e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
+    
+    debugLog(`📄 Loading page: ${pageName} for role: ${authenticatedUser.role}`);
+
+        if (pageName === 'auth-setup') {
+      debugLog('🔐 Handling auth-setup page specifically');
+      
+      if (authenticatedUser.role !== 'admin') {
+        return createAccessDeniedPage('Only administrators can access authentication setup', authenticatedUser);
       }
+      
+      return createAuthMappingPage();
     }
     
-    const user = authResult.user;
-    const riderData = authResult.rider;
-    
-    debugLog('✅ User authenticated:', { 
-      name: user.name, 
-      email: user.email, 
-      role: user.role, 
-      permissions: user.permissions 
-    });
-    
-    // Determine page to load
-    let pageName = e.parameter?.page || 'dashboard';
-    let pageFile = pageName;
-    
-    // Special page routing based on user role
-    if (user.role === 'admin' && pageName === 'dashboard') {
-      pageFile = 'admin-dashboard';
-    } else if (user.role === 'rider' && pageName === 'dashboard') {
-      pageFile = 'rider-dashboard';
-    } else if (user.role === 'dispatcher' && pageName === 'dashboard') {
-      // Use default dashboard for dispatchers unless you have a dispatcher-specific one
-      pageFile = 'index'; // or 'dispatcher-dashboard' if you create one
+    // Handle user-management page separately
+    if (pageName === 'user-management') {
+      debugLog('👥 Handling user-management page specifically');
+      
+      if (authenticatedUser.role !== 'admin') {
+        return createAccessDeniedPage('Only administrators can access user management', authenticatedUser);
+      }
+      
+      return handleUserManagementPage(e);
     }
     
-    debugLog('📄 Loading page:', { pageName, pageFile, userRole: user.role });
+    // Load page content (your existing logic)
+    const fileName = getPageFileNameSafe(pageName, authenticatedUser.role);
+    let htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
+    let content = htmlOutput.getContent();
+    content = addMotorcycleLoaderToContent(content);
     
-    // Mobile detection
-    const isMobileParam = e.parameter?.mobile;
-    const userAgent = e.parameter?.userAgent || '';
-    const isMobileDevice = isMobileParam === 'true' || 
-                          (isMobileParam !== 'false' && detectMobileDevice(userAgent));
+    // Add navigation and user info (your existing code)
+    const navigationHtml = getRoleBasedNavigationSafe(pageName, authenticatedUser, rider);
+    content = injectUserInfoSafe(content, authenticatedUser, rider);
+    content = addNavigationToContentSafe(content, navigationHtml);
+    content = injectUrlParameters(content, e.parameter);
     
-    if (isMobileDevice) {
-      debugLog('📱 Mobile device detected, using mobile interface');
-      return loadMobilePage(pageName, user, riderData, e.parameter);
-    }
+    htmlOutput.setContent(content);
+    addUserDataInjectionSafe(htmlOutput, authenticatedUser, rider);
+    addMobileOptimizations(htmlOutput, authenticatedUser, rider);
     
-    // Load desktop page
-    return loadDesktopPage(pageFile, user, riderData, e.parameter);
+    // CACHE-FRIENDLY CONFIGURATION
+    const finalOutput = htmlOutput
+      .setTitle(`${pageName.charAt(0).toUpperCase() + pageName.slice(1)} - Escort Management`)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     
+    // Try to make the page more cache-friendly by avoiding dynamic elements
+    // that prevent browser caching
+    
+    debugLog(`✅ Page ${pageName} ready with cache-friendly settings`);
+    return finalOutput;
+      
   } catch (error) {
     console.error('❌ doGet error:', error);
-    logError('doGet function error', error);
-    
-    return HtmlService.createHtmlOutput(`
-      <div style="padding: 20px; font-family: Arial, sans-serif; text-align: center;">
-        <h2 style="color: #f44336;">⚠️ System Error</h2>
-        <p>Unable to process your request. Please try refreshing the page.</p>
-        <p><a href="${getWebAppUrl()}" style="color: #2196F3;">Return to Home</a></p>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 30px;">
-          Error details: ${error.message}<br>
-          Time: ${new Date().toLocaleString()}
-        </p>
-      </div>
-    `).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-}
-
-/**
- * Handle public confirmation responses without requiring authentication
- */
-function handlePublicConfirmation(params) {
-  try {
-    const { action, response, requestId, assignmentId, rider } = params;
-    
-    debugLog('📧 Processing public confirmation:', { action, response, requestId, assignmentId, rider });
-    
-    // Validate required parameters
-    if (!response || !rider) {
-      return createConfirmationResponse('error', 'Missing required information');
-    }
-    
-    // Validate response type
-    if (!['confirm', 'decline', 'accept', 'reject'].includes(response.toLowerCase())) {
-      return createConfirmationResponse('error', 'Invalid response type');
-    }
-    
-    let result;
-    
-    if (action === 'respondRequest' && requestId) {
-      // Handle request-level responses (pre-assignment)
-      result = processRequestConfirmation(requestId, rider, response);
-    } else if (action === 'respondAssignment' && assignmentId) {
-      // Handle assignment-level responses (post-assignment)
-      result = processAssignmentConfirmation(assignmentId, rider, response);
-    } else {
-      return createConfirmationResponse('error', 'Invalid confirmation parameters');
-    }
-    
-    // Log the confirmation
-    logConfirmationResponse(rider, response, requestId || assignmentId, result.success);
-    
-    if (result.success) {
-      // Notify dispatcher/admin of the response
-      notifyAdminOfConfirmation(rider, response, requestId || assignmentId);
-      
-      return createConfirmationResponse('success', result.message, {
-        rider: rider,
-        response: response,
-        id: requestId || assignmentId
-      });
-    } else {
-      return createConfirmationResponse('error', result.message);
-    }
-    
-  } catch (error) {
-    console.error('❌ Public confirmation error:', error);
-    logError('Public confirmation error', error);
-    return createConfirmationResponse('error', 'System error processing confirmation');
-  }
-}
-
-/**
- * Handle quick confirmation with token validation
- */
-function handleQuickConfirmation(params) {
-  try {
-    const { token, response } = params;
-    
-    debugLog('🔒 Processing secure confirmation:', { token: token ? 'present' : 'missing', response });
-    
-    if (!token || !response) {
-      return createConfirmationResponse('error', 'Missing confirmation parameters');
-    }
-    
-    // Validate the token
-    const validation = validateConfirmationToken(token);
-    if (!validation.valid) {
-      return createConfirmationResponse('error', validation.error);
-    }
-    
-    const { assignmentId, riderName, requestId } = validation.data;
-    
-    // Process the confirmation
-    const result = processAssignmentConfirmation(assignmentId, riderName, response);
-    
-    // Clean up the token after use
-    const properties = PropertiesService.getScriptProperties();
-    properties.deleteProperty(`confirm_${token}`);
-    
-    // Log the confirmation
-    logConfirmationResponse(riderName, response, assignmentId, result.success);
-    
-    if (result.success) {
-      // Notify dispatcher of the response
-      notifyAdminOfConfirmation(riderName, response, assignmentId);
-      
-      return createOneClickConfirmationResponse('success', result.message, {
-        rider: riderName,
-        response: response,
-        assignmentId: assignmentId,
-        requestId: requestId
-      });
-    } else {
-      return createOneClickConfirmationResponse('error', result.message);
-    }
-    
-  } catch (error) {
-    console.error('❌ Quick confirmation error:', error);
-    return createConfirmationResponse('error', 'System error processing confirmation');
-  }
-}
-
-/**
- * Load desktop page with full functionality
- */
-function loadDesktopPage(pageFile, user, riderData, params) {
-  try {
-    debugLog('🖥️ Loading desktop page:', pageFile);
-    
-    // Load the HTML file
-    const htmlOutput = HtmlService.createTemplateFromFile(pageFile);
-    
-    // Inject user data and navigation
-    let content = htmlOutput.evaluate().getContent();
-    
-    // Add navigation menu
-    const navigation = getNavigationHtml(pageFile, user);
-    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
-    
-    // Add user data injection
-    content = addUserDataInjection(content, user, riderData);
-    
-    // Inject URL parameters
-    content = injectUrlParameters(content, params);
-    
-    // Create final HTML output
-    const finalOutput = HtmlService.createHtmlOutput(content)
-      .setTitle(`Motorcycle Escort Management - ${pageFile.charAt(0).toUpperCase() + pageFile.slice(1)}`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    
-    debugLog('✅ Desktop page loaded successfully');
-    return finalOutput;
-    
-  } catch (error) {
-    console.error('❌ Error loading desktop page:', error);
-    
-    // Fallback to basic dashboard
-    try {
-      const fallbackContent = `
-        <html>
-        <head>
-          <title>Motorcycle Escort Management</title>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .error { color: #f44336; }
-            .info { color: #2196F3; }
-          </style>
-        </head>
-        <body>
-          <h1>🏍️ Motorcycle Escort Management</h1>
-          <p class="info">Welcome, ${user.name}!</p>
-          <p class="error">Unable to load the ${pageFile} page. Please try again or contact support.</p>
-          <p><a href="${getWebAppUrl()}?page=dashboard">Return to Dashboard</a></p>
-        </body>
-        </html>
-      `;
-      
-      return HtmlService.createHtmlOutput(fallbackContent)
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
-    } catch (fallbackError) {
-      console.error('❌ Fallback page also failed:', fallbackError);
-      throw error; // Let the main error handler deal with it
-    }
-  }
-}
-
-/**
- * Load mobile page with optimized interface
- */
-function loadMobilePage(pageName, user, riderData, params) {
-  try {
-    debugLog('📱 Loading mobile page:', pageName);
-    
-    // Map page names to mobile files
-    const mobilePages = {
-      'dashboard': 'mobile-dashboard',
-      'requests': 'mobile-requests',
-      'assignments': 'mobile-assignments',
-      'notifications': 'mobile-notifications'
-    };
-    
-    const mobileFile = mobilePages[pageName] || 'mobile-dashboard';
-    
-    // Try to load mobile-specific file
-    let content;
-    try {
-      content = HtmlService.createTemplateFromFile(mobileFile).evaluate().getContent();
-    } catch (mobileError) {
-      debugLog('⚠️ Mobile file not found, falling back to desktop with mobile optimizations');
-      content = HtmlService.createTemplateFromFile(pageName === 'dashboard' ? 'index' : pageName).evaluate().getContent();
-      content = addMobileOptimizations(content);
-    }
-    
-    // Add navigation and user data
-    const navigation = getMobileNavigationHtml(pageName, user);
-    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
-    content = addUserDataInjection(content, user, riderData);
-    content = injectUrlParameters(content, params);
-    
-    const finalOutput = HtmlService.createHtmlOutput(content)
-      .setTitle(`Escort Management - ${pageName}`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    
-    debugLog('✅ Mobile page loaded successfully');
-    return finalOutput;
-    
-  } catch (error) {
-    console.error('❌ Error loading mobile page:', error);
-    // Fall back to desktop page
-    return loadDesktopPage(pageName === 'dashboard' ? 'index' : pageName, user, riderData, params);
-  }
-}
-
-/**
- * Create login page
- */
-function createLoginPage() {
-  try {
-    debugLog('🔐 Creating login page');
-    return HtmlService.createTemplateFromFile('login').evaluate()
-      .setTitle('Login - Motorcycle Escort Management')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  } catch (error) {
-    console.error('❌ Error creating login page:', error);
-    return HtmlService.createHtmlOutput(`
-      <div style="padding: 20px; font-family: Arial, sans-serif; text-align: center;">
-        <h2>🔐 Login Required</h2>
-        <p>Please contact your administrator for access.</p>
-      </div>
-    `).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-}
-
-/**
- * Create unauthorized access page
- */
-function createUnauthorizedPage(email, name) {
-  debugLog('❌ Creating unauthorized page for:', email);
-  
-  const html = `
-    <html>
-    <head>
-      <title>Access Denied</title>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          text-align: center;
-          padding: 50px 20px;
-          background: #f5f5f5;
-        }
-        .container {
-          max-width: 500px;
-          margin: 0 auto;
-          background: white;
-          padding: 40px;
-          border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .error-icon {
-          font-size: 4rem;
-          color: #f44336;
-          margin-bottom: 20px;
-        }
-        h1 {
-          color: #f44336;
-          margin-bottom: 20px;
-        }
-        .user-info {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 6px;
-          margin: 20px 0;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="error-icon">🚫</div>
-        <h1>Access Denied</h1>
-        <p>Your account is not authorized to access this system.</p>
-        
-        <div class="user-info">
-          <strong>Account Details:</strong><br>
-          Name: ${name || 'Unknown'}<br>
-          Email: ${email}
-        </div>
-        
-        <p>Please contact your administrator to request access.</p>
-        
-        <p style="margin-top: 30px;">
-          <a href="${getWebAppUrl()}?action=signin" style="color: #2196F3;">Try Different Account</a>
-        </p>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return HtmlService.createHtmlOutput(html)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/**
- * Detect mobile device from user agent or explicit parameter
- */
-function detectMobileDevice(userAgent) {
-  if (!userAgent) return false;
-  
-  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-  return mobileRegex.test(userAgent);
-}
-
-/**
- * Enhanced user session getter (if not already in your code)
- */
-function getEnhancedUserSession() {
-  try {
-    let userEmail = '';
-    let userName = '';
-    
-    // Try Session.getActiveUser() first
-    try {
-      const activeUser = Session.getActiveUser();
-      if (activeUser && activeUser.getEmail) {
-        userEmail = activeUser.getEmail();
-        userName = activeUser.getName ? activeUser.getName() : '';
-        debugLog('✅ Got user from Session.getActiveUser():', userEmail);
-      }
-    } catch (e) {
-      debugLog('⚠️ Session.getActiveUser() failed:', e.message);
-    }
-    
-    // Try Session.getEffectiveUser() if needed
-    if (!userEmail) {
-      try {
-        const effectiveUser = Session.getEffectiveUser();
-        if (effectiveUser && effectiveUser.getEmail) {
-          userEmail = effectiveUser.getEmail();
-          userName = effectiveUser.getName ? effectiveUser.getName() : '';
-          debugLog('✅ Got user from Session.getEffectiveUser():', userEmail);
-        }
-      } catch (e) {
-        debugLog('⚠️ Session.getEffectiveUser() failed:', e.message);
-      }
-    }
-    
-    const result = {
-      email: userEmail.trim(),
-      name: userName.trim() || extractNameFromEmail(userEmail),
-      hasEmail: !!userEmail.trim(),
-      hasName: !!userName.trim(),
-      source: 'session',
-      timestamp: new Date().toISOString()
-    };
-    
-    debugLog('Enhanced session result:', result);
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Enhanced session detection failed:', error);
-    return {
-      email: '',
-      name: '',
-      hasEmail: false,
-      hasName: false,
-      source: 'error',
-      error: error.message
-    };
-  }
-}
-
-/**
- * Extract name from email if name is not available
- */
-function extractNameFromEmail(email) {
-  if (!email) return 'User';
-  
-  const localPart = email.split('@')[0];
-  return localPart.charAt(0).toUpperCase() + localPart.slice(1);
-}
-
-/**
- * Handle public confirmation responses without requiring authentication
- */
-function handlePublicConfirmation(params) {
-  try {
-    const { action, response, requestId, assignmentId, rider } = params;
-    
-    debugLog('📧 Processing public confirmation:', { action, response, requestId, assignmentId, rider });
-    
-    // Validate required parameters
-    if (!response || !rider) {
-      return createConfirmationResponse('error', 'Missing required information');
-    }
-    
-    // Validate response type
-    if (!['confirm', 'decline', 'accept', 'reject'].includes(response.toLowerCase())) {
-      return createConfirmationResponse('error', 'Invalid response type');
-    }
-    
-    let result;
-    
-    if (action === 'respondRequest' && requestId) {
-      // Handle request-level responses (pre-assignment)
-      result = processRequestConfirmation(requestId, rider, response);
-    } else if (action === 'respondAssignment' && assignmentId) {
-      // Handle assignment-level responses (post-assignment)
-      result = processAssignmentConfirmation(assignmentId, rider, response);
-    } else {
-      return createConfirmationResponse('error', 'Invalid confirmation parameters');
-    }
-    
-    // Log the confirmation
-    logConfirmationResponse(rider, response, requestId || assignmentId, result.success);
-    
-    if (result.success) {
-      // Notify dispatcher/admin of the response
-      notifyAdminOfConfirmation(rider, response, requestId || assignmentId);
-      
-      return createConfirmationResponse('success', result.message, {
-        rider: rider,
-        response: response,
-        id: requestId || assignmentId
-      });
-    } else {
-      return createConfirmationResponse('error', result.message);
-    }
-    
-  } catch (error) {
-    console.error('❌ Public confirmation error:', error);
-    logError('Public confirmation error', error);
-    return createConfirmationResponse('error', 'System error processing confirmation');
-  }
-}
-
-/**
- * Handle quick confirmation with token validation
- */
-function handleQuickConfirmation(params) {
-  try {
-    const { token, response } = params;
-    
-    debugLog('🔒 Processing secure confirmation:', { token: token ? 'present' : 'missing', response });
-    
-    if (!token || !response) {
-      return createConfirmationResponse('error', 'Missing confirmation parameters');
-    }
-    
-    // Validate the token
-    const validation = validateConfirmationToken(token);
-    if (!validation.valid) {
-      return createConfirmationResponse('error', validation.error);
-    }
-    
-    const { assignmentId, riderName, requestId } = validation.data;
-    
-    // Process the confirmation
-    const result = processAssignmentConfirmation(assignmentId, riderName, response);
-    
-    // Clean up the token after use
-    const properties = PropertiesService.getScriptProperties();
-    properties.deleteProperty(`confirm_${token}`);
-    
-    // Log the confirmation
-    logConfirmationResponse(riderName, response, assignmentId, result.success);
-    
-    if (result.success) {
-      // Notify dispatcher of the response
-      notifyAdminOfConfirmation(riderName, response, assignmentId);
-      
-      return createOneClickConfirmationResponse('success', result.message, {
-        rider: riderName,
-        response: response,
-        assignmentId: assignmentId,
-        requestId: requestId
-      });
-    } else {
-      return createOneClickConfirmationResponse('error', result.message);
-    }
-    
-  } catch (error) {
-    console.error('❌ Quick confirmation error:', error);
-    return createConfirmationResponse('error', 'System error processing confirmation');
-  }
-}
-
-/**
- * Load desktop page with full functionality
- */
-function loadDesktopPage(pageFile, user, rider, params) {
-  try {
-    debugLog('🖥️ Loading desktop page:', pageFile);
-    
-    // Load the HTML file
-    const htmlOutput = HtmlService.createTemplateFromFile(pageFile);
-    
-    // Inject user data and navigation
-    let content = htmlOutput.evaluate().getContent();
-    
-    // Add navigation menu
-    const navigation = getNavigationHtml(pageFile, user);
-    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
-    
-    // Add user data injection
-    content = addUserDataInjection(content, user, rider);
-    
-    // Inject URL parameters
-    content = injectUrlParameters(content, params);
-    
-    // Create final HTML output
-    const finalOutput = HtmlService.createHtmlOutput(content)
-      .setTitle(`Motorcycle Escort Management - ${pageFile.charAt(0).toUpperCase() + pageFile.slice(1)}`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    
-    debugLog('✅ Desktop page loaded successfully');
-    return finalOutput;
-    
-  } catch (error) {
-    console.error('❌ Error loading desktop page:', error);
-    
-    // Fallback to basic dashboard
-    try {
-      const fallbackContent = `
-        <html>
-        <head>
-          <title>Motorcycle Escort Management</title>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .error { color: #f44336; }
-            .info { color: #2196F3; }
-          </style>
-        </head>
-        <body>
-          <h1>🏍️ Motorcycle Escort Management</h1>
-          <p class="info">Welcome, ${user.name}!</p>
-          <p class="error">Unable to load the ${pageFile} page. Please try again or contact support.</p>
-          <p><a href="${getWebAppUrl()}?page=dashboard">Return to Dashboard</a></p>
-        </body>
-        </html>
-      `;
-      
-      return HtmlService.createHtmlOutput(fallbackContent)
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-        
-    } catch (fallbackError) {
-      console.error('❌ Fallback page also failed:', fallbackError);
-      throw error; // Let the main error handler deal with it
-    }
-  }
-}
-
-/**
- * Load mobile page with optimized interface
- */
-function loadMobilePage(pageName, user, rider, params) {
-  try {
-    debugLog('📱 Loading mobile page:', pageName);
-    
-    // Map page names to mobile files
-    const mobilePages = {
-      'dashboard': 'mobile-dashboard',
-      'requests': 'mobile-requests',
-      'assignments': 'mobile-assignments',
-      'notifications': 'mobile-notifications'
-    };
-    
-    const mobileFile = mobilePages[pageName] || 'mobile-dashboard';
-    
-    // Try to load mobile-specific file
-    let content;
-    try {
-      content = HtmlService.createTemplateFromFile(mobileFile).evaluate().getContent();
-    } catch (mobileError) {
-      debugLog('⚠️ Mobile file not found, falling back to desktop with mobile optimizations');
-      content = HtmlService.createTemplateFromFile(pageName === 'dashboard' ? 'index' : pageName).evaluate().getContent();
-      content = addMobileOptimizations(content);
-    }
-    
-    // Add navigation and user data
-    const navigation = getMobileNavigationHtml(pageName, user);
-    content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
-    content = addUserDataInjection(content, user, rider);
-    content = injectUrlParameters(content, params);
-    
-    const finalOutput = HtmlService.createHtmlOutput(content)
-      .setTitle(`Escort Management - ${pageName}`)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-    
-    debugLog('✅ Mobile page loaded successfully');
-    return finalOutput;
-    
-  } catch (error) {
-    console.error('❌ Error loading mobile page:', error);
-    // Fall back to desktop page
-    return loadDesktopPage(pageName === 'dashboard' ? 'index' : pageName, user, rider, params);
-  }
-}
-
-/**
- * Create login page
- */
-function createLoginPage() {
-  try {
-    debugLog('🔐 Creating login page');
-    return HtmlService.createTemplateFromFile('login').evaluate()
-      .setTitle('Login - Motorcycle Escort Management')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  } catch (error) {
-    console.error('❌ Error creating login page:', error);
-    return HtmlService.createHtmlOutput(`
-      <div style="padding: 20px; font-family: Arial, sans-serif; text-align: center;">
-        <h2>🔐 Login Required</h2>
-        <p>Please contact your administrator for access.</p>
-      </div>
-    `).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-}
-
-/**
- * Create unauthorized access page
- */
-function createUnauthorizedPage(email, name) {
-  debugLog('❌ Creating unauthorized page for:', email);
-  
-  const html = `
-    <html>
-    <head>
-      <title>Access Denied</title>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          text-align: center;
-          padding: 50px 20px;
-          background: #f5f5f5;
-        }
-        .container {
-          max-width: 500px;
-          margin: 0 auto;
-          background: white;
-          padding: 40px;
-          border-radius: 8px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .error-icon {
-          font-size: 4rem;
-          color: #f44336;
-          margin-bottom: 20px;
-        }
-        h1 {
-          color: #f44336;
-          margin-bottom: 20px;
-        }
-        .user-info {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 6px;
-          margin: 20px 0;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="error-icon">🚫</div>
-        <h1>Access Denied</h1>
-        <p>Your account is not authorized to access this system.</p>
-        
-        <div class="user-info">
-          <strong>Account Details:</strong><br>
-          Name: ${name || 'Unknown'}<br>
-          Email: ${email}
-        </div>
-        
-        <p>Please contact your administrator to request access.</p>
-        
-        <p style="margin-top: 30px;">
-          <a href="${getWebAppUrl()}?action=signin" style="color: #2196F3;">Try Different Account</a>
-        </p>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return HtmlService.createHtmlOutput(html)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/**
- * Detect mobile device from user agent or explicit parameter
- */
-function detectMobileDevice(userAgent) {
-  if (!userAgent) return false;
-  
-  const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
-  return mobileRegex.test(userAgent);
-}
-
-/**
- * Enhanced user session getter (if not already in your code)
- */
-function getEnhancedUserSession() {
-  try {
-    let userEmail = '';
-    let userName = '';
-    
-    // Try Session.getActiveUser() first
-    try {
-      const activeUser = Session.getActiveUser();
-      if (activeUser && activeUser.getEmail) {
-        userEmail = activeUser.getEmail();
-        userName = activeUser.getName ? activeUser.getName() : '';
-        debugLog('✅ Got user from Session.getActiveUser():', userEmail);
-      }
-    } catch (e) {
-      debugLog('⚠️ Session.getActiveUser() failed:', e.message);
-    }
-    
-    // Try Session.getEffectiveUser() if needed
-    if (!userEmail) {
-      try {
-        const effectiveUser = Session.getEffectiveUser();
-        if (effectiveUser && effectiveUser.getEmail) {
-          userEmail = effectiveUser.getEmail();
-          userName = effectiveUser.getName ? effectiveUser.getName() : '';
-          debugLog('✅ Got user from Session.getEffectiveUser():', userEmail);
-        }
-      } catch (e) {
-        debugLog('⚠️ Session.getEffectiveUser() failed:', e.message);
-      }
-    }
-    
-    const result = {
-      email: userEmail.trim(),
-      name: userName.trim() || extractNameFromEmail(userEmail),
-      hasEmail: !!userEmail.trim(),
-      hasName: !!userName.trim(),
-      source: 'session',
-      timestamp: new Date().toISOString()
-    };
-    
-    debugLog('Enhanced session result:', result);
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Enhanced session detection failed:', error);
-    return {
-      email: '',
-      name: '',
-      hasEmail: false,
-      hasName: false,
-      source: 'error',
-      error: error.message
-    };
-  }
-}
-
-/**
- * Extract name from email if name is not available
- */
-function extractNameFromEmail(email) {
-  if (!email) return 'User';
-  
-  const localPart = email.split('@')[0];
-  return localPart.charAt(0).toUpperCase() + localPart.slice(1);
-}
-function handleQuickConfirmation(params) {
-  try {
-    const { token, response } = params;
-    
-    if (!token || !response) {
-      return createConfirmationResponse('error', 'Missing confirmation parameters');
-    }
-    
-    // Validate the token
-    const validation = validateConfirmationToken(token);
-    if (!validation.valid) {
-      return createConfirmationResponse('error', validation.error);
-    }
-    
-    const { assignmentId, riderName, requestId } = validation.data;
-    
-    // Process the confirmation
-    const result = processAssignmentConfirmation(assignmentId, riderName, response);
-    
-    // Clean up the token after use
-    const properties = PropertiesService.getScriptProperties();
-    properties.deleteProperty(`confirm_${token}`);
-    
-    // Log the confirmation
-    logConfirmationResponse(riderName, response, assignmentId, result.success);
-    
-    if (result.success) {
-      // Notify dispatcher of the response
-      notifyAdminOfConfirmation(riderName, response, assignmentId);
-      
-      return createOneClickConfirmationResponse('success', result.message, {
-        rider: riderName,
-        response: response,
-        assignmentId: assignmentId,
-        requestId: requestId
-      });
-    } else {
-      return createOneClickConfirmationResponse('error', result.message);
-    }
-    
-  } catch (error) {
-    console.error('Quick confirmation error:', error);
-    return createConfirmationResponse('error', 'System error processing confirmation');
+    return createErrorPageWithSignInSafe(error);
   }
 }
 
@@ -5822,34 +4994,18 @@ function createErrorPageWithSignIn(error) {
             color: white;
         }
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            color: #333;
-            padding: 40px;
-            border-radius: 15px;
-            max-width: 500px;
-            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95); color: #333;
+            padding: 40px; border-radius: 15px; max-width: 500px; margin: 0 auto;
         }
         .btn {
-            background: #3498db;
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 25px;
-            font-size: 16px;
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            margin: 10px;
+            background: #3498db; color: white; padding: 15px 30px;
+            border: none; border-radius: 25px; font-size: 16px;
+            cursor: pointer; text-decoration: none; display: inline-block; margin: 10px;
         }
         .error-details {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 12px;
-            text-align: left;
+            background: #f8d7da; color: #721c24; padding: 15px;
+            border-radius: 8px; margin: 20px 0; font-family: monospace;
+            font-size: 12px; text-align: left;
         }
     </style>
 </head>
@@ -5874,7 +5030,7 @@ function createErrorPageWithSignIn(error) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// 🛡️ SAFE WRAPPER FUNCTIONS (add these to prevent errors)
+// 🛡️ SAFE WRAPPER FUNCTIONS
 
 function getRiderByGoogleEmailSafe(email) {
   try {
@@ -6188,7 +5344,8 @@ function getRoleBasedNavigation(currentPage, user, rider) {
     navHtml += `
       <a href="${item.url}"
          class="nav-button ${isActive}"
-         data-page="${item.page}">
+         data-page="${item.page}"
+         target="_top">
         ${item.label}
       </a>
     `;
@@ -7710,505 +6867,254 @@ function debugSystemSetup() {
     return { error: error.message };
   }
 }
-function handlePublicConfirmation(params) {
-  try {
-    const { action, response, requestId, assignmentId, rider } = params;
-    
-    console.log('📧 Processing public confirmation:', { action, response, requestId, assignmentId, rider });
-    
-    // Validate required parameters
-    if (!response || !rider) {
-      return createSimpleErrorPage('Missing required information for confirmation.');
-    }
-    
-    // Validate response type
-    if (!['confirm', 'decline', 'accept', 'reject'].includes(response.toLowerCase())) {
-      return createSimpleErrorPage('Invalid response type.');
-    }
-    
-    let result;
-    
-    if (action === 'respondRequest' && requestId) {
-      // Handle request-level responses (pre-assignment)
-      result = processRequestConfirmation(requestId, rider, response);
-    } else if (action === 'respondAssignment' && assignmentId) {
-      // Handle assignment-level responses (post-assignment)  
-      result = processAssignmentConfirmation(assignmentId, rider, response);
-    } else {
-      return createSimpleErrorPage('Invalid confirmation parameters.');
-    }
-    
-    // Log the confirmation
-    try {
-      const message = `📧 Confirmation: ${rider} ${response}d ${requestId || assignmentId}`;
-      console.log(message);
-      // Try to log to activity if the function exists
-      if (typeof logActivity === 'function') {
-        logActivity(message);
-      }
-    } catch (logError) {
-      console.error('Failed to log confirmation:', logError);
-    }
-    
-    if (result.success) {
-      // Try to notify admin/dispatcher if function exists
-      try {
-        if (typeof notifyAdminOfConfirmation === 'function') {
-          notifyAdminOfConfirmation(rider, response, requestId || assignmentId);
-        }
-      } catch (notifyError) {
-        console.error('Failed to notify admin:', notifyError);
-      }
-      
-      return createSimpleSuccessPage(result.message, {
-        rider: rider,
-        response: response,
-        id: requestId || assignmentId
-      });
-    } else {
-      return createSimpleErrorPage(result.message);
-    }
-    
-  } catch (error) {
-    console.error('❌ Public confirmation error:', error);
-    return createSimpleErrorPage('System error processing confirmation. Please contact your dispatcher.');
-  }
-}
 
 /**
- * Handle quick confirmation with token validation
+ * Update requests with email response information
+ * Adds response info like "Joe Smith confirmed at 7-25-25 1441 hrs" to request notes
  */
-function handleQuickConfirmation(params) {
+function updateRequestsWithResponseInfo() {
   try {
-    const { token, response } = params;
+    debugLog('🔄 Starting to update requests with response information...');
     
-    console.log('🔒 Processing secure confirmation with token');
-    
-    if (!token || !response) {
-      return createSimpleErrorPage('Missing confirmation parameters.');
+    // Get the Email_Responses sheet
+    const responseSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Email_Responses');
+    if (!responseSheet) {
+      debugLog('❌ Email_Responses sheet not found');
+      return { success: false, message: 'Email_Responses sheet not found' };
     }
     
-    // Validate the token (if validation function exists)
-    let validation;
-    try {
-      if (typeof validateConfirmationToken === 'function') {
-        validation = validateConfirmationToken(token);
-        if (!validation.valid) {
-          return createSimpleErrorPage(validation.error || 'Invalid confirmation link.');
+    // Get all response data
+    const responseData = responseSheet.getDataRange().getValues();
+    if (responseData.length <= 1) {
+      debugLog('📋 No response data to process');
+      return { success: true, message: 'No response data to process' };
+    }
+    
+    // Parse headers - Column A=Timestamp, C=Rider, E=Request ID, F=Action
+    const headers = responseData[0];
+    const timestampCol = 0; // Column A
+    const riderCol = 2;     // Column C
+    const requestIdCol = 4; // Column E
+    const actionCol = 5;    // Column F
+    
+    // Get requests data
+    const requestsData = getRequestsData(false);
+    if (!requestsData || !requestsData.sheet) {
+      throw new Error('Could not access requests data');
+    }
+    
+    const requestsSheet = requestsData.sheet;
+    const columnMap = requestsData.columnMap;
+    const notesCol = columnMap[CONFIG.columns.requests.notes];
+    const requestIdColumnIndex = columnMap[CONFIG.columns.requests.id];
+    
+    let updatedCount = 0;
+    const processedResponses = new Set();
+    
+    // Process each response (skip header row)
+    for (let i = 1; i < responseData.length; i++) {
+      const row = responseData[i];
+      const timestamp = row[timestampCol];
+      const riderName = row[riderCol];
+      const requestId = row[requestIdCol];
+      const action = row[actionCol];
+      
+      // Skip if missing required data
+      if (!timestamp || !riderName || !requestId || !action) {
+        continue;
+      }
+      
+      // Create unique key for this response to avoid duplicates
+      const responseKey = `${requestId}-${riderName}-${action}-${timestamp.getTime()}`;
+      if (processedResponses.has(responseKey)) {
+        continue;
+      }
+      processedResponses.add(responseKey);
+      
+      // Format the response info: "Joe Smith confirmed at 7-25-25 1441 hrs"
+      const responseDate = new Date(timestamp);
+      const formattedDate = Utilities.formatDate(responseDate, CONFIG.system.timezone, 'M-dd-yy HHmm');
+      const responseInfo = `${riderName} ${action.toLowerCase()} at ${formattedDate} hrs`;
+      
+      // Find the request row
+      let targetRowIndex = -1;
+      for (let j = 0; j < requestsData.data.length; j++) {
+        const rowRequestId = getColumnValue(requestsData.data[j], columnMap, CONFIG.columns.requests.id);
+        if (String(rowRequestId).trim() === String(requestId).trim()) {
+          targetRowIndex = j;
+          break;
         }
+      }
+      
+      if (targetRowIndex === -1) {
+        debugLog(`⚠️ Request ${requestId} not found for response: ${responseInfo}`);
+        continue;
+      }
+      
+      const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
+      
+      // Get current notes
+      let currentNotes = '';
+      if (notesCol !== undefined) {
+        const notesCell = requestsSheet.getRange(sheetRowNumber, notesCol + 1);
+        currentNotes = String(notesCell.getValue() || '').trim();
+      }
+      
+      // Check if this response is already in the notes
+      if (currentNotes.includes(responseInfo)) {
+        debugLog(`📋 Response already exists in notes for ${requestId}: ${responseInfo}`);
+        continue;
+      }
+      
+      // Add the response info to notes
+      const updatedNotes = currentNotes ? 
+        `${currentNotes}\n${responseInfo}` : 
+        responseInfo;
+      
+      if (notesCol !== undefined) {
+        requestsSheet.getRange(sheetRowNumber, notesCol + 1).setValue(updatedNotes);
+        updatedCount++;
+        debugLog(`✅ Updated request ${requestId} with response: ${responseInfo}`);
       } else {
-        return createSimpleErrorPage('Secure confirmations not available. Please use the basic confirmation link.');
+        debugLog(`⚠️ Notes column not found, cannot update request ${requestId}`);
       }
-    } catch (tokenError) {
-      console.error('Token validation error:', tokenError);
-      return createSimpleErrorPage('Error validating confirmation link.');
     }
     
-    const { assignmentId, riderName, requestId } = validation.data;
+    debugLog(`🎉 Updated ${updatedCount} requests with response information`);
     
-    // Process the confirmation
-    const result = processAssignmentConfirmation(assignmentId, riderName, response);
+    return {
+      success: true,
+      message: `Updated ${updatedCount} requests with response information`,
+      updatedCount: updatedCount
+    };
     
-    // Clean up the token after use
-    try {
-      const properties = PropertiesService.getScriptProperties();
-      properties.deleteProperty(`confirm_${token}`);
-    } catch (cleanupError) {
-      console.error('Token cleanup error:', cleanupError);
+  } catch (error) {
+    console.error('❌ Error updating requests with response info:', error);
+    logError('Error updating requests with response info', error);
+    return {
+      success: false,
+      message: 'Failed to update requests with response info: ' + error.message
+    };
+  }
+}
+
+/**
+ * Get email responses from the Email_Responses sheet
+ * @param {number} limit Optional limit on number of responses to return
+ * @return {Array} Array of response objects
+ */
+function getEmailResponses(limit = null) {
+  try {
+    const responseSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Email_Responses');
+    if (!responseSheet) {
+      return [];
     }
     
-    if (result.success) {
-      return createSimpleSuccessPage(result.message, {
-        rider: riderName,
-        response: response,
-        assignmentId: assignmentId,
-        requestId: requestId
+    const data = responseSheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      return [];
+    }
+    
+    const headers = data[0];
+    const responses = [];
+    
+    // Process data rows
+    const rowsToProcess = limit ? Math.min(data.length - 1, limit) : data.length - 1;
+    for (let i = 1; i <= rowsToProcess; i++) {
+      const row = data[i];
+      responses.push({
+        timestamp: row[0],
+        fromEmail: row[1],
+        riderName: row[2],
+        messageBody: row[3],
+        requestId: row[4],
+        action: row[5]
       });
+    }
+    
+    return responses;
+    
+  } catch (error) {
+    console.error('❌ Error getting email responses:', error);
+    logError('Error getting email responses', error);
+    return [];
+  }
+}
+
+/**
+ * Update a single request with response information
+ * @param {string} requestId The request ID to update
+ * @param {string} riderName The rider who responded
+ * @param {string} action The action taken (Confirmed or Declined)
+ * @param {Date} timestamp When the response was made
+ */
+function updateSingleRequestWithResponse(requestId, riderName, action, timestamp) {
+  try {
+    if (!requestId || !riderName || !action) {
+      debugLog('⚠️ Missing required parameters for updateSingleRequestWithResponse');
+      return;
+    }
+
+    // Get requests data
+    const requestsData = getRequestsData(false);
+    if (!requestsData || !requestsData.sheet) {
+      debugLog('❌ Could not access requests data');
+      return;
+    }
+
+    const requestsSheet = requestsData.sheet;
+    const columnMap = requestsData.columnMap;
+    const notesCol = columnMap[CONFIG.columns.requests.notes];
+
+    // Find the request row
+    let targetRowIndex = -1;
+    for (let j = 0; j < requestsData.data.length; j++) {
+      const rowRequestId = getColumnValue(requestsData.data[j], columnMap, CONFIG.columns.requests.id);
+      if (String(rowRequestId).trim() === String(requestId).trim()) {
+        targetRowIndex = j;
+        break;
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      debugLog(`⚠️ Request ${requestId} not found for response update`);
+      return;
+    }
+
+    const sheetRowNumber = targetRowIndex + 2; // Convert to 1-based row number
+
+    // Format the response info: "Joe Smith confirmed at 7-25-25 1441 hrs"
+    const responseDate = new Date(timestamp);
+    const formattedDate = Utilities.formatDate(responseDate, CONFIG.system.timezone, 'M-dd-yy HHmm');
+    const responseInfo = `${riderName} ${action.toLowerCase()} at ${formattedDate} hrs`;
+
+    // Get current notes
+    let currentNotes = '';
+    if (notesCol !== undefined) {
+      const notesCell = requestsSheet.getRange(sheetRowNumber, notesCol + 1);
+      currentNotes = String(notesCell.getValue() || '').trim();
+    }
+
+    // Check if this response is already in the notes
+    if (currentNotes.includes(responseInfo)) {
+      debugLog(`📋 Response already exists in notes for ${requestId}: ${responseInfo}`);
+      return;
+    }
+
+    // Add the response info to notes
+    const updatedNotes = currentNotes ? 
+      `${currentNotes}\n${responseInfo}` : 
+      responseInfo;
+
+    if (notesCol !== undefined) {
+      requestsSheet.getRange(sheetRowNumber, notesCol + 1).setValue(updatedNotes);
+      debugLog(`✅ Updated request ${requestId} with response: ${responseInfo}`);
     } else {
-      return createSimpleErrorPage(result.message);
+      debugLog(`⚠️ Notes column not found, cannot update request ${requestId}`);
     }
-    
+
   } catch (error) {
-    console.error('❌ Quick confirmation error:', error);
-    return createSimpleErrorPage('System error processing confirmation.');
-  }
-}
-
-/**
- * Process request confirmation (pre-assignment)
- */
-function processRequestConfirmation(requestId, riderName, response) {
-  try {
-    console.log('📋 Processing request confirmation:', { requestId, riderName, response });
-    
-    // Try to find the request (if function exists)
-    let request;
-    try {
-      if (typeof getRequestDetails === 'function') {
-        request = getRequestDetails(requestId);
-        if (!request) {
-          return { success: false, message: 'Request not found' };
-        }
-      }
-    } catch (requestError) {
-      console.error('Error finding request:', requestError);
-      request = { eventDate: 'Unknown', startTime: 'Unknown' }; // Fallback
-    }
-    
-    // Log the response to a tracking sheet
-    try {
-      const responseSheet = getOrCreateSimpleResponseSheet();
-      const now = new Date();
-      
-      responseSheet.appendRow([
-        now,
-        'REQUEST',
-        requestId,
-        '',  // No assignment ID yet
-        riderName,
-        response.toUpperCase(),
-        'Email Confirmation',
-        request.eventDate || 'Unknown',
-        request.startTime || 'Unknown'
-      ]);
-    } catch (logError) {
-      console.error('Error logging response:', logError);
-      // Continue anyway - don't fail the confirmation
-    }
-    
-    console.log('✅ Request confirmation processed successfully');
-    
-    return {
-      success: true,
-      message: `Thank you ${riderName}! Your ${response} has been recorded for request ${requestId}.`
-    };
-    
-  } catch (error) {
-    console.error('❌ Request confirmation error:', error);
-    return { success: false, message: 'Error processing request confirmation' };
-  }
-}
-
-/**
- * Process assignment confirmation (post-assignment)
- */
-function processAssignmentConfirmation(assignmentId, riderName, response) {
-  try {
-    console.log('📝 Processing assignment confirmation:', { assignmentId, riderName, response });
-    
-    // Try to find and update the assignment
-    let assignment;
-    try {
-      // Try to update assignment status if functions exist
-      if (typeof getAssignmentsData === 'function' && typeof CONFIG !== 'undefined') {
-        const assignmentsData = getAssignmentsData();
-        const assignmentRow = assignmentsData.data.find(row => 
-          getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.assignmentId) === assignmentId
-        );
-        
-        if (assignmentRow) {
-          const rowIndex = assignmentsData.data.indexOf(assignmentRow) + 2; // +2 for header row and 0-based index
-          const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
-          
-          // Update status
-          const statusCol = assignmentsData.columnMap[CONFIG.columns.assignments.status] + 1;
-          const newStatus = response.toLowerCase() === 'confirm' || response.toLowerCase() === 'accept' 
-            ? 'Confirmed' : 'Declined';
-          
-          sheet.getRange(rowIndex, statusCol).setValue(newStatus);
-          
-          // Get assignment details for response
-          assignment = {
-            requestId: getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.requestId),
-            eventDate: getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate),
-            startTime: getColumnValue(assignmentRow, assignmentsData.columnMap, CONFIG.columns.assignments.startTime)
-          };
-        }
-      }
-    } catch (updateError) {
-      console.error('Error updating assignment:', updateError);
-      // Continue anyway - we'll still log the response
-      assignment = { requestId: 'Unknown', eventDate: 'Unknown', startTime: 'Unknown' };
-    }
-    
-    // Log the response
-    try {
-      const responseSheet = getOrCreateSimpleResponseSheet();
-      const now = new Date();
-      
-      responseSheet.appendRow([
-        now,
-        'ASSIGNMENT',
-        assignment?.requestId || 'Unknown',
-        assignmentId,
-        riderName,
-        response.toUpperCase(),
-        'Email Confirmation',
-        assignment?.eventDate || 'Unknown',
-        assignment?.startTime || 'Unknown'
-      ]);
-    } catch (logError) {
-      console.error('Error logging response:', logError);
-      // Continue anyway
-    }
-    
-    console.log('✅ Assignment confirmation processed successfully');
-    
-    return {
-      success: true,
-      message: `Thank you ${riderName}! Your ${response} has been recorded for assignment ${assignmentId}.`
-    };
-    
-  } catch (error) {
-    console.error('❌ Assignment confirmation error:', error);
-    return { success: false, message: 'Error processing assignment confirmation' };
-  }
-}
-
-/**
- * Create or get the response tracking sheet (simplified version)
- */
-function getOrCreateSimpleResponseSheet() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = spreadsheet.getSheetByName('Rider Responses');
-  
-  if (!sheet) {
-    console.log('📊 Creating new Rider Responses sheet');
-    sheet = spreadsheet.insertSheet('Rider Responses');
-    
-    // Add headers
-    const headers = [
-      'Timestamp',
-      'Type', 
-      'Request ID',
-      'Assignment ID',
-      'Rider Name',
-      'Response',
-      'Method',
-      'Event Date',
-      'Event Time'
-    ];
-    
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
-  
-  return sheet;
-}
-
-/**
- * Create simple success page
- */
-function createSimpleSuccessPage(message, details = {}) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Confirmation Received</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
-          background: #f0f8ff;
-          text-align: center;
-        }
-        .container {
-          max-width: 500px;
-          margin: 50px auto;
-          background: white;
-          padding: 40px;
-          border-radius: 10px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .success-icon {
-          font-size: 4rem;
-          color: #4CAF50;
-          margin-bottom: 20px;
-        }
-        h1 {
-          color: #4CAF50;
-          margin-bottom: 20px;
-        }
-        .message {
-          font-size: 1.1rem;
-          color: #333;
-          margin-bottom: 30px;
-          line-height: 1.5;
-        }
-        .details {
-          background: #f8f9fa;
-          padding: 20px;
-          border-radius: 8px;
-          margin: 20px 0;
-          text-align: left;
-        }
-        .detail-row {
-          margin: 8px 0;
-        }
-        .detail-label {
-          font-weight: bold;
-          color: #666;
-        }
-        .footer {
-          margin-top: 30px;
-          color: #888;
-          font-size: 0.9rem;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="success-icon">✅</div>
-        <h1>Confirmation Received!</h1>
-        <div class="message">${message}</div>
-        
-        ${details.rider ? `
-          <div class="details">
-            <div class="detail-row">
-              <span class="detail-label">Rider:</span> ${details.rider}
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Response:</span> <strong>${details.response ? details.response.toUpperCase() : 'N/A'}</strong>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">ID:</span> ${details.id || details.assignmentId || 'N/A'}
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Time:</span> ${new Date().toLocaleString()}
-            </div>
-          </div>
-        ` : ''}
-        
-        <div class="footer">
-          Your response has been recorded and the dispatcher has been notified.
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return HtmlService.createHtmlOutput(html)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/**
- * Create simple error page
- */
-function createSimpleErrorPage(errorMessage) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Confirmation Error</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          margin: 0;
-          padding: 20px;
-          background: #fff5f5;
-          text-align: center;
-        }
-        .container {
-          max-width: 500px;
-          margin: 50px auto;
-          background: white;
-          padding: 40px;
-          border-radius: 10px;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .error-icon {
-          font-size: 4rem;
-          color: #f44336;
-          margin-bottom: 20px;
-        }
-        h1 {
-          color: #f44336;
-          margin-bottom: 20px;
-        }
-        .message {
-          font-size: 1.1rem;
-          color: #333;
-          margin-bottom: 30px;
-          line-height: 1.5;
-        }
-        .footer {
-          margin-top: 30px;
-          color: #888;
-          font-size: 0.9rem;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="error-icon">❌</div>
-        <h1>Confirmation Error</h1>
-        <div class="message">${errorMessage}</div>
-        <div class="footer">
-          Please contact your dispatcher if you continue to have issues.
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  return HtmlService.createHtmlOutput(html)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-/**
- * Simple notification function
- */
-function notifyAdminOfConfirmation(rider, response, id) {
-  try {
-    console.log('📨 Attempting to notify admin of confirmation:', { rider, response, id });
-    
-    // Try to get admin emails if function exists
-    let adminEmails = [];
-    try {
-      if (typeof getAdminUsers === 'function') {
-        adminEmails = getAdminUsers();
-      }
-    } catch (adminError) {
-      console.error('Could not get admin emails:', adminError);
-      return;
-    }
-    
-    if (!adminEmails || adminEmails.length === 0) {
-      console.log('⚠️ No admin emails found for notification');
-      return;
-    }
-    
-    const subject = `🏍️ Rider Confirmation: ${rider} ${response}d ${id}`;
-    const body = `
-Rider confirmation received:
-
-Rider: ${rider}
-Response: ${response.toUpperCase()}
-ID: ${id}
-Time: ${new Date().toLocaleString()}
-
---
-Motorcycle Escort Management System
-    `;
-    
-    adminEmails.forEach(email => {
-      if (email && email.trim()) {
-        try {
-          GmailApp.sendEmail(email, subject, body);
-          console.log('✅ Notification sent to admin:', email);
-        } catch (emailError) {
-          console.error(`❌ Failed to notify admin ${email}:`, emailError);
-        }
-      }
-    });
-    
-  } catch (error) {
-    console.error('❌ Error notifying admin of confirmation:', error);
+    console.error('❌ Error updating single request with response:', error);
+    logError('Error updating single request with response', error);
   }
 }
