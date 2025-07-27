@@ -17,6 +17,647 @@
  * @return {object} An object containing the `request` details and an array of `riders`.
  * @throws {Error} If the request ID is not found or if there's a configuration error.
  */
+/**
+ * TEST FRONTEND-BACKEND COMMUNICATION ISSUE
+ * 
+ * Since the backend works but frontend gets "No data", there's a communication issue
+ */
+
+/**
+ * Test if the frontend is calling the right function with the right parameters
+ */
+function testFrontendBackendCommunication() {
+  console.log('🔍 === TESTING FRONTEND-BACKEND COMMUNICATION ===');
+  
+  try {
+    // 1. Check if the function exists and is callable
+    console.log('1️⃣ Testing function availability...');
+    
+    if (typeof getPageDataForReports !== 'function') {
+      console.log('❌ getPageDataForReports function not found!');
+      return { issue: 'function_missing' };
+    }
+    console.log('✅ getPageDataForReports function exists');
+    
+    // 2. Test with the exact parameters the frontend sends
+    console.log('\n2️⃣ Testing with frontend-style parameters...');
+    
+    // Test different parameter formats the frontend might send
+    const testCases = [
+      // Case 1: Object with all properties
+      {
+        name: 'Full object',
+        params: {
+          startDate: '2024-12-01',
+          endDate: '2025-01-27',
+          requestType: 'All',
+          status: 'All'
+        }
+      },
+      // Case 2: Minimal object
+      {
+        name: 'Minimal object',
+        params: {
+          startDate: '2024-12-01',
+          endDate: '2025-01-27'
+        }
+      },
+      // Case 3: Empty object
+      {
+        name: 'Empty object',
+        params: {}
+      },
+      // Case 4: Null/undefined
+      {
+        name: 'Null parameter',
+        params: null
+      }
+    ];
+    
+    const results = {};
+    
+    testCases.forEach(testCase => {
+      console.log(`\n   Testing: ${testCase.name}`);
+      try {
+        const result = getPageDataForReports(testCase.params);
+        results[testCase.name] = {
+          success: result?.success || false,
+          hasReportData: !!result?.reportData,
+          error: result?.error,
+          type: typeof result
+        };
+        console.log(`   Result: ${result?.success ? 'SUCCESS' : 'FAILED'} - ${result?.error || 'No error'}`);
+      } catch (error) {
+        results[testCase.name] = {
+          success: false,
+          error: error.message,
+          exception: true
+        };
+        console.log(`   Exception: ${error.message}`);
+      }
+    });
+    
+    // 3. Test the exact call pattern from reports.html
+    console.log('\n3️⃣ Testing exact frontend call pattern...');
+    
+    // This simulates exactly what reports.html does
+    const frontendFilters = {
+      startDate: document?.getElementById ? 'simulated-date' : '2024-12-01',
+      endDate: document?.getElementById ? 'simulated-date' : '2025-01-27',
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('   Frontend-style filters:', frontendFilters);
+    const frontendResult = getPageDataForReports(frontendFilters);
+    console.log('   Frontend result:', {
+      success: frontendResult?.success,
+      hasReportData: !!frontendResult?.reportData,
+      error: frontendResult?.error
+    });
+    
+    return {
+      testResults: results,
+      frontendResult: frontendResult,
+      recommendation: frontendResult?.success ? 'Backend works - check frontend code' : 'Found backend issue'
+    };
+    
+  } catch (error) {
+    console.error('❌ Communication test failed:', error);
+    return {
+      issue: 'communication_test_failed',
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * Check if there are multiple versions of the function
+ */
+function checkForDuplicateFunctions() {
+  console.log('🔍 === CHECKING FOR DUPLICATE FUNCTIONS ===');
+  
+  try {
+    // Check if there are multiple getPageDataForReports functions
+    const functionString = getPageDataForReports.toString();
+    console.log('Current function length:', functionString.length);
+    console.log('Function starts with:', functionString.substring(0, 100) + '...');
+    
+    // Check if it's the auth version or no-auth version
+    const hasAuth = functionString.includes('authenticateAndAuthorizeUser');
+    const hasDefaultUser = functionString.includes('defaultUser') || functionString.includes('System User');
+    
+    console.log('Function analysis:');
+    console.log('  Has authentication:', hasAuth);
+    console.log('  Has default user:', hasDefaultUser);
+    
+    if (hasAuth && hasDefaultUser) {
+      console.log('⚠️ WARNING: Function has both auth and no-auth code!');
+      return { issue: 'mixed_function' };
+    } else if (hasAuth) {
+      console.log('❌ ISSUE: Function still has authentication code');
+      return { issue: 'still_has_auth' };
+    } else if (hasDefaultUser) {
+      console.log('✅ Function is the no-auth version');
+      return { status: 'no_auth_version' };
+    } else {
+      console.log('❓ UNKNOWN: Function doesn\'t match expected patterns');
+      return { issue: 'unknown_version' };
+    }
+    
+  } catch (error) {
+    console.error('❌ Function check failed:', error);
+    return { issue: 'function_check_failed', error: error.message };
+  }
+}
+
+/**
+ * Create a test function that mimics google.script.run behavior
+ */
+function simulateGoogleScriptRun() {
+  console.log('🔍 === SIMULATING GOOGLE.SCRIPT.RUN ===');
+  
+  try {
+    // This simulates how google.script.run calls the function
+    const filters = {
+      startDate: '2024-12-01',
+      endDate: '2025-01-27',
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('Simulating google.script.run.getPageDataForReports with:', filters);
+    
+    // Call the function exactly like google.script.run would
+    const result = getPageDataForReports(filters);
+    
+    console.log('Result type:', typeof result);
+    console.log('Result keys:', Object.keys(result || {}));
+    
+    // Check if result matches what frontend expects
+    const expectedStructure = {
+      success: 'boolean',
+      user: 'object',
+      reportData: 'object'
+    };
+    
+    const structureCheck = {};
+    Object.keys(expectedStructure).forEach(key => {
+      structureCheck[key] = {
+        exists: key in (result || {}),
+        type: typeof result?.[key],
+        expected: expectedStructure[key]
+      };
+    });
+    
+    console.log('Structure check:', structureCheck);
+    
+    // Test serialization (google.script.run serializes the result)
+    try {
+      const serialized = JSON.stringify(result);
+      const deserialized = JSON.parse(serialized);
+      console.log('✅ Serialization test passed');
+      console.log('Serialized size:', serialized.length, 'characters');
+    } catch (serError) {
+      console.log('❌ Serialization failed:', serError.message);
+      return { 
+        issue: 'serialization_failed', 
+        error: serError.message,
+        result: result 
+      };
+    }
+    
+    return {
+      success: true,
+      result: result,
+      structureCheck: structureCheck
+    };
+    
+  } catch (error) {
+    console.error('❌ Google script simulation failed:', error);
+    return {
+      issue: 'simulation_failed',
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * COMPLETE FRONTEND-BACKEND DIAGNOSTIC
+ */
+function diagnoseFrontendBackendIssue() {
+  console.log('🚀 === COMPLETE FRONTEND-BACKEND DIAGNOSTIC ===');
+  
+  console.log('\n1️⃣ Checking for duplicate functions...');
+  const duplicateCheck = checkForDuplicateFunctions();
+  
+  console.log('\n2️⃣ Testing communication...');
+  const commTest = testFrontendBackendCommunication();
+  
+  console.log('\n3️⃣ Simulating google.script.run...');
+  const scriptTest = simulateGoogleScriptRun();
+  
+  console.log('\n🎯 === DIAGNOSIS RESULTS ===');
+  
+  // Analyze results and provide recommendations
+  if (duplicateCheck.issue === 'still_has_auth') {
+    console.log('❌ ISSUE FOUND: Function still has authentication code');
+    console.log('💡 SOLUTION: Replace the function with the no-auth version');
+    return {
+      issue: 'authentication_not_removed',
+      solution: 'Replace getPageDataForReports with no-auth version'
+    };
+  }
+  
+  if (scriptTest.issue === 'serialization_failed') {
+    console.log('❌ ISSUE FOUND: Result cannot be serialized');
+    console.log('💡 SOLUTION: Check for circular references in reportData');
+    return {
+      issue: 'serialization_problem',
+      solution: 'Fix circular references in generateReportData'
+    };
+  }
+  
+  if (commTest.frontendResult?.success) {
+    console.log('✅ Backend works fine');
+    console.log('💡 ISSUE: Problem is in frontend JavaScript or communication');
+    console.log('📝 CHECK: Browser console for JavaScript errors');
+    console.log('📝 CHECK: Network tab for failed requests');
+    return {
+      issue: 'frontend_problem',
+      solution: 'Check browser console and network tab'
+    };
+  }
+  
+  console.log('❓ UNKNOWN: Unable to identify specific issue');
+  return {
+    issue: 'unknown',
+    duplicateCheck,
+    commTest,
+    scriptTest
+  };
+}
+function testReportsConnection() {
+  return {
+    success: true,
+    message: 'Connection works!',
+    timestamp: new Date().toISOString(),
+    user: { name: 'Test User' },
+    reportData: {
+      totalRequests: 42,
+      completedRequests: 38,
+      riderHours: [{ rider: 'Test Rider', escorts: 5, hours: 10 }]
+    }
+  };
+}
+/**
+ * Quick fix: Create a simple test function the frontend can call
+ */
+function createSimpleTestFunction() {
+  console.log('🔧 === CREATING SIMPLE TEST FUNCTION ===');
+  
+  const testFunctionCode = `
+// Add this test function to your Code.gs
+function testReportsConnection() {
+  return {
+    success: true,
+    message: 'Connection works!',
+    timestamp: new Date().toISOString(),
+    user: { name: 'Test User' },
+    reportData: {
+      totalRequests: 42,
+      completedRequests: 38,
+      riderHours: [
+        { rider: 'Test Rider', escorts: 5, hours: 10 }
+      ]
+    }
+  };
+}
+`;
+  
+  console.log('Test function code:');
+  console.log(testFunctionCode);
+  console.log('\nTo test:');
+  console.log('1. Add this function to your Code.gs');
+  console.log('2. In browser console, run: google.script.run.withSuccessHandler(console.log).testReportsConnection()');
+  console.log('3. If this works, the issue is in getPageDataForReports');
+  
+  return { testFunctionCode };
+}
+/**
+ * CATCH THE EXACT ERROR IN generateReportData
+ * 
+ * Since removing auth didn't fix it, there's an error in generateReportData itself
+ */
+
+/**
+ * Enhanced version of getPageDataForReports with detailed error catching
+ */
+function getPageDataForReportsDebug(filters) {
+  console.log('🔍 === DEBUG VERSION OF getPageDataForReports ===');
+  
+  try {
+    console.log('1️⃣ Function called with filters:', filters);
+
+    // Create a default user without authentication
+    const defaultUser = {
+      name: 'System User',
+      email: 'system@example.com',
+      roles: ['admin'],
+      permissions: ['view_reports', 'export_reports', 'view_all']
+    };
+    console.log('2️⃣ Created default user:', defaultUser);
+
+    // Test if generateReportData exists
+    if (typeof generateReportData !== 'function') {
+      console.log('❌ generateReportData function not found!');
+      return { 
+        success: false, 
+        error: 'generateReportData function not found',
+        user: defaultUser, 
+        reportData: null 
+      };
+    }
+    console.log('3️⃣ generateReportData function exists');
+
+    // Try to call generateReportData with enhanced error catching
+    console.log('4️⃣ Calling generateReportData...');
+    let reportData;
+    
+    try {
+      reportData = generateReportData(filters);
+      console.log('5️⃣ generateReportData returned:', {
+        exists: !!reportData,
+        type: typeof reportData,
+        keys: reportData ? Object.keys(reportData) : null,
+        success: reportData?.success,
+        error: reportData?.error
+      });
+    } catch (generateError) {
+      console.error('❌ generateReportData threw an error:', generateError);
+      console.error('Error stack:', generateError.stack);
+      return { 
+        success: false, 
+        error: 'generateReportData error: ' + generateError.message,
+        stack: generateError.stack,
+        user: defaultUser, 
+        reportData: null 
+      };
+    }
+
+    // Check if reportData is valid
+    if (!reportData) {
+      console.log('❌ generateReportData returned null/undefined');
+      return { 
+        success: false, 
+        error: 'generateReportData returned null',
+        user: defaultUser, 
+        reportData: null 
+      };
+    }
+
+    // Check if reportData has error flag
+    if (reportData.success === false) {
+      console.log('❌ generateReportData returned success: false');
+      console.log('Error from generateReportData:', reportData.error);
+      return { 
+        success: false, 
+        error: 'generateReportData failed: ' + (reportData.error || 'unknown error'),
+        user: defaultUser, 
+        reportData: reportData 
+      };
+    }
+
+    console.log('6️⃣ Success! Returning data');
+    return { 
+      success: true, 
+      user: defaultUser, 
+      reportData: reportData 
+    };
+    
+  } catch (outerError) {
+    console.error('❌ Outer function error:', outerError);
+    console.error('Outer error stack:', outerError.stack);
+    return { 
+      success: false, 
+      error: 'Outer function error: ' + outerError.message,
+      stack: outerError.stack,
+      user: { name: 'System User' }, 
+      reportData: null 
+    };
+  }
+}
+
+/**
+ * Test the debug version directly
+ */
+function testDebugVersion() {
+  console.log('🧪 === TESTING DEBUG VERSION ===');
+  
+  const filters = {
+    startDate: '2024-12-01',
+    endDate: '2025-01-27',
+    requestType: 'All',
+    status: 'All'
+  };
+  
+  console.log('Testing with filters:', filters);
+  const result = getPageDataForReportsDebug(filters);
+  
+  console.log('\n🎯 === FINAL RESULT ===');
+  console.log('Success:', result.success);
+  console.log('Error:', result.error);
+  console.log('Has reportData:', !!result.reportData);
+  console.log('User:', result.user);
+  
+  if (result.stack) {
+    console.log('Stack trace:', result.stack);
+  }
+  
+  return result;
+}
+
+/**
+ * Step-by-step test of generateReportData
+ */
+function testGenerateReportDataStepByStep() {
+  console.log('🔍 === STEP BY STEP TEST OF generateReportData ===');
+  
+  try {
+    const filters = {
+      startDate: '2024-12-01',
+      endDate: '2025-01-27',
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('1️⃣ Testing data retrieval functions...');
+    
+    // Test each data source individually
+    console.log('   Testing getRequestsData...');
+    const requestsData = getRequestsData();
+    console.log('   ✅ Requests:', requestsData ? requestsData.data.length : 'FAILED');
+    
+    console.log('   Testing getAssignmentsData...');
+    const assignmentsData = getAssignmentsData();
+    console.log('   ✅ Assignments:', assignmentsData ? assignmentsData.data.length : 'FAILED');
+    
+    console.log('   Testing getRidersData...');
+    const ridersData = getRidersData();
+    console.log('   ✅ Riders:', ridersData ? ridersData.data.length : 'FAILED');
+    
+    console.log('\n2️⃣ Testing date parsing...');
+    const startDate = parseDateString(filters.startDate);
+    const endDate = parseDateString(filters.endDate);
+    console.log('   Start date:', startDate);
+    console.log('   End date:', endDate);
+    
+    if (!startDate || !endDate) {
+      console.log('❌ Date parsing failed!');
+      return { issue: 'date_parsing' };
+    }
+    
+    console.log('\n3️⃣ Testing request filtering...');
+    const filteredRequests = requestsData.data.filter(request => {
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      
+      let matchesDate = true;
+      if (requestDate instanceof Date) {
+        matchesDate = requestDate >= startDate && requestDate <= endDate;
+      }
+      
+      return matchesDate;
+    });
+    console.log('   Filtered requests:', filteredRequests.length);
+    
+    console.log('\n4️⃣ Testing completed requests calculation...');
+    const completedRequests = filteredRequests.filter(request => 
+      getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
+    ).length;
+    console.log('   Completed requests:', completedRequests);
+    
+    console.log('\n5️⃣ Testing rider hours calculation...');
+    let riderHoursCount = 0;
+    try {
+      ridersData.data.forEach(rider => {
+        const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+        if (!riderName || !riderName.trim()) return;
+        
+        let escorts = 0;
+        filteredRequests.forEach(request => {
+          const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+          const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+          
+          if (status !== 'Completed') return;
+          
+          if (ridersAssigned) {
+            const assignedRidersList = String(ridersAssigned).split(',')
+              .map(name => name.trim())
+              .filter(name => name && name.length > 0);
+            
+            const isAssigned = assignedRidersList.some(assignedName => 
+              assignedName.toLowerCase() === riderName.toLowerCase()
+            );
+            
+            if (isAssigned) {
+              escorts++;
+            }
+          }
+        });
+        
+        if (escorts > 0) {
+          riderHoursCount++;
+        }
+      });
+      console.log('   Riders with hours:', riderHoursCount);
+    } catch (riderError) {
+      console.error('❌ Rider hours calculation failed:', riderError);
+      return { issue: 'rider_hours_calculation', error: riderError.message };
+    }
+    
+    console.log('\n✅ All steps completed successfully');
+    return {
+      success: true,
+      completedRequests,
+      riderHoursCount,
+      filteredRequests: filteredRequests.length
+    };
+    
+  } catch (error) {
+    console.error('❌ Step-by-step test failed:', error);
+    return { issue: 'step_by_step_error', error: error.message, stack: error.stack };
+  }
+}
+
+/**
+ * Create a minimal working version for testing
+ */
+function generateReportDataMinimal(filters) {
+  console.log('🔧 === MINIMAL VERSION TEST ===');
+  
+  try {
+    // Just return the absolute minimum structure
+    return {
+      totalRequests: 0,
+      completedRequests: 0,
+      activeRiders: 0,
+      requestTypes: {},
+      riderHours: [],
+      summary: {
+        totalRequests: 0,
+        completedRequests: 0,
+        activeRiders: 0,
+        avgCompletionRate: 0
+      },
+      tables: {
+        riderHours: [],
+        recentRequests: []
+      }
+    };
+  } catch (error) {
+    console.error('❌ Even minimal version failed:', error);
+    throw error;
+  }
+}
+
+/**
+ * COMPLETE DIAGNOSTIC - Run this to find the exact issue
+ */
+function findExactError() {
+  console.log('🚀 === FINDING EXACT ERROR ===');
+  
+  console.log('\n1️⃣ Testing step-by-step...');
+  const stepTest = testGenerateReportDataStepByStep();
+  if (!stepTest.success) {
+    console.log('❌ Step-by-step failed:', stepTest);
+    return stepTest;
+  }
+  
+  console.log('\n2️⃣ Testing minimal version...');
+  try {
+    const minimal = generateReportDataMinimal({});
+    console.log('✅ Minimal version works');
+  } catch (error) {
+    console.log('❌ Even minimal version failed:', error);
+    return { issue: 'minimal_failed', error: error.message };
+  }
+  
+  console.log('\n3️⃣ Testing debug version...');
+  const debugResult = testDebugVersion();
+  
+  console.log('\n🎯 === DIAGNOSIS COMPLETE ===');
+  if (debugResult.success) {
+    console.log('✅ Debug version works - issue may be intermittent');
+  } else {
+    console.log('❌ Found the issue:', debugResult.error);
+  }
+  
+  return debugResult;
+}
 function diagnosePartTimeColumn() {
   try {
     debugLog('=== PART-TIME COLUMN DIAGNOSTIC ===');
