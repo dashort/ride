@@ -13,14 +13,15 @@
  *                             secondaryLocation (final location, required),
  *                             endLocation (second location, optional),
  *                             requestType, ridersNeeded, notes (optional).
+ * @param {string} [submittedBy=Session.getActiveUser().getEmail()] The email of the user submitting the request.
  * @return {object} An object indicating success or failure, and including the new request ID or an error message.
  *                  { success: true, requestId: "R0001", message: "Request created successfully." }
  *                  { success: false, message: "Error details..." }
  */
-function createNewRequest(requestData) {
+function createNewRequest(requestData, submittedBy = Session.getActiveUser().getEmail()) {
   return trackPerformance('createNewRequest', () => {
     try {
-      debugLog('Starting new request creation with data:', JSON.stringify(requestData).substring(0, 200) + "...");
+      debugLog(`Starting new request creation by ${submittedBy} with data:`, JSON.stringify(requestData).substring(0, 200) + "...");
 
       const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
       if (!requestsSheet) {
@@ -69,6 +70,7 @@ function createNewRequest(requestData) {
         switch (header) {
             case CONFIG.columns.requests.id:                  value = newRequestId; break;
             case CONFIG.columns.requests.submissionTimestamp: value = new Date(); break;
+            case CONFIG.columns.requests.submittedBy:         value = submittedBy; break;
             case CONFIG.columns.requests.requesterName:       value = requestData.requesterName; break;
             case CONFIG.columns.requests.requesterContact:    value = requestData.requesterContact; break;
             case CONFIG.columns.requests.eventDate:
@@ -149,8 +151,8 @@ function createNewRequest(requestData) {
       // Single flush after all operations
       SpreadsheetApp.flush();
 
-      debugLog(`Request ${newRequestId} created successfully.`);
-      logActivity(`New request ${newRequestId} created. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
+      debugLog(`Request ${newRequestId} created successfully by ${submittedBy}.`);
+      logActivity(`New request ${newRequestId} created by ${submittedBy}. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
 
       // Optional: Trigger notifications or other actions
       if (typeof sendNewRequestNotification === 'function') { // From NotificationService.js
@@ -183,8 +185,8 @@ function createNewRequest(requestData) {
       };
 
     } catch (error) {
-      debugLog('Error in createNewRequest:', error.message, error.stack);
-      logError(`Error in createNewRequest. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
+      debugLog(`Error in createNewRequest by ${submittedBy}:`, error.message, error.stack);
+      logError(`Error in createNewRequest by ${submittedBy}. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
       return {
         success: false,
         message: `Failed to create request: ${error.message}`

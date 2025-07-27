@@ -2683,11 +2683,11 @@ function generateReportData(filters) {
       return matchesDate && matchesType && matchesStatus;
     });
     
-    // Calculate summary statistics - only count completed requests, not assignments
+    // Calculate summary statistics
+    const totalRequests = filteredRequests.length;
     const completedRequests = filteredRequests.filter(request => 
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
     ).length;
-    const totalRequests = completedRequests; // Only count completed requests as specified
     
     const activeRiders = ridersData.data.filter(rider =>
       getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
@@ -2884,26 +2884,6 @@ function getRealisticEscortHours(assignment, columnMap) {
 }
 
 /**
- * Estimates hours for a request type - used in rider activity calculations
- * @param {string} requestType - The type of request (Funeral, Wedding, VIP, etc.)
- * @return {number} Estimated hours for the request type
- */
-function getEstimatedHoursForRequestType(requestType) {
-  // Realistic hour estimates based on actual escort experience
-  const realisticEstimates = {
-    'Funeral': 0.5,        // Short, focused escorts
-    'Wedding': 2.5,        // Moderate duration with setup/ceremony/departure
-    'VIP': 4.0,           // Longer, more complex routes
-    'Float Movement': 4.0, // Extended transport/logistics
-    'Other': 2.0          // General default
-  };
-  
-  const estimatedHours = realisticEstimates[requestType] || realisticEstimates['Other'];
-  debugLog(`Applied request type estimate: ${estimatedHours} hours for ${requestType}`);
-  return roundToQuarterHour(estimatedHours);
-}
-
-/**
  * Helper function to add actual completion time columns to the Assignments sheet
  * Run this once to add the necessary columns for tracking actual escort completion times
  * @return {Object} Result of the setup operation
@@ -3015,21 +2995,21 @@ function setupActualCompletionTimeColumns() {
  */
 function generateRiderActivityReport(startDate, endDate) {
   try {
-    // FIXED: Use requests data instead of assignments to match main report calculation
+    console.log('🔧 Generating rider activity report using REQUESTS data...');
+    
+    // FIXED: Use requests data instead of assignments data
     const requestsData = getRequestsData();
-    const start = parseDateString(startDate);
-    const end = parseDateString(endDate);
-    if (!start || !end) {
-      throw new Error('Invalid date range');
-    }
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
-
     const riderMap = {};
-
+    
+    // Parse date range
+    const start = startDate instanceof Date ? startDate : new Date(startDate);
+    const end = endDate instanceof Date ? endDate : new Date(endDate);
+    
+    console.log(`📅 Date range: ${start.toDateString()} to ${end.toDateString()}`);
+    
     // Filter requests to only include completed ones in date range
     const completedRequests = requestsData.data.filter(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
       const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
       
       // Date filter
@@ -3039,16 +3019,26 @@ function generateRiderActivityReport(startDate, endDate) {
       }
       
       // Only include completed requests
-      return matchesDate && status === 'Completed';
+      const statusLower = (status || '').toLowerCase().trim();
+      return matchesDate && statusLower === 'completed';
     });
-
+    
+    console.log(`📊 Found ${completedRequests.length} completed requests in date range`);
+    
+    // Process each completed request
     completedRequests.forEach(request => {
       const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+      const requestId = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId);
+      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestType);
+      const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+      const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
       
       // Parse the riders assigned (could be comma-separated)
       const assignedRidersList = String(ridersAssigned).split(',')
         .map(name => name.trim())
         .filter(name => name && name.length > 0);
+      
+      console.log(`📋 Request ${requestId}: ${assignedRidersList.length} riders assigned: ${assignedRidersList.join(', ')}`);
       
       assignedRidersList.forEach(riderName => {
         if (!riderName) return;
@@ -3058,42 +3048,56 @@ function generateRiderActivityReport(startDate, endDate) {
         }
         riderMap[riderName].escorts++;
         
-        // Calculate hours from request start/end times
-        const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
-        const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
-        const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-        
-        let hoursToAdd = 0;
-        
-        // Try to calculate from actual times
+        // Calculate hours from request start/end times or use estimates
+        let hours = 0;
         if (startTime && endTime) {
-          const startTimeObj = parseTimeString(startTime);
-          const endTimeObj = parseTimeString(endTime);
-          if (startTimeObj && endTimeObj && endTimeObj > startTimeObj) {
-            hoursToAdd = roundToQuarterHour((endTimeObj.getTime() - startTimeObj.getTime()) / (1000 * 60 * 60));
+          const start = startTime instanceof Date ? startTime : new Date(startTime);
+          const end = endTime instanceof Date ? endTime : new Date(endTime);
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60); // Convert to hours
           }
         }
         
-        // If no time data, use realistic estimates based on request type
-        if (hoursToAdd === 0) {
-          hoursToAdd = getEstimatedHoursForRequestType(requestType);
+        // Fallback to type estimates if no time data
+        if (hours <= 0) {
+          hours = getEstimatedHoursForRequestType(requestType);
         }
-
-        riderMap[riderName].hours += hoursToAdd;
+        
+        riderMap[riderName].hours += hours;
+        console.log(`   👤 ${riderName}: +1 escort, +${hours.toFixed(2)} hours`);
       });
     });
-
-    const data = Object.keys(riderMap).map(name => ({
-      name: name,
-      escorts: riderMap[name].escorts,
-      hours: Math.round(riderMap[name].hours * 100) / 100
-    })).sort((a, b) => b.hours - a.hours);
-
-  return { success: true, data };
+    
+    // Convert to array format
+    const riderHours = Object.keys(riderMap).map(riderName => ({
+      rider: riderName,
+      escorts: riderMap[riderName].escorts,
+      hours: Math.round(riderMap[riderName].hours * 4) / 4 // Round to quarter hours
+    }));
+    
+    console.log(`✅ Rider activity summary: ${riderHours.length} riders with ${riderHours.reduce((sum, r) => sum + r.escorts, 0)} total escorts`);
+    
+    return riderHours;
+    
   } catch (error) {
-    logError('Error in generateRiderActivityReport', error);
-    return { success: false, error: error.message };
+    console.error('❌ Error generating rider activity report:', error);
+    return [];
   }
+}
+
+/**
+ * Helper function for hour estimates
+ */
+function getEstimatedHoursForRequestType(requestType) {
+  const realisticEstimates = {
+    'Funeral': 0.5,        // Short, focused escorts
+    'Wedding': 2.5,        // Moderate duration with setup/ceremony/departure
+    'VIP': 4.0,           // Longer, more complex routes
+    'Float Movement': 4.0, // Extended transport/logistics
+    'Other': 2.0          // General default
+  };
+  
+  return realisticEstimates[requestType] || realisticEstimates['Other'];
 }
 
 /**

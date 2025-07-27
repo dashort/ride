@@ -1,3 +1,9 @@
+function checkColumns() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  console.log('Current headers:', headers);
+  console.log('Expected headers:', CONFIG.columns.riders);
+}
 /**
  * FIX FOR ASSIGNMENT STATUS SYNCHRONIZATION
  * This will sync assignment statuses with their corresponding request statuses
@@ -282,6 +288,13 @@ function runQuickFix() {
 /**
  * Main diagnostic function to identify the discrepancy
  */
+/**
+ * REPORTS DISCREPANCY DIAGNOSTIC SCRIPT
+ * Run this to investigate the 58 vs 11 discrepancy
+ * 
+ * Copy this function into your Google Apps Script Editor and run it
+ */
+
 function diagnoseReportsDiscrepancy() {
   console.log('🔍 === REPORTS DISCREPANCY DIAGNOSIS ===');
   
@@ -324,6 +337,380 @@ function diagnoseReportsDiscrepancy() {
   } catch (error) {
     console.error('❌ Error in diagnosis:', error);
     return { error: error.message };
+  }
+}
+
+/**
+ * Check how "completed escorts" number is calculated
+ */
+function diagnoseCompletedEscortsCalculation(startDate, endDate) {
+  try {
+    console.log('\n🔍 Analyzing "Completed Escorts" calculation...');
+    
+    // This likely comes from generateReportData() or similar function
+    // Check Requests sheet for completed requests
+    const requestsData = getRequestsData();
+    let completedCount = 0;
+    
+    requestsData.data.forEach(row => {
+      const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+      const eventDate = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      
+      // Check if date is in range
+      let dateInRange = false;
+      if (eventDate) {
+        const requestDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(requestDate.getTime())) {
+          dateInRange = requestDate >= startDate && requestDate <= endDate;
+        }
+      }
+      
+      if (dateInRange || !eventDate) { // Include if no date or in range
+        const statusLower = (status || '').toLowerCase().trim();
+        if (statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished') {
+          completedCount++;
+          console.log(`   ✅ Request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requestId)} - ${status}`);
+        }
+      }
+    });
+    
+    console.log(`   📊 Completed requests method: ${completedCount}`);
+    
+    // Also check assignments approach
+    const assignmentsData = getAssignmentsData();
+    let completedAssignments = 0;
+    
+    assignmentsData.data.forEach(assignment => {
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      let dateInRange = false;
+      if (eventDate) {
+        const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(assignmentDate.getTime())) {
+          dateInRange = assignmentDate >= startDate && assignmentDate <= endDate;
+        }
+      }
+      
+      if (dateInRange || !eventDate) {
+        const statusLower = (status || '').toLowerCase().trim();
+        if (statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished') {
+          completedAssignments++;
+        }
+      }
+    });
+    
+    console.log(`   📊 Completed assignments method: ${completedAssignments}`);
+    
+    return Math.max(completedCount, completedAssignments);
+    
+  } catch (error) {
+    console.error('❌ Error analyzing completed escorts:', error);
+    return 0;
+  }
+}
+
+/**
+ * Check how "rider activity" is calculated
+ */
+function diagnoseRiderActivityCalculation(startDate, endDate) {
+  try {
+    console.log('\n🔍 Analyzing "Rider Activity" calculation...');
+    
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+    let totalRiderEscorts = 0;
+    const riderBreakdown = {};
+    
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName) return;
+      
+      let riderEscorts = 0;
+      
+      assignmentsData.data.forEach(assignment => {
+        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        
+        // Check rider name match (case insensitive)
+        const riderMatches = assignmentRider && riderName && 
+          assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase();
+        
+        // Check date range
+        let dateInRange = false;
+        if (eventDate) {
+          const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+          if (!isNaN(assignmentDate.getTime())) {
+            dateInRange = assignmentDate >= startDate && assignmentDate <= endDate;
+          }
+        }
+        
+        if (riderMatches && (dateInRange || !eventDate)) {
+          const statusLower = (status || '').toLowerCase().trim();
+          // Current logic: only count "completed" status
+          if (statusLower === 'completed') {
+            riderEscorts++;
+          }
+          console.log(`   👥 ${riderName}: Assignment ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - Status: ${status} - Counted: ${statusLower === 'completed'}`);
+        }
+      });
+      
+      if (riderEscorts > 0) {
+        riderBreakdown[riderName] = riderEscorts;
+        totalRiderEscorts += riderEscorts;
+      }
+    });
+    
+    console.log(`   👥 Rider breakdown:`, riderBreakdown);
+    console.log(`   👥 Total rider escorts: ${totalRiderEscorts}`);
+    
+    return totalRiderEscorts;
+    
+  } catch (error) {
+    console.error('❌ Error analyzing rider activity:', error);
+    return 0;
+  }
+}
+
+/**
+ * Analyze assignment data to understand the gap
+ */
+function analyzeAssignmentData(startDate, endDate) {
+  try {
+    const assignmentsData = getAssignmentsData();
+    const analysis = {
+      totalAssignments: 0,
+      statusBreakdown: {},
+      ridersWithAssignments: 0,
+      assignmentsWithRiders: 0,
+      missingStatuses: 0,
+      pastEventsNoStatus: 0
+    };
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    assignmentsData.data.forEach(assignment => {
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Check date range
+      let dateInRange = true;
+      if (eventDate && startDate && endDate) {
+        const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(assignmentDate.getTime())) {
+          dateInRange = assignmentDate >= startDate && assignmentDate <= endDate;
+        }
+      }
+      
+      if (dateInRange) {
+        analysis.totalAssignments++;
+        
+        // Count status breakdown
+        const statusKey = status || 'MISSING_STATUS';
+        analysis.statusBreakdown[statusKey] = (analysis.statusBreakdown[statusKey] || 0) + 1;
+        
+        // Count assignments with riders
+        if (riderName && riderName.trim() && riderName.toLowerCase() !== 'unassigned') {
+          analysis.assignmentsWithRiders++;
+        }
+        
+        // Count missing statuses
+        if (!status || !status.trim()) {
+          analysis.missingStatuses++;
+          
+          // Check if it's a past event with no status
+          if (eventDate) {
+            const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+            if (!isNaN(assignmentDate.getTime()) && assignmentDate < today) {
+              analysis.pastEventsNoStatus++;
+            }
+          }
+        }
+      }
+    });
+    
+    return analysis;
+    
+  } catch (error) {
+    console.error('❌ Error analyzing assignment data:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Find data inconsistencies between sheets
+ */
+function findDataInconsistencies() {
+  try {
+    const issues = [];
+    
+    // Check if all riders in assignments exist in riders sheet
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+    
+    const riderNamesFromRidersSheet = new Set();
+    const riderNamesFromAssignments = new Set();
+    
+    ridersData.data.forEach(rider => {
+      const name = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (name && name.trim()) {
+        riderNamesFromRidersSheet.add(name.trim().toLowerCase());
+      }
+    });
+    
+    assignmentsData.data.forEach(assignment => {
+      const name = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      if (name && name.trim()) {
+        riderNamesFromAssignments.add(name.trim().toLowerCase());
+      }
+    });
+    
+    const unmatchedRiders = [];
+    riderNamesFromAssignments.forEach(name => {
+      if (!riderNamesFromRidersSheet.has(name)) {
+        unmatchedRiders.push(name);
+      }
+    });
+    
+    if (unmatchedRiders.length > 0) {
+      issues.push(`Riders in assignments but not in riders sheet: ${unmatchedRiders.join(', ')}`);
+    }
+    
+    return issues;
+    
+  } catch (error) {
+    console.error('❌ Error finding inconsistencies:', error);
+    return ['Error checking for inconsistencies: ' + error.message];
+  }
+}
+
+/**
+ * QUICK FIX FUNCTION
+ * Run this to automatically fix past assignments that have riders but no status
+ */
+function quickFixPastAssignments() {
+  console.log('⚡ === QUICK FIX FOR PAST ASSIGNMENTS ===');
+  
+  try {
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
+    const assignmentsData = getAssignmentsData();
+    
+    let fixedCount = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const statusColumnIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status];
+    
+    assignmentsData.data.forEach((assignment, index) => {
+      const rowNumber = index + 2;
+      const currentStatus = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Check if assignment meets criteria for quick fix
+      const hasRider = riderName && riderName.trim() && riderName.toLowerCase() !== 'unassigned';
+      const hasNoStatus = !currentStatus || !currentStatus.trim();
+      
+      let isPastEvent = false;
+      if (eventDate) {
+        const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        isPastEvent = !isNaN(assignmentDate.getTime()) && assignmentDate < today;
+      }
+      
+      if (hasRider && hasNoStatus && isPastEvent) {
+        try {
+          assignmentsSheet.getRange(rowNumber, statusColumnIndex + 1).setValue('Completed');
+          fixedCount++;
+          console.log(`   ✅ Quick fix: ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - ${riderName} → Completed`);
+        } catch (error) {
+          console.error(`   ❌ Failed to quick fix assignment:`, error);
+        }
+      }
+    });
+    
+    console.log(`⚡ Quick fixed ${fixedCount} past assignments with riders`);
+    
+    return {
+      success: true,
+      fixedCount: fixedCount
+    };
+    
+  } catch (error) {
+    console.error('❌ Quick fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * COMPLETE DIAGNOSTIC AND FIX
+ * Run this to diagnose the issue and apply fixes automatically
+ */
+function runCompleteReportsFix() {
+  console.log('🚀 === COMPLETE REPORTS FIX ===');
+  
+  try {
+    // 1. Run diagnostic first
+    console.log('\n1. Running initial diagnostic...');
+    const initialDiagnostic = diagnoseReportsDiscrepancy();
+    
+    console.log(`\n📊 INITIAL STATE:`);
+    console.log(`   Completed Escorts: ${initialDiagnostic.completedEscorts}`);
+    console.log(`   Rider Activity: ${initialDiagnostic.riderActivity}`);
+    console.log(`   Gap: ${Math.abs(initialDiagnostic.completedEscorts - initialDiagnostic.riderActivity)}`);
+    
+    // 2. Apply quick fix for past assignments
+    console.log('\n2. Applying quick fix...');
+    const fixResult = quickFixPastAssignments();
+    
+    if (!fixResult.success) {
+      throw new Error('Quick fix failed: ' + fixResult.error);
+    }
+    
+    console.log(`✅ Quick fix applied: ${fixResult.fixedCount} assignments updated`);
+    
+    // 3. Wait and run diagnostic again
+    Utilities.sleep(2000);
+    console.log('\n3. Running diagnostic again...');
+    const finalDiagnostic = diagnoseReportsDiscrepancy();
+    
+    console.log(`\n🎯 === RESULTS COMPARISON ===`);
+    console.log(`Before Fix:`);
+    console.log(`   Completed Escorts: ${initialDiagnostic.completedEscorts}`);
+    console.log(`   Rider Activity: ${initialDiagnostic.riderActivity}`);
+    console.log(`   Gap: ${Math.abs(initialDiagnostic.completedEscorts - initialDiagnostic.riderActivity)}`);
+    
+    console.log(`\nAfter Fix:`);
+    console.log(`   Completed Escorts: ${finalDiagnostic.completedEscorts || 'Error'}`);
+    console.log(`   Rider Activity: ${finalDiagnostic.riderActivity || 'Error'}`);
+    console.log(`   Gap: ${Math.abs((finalDiagnostic.completedEscorts || 0) - (finalDiagnostic.riderActivity || 0))}`);
+    
+    const improvement = (finalDiagnostic.riderActivity || 0) - initialDiagnostic.riderActivity;
+    if (improvement > 0) {
+      console.log(`✅ SUCCESS: Rider activity increased by ${improvement} escorts!`);
+    } else {
+      console.log(`⚠️ No improvement detected. May need manual investigation.`);
+    }
+    
+    return {
+      success: true,
+      initialDiagnostic,
+      fixResult,
+      finalDiagnostic,
+      improvement
+    };
+    
+  } catch (error) {
+    console.error('❌ Complete fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
@@ -1096,6 +1483,7 @@ function checkAndFixRequestsHeaderOrder() {
     const correctHeaders = [
       'Request ID',           // CONFIG.columns.requests.id
       'Date',                 // CONFIG.columns.requests.date (legacy/submission date)
+      'Submitted By',         // CONFIG.columns.requests.submittedBy
       'Requester Name',       // CONFIG.columns.requests.requesterName
       'Requester Contact',    // CONFIG.columns.requests.requesterContact
       'Event Date',           // CONFIG.columns.requests.eventDate
@@ -1191,6 +1579,7 @@ function fixRequestsHeaderOrder() {
     const correctHeaders = [
       'Request ID',           
       'Date',                 
+      'Submitted By',         
       'Requester Name',       
       'Requester Contact',    
       'Event Date',           
@@ -1380,7 +1769,7 @@ function testRequestsAfterHeaderFix() {
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
     const expectedHeaders = [
-      'Request ID', 'Date', 'Requester Name', 'Requester Contact',
+      'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
       'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location',
       'Secondary Location', 'Request Type', 'Riders Needed', 'Escort Fee',
       'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
