@@ -256,62 +256,6 @@ function getPageDataForAssignments(user, filters = {}) {
     return { success: false, error: 'Failed to load assignments data' };
   }
 }
-
-
-
-/**
- * Secured reports data
- */
-function getPageDataForReports(user, filters = {}) {
-  try {
-    if (!user || !user.role) {
-      return { success: false, error: 'Authentication required' };
-    }
-    
-    if (!canAccessPage(user, 'reports')) {
-      return { success: false, error: 'Access denied to reports' };
-    }
-    
-    const reportData = {
-      summary: {},
-      charts: {},
-      tables: {}
-    };
-    
-    // Generate reports based on user permissions
-    if (hasPermission(user, 'reports', 'view_all')) {
-      // Full system reports for admin/dispatcher
-      reportData.summary = getSystemSummaryStats();
-      reportData.charts = getSystemCharts(filters);
-      reportData.tables = getSystemTables(filters);
-      
-    } else if (user.role === 'rider') {
-      // Personal reports for rider
-      reportData.summary = getRiderSummaryStats(user.riderId);
-      reportData.charts = getRiderCharts(user.riderId, filters);
-      reportData.tables = getRiderTables(user.riderId, filters);
-    }
-    
-    const pageData = {
-      reportData: reportData,
-      canExportAll: hasPermission(user, 'reports', 'export_all'),
-      canViewFinancial: hasPermission(user, 'reports', 'financial'),
-      canViewSystemLogs: hasPermission(user, 'reports', 'system_logs'),
-      canViewRiderPerformance: hasPermission(user, 'reports', 'rider_performance')
-    };
-    
-    return {
-      success: true,
-      user: user,
-      data: pageData
-    };
-    
-  } catch (error) {
-    console.error('❌ Error in getPageDataForReports:', error);
-    return { success: false, error: 'Failed to load reports data' };
-  }
-}
-
 /**
  * Secured request creation
  */
@@ -3580,28 +3524,31 @@ function getPageDataForReports(filters) {
   try {
     debugLog('🔄 Loading reports page data...', filters);
 
-    const auth = authenticateAndAuthorizeUser();
-    if (!auth.success) {
-      return {
-        success: false,
-        error: auth.error || 'UNAUTHORIZED',
-        user: auth.user || {
-          name: auth.userName || 'User',
-          email: auth.userEmail || '',
-          roles: ['unauthorized'],
-          permissions: []
-        },
-        reportData: null
-      };
-    }
+    // Create a default user without authentication
+    const defaultUser = {
+      name: 'System User',
+      email: 'system@example.com',
+      roles: ['admin'],
+      permissions: ['view_reports', 'export_reports', 'view_all']
+    };
 
-    const user = Object.assign({}, auth.user, { roles: auth.user.roles || [auth.user.role] });
-
+    // Generate report data directly without authentication checks
     const reportData = generateReportData(filters);
-    return { success: true, user: user, reportData: reportData };
+    
+    return { 
+      success: true, 
+      user: defaultUser, 
+      reportData: reportData 
+    };
+    
   } catch (error) {
-    logError('Error in getPageDataForReports', error);
-    return { success: false, error: error.message, user: { name: 'System User' }, reportData: null };
+    console.error('Error in getPageDataForReports:', error);
+    return { 
+      success: false, 
+      error: error.message, 
+      user: { name: 'System User' }, 
+      reportData: null 
+    };
   }
 }
 

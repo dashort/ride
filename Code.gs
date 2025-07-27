@@ -2,6 +2,326 @@
  * Diagnostic and helper utilities. The global configuration and menu setup
  * functions were extracted into Config.gs and Menu.gs.
  */
+/**
+ * DEBUG REPORT LOADING ISSUE
+ * 
+ * The error "No data" suggests generateReportData() is failing
+ * Let's find exactly what's wrong
+ */
+
+/**
+ * Test the exact same call that the reports page makes
+ */
+function debugReportLoading() {
+  console.log('🔍 === DEBUGGING REPORT LOADING ===');
+  
+  try {
+    // Test the same filters that the reports page would use
+    const filters = {
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('📅 Testing with filters:', filters);
+    
+    // Test each step of the process
+    console.log('\n1️⃣ Testing getPageDataForReports...');
+    const pageData = getPageDataForReports(filters);
+    console.log('getPageDataForReports result:', pageData);
+    
+    if (!pageData) {
+      console.log('❌ getPageDataForReports returned null/undefined');
+      return { issue: 'getPageDataForReports_null' };
+    }
+    
+    if (!pageData.success) {
+      console.log('❌ getPageDataForReports returned success: false');
+      console.log('Error:', pageData.error);
+      return { issue: 'getPageDataForReports_failed', error: pageData.error };
+    }
+    
+    console.log('\n2️⃣ Testing generateReportData directly...');
+    const reportData = generateReportData(filters);
+    console.log('generateReportData result:', reportData);
+    
+    if (!reportData) {
+      console.log('❌ generateReportData returned null/undefined');
+      return { issue: 'generateReportData_null' };
+    }
+    
+    if (reportData.success === false) {
+      console.log('❌ generateReportData returned success: false');
+      console.log('Error:', reportData.error);
+      return { issue: 'generateReportData_failed', error: reportData.error };
+    }
+    
+    console.log('\n3️⃣ Checking data structure...');
+    const requiredFields = ['totalRequests', 'completedRequests', 'riderHours'];
+    const missingFields = requiredFields.filter(field => !(field in reportData));
+    
+    if (missingFields.length > 0) {
+      console.log('❌ Missing required fields:', missingFields);
+      return { issue: 'missing_fields', missingFields };
+    }
+    
+    console.log('✅ All checks passed!');
+    console.log('📊 Report summary:', {
+      totalRequests: reportData.totalRequests,
+      completedRequests: reportData.completedRequests,
+      riderHours: reportData.riderHours ? reportData.riderHours.length : 'undefined',
+      totalEscorts: reportData.riderHours ? reportData.riderHours.reduce((sum, r) => sum + r.escorts, 0) : 0
+    });
+    
+    return { 
+      success: true, 
+      pageData, 
+      reportData,
+      summary: {
+        totalRequests: reportData.totalRequests,
+        completedRequests: reportData.completedRequests,
+        riderHours: reportData.riderHours ? reportData.riderHours.length : 0
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Debug failed with error:', error);
+    console.error('Stack trace:', error.stack);
+    return { 
+      issue: 'exception', 
+      error: error.message, 
+      stack: error.stack 
+    };
+  }
+}
+
+/**
+ * Test just the data retrieval functions
+ */
+function testDataRetrieval() {
+  console.log('🔍 === TESTING DATA RETRIEVAL ===');
+  
+  try {
+    console.log('\n📊 Testing getRequestsData...');
+    const requestsData = getRequestsData();
+    console.log('Requests data:', {
+      hasData: !!requestsData,
+      rowCount: requestsData ? requestsData.data.length : 0,
+      hasColumnMap: !!requestsData?.columnMap,
+      sampleColumns: requestsData?.columnMap ? Object.keys(requestsData.columnMap).slice(0, 5) : []
+    });
+    
+    console.log('\n👥 Testing getRidersData...');
+    const ridersData = getRidersData();
+    console.log('Riders data:', {
+      hasData: !!ridersData,
+      rowCount: ridersData ? ridersData.data.length : 0,
+      hasColumnMap: !!ridersData?.columnMap,
+      sampleColumns: ridersData?.columnMap ? Object.keys(ridersData.columnMap).slice(0, 5) : []
+    });
+    
+    console.log('\n📋 Testing getAssignmentsData...');
+    const assignmentsData = getAssignmentsData();
+    console.log('Assignments data:', {
+      hasData: !!assignmentsData,
+      rowCount: assignmentsData ? assignmentsData.data.length : 0,
+      hasColumnMap: !!assignmentsData?.columnMap,
+      sampleColumns: assignmentsData?.columnMap ? Object.keys(assignmentsData.columnMap).slice(0, 5) : []
+    });
+    
+    // Test if any data is completely missing
+    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
+      return { issue: 'no_requests_data' };
+    }
+    
+    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
+      return { issue: 'no_riders_data' };
+    }
+    
+    console.log('✅ All data retrieval successful');
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Data retrieval failed:', error);
+    return { issue: 'data_retrieval_error', error: error.message };
+  }
+}
+
+/**
+ * Check if the issue is in CONFIG or column mappings
+ */
+function testColumnMappings() {
+  console.log('🔍 === TESTING COLUMN MAPPINGS ===');
+  
+  try {
+    console.log('📋 CONFIG.columns.requests:', CONFIG.columns.requests);
+    console.log('👥 CONFIG.columns.riders:', CONFIG.columns.riders);
+    
+    const requestsData = getRequestsData();
+    if (requestsData && requestsData.columnMap) {
+      console.log('\n📊 Requests column mapping:');
+      console.log('  status column exists:', CONFIG.columns.requests.status in requestsData.columnMap);
+      console.log('  ridersAssigned column exists:', CONFIG.columns.requests.ridersAssigned in requestsData.columnMap);
+      console.log('  date column exists:', CONFIG.columns.requests.date in requestsData.columnMap);
+      console.log('  Available columns:', Object.keys(requestsData.columnMap));
+    }
+    
+    const ridersData = getRidersData();
+    if (ridersData && ridersData.columnMap) {
+      console.log('\n👥 Riders column mapping:');
+      console.log('  name column exists:', CONFIG.columns.riders.name in ridersData.columnMap);
+      console.log('  status column exists:', CONFIG.columns.riders.status in ridersData.columnMap);
+      console.log('  Available columns:', Object.keys(ridersData.columnMap));
+    }
+    
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Column mapping test failed:', error);
+    return { issue: 'column_mapping_error', error: error.message };
+  }
+}
+
+/**
+ * Create a safe minimal version of generateReportData for testing
+ */
+function generateReportDataMinimal(filters) {
+  try {
+    console.log('🔧 === MINIMAL REPORT DATA GENERATION ===');
+    
+    // Just return basic structure to test if the issue is in the logic
+    const result = {
+      success: true,
+      totalRequests: 0,
+      completedRequests: 0,
+      activeRiders: 0,
+      requestTypes: {},
+      riderHours: [],
+      summary: {
+        totalRequests: 0,
+        completedRequests: 0,
+        activeRiders: 0,
+        avgCompletionRate: 0
+      },
+      charts: {
+        requestTypes: {},
+        riderPerformance: [],
+        popularLocations: []
+      },
+      tables: {
+        riderHours: [],
+        recentRequests: []
+      }
+    };
+    
+    console.log('✅ Minimal structure created successfully');
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Even minimal version failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * COMPLETE DIAGNOSTIC - Run this to find the exact issue
+ */
+function runCompleteReportDiagnostic() {
+  console.log('🚀 === COMPLETE REPORT DIAGNOSTIC ===');
+  
+  try {
+    console.log('\n1️⃣ Testing data retrieval...');
+    const dataTest = testDataRetrieval();
+    if (!dataTest.success) {
+      console.log('❌ Data retrieval failed:', dataTest);
+      return dataTest;
+    }
+    
+    console.log('\n2️⃣ Testing column mappings...');
+    const columnTest = testColumnMappings();
+    if (!columnTest.success) {
+      console.log('❌ Column mapping failed:', columnTest);
+      return columnTest;
+    }
+    
+    console.log('\n3️⃣ Testing minimal report generation...');
+    const minimalTest = generateReportDataMinimal({});
+    if (!minimalTest.success) {
+      console.log('❌ Even minimal generation failed:', minimalTest);
+      return minimalTest;
+    }
+    
+    console.log('\n4️⃣ Testing full report loading...');
+    const reportTest = debugReportLoading();
+    if (!reportTest.success) {
+      console.log('❌ Full report loading failed:', reportTest);
+      return reportTest;
+    }
+    
+    console.log('\n🎉 ALL TESTS PASSED!');
+    console.log('The issue may be in the frontend or how the data is being called.');
+    
+    return { 
+      success: true, 
+      message: 'All backend tests passed',
+      recommendation: 'Check frontend console for more details'
+    };
+    
+  } catch (error) {
+    console.error('❌ Complete diagnostic failed:', error);
+    return { 
+      issue: 'diagnostic_error', 
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * QUICK TEST - Test the exact scenario
+ */
+function quickReportTest() {
+  console.log('⚡ === QUICK REPORT TEST ===');
+  
+  try {
+    // Test the exact same call pattern as the frontend
+    const filters = {
+      startDate: '2024-12-01',
+      endDate: '2025-01-27',
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('Testing generateReportData with filters:', filters);
+    const result = generateReportData(filters);
+    
+    console.log('Result type:', typeof result);
+    console.log('Result structure:', Object.keys(result || {}));
+    console.log('Success flag:', result?.success);
+    console.log('Error:', result?.error);
+    
+    if (result && result.totalRequests !== undefined) {
+      console.log('✅ SUCCESS: generateReportData returned valid data');
+      console.log('📊 Data summary:', {
+        totalRequests: result.totalRequests,
+        completedRequests: result.completedRequests,
+        riderHours: result.riderHours?.length || 0
+      });
+    } else {
+      console.log('❌ FAILED: generateReportData did not return expected structure');
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Quick test failed:', error);
+    return { error: error.message, stack: error.stack };
+  }
+}
 function testCorrectedRiderCalculation() {
   console.log('🔧 === TESTING CORRECTED RIDER CALCULATION ===');
   
@@ -255,230 +575,6 @@ function diagnoseReportError() {
   }
 }
 
-/**
- * SAFE VERSION: generateReportData with error handling
- */
-function generateReportDataSafe(filters) {
-  try {
-    console.log('🔧 === SAFE generateReportData() ===');
-    
-    // Validate inputs
-    if (!filters) {
-      throw new Error('Filters parameter is required');
-    }
-    
-    // Get data with error handling
-    let requestsData, assignmentsData, ridersData;
-    
-    try {
-      requestsData = getRequestsData();
-      console.log('✅ Got requests data:', requestsData.data.length, 'rows');
-    } catch (error) {
-      throw new Error('Failed to get requests data: ' + error.message);
-    }
-    
-    try {
-      assignmentsData = getAssignmentsData();
-      console.log('✅ Got assignments data:', assignmentsData.data.length, 'rows');
-    } catch (error) {
-      console.warn('⚠️ Failed to get assignments data:', error.message);
-      assignmentsData = { data: [], columnMap: {} };
-    }
-    
-    try {
-      ridersData = getRidersData();
-      console.log('✅ Got riders data:', ridersData.data.length, 'rows');
-    } catch (error) {
-      throw new Error('Failed to get riders data: ' + error.message);
-    }
-    
-    // Parse dates with error handling
-    let startDate, endDate;
-    try {
-      startDate = parseDateString(filters.startDate) || new Date(1970, 0, 1);
-      endDate = parseDateString(filters.endDate) || new Date();
-      startDate.setHours(0,0,0,0);
-      endDate.setHours(23, 59, 59, 999);
-      console.log('✅ Parsed dates:', startDate.toDateString(), 'to', endDate.toDateString());
-    } catch (error) {
-      throw new Error('Failed to parse dates: ' + error.message);
-    }
-    
-    // Filter requests with error handling
-    let filteredRequests;
-    try {
-      filteredRequests = requestsData.data.filter(request => {
-        try {
-          const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
-          const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-          const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-          
-          let matchesDate = true;
-          if (requestDate instanceof Date) {
-            matchesDate = requestDate >= startDate && requestDate <= endDate;
-          }
-          
-          let matchesType = true;
-          if (filters.requestType && filters.requestType !== 'All') {
-            matchesType = requestType === filters.requestType;
-          }
-          
-          let matchesStatus = true;
-          if (filters.status && filters.status !== 'All') {
-            matchesStatus = status === filters.status;
-          }
-          
-          return matchesDate && matchesType && matchesStatus;
-        } catch (error) {
-          console.warn('Error filtering request:', error.message);
-          return false;
-        }
-      });
-      console.log('✅ Filtered requests:', filteredRequests.length, 'rows');
-    } catch (error) {
-      throw new Error('Failed to filter requests: ' + error.message);
-    }
-    
-    // Calculate basic stats with error handling
-    let completedRequests, totalRequests, activeRiders;
-    try {
-      completedRequests = filteredRequests.filter(request => 
-        getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-      ).length;
-      totalRequests = completedRequests;
-      
-      activeRiders = ridersData.data.filter(rider =>
-        getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
-      ).length;
-      
-      console.log('✅ Basic stats - Completed:', completedRequests, 'Active riders:', activeRiders);
-    } catch (error) {
-      throw new Error('Failed to calculate basic stats: ' + error.message);
-    }
-    
-    // Calculate request types with error handling
-    let requestTypes;
-    try {
-      requestTypes = {};
-      filteredRequests.forEach(request => {
-        try {
-          const type = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type) || 'Other';
-          requestTypes[type] = (requestTypes[type] || 0) + 1;
-        } catch (error) {
-          console.warn('Error processing request type:', error.message);
-        }
-      });
-      console.log('✅ Request types:', Object.keys(requestTypes).length, 'types');
-    } catch (error) {
-      throw new Error('Failed to calculate request types: ' + error.message);
-    }
-    
-    // Calculate rider performance with error handling (FIXED VERSION)
-    let riderHours;
-    try {
-      riderHours = [];
-      ridersData.data.forEach(rider => {
-        try {
-          const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-          if (!riderName || !riderName.trim()) return;
-          
-          let totalHours = 0;
-          let escorts = 0;
-          
-          // 🔧 FIXED: Use filteredRequests instead of assignmentsData
-          filteredRequests.forEach(request => {
-            try {
-              const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-              const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-              
-              if (status !== 'Completed') return;
-              
-              if (ridersAssigned) {
-                const assignedRidersList = String(ridersAssigned).split(',')
-                  .map(name => name.trim())
-                  .filter(name => name && name.length > 0);
-                
-                const isAssigned = assignedRidersList.some(assignedName => 
-                  assignedName.toLowerCase() === riderName.toLowerCase()
-                );
-                
-                if (isAssigned) {
-                  escorts++;
-                  
-                  // Add estimated hours based on request type
-                  const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-                  const estimates = {
-                    'Funeral': 0.5,
-                    'Wedding': 2.5,
-                    'VIP': 4.0,
-                    'Float Movement': 4.0,
-                    'Other': 2.0
-                  };
-                  totalHours += estimates[requestType] || estimates['Other'];
-                }
-              }
-            } catch (error) {
-              console.warn('Error processing request for rider:', error.message);
-            }
-          });
-          
-          if (escorts > 0) {
-            riderHours.push({
-              rider: riderName,
-              escorts: escorts,
-              hours: Math.round(totalHours * 4) / 4
-            });
-          }
-        } catch (error) {
-          console.warn('Error processing rider:', error.message);
-        }
-      });
-      console.log('✅ Rider hours calculated:', riderHours.length, 'riders');
-    } catch (error) {
-      throw new Error('Failed to calculate rider hours: ' + error.message);
-    }
-    
-    // Build result object
-    const result = {
-      success: true,
-      totalRequests: totalRequests,
-      completedRequests: completedRequests,
-      activeRiders: activeRiders,
-      requestTypes: requestTypes,
-      riderHours: riderHours,
-      // Add empty tables for compatibility
-      tables: {
-        riderHours: riderHours,
-        popularLocations: [],
-        recentRequests: filteredRequests.slice(0, 10)
-      }
-    };
-    
-    console.log('✅ Safe generateReportData completed successfully');
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Safe generateReportData failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      totalRequests: 0,
-      completedRequests: 0,
-      activeRiders: 0,
-      requestTypes: {},
-      riderHours: [],
-      tables: {
-        riderHours: [],
-        popularLocations: [],
-        recentRequests: []
-      }
-    };
-  }
-}
-
-/**
- * QUICK FIX: Replace generateReportData with safe version
- */
 function implementSafeReportData() {
   console.log('🔧 === IMPLEMENTING SAFE REPORT DATA ===');
   
