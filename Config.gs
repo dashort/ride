@@ -80,6 +80,7 @@ const CONFIG = {
       secondaryLocation: 'Dropoff',
       ridersNeeded: 'Riders Needed',
       escortFee: 'Escort Fee',
+      requirements: 'Special Requirements',
       status: 'Status',
       notes: 'Notes',
       ridersAssigned: 'Riders Assigned',

@@ -1075,60 +1075,6 @@ function displayRiderActivityReport(result) {
             }
         }
 
-        // Export rider activity to CSV
-        function exportRiderActivityCSV() {
-            var startDate = document.getElementById('startDate').value;
-            var endDate = document.getElementById('endDate').value;
-            
-            if (!startDate || !endDate) {
-                showError('Please select a date range');
-                return;
-            }
-
-            showLoading('Generating CSV export...');
-            
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(handleCSVExportSuccess)
-                    .withFailureHandler(handleError)
-                    .exportRiderActivityCSV(startDate, endDate);
-            } else {
-                hideLoading();
-                showError('Google Apps Script not available.');
-            }
-        }
-
-        function handleCSVExportSuccess(result) {
-            hideLoading();
-            
-            if (!result || !result.success) {
-                showError(result && result.message ? result.message : 'Failed to export CSV');
-                return;
-            }
-
-            // Create and download CSV file
-            var blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8;' });
-            var link = document.createElement('a');
-            var url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', result.filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            showNotification('CSV exported successfully: ' + result.count + ' riders', '#27ae60');
-        }
-
-        // Placeholder export functions for chart and table exports
-        function exportChart(chartType) {
-            showNotification('Chart export for ' + chartType + ' not yet implemented', '#f39c12');
-        }
-
-        function exportTable(tableType) {
-            showNotification('Table export for ' + tableType + ' not yet implemented', '#f39c12');
-        }
-
         // Add keyboard shortcuts for debugging
         document.addEventListener('keydown', function(e) {
             if (DEBUG_REPORTS && e.ctrlKey && e.shiftKey && e.key === 'R') {

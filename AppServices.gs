@@ -620,536 +620,66 @@ function getRiderNotifications(riderId) {
 // PROBLEM 1: The getPageDataForRiders function exists in multiple forms
 // SOLUTION: Update the backend function to match the expected interface
 
-/**
- * Get page data for the riders management page
- * FIXED VERSION - Returns ALL riders (not just active ones) with comprehensive stats
- */
+// ADD THIS TO AppServices.gs or Code.gs
 function getPageDataForRiders(user) {
-  console.log('🔧 ENHANCED getPageDataForRiders called');
-  
   try {
-    // Step 1: Handle authentication with fallback
-    console.log('🔐 Step 1: Handling authentication...');
-    let authenticatedUser = user;
+    debugLog('🔄 Loading riders for assignment popup...');
     
-    if (!authenticatedUser) {
-      try {
-        const auth = authenticateAndAuthorizeUser();
-        authenticatedUser = auth.success ? auth.user : null;
-        console.log('✅ Authentication result:', auth.success ? 'Success' : 'Failed');
-      } catch (authError) {
-        console.warn('⚠️ Authentication failed, using fallback user:', authError.message);
-      }
-    }
-    
-    // Always provide a fallback user to prevent crashes
-    if (!authenticatedUser) {
-      authenticatedUser = {
+    // Handle authentication
+    if (!user) {
+      const auth = authenticateAndAuthorizeUser();
+      user = auth.success ? auth.user : {
         name: 'System User',
-        email: 'system@nopd.com',
+        email: 'user@system.com',
         roles: ['admin'],
-        permissions: ['view_riders', 'manage_riders']
+        permissions: ['view_riders']
       };
-      console.log('🔄 Using fallback user');
     }
     
-    console.log('👤 Final user:', authenticatedUser.name);
+    // Get riders data using the existing getRiders function
+    const riders = getRiders();
     
-    // Step 2: Check if Riders sheet exists
-    console.log('📋 Step 2: Checking Riders sheet...');
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    let ridersSheet = spreadsheet.getSheetByName(CONFIG.sheets.riders);
-    
-    if (!ridersSheet) {
-      console.log('❌ Riders sheet not found, attempting to create...');
-      try {
-        ridersSheet = createRidersSheetIfNeeded();
-        if (!ridersSheet) {
-          // Create a basic riders sheet
-          ridersSheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
-          const headers = [
-            'Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status', 
-            'Platoon', 'Part-Time Rider', 'Certification', 'Total Assignments', 'Last Assignment Date'
-          ];
-          ridersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-          console.log('✅ Created basic riders sheet');
-        }
-      } catch (createError) {
-        console.error('❌ Failed to create riders sheet:', createError.message);
-        // Return success with empty riders and helpful error info
-        return {
-          success: true,
-          user: authenticatedUser,
-          riders: [],
-          stats: { total: 0, active: 0, available: 0 },
-          error: 'Riders sheet not found and could not be created',
-          debug: {
-            timestamp: new Date().toISOString(),
-            sheetError: createError.message,
-            method: 'getPageDataForRiders_ENHANCED'
-          }
-        };
-      }
-    }
-    
-    console.log(`✅ Riders sheet found: ${ridersSheet.getName()}`);
-    
-    // Step 3: Get riders data with comprehensive error handling
-    console.log('📊 Step 3: Getting riders data...');
-    let riders = [];
-    let dataMethod = 'unknown';
-    
-    try {
-      riders = getRidersWithFallback();
-      dataMethod = 'getRidersWithFallback';
-      console.log(`✅ Retrieved ${riders.length} riders via ${dataMethod}`);
-    } catch (ridersError) {
-      console.error('❌ Error getting riders:', ridersError.message);
-      
-      // Try alternative method
-      try {
-        console.log('🔄 Trying alternative method...');
-        const ridersData = getRidersDataWithFallback();
-        riders = convertRidersDataToObjects(ridersData);
-        dataMethod = 'getRidersDataWithFallback';
-        console.log(`✅ Alternative method retrieved ${riders.length} riders`);
-      } catch (altError) {
-        console.error('❌ Alternative method also failed:', altError.message);
-        
-        // Try direct sheet reading as final fallback
-        try {
-          console.log('🔄 Trying direct sheet reading...');
-          const range = ridersSheet.getDataRange();
-          const values = range.getValues();
-          
-          if (values.length > 1) {
-            const headers = values[0];
-            const dataRows = values.slice(1);
-            
-            riders = dataRows.map(row => {
-              const rider = {};
-              headers.forEach((header, index) => {
-                rider[header] = row[index] || '';
-              });
-              
-              // Normalize field names for common variations
-              rider.name = rider.name || rider['Full Name'] || rider[headers[1]] || '';
-              rider.jpNumber = rider.jpNumber || rider['Rider ID'] || rider[headers[0]] || '';
-              rider.phone = rider.phone || rider['Phone Number'] || rider[headers[2]] || '';
-              rider.email = rider.email || rider['Email'] || rider[headers[3]] || '';
-              rider.status = rider.status || rider['Status'] || rider[headers[4]] || 'Active';
-              
-              return rider;
-            }).filter(rider => rider.name && rider.name.trim().length > 0);
-            
-            dataMethod = 'direct sheet reading';
-            console.log(`✅ Direct method retrieved ${riders.length} riders`);
-          } else {
-            console.log('⚠️ Sheet has no data rows, using sample data');
-            riders = createSampleRidersData();
-            dataMethod = 'sample data';
-          }
-        } catch (directError) {
-          console.error('❌ Direct method also failed:', directError.message);
-          console.log('🔄 Using sample data as final fallback');
-          riders = createSampleRidersData();
-          dataMethod = 'sample data fallback';
-        }
-      }
-    }
-    
-    // Step 4: Ensure riders have required fields
-    riders = riders.map(rider => {
-      return {
-        name: rider.name || 'Unknown Rider',
-        jpNumber: rider.jpNumber || rider.id || '',
-        phone: rider.phone || '',
-        email: rider.email || '',
-        status: rider.status || 'Active', // Default to Active
-        platoon: rider.platoon || '',
-        certification: rider.certification || '',
-        organization: rider.organization || 'NOPD',
-        // Preserve any other fields
-        ...rider
-      };
+    // Filter for active riders only (for assignment purposes)
+    const activeRiders = riders.filter(rider => {
+      const status = String(rider.status || '').toLowerCase();
+      return status === 'active' || 
+             status === 'available' || 
+             status === '' || 
+             !rider.status;
     });
     
-    // Step 5: Calculate stats
-    console.log('📈 Step 4: Calculating stats...');
-    const stats = calculateRiderStatsFixed(riders);
+    debugLog(`✅ Found ${activeRiders.length} active riders for assignment`);
     
-    // Step 6: Prepare response
-    const response = {
+    return {
       success: true,
-      user: authenticatedUser,
-      riders: riders,
-      stats: stats,
-      debug: {
-        timestamp: new Date().toISOString(),
-        sheetName: ridersSheet.getName(),
-        riderCount: riders.length,
-        dataMethod: dataMethod,
-        method: 'getPageDataForRiders_ENHANCED'
+      user: user,
+      riders: activeRiders, // This is what the frontend expects
+      stats: {
+        totalRiders: riders.length,
+        activeRiders: activeRiders.length
       }
     };
-    
-    console.log('✅ Response prepared successfully');
-    console.log(`📊 Final summary: ${riders.length} riders via ${dataMethod}, user: ${authenticatedUser.name}`);
-    
-    return response;
     
   } catch (error) {
-    console.error('❌ Critical error in getPageDataForRiders:', error);
+    console.error('❌ Error in getPageDataForRiders:', error);
     
     return {
       success: false,
-      error: `Critical error: ${error.message}`,
-      riders: [],
-      stats: { total: 0, active: 0, inactive: 0 },
-      debug: {
-        timestamp: new Date().toISOString(),
-        error: error.message,
-        stack: error.stack,
-        method: 'getPageDataForRiders_ENHANCED_ERROR'
-      }
-    };
-  }
-}
-
-/**
- * Create sample riders data for testing when no real data exists
- */
-function createSampleRidersData() {
-  console.log('🎭 Creating sample riders data for testing...');
-  
-  return [
-    {
-      name: 'John Smith',
-      jpNumber: 'JP001',
-      phone: '504-123-4567',
-      email: 'john.smith@nopd.com',
-      status: 'Active',
-      platoon: 'A',
-      certification: 'Motorcycle',
-      organization: 'NOPD'
-    },
-    {
-      name: 'Jane Doe',
-      jpNumber: 'JP002',
-      phone: '504-234-5678',
-      email: 'jane.doe@nopd.com',
-      status: 'Active',
-      platoon: 'B',
-      certification: 'Motorcycle',
-      organization: 'NOPD'
-    },
-    {
-      name: 'Mike Johnson',
-      jpNumber: 'JP003',
-      phone: '504-345-6789',
-      email: 'mike.johnson@nopd.com',
-      status: 'Available',
-      platoon: 'A',
-      certification: 'Motorcycle',
-      organization: 'NOPD'
-    },
-    {
-      name: 'Sarah Wilson',
-      jpNumber: 'JP004',
-      phone: '504-456-7890',
-      email: 'sarah.wilson@nopd.com',
-      status: 'Active',
-      platoon: 'C',
-      certification: 'Motorcycle',
-      organization: 'NOPD'
-    }
-  ];
-    
-    // Return error response that won't crash frontend
-    return {
-      success: false,
-      error: error.message || 'Unknown error loading riders',
+      error: error.message,
       user: user || {
         name: 'System User',
-        email: 'system@nopd.com',
+        email: 'user@system.com',
         roles: ['admin'],
         permissions: ['view_riders']
       },
       riders: [], // Empty array prevents crashes
       stats: {
         totalRiders: 0,
-        activeRiders: 0,
-        inactiveRiders: 0,
-        partTimeRiders: 0,
-        fullTimeRiders: 0
-      },
-      debug: {
-        timestamp: new Date().toISOString(),
-        error: error.message,
-        stack: error.stack
+        activeRiders: 0
       }
     };
   }
-
-
-/**
- * Create Riders sheet if it doesn't exist
- */
-function createRidersSheetIfNeeded() {
-  try {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
-    
-    // Add headers
-    const headers = [
-      CONFIG.columns.riders.jpNumber,
-      CONFIG.columns.riders.name,
-      CONFIG.columns.riders.payrollNumber,
-      CONFIG.columns.riders.phone,
-      CONFIG.columns.riders.email,
-      CONFIG.columns.riders.status,
-      CONFIG.columns.riders.platoon,
-      CONFIG.columns.riders.partTime,
-      CONFIG.columns.riders.certification,
-      'Organization'
-    ];
-    
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    
-    // Add sample data to prevent empty sheet issues
-    const sampleData = [
-      ['001', 'System Rider', '12345', '555-0001', 'system@nopd.com', 'Active', '1st Platoon', 'No', 'Advanced', 'NOPD']
-    ];
-    
-    sheet.getRange(2, 1, 1, headers.length).setValues(sampleData);
-    
-    console.log('✅ Created Riders sheet with sample data');
-    return sheet;
-    
-  } catch (error) {
-    console.error('❌ Error creating Riders sheet:', error);
-    return null;
-  }
 }
-
-/**
- * Get riders with fallback methods
- */
-function getRidersWithFallback() {
-  try {
-    // Try primary method
-    return getRiders();
-  } catch (error) {
-    console.warn('⚠️ Primary getRiders failed, trying fallback...');
-    
-    // Fallback: read sheet directly
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    if (!sheet) {
-      throw new Error('Riders sheet not found');
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) { // No data rows
-      return [];
-    }
-    
-    const headers = data[0];
-    const rows = data.slice(1);
-    
-    return rows.map(row => {
-      const rider = {};
-      headers.forEach((header, index) => {
-        rider[header] = row[index] || '';
-      });
-      
-      // Normalize field names
-      rider.jpNumber = rider[CONFIG.columns.riders.jpNumber] || rider['Rider ID'] || '';
-      rider.name = rider[CONFIG.columns.riders.name] || rider['Full Name'] || '';
-      rider.status = rider[CONFIG.columns.riders.status] || 'Active';
-      rider.phone = rider[CONFIG.columns.riders.phone] || rider['Phone Number'] || '';
-      rider.email = rider[CONFIG.columns.riders.email] || '';
-      
-      return rider;
-    }).filter(rider => rider.name && rider.name.trim().length > 0);
-  }
-}
-
-/**
- * Get riders data with fallback
- */
-function getRidersDataWithFallback() {
-  try {
-    return getRidersData(false); // Force fresh data
-  } catch (error) {
-    console.warn('⚠️ getRidersData failed, using direct sheet access...');
-    
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    if (!sheet) {
-      throw new Error('Riders sheet not found');
-    }
-    
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-    
-    if (values.length === 0) {
-      return { headers: [], data: [], columnMap: {}, sheet: sheet };
-    }
-    
-    const headers = values[0];
-    const data = values.slice(1);
-    
-    const columnMap = {};
-    headers.forEach((header, index) => {
-      columnMap[header] = index;
-    });
-    
-    return { headers, data, columnMap, sheet };
-  }
-}
-
-/**
- * Convert riders data object to array of rider objects
- */
-function convertRidersDataToObjects(ridersData) {
-  if (!ridersData || !ridersData.data) {
-    return [];
-  }
-  
-  return ridersData.data.map(row => {
-    const rider = {};
-    
-    // Map columns using column map
-    Object.keys(ridersData.columnMap).forEach(header => {
-      const index = ridersData.columnMap[header];
-      rider[header] = row[index] || '';
-    });
-    
-    // Normalize field names
-    rider.jpNumber = rider[CONFIG.columns.riders.jpNumber] || rider['Rider ID'] || '';
-    rider.name = rider[CONFIG.columns.riders.name] || rider['Full Name'] || '';
-    rider.status = rider[CONFIG.columns.riders.status] || 'Active';
-    rider.phone = rider[CONFIG.columns.riders.phone] || rider['Phone Number'] || '';
-    rider.email = rider[CONFIG.columns.riders.email] || '';
-    
-    return rider;
-  }).filter(rider => rider.name && rider.name.trim().length > 0);
-}
-
-/**
- * Calculate rider statistics with error handling
- */
-function calculateRiderStatsFixed(riders) {
-  const stats = {
-    totalRiders: riders.length,
-    activeRiders: 0,
-    inactiveRiders: 0,
-    partTimeRiders: 0,
-    fullTimeRiders: 0,
-    inTraining: 0
-  };
-  
-  riders.forEach(rider => {
-    const status = (rider.status || 'Active').toLowerCase();
-    const partTime = (rider.partTime || rider['Part-Time Rider'] || 'No').toLowerCase();
-    
-    if (status === 'active') {
-      stats.activeRiders++;
-    } else {
-      stats.inactiveRiders++;
-    }
-    
-    if (partTime === 'yes' || partTime === 'true') {
-      stats.partTimeRiders++;
-    } else {
-      stats.fullTimeRiders++;
-    }
-    
-    if (status === 'training' || status === 'in training') {
-      stats.inTraining++;
-    }
-  });
-  
-  return stats;
-}
-
-/**
- * Test function to verify the riders loading fix
- */
-function testRidersLoadingFix() {
-  console.log('🧪 Testing riders loading fix...');
-  
-  try {
-    const result = getPageDataForRiders();
-    
-    console.log('✅ Test results:');
-    console.log(`   - Success: ${result.success}`);
-    console.log(`   - User: ${result.user ? result.user.name : 'None'}`);
-    console.log(`   - Riders: ${result.riders ? result.riders.length : 0}`);
-    console.log(`   - Stats: ${result.stats ? JSON.stringify(result.stats) : 'None'}`);
-    console.log(`   - Error: ${result.error || 'None'}`);
-    console.log(`   - Debug info: ${result.debug ? JSON.stringify(result.debug) : 'None'}`);
-    
-    if (result.success && result.riders && result.riders.length > 0) {
-      console.log('🎉 SUCCESS: Riders loading is working!');
-      console.log('Sample riders:');
-      result.riders.slice(0, 3).forEach((rider, i) => {
-        console.log(`   ${i + 1}. ${rider.name} (${rider.jpNumber}) - ${rider.status}`);
-      });
-    } else {
-      console.log('⚠️ ISSUE: No riders returned or function failed');
-    }
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * Calculate comprehensive rider statistics (original)
- */
-function calculateRiderStats(riders) {
-  const stats = {
-    totalRiders: riders.length,
-    activeRiders: 0,
-    inactiveRiders: 0,
-    partTimeRiders: 0,
-    fullTimeRiders: 0,
-    byStatus: {},
-    byCertification: {}
-  };
-  
-  riders.forEach(rider => {
-    const status = String(rider.status || 'Active').toLowerCase();
-    const partTime = String(rider.partTime || 'No').toLowerCase();
-    const certification = rider.certification || 'Standard';
-    
-    // Count by status
-    if (status === 'active' || status === '' || !rider.status) {
-      stats.activeRiders++;
-    } else {
-      stats.inactiveRiders++;
-    }
-    
-    // Count by employment type
-    if (partTime === 'yes' || partTime === 'true') {
-      stats.partTimeRiders++;
-    } else {
-      stats.fullTimeRiders++;
-    }
-    
-    // Count by status categories
-    const statusKey = rider.status || 'Active';
-    stats.byStatus[statusKey] = (stats.byStatus[statusKey] || 0) + 1;
-    
-    // Count by certification
-    stats.byCertification[certification] = (stats.byCertification[certification] || 0) + 1;
-  });
-  
-     return stats;
- }
 
 // PROBLEM 2: Frontend error handling and data processing issues
 // SOLUTION: Update the frontend functions in requests.html
@@ -3255,6 +2785,7 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
           escortFee: getColumnValue(row, columnMap, CONFIG.columns.requests.escortFee) || '',
           status: status || 'New',
+          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',

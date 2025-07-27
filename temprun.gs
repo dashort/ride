@@ -1,4 +1,748 @@
 /**
+ * FIX FOR ASSIGNMENT STATUS SYNCHRONIZATION
+ * This will sync assignment statuses with their corresponding request statuses
+ */
+
+/**
+ * Main function to fix assignment statuses
+ */
+function fixAssignmentStatuses() {
+  console.log('🔧 === FIXING ASSIGNMENT STATUSES ===');
+  
+  try {
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
+    const assignmentsData = getAssignmentsData();
+    const requestsData = getRequestsData();
+    
+    if (!assignmentsSheet) {
+      throw new Error('Assignments sheet not found');
+    }
+    
+    let updatedCount = 0;
+    const statusUpdates = [];
+    
+    // Find the status column in assignments
+    const statusColumnIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status];
+    const requestIdColumnIndex = assignmentsData.columnMap[CONFIG.columns.assignments.requestId];
+    
+    if (statusColumnIndex === undefined) {
+      throw new Error('Status column not found in Assignments sheet');
+    }
+    
+    console.log(`📊 Processing ${assignmentsData.data.length} assignments...`);
+    
+    // Process each assignment
+    assignmentsData.data.forEach((assignment, index) => {
+      const rowNumber = index + 2; // +2 for header row and 0-based index
+      const currentStatus = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const requestId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+      const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Skip if already has a status
+      if (currentStatus && currentStatus.trim()) {
+        console.log(`   ⏭️  Skipping ${requestId} - already has status: ${currentStatus}`);
+        return;
+      }
+      
+      // Find corresponding request
+      const correspondingRequest = requestsData.data.find(request => 
+        getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.id) === requestId
+      );
+      
+      if (!correspondingRequest) {
+        console.log(`   ⚠️  No matching request found for assignment ${requestId}`);
+        return;
+      }
+      
+      const requestStatus = getColumnValue(correspondingRequest, requestsData.columnMap, CONFIG.columns.requests.status);
+      
+      if (!requestStatus || !requestStatus.trim()) {
+        console.log(`   ⚠️  Request ${requestId} has no status`);
+        return;
+      }
+      
+      // Determine assignment status based on request status and rider assignment
+      let newAssignmentStatus;
+      
+      if (requestStatus.toLowerCase() === 'completed') {
+        if (riderName && riderName.trim()) {
+          newAssignmentStatus = 'Completed';
+        } else {
+          newAssignmentStatus = 'Completed (No Rider)';
+        }
+      } else if (requestStatus.toLowerCase() === 'cancelled') {
+        newAssignmentStatus = 'Cancelled';
+      } else if (requestStatus.toLowerCase() === 'assigned') {
+        if (riderName && riderName.trim()) {
+          // Check if event date has passed
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+          
+          if (!isNaN(assignmentDate.getTime()) && assignmentDate < today) {
+            newAssignmentStatus = 'Completed'; // Past event with rider = completed
+          } else {
+            newAssignmentStatus = 'Assigned';
+          }
+        } else {
+          newAssignmentStatus = 'Pending Assignment';
+        }
+      } else {
+        newAssignmentStatus = requestStatus; // Copy request status
+      }
+      
+      // Update the status
+      try {
+        assignmentsSheet.getRange(rowNumber, statusColumnIndex + 1).setValue(newAssignmentStatus);
+        updatedCount++;
+        
+        statusUpdates.push({
+          requestId: requestId,
+          riderName: riderName || 'No Rider',
+          oldStatus: currentStatus || 'Empty',
+          newStatus: newAssignmentStatus,
+          requestStatus: requestStatus
+        });
+        
+        console.log(`   ✅ Updated ${requestId} (${riderName || 'No Rider'}): "${currentStatus || 'Empty'}" → "${newAssignmentStatus}"`);
+        
+      } catch (updateError) {
+        console.error(`   ❌ Failed to update ${requestId}:`, updateError);
+      }
+    });
+    
+    console.log(`\n🎯 === SUMMARY ===`);
+    console.log(`✅ Updated ${updatedCount} assignment statuses`);
+    console.log(`📊 Status distribution after update:`);
+    
+    // Show new status distribution
+    const newStatusCounts = {};
+    statusUpdates.forEach(update => {
+      newStatusCounts[update.newStatus] = (newStatusCounts[update.newStatus] || 0) + 1;
+    });
+    
+    Object.keys(newStatusCounts).forEach(status => {
+      console.log(`   ${status}: ${newStatusCounts[status]}`);
+    });
+    
+    return {
+      success: true,
+      updatedCount: updatedCount,
+      statusUpdates: statusUpdates,
+      message: `Successfully updated ${updatedCount} assignment statuses`
+    };
+    
+  } catch (error) {
+    console.error('❌ Error fixing assignment statuses:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Test the fix by running the diagnostic again
+ */
+function testStatusFix() {
+  console.log('🧪 === TESTING STATUS FIX ===');
+  
+  try {
+    // Run the fix
+    console.log('1. Applying status fix...');
+    const fixResult = fixAssignmentStatuses();
+    
+    if (!fixResult.success) {
+      throw new Error('Status fix failed: ' + fixResult.error);
+    }
+    
+    console.log(`✅ Fix applied: ${fixResult.updatedCount} assignments updated`);
+    
+    // Wait a moment for updates to process
+    Utilities.sleep(2000);
+    
+    // Run diagnostic again
+    console.log('\n2. Running diagnostic again...');
+    const diagnostic = diagnoseReportsDiscrepancy();
+    
+    console.log('\n🎯 === RESULTS COMPARISON ===');
+    console.log(`Before Fix:`);
+    console.log(`   Completed Requests: 69`);
+    console.log(`   Rider Activity: 4`);
+    console.log(`   Gap: 65 missing escorts`);
+    
+    console.log(`\nAfter Fix:`);
+    console.log(`   Completed Requests: ${diagnostic.completedEscorts || 'Error'}`);
+    console.log(`   Rider Activity: ${diagnostic.riderActivity || 'Error'}`);
+    console.log(`   Gap: ${Math.abs((diagnostic.completedEscorts || 0) - (diagnostic.riderActivity || 0))}`);
+    
+    if (diagnostic.riderActivity > 10) {
+      console.log('✅ SUCCESS: Rider activity significantly increased!');
+    } else {
+      console.log('⚠️ Partial success: May need additional fixes');
+    }
+    
+    return {
+      success: true,
+      fixResult: fixResult,
+      newDiagnostic: diagnostic
+    };
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Quick fix for assignments with riders but no status from past dates
+ */
+function quickFixPastAssignments() {
+  console.log('⚡ === QUICK FIX FOR PAST ASSIGNMENTS ===');
+  
+  try {
+    const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
+    const assignmentsData = getAssignmentsData();
+    
+    let fixedCount = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const statusColumnIndex = assignmentsData.columnMap[CONFIG.columns.assignments.status];
+    
+    assignmentsData.data.forEach((assignment, index) => {
+      const rowNumber = index + 2;
+      const currentStatus = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Check if assignment meets criteria for quick fix
+      const hasRider = riderName && riderName.trim() && riderName.toLowerCase() !== 'unassigned';
+      const hasNoStatus = !currentStatus || !currentStatus.trim();
+      
+      let isPastEvent = false;
+      if (eventDate) {
+        const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        isPastEvent = !isNaN(assignmentDate.getTime()) && assignmentDate < today;
+      }
+      
+      if (hasRider && hasNoStatus && isPastEvent) {
+        try {
+          assignmentsSheet.getRange(rowNumber, statusColumnIndex + 1).setValue('Completed');
+          fixedCount++;
+          console.log(`   ✅ Quick fix: ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - ${riderName} → Completed`);
+        } catch (error) {
+          console.error(`   ❌ Failed to quick fix assignment:`, error);
+        }
+      }
+    });
+    
+    console.log(`⚡ Quick fixed ${fixedCount} past assignments with riders`);
+    
+    return {
+      success: true,
+      fixedCount: fixedCount
+    };
+    
+  } catch (error) {
+    console.error('❌ Quick fix failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Run just the quick fix if you want immediate results
+ */
+function runQuickFix() {
+  console.log('🚀 === RUNNING QUICK FIX ===');
+  
+  const result = quickFixPastAssignments();
+  
+  if (result.success) {
+    console.log(`✅ Quick fix completed: ${result.fixedCount} assignments marked as completed`);
+    console.log('💡 Now check your reports page - rider activity should show more escorts!');
+  } else {
+    console.log(`❌ Quick fix failed: ${result.error}`);
+  }
+  
+  return result;
+}
+/**
+ * DIAGNOSTIC FUNCTIONS TO IDENTIFY THE 94 vs 4 DISCREPANCY
+ * Run these functions to identify where the mismatch is coming from
+ */
+
+/**
+ * Main diagnostic function to identify the discrepancy
+ */
+function diagnoseReportsDiscrepancy() {
+  console.log('🔍 === REPORTS DISCREPANCY DIAGNOSIS ===');
+  
+  try {
+    // Get current date range (assuming last 30 days or similar)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30); // Last 30 days
+    
+    console.log(`📅 Date range: ${startDate.toDateString()} to ${endDate.toDateString()}`);
+    
+    // 1. Check how "completed escorts" is calculated
+    const completedEscortsCount = diagnoseCompletedEscortsCalculation(startDate, endDate);
+    console.log(`\n📊 COMPLETED ESCORTS COUNT: ${completedEscortsCount}`);
+    
+    // 2. Check how "rider activity" is calculated  
+    const riderActivityCount = diagnoseRiderActivityCalculation(startDate, endDate);
+    console.log(`\n👥 RIDER ACTIVITY COUNT: ${riderActivityCount} total escorts from all riders`);
+    
+    // 3. Check assignment data directly
+    const assignmentAnalysis = analyzeAssignmentData(startDate, endDate);
+    console.log(`\n📋 ASSIGNMENT DATA ANALYSIS:`);
+    console.log(`   Total assignments in period: ${assignmentAnalysis.totalAssignments}`);
+    console.log(`   Status breakdown:`, assignmentAnalysis.statusBreakdown);
+    console.log(`   Riders with assignments: ${assignmentAnalysis.ridersWithAssignments}`);
+    console.log(`   Assignments with riders: ${assignmentAnalysis.assignmentsWithRiders}`);
+    
+    // 4. Check for data inconsistencies
+    const inconsistencies = findDataInconsistencies();
+    console.log(`\n⚠️  DATA INCONSISTENCIES:`);
+    console.log(inconsistencies);
+    
+    return {
+      completedEscorts: completedEscortsCount,
+      riderActivity: riderActivityCount,
+      assignmentAnalysis: assignmentAnalysis,
+      inconsistencies: inconsistencies
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in diagnosis:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Check how "completed escorts" number is calculated
+ */
+function diagnoseCompletedEscortsCalculation(startDate, endDate) {
+  try {
+    console.log('\n🔍 Analyzing "Completed Escorts" calculation...');
+    
+    // This likely comes from generateReportData() or similar function
+    // Check Requests sheet for completed requests
+    const requestsData = getRequestsData();
+    let completedCount = 0;
+    
+    requestsData.data.forEach(row => {
+      const status = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.status);
+      const eventDate = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      
+      // Check if date is in range
+      let dateInRange = false;
+      if (eventDate) {
+        const requestDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(requestDate.getTime())) {
+          dateInRange = requestDate >= startDate && requestDate <= endDate;
+        }
+      }
+      
+      // Count completed requests in date range
+      if (dateInRange) {
+        const statusLower = (status || '').toLowerCase().trim();
+        if (statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished') {
+          completedCount++;
+          console.log(`   ✅ Completed request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id)} - ${status}`);
+        } else if (status) {
+          console.log(`   ⏸️  Non-completed request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id)} - ${status}`);
+        }
+      }
+    });
+    
+    console.log(`   📊 Completed requests method: ${completedCount}`);
+    
+    // Alternative: Check assignments for completed escorts
+    const assignmentsData = getAssignmentsData();
+    let completedAssignments = 0;
+    
+    assignmentsData.data.forEach(assignment => {
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Check if date is in range
+      let dateInRange = false;
+      if (eventDate) {
+        const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(assignmentDate.getTime())) {
+          dateInRange = assignmentDate >= startDate && assignmentDate <= endDate;
+        }
+      }
+      
+      if (dateInRange) {
+        const statusLower = (status || '').toLowerCase().trim();
+        if (statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished') {
+          completedAssignments++;
+        }
+      }
+    });
+    
+    console.log(`   📊 Completed assignments method: ${completedAssignments}`);
+    
+    return Math.max(completedCount, completedAssignments);
+    
+  } catch (error) {
+    console.error('❌ Error analyzing completed escorts:', error);
+    return 0;
+  }
+}
+
+/**
+ * Check how "rider activity" is calculated
+ */
+function diagnoseRiderActivityCalculation(startDate, endDate) {
+  try {
+    console.log('\n🔍 Analyzing "Rider Activity" calculation...');
+    
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+    let totalRiderEscorts = 0;
+    
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName) return;
+      
+      let riderEscorts = 0;
+      
+      assignmentsData.data.forEach(assignment => {
+        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        
+        // Check rider name match (case insensitive)
+        const riderMatches = assignmentRider && riderName && 
+          assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase();
+        
+        // Check date range
+        let dateInRange = false;
+        if (eventDate) {
+          const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+          if (!isNaN(assignmentDate.getTime())) {
+            dateInRange = assignmentDate >= startDate && assignmentDate <= endDate;
+          }
+        }
+        
+        if (riderMatches && dateInRange) {
+          // Check what statuses are being counted
+          const statusLower = (status || '').toLowerCase().trim();
+          console.log(`   👤 ${riderName}: Assignment ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.assignmentId)} - Status: "${status}" - Date: ${eventDate}`);
+          
+          // Original restrictive logic (only 'completed')
+          if (statusLower === 'completed') {
+            riderEscorts++;
+            console.log(`     ✅ COUNTED (completed status)`);
+          } else {
+            console.log(`     ❌ NOT COUNTED (status: ${statusLower})`);
+          }
+        }
+      });
+      
+      if (riderEscorts > 0) {
+        console.log(`   📊 ${riderName}: ${riderEscorts} escorts`);
+        totalRiderEscorts += riderEscorts;
+      }
+    });
+    
+    console.log(`   📊 Total from rider activity: ${totalRiderEscorts}`);
+    return totalRiderEscorts;
+    
+  } catch (error) {
+    console.error('❌ Error analyzing rider activity:', error);
+    return 0;
+  }
+}
+
+/**
+ * Analyze assignment data to understand the discrepancy
+ */
+function analyzeAssignmentData(startDate, endDate) {
+  try {
+    const assignmentsData = getAssignmentsData();
+    let totalAssignments = 0;
+    let assignmentsWithRiders = 0;
+    let ridersWithAssignments = new Set();
+    let statusBreakdown = {};
+    
+    assignmentsData.data.forEach(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      
+      // Check date range
+      let dateInRange = false;
+      if (eventDate) {
+        const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(assignmentDate.getTime())) {
+          dateInRange = assignmentDate >= startDate && assignmentDate <= endDate;
+        }
+      }
+      
+      if (dateInRange) {
+        totalAssignments++;
+        
+        // Track status distribution
+        const statusKey = status || 'No Status';
+        statusBreakdown[statusKey] = (statusBreakdown[statusKey] || 0) + 1;
+        
+        // Track riders
+        if (riderName && riderName.trim()) {
+          assignmentsWithRiders++;
+          ridersWithAssignments.add(riderName.trim());
+        }
+      }
+    });
+    
+    return {
+      totalAssignments: totalAssignments,
+      assignmentsWithRiders: assignmentsWithRiders,
+      ridersWithAssignments: ridersWithAssignments.size,
+      statusBreakdown: statusBreakdown
+    };
+    
+  } catch (error) {
+    console.error('❌ Error analyzing assignment data:', error);
+    return {};
+  }
+}
+
+/**
+ * Find potential data inconsistencies
+ */
+function findDataInconsistencies() {
+  try {
+    const issues = [];
+    
+    // Check 1: Assignments without rider names
+    const assignmentsData = getAssignmentsData();
+    let assignmentsWithoutRiders = 0;
+    
+    assignmentsData.data.forEach(assignment => {
+      const riderName = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      if (!riderName || !riderName.trim()) {
+        assignmentsWithoutRiders++;
+      }
+    });
+    
+    if (assignmentsWithoutRiders > 0) {
+      issues.push(`${assignmentsWithoutRiders} assignments have no rider assigned`);
+    }
+    
+    // Check 2: Inconsistent status values
+    const statusValues = new Set();
+    assignmentsData.data.forEach(assignment => {
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      if (status) statusValues.add(status);
+    });
+    
+    const statusArray = Array.from(statusValues);
+    if (statusArray.length > 10) {
+      issues.push(`Too many different status values (${statusArray.length}): ${statusArray.join(', ')}`);
+    }
+    
+    // Check 3: Rider name mismatches
+    const ridersData = getRidersData();
+    const riderNamesFromRidersSheet = new Set();
+    const riderNamesFromAssignments = new Set();
+    
+    ridersData.data.forEach(rider => {
+      const name = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (name && name.trim()) {
+        riderNamesFromRidersSheet.add(name.trim().toLowerCase());
+      }
+    });
+    
+    assignmentsData.data.forEach(assignment => {
+      const name = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      if (name && name.trim()) {
+        riderNamesFromAssignments.add(name.trim().toLowerCase());
+      }
+    });
+    
+    const unmatchedRiders = [];
+    riderNamesFromAssignments.forEach(name => {
+      if (!riderNamesFromRidersSheet.has(name)) {
+        unmatchedRiders.push(name);
+      }
+    });
+    
+    if (unmatchedRiders.length > 0) {
+      issues.push(`Riders in assignments but not in riders sheet: ${unmatchedRiders.join(', ')}`);
+    }
+    
+    return issues;
+    
+  } catch (error) {
+    console.error('❌ Error finding inconsistencies:', error);
+    return ['Error checking for inconsistencies: ' + error.message];
+  }
+}
+
+/**
+ * Fix the rider activity calculation to match completed escorts
+ */
+function fixRiderActivityCalculation() {
+  console.log('🔧 === FIXING RIDER ACTIVITY CALCULATION ===');
+  
+  try {
+    // The fix is to update the generateRiderActivityReport function
+    // or wherever rider hours are calculated to use the same logic as completed escorts
+    
+    console.log('The fix involves updating these functions in Code.gs:');
+    console.log('1. generateReportData() - around line 2750');
+    console.log('2. generateRiderActivityReport() - if it exists');
+    console.log('3. Any other functions that calculate rider hours');
+    
+    console.log('\nRecommended changes:');
+    console.log('1. Change status filtering from only "Completed" to include:');
+    console.log('   - "Completed", "Done", "Finished"');
+    console.log('   - Or count assignments where event date has passed');
+    console.log('');
+    console.log('2. Improve rider name matching to be case-insensitive');
+    console.log('3. Add fallback hour estimation when actual times missing');
+    
+    return {
+      success: true,
+      message: 'Diagnostic complete. Manual code updates needed in generateReportData() function.'
+    };
+    
+  } catch (error) {
+    console.error('❌ Fix error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Updated rider activity calculation (use this to replace existing logic)
+ */
+function calculateRiderActivityFixed(startDate, endDate) {
+  try {
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+    const riderHours = [];
+    
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName || !riderName.trim()) return;
+      
+      let totalHours = 0;
+      let escorts = 0;
+      
+      assignmentsData.data.forEach(assignment => {
+        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+        const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+        const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+        
+        // Improved rider name matching (case-insensitive, trimmed)
+        if (!assignmentRider || !riderName) return;
+        const riderMatches = assignmentRider.toString().trim().toLowerCase() === riderName.toString().trim().toLowerCase();
+        if (!riderMatches) return;
+        
+        // Date filtering
+        let dateMatches = true;
+        if (eventDate && startDate && endDate) {
+          const assignmentDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+          if (!isNaN(assignmentDate.getTime())) {
+            dateMatches = assignmentDate >= startDate && assignmentDate <= endDate;
+          }
+        }
+        if (!dateMatches) return;
+        
+        // ✅ FIXED: More flexible status matching
+        const statusLower = (status || '').toLowerCase().trim();
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Count if assignment is completed OR event date has passed (indicating work was done)
+        const isCompleted = ['completed', 'done', 'finished'].includes(statusLower);
+        const eventPassed = eventDate && (eventDate instanceof Date ? eventDate : new Date(eventDate)) < today;
+        const hasRiderAssigned = assignmentRider && assignmentRider.trim();
+        
+        if ((isCompleted || (eventPassed && hasRiderAssigned)) && dateMatches) {
+          escorts++;
+          
+          // Try to calculate hours from time data
+          const startTime = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
+          const endTime = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.endTime);
+          
+          const start = parseTimeString(startTime);
+          const end = parseTimeString(endTime);
+          
+          if (start && end && end > start) {
+            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            totalHours += hours;
+          } else {
+            // ✅ FIXED: Fallback estimation based on request type
+            const requestId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+            const estimatedHours = estimateHoursByRequestType(requestId);
+            totalHours += estimatedHours;
+          }
+        }
+      });
+      
+      if (escorts > 0) {
+        riderHours.push({
+          name: riderName,
+          escorts: escorts,
+          hours: Math.round(totalHours * 100) / 100
+        });
+      }
+    });
+    
+    return riderHours.sort((a, b) => b.hours - a.hours);
+    
+  } catch (error) {
+    console.error('❌ Error calculating rider activity:', error);
+    return [];
+  }
+}
+
+/**
+ * Helper function to estimate hours by request type
+ */
+function estimateHoursByRequestType(requestId) {
+  try {
+    // Default estimates by request type (in hours)
+    const typeEstimates = {
+      'Wedding': 2.5,
+      'Funeral': 1.5,
+      'Float Movement': 3.0,
+      'VIP': 2.0,
+      'Other': 2.0
+    };
+    
+    // Try to get the request type from the original request
+    const requestsData = getRequestsData();
+    const request = requestsData.data.find(r => 
+      getColumnValue(r, requestsData.columnMap, CONFIG.columns.requests.id) === requestId
+    );
+    
+    if (request) {
+      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+      return typeEstimates[requestType] || typeEstimates['Other'];
+    }
+    
+    return typeEstimates['Other']; // Default fallback
+    
+  } catch (error) {
+    console.error('Error estimating hours:', error);
+    return 2.0; // Safe fallback
+  }
+}
+/**
  * 🔧 DATA VALIDATION FIX SCRIPT
  * Fixes data validation rules that are interfering with header rows
  */
@@ -365,6 +1109,7 @@ function checkAndFixRequestsHeaderOrder() {
       'Riders Needed',        // CONFIG.columns.requests.ridersNeeded
       'Escort Fee',           // CONFIG.columns.requests.escortFee
       'Status',               // CONFIG.columns.requests.status
+      'Special Requirements', // CONFIG.columns.requests.specialRequirements
       'Notes',                // CONFIG.columns.requests.notes
       'Courtesy',             // CONFIG.columns.requests.courtesy
       'Riders Assigned',      // CONFIG.columns.requests.assignedRiders or ridersAssigned
@@ -460,6 +1205,7 @@ function fixRequestsHeaderOrder() {
       'Riders Needed',        
       'Escort Fee',           
       'Status',               
+      'Special Requirements', 
       'Notes',                
       'Courtesy',             
       'Riders Assigned',      
@@ -639,7 +1385,7 @@ function testRequestsAfterHeaderFix() {
       'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
       'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location',
       'Secondary Location', 'Request Type', 'Riders Needed', 'Escort Fee',
-      'Status', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
+      'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
     ];
     
     const headersMatch = expectedHeaders.every((expected, index) => 
