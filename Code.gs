@@ -2690,9 +2690,39 @@ function generateReportData(filters) {
     
     // Calculate summary statistics
     const totalRequests = filteredRequests.length;
-    const completedRequests = filteredRequests.filter(request => 
-      getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-    ).length;
+    
+    // FIXED: Use assignment-based counting for consistency with rider activity
+    // Count completed assignments instead of completed requests to match rider activity logic
+    let completedRequests = 0;
+    assignmentsData.data.forEach(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      
+      // Apply same date filter as filteredRequests
+      let dateMatches = true;
+      if (eventDate instanceof Date) {
+        dateMatches = eventDate >= startDate && eventDate <= endDate;
+      }
+      if (!dateMatches) return;
+      
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const rider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      
+      if (!rider) return;
+
+      // Apply same logic as generateRiderActivityReport for consistency
+      const statusLower = (status || '').toLowerCase().trim();
+      const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const isCompleted = statusLower === 'completed';
+      const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
+      const wasAssigned = ['assigned', 'confirmed', 'en route', 'in progress'].includes(statusLower);
+      
+      if (isCompleted || (eventHasPassed && wasAssigned)) {
+        completedRequests++;
+      }
+    });
     
     const activeRiders = ridersData.data.filter(rider =>
       getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
