@@ -4998,12 +4998,22 @@ function saveUserAvailability(userOrEntry, entry) { // Added user parameter
 
 /**
  * Retrieve availability entries for the specified email or current user.
- * @param {string} [email] Optional email address. Defaults to current user.
+ * @param {Object} [user] Optional user object. If omitted, the current user
+ *     is retrieved automatically.
+ * @param {string} [email] Optional email address. Defaults to the user's email.
  * @return {Array<object>} Array of availability objects.
  */
 function getUserAvailability(user, email) { // Added user parameter
   try {
-    // const user = getCurrentUser(); // Removed: user is now a parameter
+    // Backwards compatibility - if no user provided, use the current user
+    if (!user) {
+      user = getCurrentUser();
+    }
+
+    if (!user) {
+      throw new Error('No user specified and current user could not be determined');
+    }
+
     const targetEmail = email || user.email;
 
     const sheetData = getSheetData(CONFIG.sheets.availability, true);
