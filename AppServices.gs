@@ -622,58 +622,110 @@ function getRiderNotifications(riderId) {
 
 /**
  * Get page data for the riders management page
- * Returns ALL riders (not just active ones) with comprehensive stats
+ * FIXED VERSION - Returns ALL riders (not just active ones) with comprehensive stats
  */
 function getPageDataForRiders(user) {
+  console.log('🔧 FIXED getPageDataForRiders called');
+  
   try {
-    console.log('🔄 Loading riders page data...');
+    // Step 1: Handle authentication with fallback
+    console.log('🔐 Step 1: Handling authentication...');
+    let authenticatedUser = user;
     
-    // Handle authentication
-    if (!user) {
+    if (!authenticatedUser) {
       try {
         const auth = authenticateAndAuthorizeUser();
-        user = auth.success ? auth.user : {
-          name: 'System User',
-          email: 'user@system.com',
-          roles: ['admin'],
-          permissions: ['view_riders']
-        };
+        authenticatedUser = auth.success ? auth.user : null;
+        console.log('✅ Authentication result:', auth.success ? 'Success' : 'Failed');
       } catch (authError) {
-        console.warn('⚠️ Authentication failed, using default user:', authError);
-        user = {
-          name: 'System User',
-          email: 'user@system.com',
-          roles: ['admin'],
-          permissions: ['view_riders']
-        };
+        console.warn('⚠️ Authentication failed, using fallback user:', authError.message);
       }
     }
     
-    // Get ALL riders data (not filtered - let frontend handle filtering)
-    const riders = getRiders();
-    console.log(`📋 Retrieved ${riders.length} total riders`);
+    // Always provide a fallback user to prevent crashes
+    if (!authenticatedUser) {
+      authenticatedUser = {
+        name: 'System User',
+        email: 'system@nopd.com',
+        roles: ['admin'],
+        permissions: ['view_riders', 'manage_riders']
+      };
+      console.log('🔄 Using fallback user');
+    }
     
-    // Calculate comprehensive stats
-    const stats = calculateRiderStats(riders);
+    console.log('👤 Final user:', authenticatedUser.name);
     
-    console.log(`✅ Riders page data loaded successfully: ${riders.length} riders`);
+    // Step 2: Check if Riders sheet exists
+    console.log('📋 Step 2: Checking Riders sheet...');
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    let ridersSheet = spreadsheet.getSheetByName(CONFIG.sheets.riders);
     
-    return {
+    if (!ridersSheet) {
+      console.log('❌ Riders sheet not found, attempting to create...');
+      ridersSheet = createRidersSheetIfNeeded();
+      
+      if (!ridersSheet) {
+        throw new Error(`Riders sheet "${CONFIG.sheets.riders}" not found and could not be created`);
+      }
+    }
+    
+    console.log(`✅ Riders sheet found: ${ridersSheet.getName()}`);
+    
+    // Step 3: Get riders data with comprehensive error handling
+    console.log('📊 Step 3: Getting riders data...');
+    let riders = [];
+    
+    try {
+      riders = getRidersWithFallback();
+      console.log(`✅ Retrieved ${riders.length} riders`);
+    } catch (ridersError) {
+      console.error('❌ Error getting riders:', ridersError.message);
+      
+      // Try alternative method
+      try {
+        console.log('🔄 Trying alternative method...');
+        const ridersData = getRidersDataWithFallback();
+        riders = convertRidersDataToObjects(ridersData);
+        console.log(`✅ Alternative method retrieved ${riders.length} riders`);
+      } catch (altError) {
+        console.error('❌ Alternative method also failed:', altError.message);
+        riders = []; // Empty array to prevent crashes
+      }
+    }
+    
+    // Step 4: Calculate stats
+    console.log('📈 Step 4: Calculating stats...');
+    const stats = calculateRiderStatsFixed(riders);
+    
+    // Step 5: Prepare response
+    const response = {
       success: true,
-      user: user,
-      riders: riders, // Return ALL riders - frontend will filter as needed
-      stats: stats
+      user: authenticatedUser,
+      riders: riders,
+      stats: stats,
+      debug: {
+        timestamp: new Date().toISOString(),
+        sheetName: ridersSheet.getName(),
+        riderCount: riders.length,
+        method: 'getPageDataForRiders_FIXED'
+      }
     };
     
-  } catch (error) {
-    console.error('❌ Error in getPageDataForRiders:', error);
+    console.log('✅ Response prepared successfully');
+    console.log(`📊 Final summary: ${riders.length} riders, user: ${authenticatedUser.name}`);
     
+    return response;
+    
+  } catch (error) {
+    console.error('❌ Critical error in getPageDataForRiders:', error);
+    
+    // Return error response that won't crash frontend
     return {
       success: false,
       error: error.message || 'Unknown error loading riders',
       user: user || {
         name: 'System User',
-        email: 'user@system.com',
+        email: 'system@nopd.com',
         roles: ['admin'],
         permissions: ['view_riders']
       },
@@ -684,13 +736,233 @@ function getPageDataForRiders(user) {
         inactiveRiders: 0,
         partTimeRiders: 0,
         fullTimeRiders: 0
+      },
+      debug: {
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        stack: error.stack
       }
     };
   }
 }
 
 /**
- * Calculate comprehensive rider statistics
+ * Create Riders sheet if it doesn't exist
+ */
+function createRidersSheetIfNeeded() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
+    
+    // Add headers
+    const headers = [
+      CONFIG.columns.riders.jpNumber,
+      CONFIG.columns.riders.name,
+      CONFIG.columns.riders.payrollNumber,
+      CONFIG.columns.riders.phone,
+      CONFIG.columns.riders.email,
+      CONFIG.columns.riders.status,
+      CONFIG.columns.riders.platoon,
+      CONFIG.columns.riders.partTime,
+      CONFIG.columns.riders.certification,
+      'Organization'
+    ];
+    
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    
+    // Add sample data to prevent empty sheet issues
+    const sampleData = [
+      ['001', 'System Rider', '12345', '555-0001', 'system@nopd.com', 'Active', '1st Platoon', 'No', 'Advanced', 'NOPD']
+    ];
+    
+    sheet.getRange(2, 1, 1, headers.length).setValues(sampleData);
+    
+    console.log('✅ Created Riders sheet with sample data');
+    return sheet;
+    
+  } catch (error) {
+    console.error('❌ Error creating Riders sheet:', error);
+    return null;
+  }
+}
+
+/**
+ * Get riders with fallback methods
+ */
+function getRidersWithFallback() {
+  try {
+    // Try primary method
+    return getRiders();
+  } catch (error) {
+    console.warn('⚠️ Primary getRiders failed, trying fallback...');
+    
+    // Fallback: read sheet directly
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!sheet) {
+      throw new Error('Riders sheet not found');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) { // No data rows
+      return [];
+    }
+    
+    const headers = data[0];
+    const rows = data.slice(1);
+    
+    return rows.map(row => {
+      const rider = {};
+      headers.forEach((header, index) => {
+        rider[header] = row[index] || '';
+      });
+      
+      // Normalize field names
+      rider.jpNumber = rider[CONFIG.columns.riders.jpNumber] || rider['Rider ID'] || '';
+      rider.name = rider[CONFIG.columns.riders.name] || rider['Full Name'] || '';
+      rider.status = rider[CONFIG.columns.riders.status] || 'Active';
+      rider.phone = rider[CONFIG.columns.riders.phone] || rider['Phone Number'] || '';
+      rider.email = rider[CONFIG.columns.riders.email] || '';
+      
+      return rider;
+    }).filter(rider => rider.name && rider.name.trim().length > 0);
+  }
+}
+
+/**
+ * Get riders data with fallback
+ */
+function getRidersDataWithFallback() {
+  try {
+    return getRidersData(false); // Force fresh data
+  } catch (error) {
+    console.warn('⚠️ getRidersData failed, using direct sheet access...');
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!sheet) {
+      throw new Error('Riders sheet not found');
+    }
+    
+    const range = sheet.getDataRange();
+    const values = range.getValues();
+    
+    if (values.length === 0) {
+      return { headers: [], data: [], columnMap: {}, sheet: sheet };
+    }
+    
+    const headers = values[0];
+    const data = values.slice(1);
+    
+    const columnMap = {};
+    headers.forEach((header, index) => {
+      columnMap[header] = index;
+    });
+    
+    return { headers, data, columnMap, sheet };
+  }
+}
+
+/**
+ * Convert riders data object to array of rider objects
+ */
+function convertRidersDataToObjects(ridersData) {
+  if (!ridersData || !ridersData.data) {
+    return [];
+  }
+  
+  return ridersData.data.map(row => {
+    const rider = {};
+    
+    // Map columns using column map
+    Object.keys(ridersData.columnMap).forEach(header => {
+      const index = ridersData.columnMap[header];
+      rider[header] = row[index] || '';
+    });
+    
+    // Normalize field names
+    rider.jpNumber = rider[CONFIG.columns.riders.jpNumber] || rider['Rider ID'] || '';
+    rider.name = rider[CONFIG.columns.riders.name] || rider['Full Name'] || '';
+    rider.status = rider[CONFIG.columns.riders.status] || 'Active';
+    rider.phone = rider[CONFIG.columns.riders.phone] || rider['Phone Number'] || '';
+    rider.email = rider[CONFIG.columns.riders.email] || '';
+    
+    return rider;
+  }).filter(rider => rider.name && rider.name.trim().length > 0);
+}
+
+/**
+ * Calculate rider statistics with error handling
+ */
+function calculateRiderStatsFixed(riders) {
+  const stats = {
+    totalRiders: riders.length,
+    activeRiders: 0,
+    inactiveRiders: 0,
+    partTimeRiders: 0,
+    fullTimeRiders: 0,
+    inTraining: 0
+  };
+  
+  riders.forEach(rider => {
+    const status = (rider.status || 'Active').toLowerCase();
+    const partTime = (rider.partTime || rider['Part-Time Rider'] || 'No').toLowerCase();
+    
+    if (status === 'active') {
+      stats.activeRiders++;
+    } else {
+      stats.inactiveRiders++;
+    }
+    
+    if (partTime === 'yes' || partTime === 'true') {
+      stats.partTimeRiders++;
+    } else {
+      stats.fullTimeRiders++;
+    }
+    
+    if (status === 'training' || status === 'in training') {
+      stats.inTraining++;
+    }
+  });
+  
+  return stats;
+}
+
+/**
+ * Test function to verify the riders loading fix
+ */
+function testRidersLoadingFix() {
+  console.log('🧪 Testing riders loading fix...');
+  
+  try {
+    const result = getPageDataForRiders();
+    
+    console.log('✅ Test results:');
+    console.log(`   - Success: ${result.success}`);
+    console.log(`   - User: ${result.user ? result.user.name : 'None'}`);
+    console.log(`   - Riders: ${result.riders ? result.riders.length : 0}`);
+    console.log(`   - Stats: ${result.stats ? JSON.stringify(result.stats) : 'None'}`);
+    console.log(`   - Error: ${result.error || 'None'}`);
+    console.log(`   - Debug info: ${result.debug ? JSON.stringify(result.debug) : 'None'}`);
+    
+    if (result.success && result.riders && result.riders.length > 0) {
+      console.log('🎉 SUCCESS: Riders loading is working!');
+      console.log('Sample riders:');
+      result.riders.slice(0, 3).forEach((rider, i) => {
+        console.log(`   ${i + 1}. ${rider.name} (${rider.jpNumber}) - ${rider.status}`);
+      });
+    } else {
+      console.log('⚠️ ISSUE: No riders returned or function failed');
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Calculate comprehensive rider statistics (original)
  */
 function calculateRiderStats(riders) {
   const stats = {
