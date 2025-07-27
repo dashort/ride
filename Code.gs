@@ -3635,7 +3635,7 @@ ridersData.data.forEach(rider => {
   let totalHours = 0;
   let escorts = 0;
   
-  // Use filteredRequests instead of assignmentsData
+  // 🔧 FIXED: Use filteredRequests (from requests data) instead of assignmentsData
   filteredRequests.forEach(request => {
     const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
     const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
@@ -3657,35 +3657,16 @@ ridersData.data.forEach(rider => {
       if (isAssigned) {
         escorts++;
         
-        // Calculate hours from request times or use estimates
-        const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
-        const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+        // Add estimated hours based on request type
         const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-        
-        let hoursToAdd = 0;
-        
-        // Try to calculate from actual times
-        if (startTime && endTime) {
-          const start = startTime instanceof Date ? startTime : new Date(startTime);
-          const end = endTime instanceof Date ? endTime : new Date(endTime);
-          if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-            hoursToAdd = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
-          }
-        }
-        
-        // Fallback to estimates if no valid time calculation
-        if (hoursToAdd <= 0) {
-          const estimates = {
-            'Funeral': 0.5,
-            'Wedding': 2.5,
-            'VIP': 4.0,
-            'Float Movement': 4.0,
-            'Other': 2.0
-          };
-          hoursToAdd = estimates[requestType] || estimates['Other'];
-        }
-        
-        totalHours += hoursToAdd;
+        const estimates = {
+          'Funeral': 0.5,
+          'Wedding': 2.5,
+          'VIP': 4.0,
+          'Float Movement': 4.0,
+          'Other': 2.0
+        };
+        totalHours += estimates[requestType] || estimates['Other'];
       }
     }
   });
