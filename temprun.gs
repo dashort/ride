@@ -1096,7 +1096,6 @@ function checkAndFixRequestsHeaderOrder() {
     const correctHeaders = [
       'Request ID',           // CONFIG.columns.requests.id
       'Date',                 // CONFIG.columns.requests.date (legacy/submission date)
-      'Submitted By',         // CONFIG.columns.requests.submittedBy
       'Requester Name',       // CONFIG.columns.requests.requesterName
       'Requester Contact',    // CONFIG.columns.requests.requesterContact
       'Event Date',           // CONFIG.columns.requests.eventDate
@@ -1192,7 +1191,6 @@ function fixRequestsHeaderOrder() {
     const correctHeaders = [
       'Request ID',           
       'Date',                 
-      'Submitted By',         
       'Requester Name',       
       'Requester Contact',    
       'Event Date',           
@@ -1382,7 +1380,7 @@ function testRequestsAfterHeaderFix() {
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
     const expectedHeaders = [
-      'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
+      'Request ID', 'Date', 'Requester Name', 'Requester Contact',
       'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location',
       'Secondary Location', 'Request Type', 'Riders Needed', 'Escort Fee',
       'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
