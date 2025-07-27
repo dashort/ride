@@ -1,3 +1,337 @@
+/**
+ * DATA INVESTIGATION SCRIPT
+ * Since the fix is already applied but numbers are still wrong,
+ * let's investigate your actual data to find the root cause
+ */
+
+/**
+ * MAIN INVESTIGATION: Find out why 104 completed requests only show 11 rider activity
+ */
+function investigateDataStructure() {
+  console.log('🔍 === INVESTIGATING DATA STRUCTURE ===');
+  
+  try {
+    // Get current date range (last 30 days)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30);
+    
+    console.log(`📅 Investigating date range: ${startDate.toDateString()} to ${endDate.toDateString()}`);
+    
+    // 1. Check requests data structure
+    console.log('\n📊 === REQUESTS DATA ANALYSIS ===');
+    const requestsData = getRequestsData();
+    console.log(`Total requests in system: ${requestsData.data.length}`);
+    
+    // Check completed requests
+    let completedRequests = 0;
+    let requestsWithRiders = 0;
+    let requestsWithoutRiders = 0;
+    let riderFieldExamples = [];
+    
+    requestsData.data.forEach((request, index) => {
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+      const requestId = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId);
+      
+      // Check if in date range
+      let inDateRange = true;
+      if (eventDate) {
+        const requestDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(requestDate.getTime())) {
+          inDateRange = requestDate >= startDate && requestDate <= endDate;
+        }
+      }
+      
+      if (inDateRange) {
+        const statusLower = (status || '').toLowerCase().trim();
+        if (statusLower === 'completed') {
+          completedRequests++;
+          
+          // Check riders assigned field
+          if (ridersAssigned && ridersAssigned.toString().trim()) {
+            requestsWithRiders++;
+            
+            // Collect examples for analysis
+            if (riderFieldExamples.length < 10) {
+              riderFieldExamples.push({
+                requestId: requestId,
+                ridersAssigned: ridersAssigned,
+                type: typeof ridersAssigned
+              });
+            }
+          } else {
+            requestsWithoutRiders++;
+            
+            // Show examples of requests without riders
+            if (requestsWithoutRiders <= 5) {
+              console.log(`   ⚠️ Request ${requestId}: Status='${status}' but no riders assigned`);
+            }
+          }
+        }
+      }
+    });
+    
+    console.log(`✅ Completed requests in date range: ${completedRequests}`);
+    console.log(`👥 Requests WITH riders assigned: ${requestsWithRiders}`);
+    console.log(`❌ Requests WITHOUT riders assigned: ${requestsWithoutRiders}`);
+    console.log(`📝 Rider field examples:`, riderFieldExamples);
+    
+    // 2. Check the ridersAssigned field structure
+    console.log('\n👥 === RIDERS ASSIGNED FIELD ANALYSIS ===');
+    
+    const riderCounts = {};
+    let totalRiderAssignments = 0;
+    
+    requestsData.data.forEach(request => {
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+      const requestId = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId);
+      
+      // Check if in date range and completed
+      let inDateRange = true;
+      if (eventDate) {
+        const requestDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(requestDate.getTime())) {
+          inDateRange = requestDate >= startDate && requestDate <= endDate;
+        }
+      }
+      
+      const statusLower = (status || '').toLowerCase().trim();
+      if (inDateRange && statusLower === 'completed' && ridersAssigned) {
+        
+        // Parse riders (same logic as the fixed function)
+        const assignedRidersList = String(ridersAssigned).split(',')
+          .map(name => name.trim())
+          .filter(name => name && name.length > 0);
+        
+        console.log(`📋 Request ${requestId}: Found ${assignedRidersList.length} riders: [${assignedRidersList.join(', ')}]`);
+        
+        assignedRidersList.forEach(riderName => {
+          if (riderName) {
+            riderCounts[riderName] = (riderCounts[riderName] || 0) + 1;
+            totalRiderAssignments++;
+          }
+        });
+      }
+    });
+    
+    console.log(`🎯 Total rider assignments found: ${totalRiderAssignments}`);
+    console.log(`👤 Unique riders with assignments:`, Object.keys(riderCounts).length);
+    console.log(`📊 Rider breakdown:`, riderCounts);
+    
+    // 3. Check what the current generateRiderActivityReport actually returns
+    console.log('\n🔍 === TESTING CURRENT RIDER ACTIVITY FUNCTION ===');
+    
+    try {
+      // Test the actual function that should be fixed
+      const riderActivityResult = generateRiderActivityReport(
+        startDate.toISOString().split('T')[0], 
+        endDate.toISOString().split('T')[0]
+      );
+      
+      console.log(`📈 generateRiderActivityReport result:`, riderActivityResult);
+      
+      if (riderActivityResult && riderActivityResult.data) {
+        const totalEscorts = riderActivityResult.data.reduce((sum, rider) => sum + (rider.escorts || 0), 0);
+        console.log(`📊 Total escorts from function: ${totalEscorts}`);
+        console.log(`📋 Riders returned: ${riderActivityResult.data.length}`);
+      }
+      
+    } catch (functionError) {
+      console.error('❌ Error calling generateRiderActivityReport:', functionError);
+    }
+    
+    // 4. Check CONFIG columns mapping
+    console.log('\n⚙️ === CONFIG COLUMNS CHECK ===');
+    console.log('CONFIG.columns.requests.ridersAssigned:', CONFIG.columns.requests.ridersAssigned);
+    console.log('CONFIG.columns.requests.status:', CONFIG.columns.requests.status);
+    console.log('CONFIG.columns.requests.eventDate:', CONFIG.columns.requests.eventDate);
+    
+    // Check if the column mappings are correct
+    console.log('Column mappings:');
+    console.log('  ridersAssigned column index:', requestsData.columnMap[CONFIG.columns.requests.ridersAssigned]);
+    console.log('  status column index:', requestsData.columnMap[CONFIG.columns.requests.status]);
+    console.log('  eventDate column index:', requestsData.columnMap[CONFIG.columns.requests.eventDate]);
+    
+    return {
+      completedRequests,
+      requestsWithRiders,
+      requestsWithoutRiders,
+      totalRiderAssignments,
+      uniqueRiders: Object.keys(riderCounts).length,
+      riderCounts,
+      riderFieldExamples
+    };
+    
+  } catch (error) {
+    console.error('❌ Investigation failed:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * CHECK SPECIFIC REQUESTS TO SEE WHY THEY'RE NOT COUNTING
+ * This will help identify the exact issue
+ */
+function debugSpecificRequests() {
+  console.log('🔎 === DEBUGGING SPECIFIC REQUESTS ===');
+  
+  try {
+    const requestsData = getRequestsData();
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30);
+    
+    console.log('Looking at first 10 completed requests to see why they might not count...');
+    
+    let debugCount = 0;
+    
+    requestsData.data.forEach((request, index) => {
+      if (debugCount >= 10) return; // Only check first 10
+      
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+      const requestId = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId);
+      
+      const statusLower = (status || '').toLowerCase().trim();
+      
+      if (statusLower === 'completed') {
+        debugCount++;
+        
+        // Check date range
+        let inDateRange = true;
+        let dateInfo = 'no date';
+        if (eventDate) {
+          const requestDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+          if (!isNaN(requestDate.getTime())) {
+            inDateRange = requestDate >= startDate && requestDate <= endDate;
+            dateInfo = `${requestDate.toDateString()} (${inDateRange ? 'IN RANGE' : 'OUT OF RANGE'})`;
+          } else {
+            dateInfo = 'invalid date';
+          }
+        }
+        
+        // Check riders
+        let riderInfo = 'no riders';
+        let ridersCount = 0;
+        if (ridersAssigned) {
+          const assignedRidersList = String(ridersAssigned).split(',')
+            .map(name => name.trim())
+            .filter(name => name && name.length > 0);
+          ridersCount = assignedRidersList.length;
+          riderInfo = `${ridersCount} riders: [${assignedRidersList.join(', ')}]`;
+        }
+        
+        const shouldCount = inDateRange && ridersAssigned && ridersCount > 0;
+        
+        console.log(`📋 Request ${requestId}:`);
+        console.log(`   Status: '${status}' (✅ completed)`);
+        console.log(`   Date: ${dateInfo}`);
+        console.log(`   Riders: ${riderInfo}`);
+        console.log(`   Should count: ${shouldCount ? '✅ YES' : '❌ NO'}`);
+        console.log('');
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Debug failed:', error);
+  }
+}
+
+/**
+ * CHECK IF THE FIXED FUNCTION IS ACTUALLY BEING USED
+ * Sometimes old cached versions cause issues
+ */
+function checkFunctionVersion() {
+  console.log('🔍 === CHECKING FUNCTION VERSION ===');
+  
+  try {
+    // Get the actual function code to see if it's the fixed version
+    const functionString = generateRiderActivityReport.toString();
+    
+    console.log('Function length:', functionString.length, 'characters');
+    
+    // Check for key indicators of the fixed version
+    const hasRequestsData = functionString.includes('getRequestsData()');
+    const hasAssignmentsData = functionString.includes('getAssignmentsData()');
+    const hasRidersAssigned = functionString.includes('ridersAssigned');
+    const hasCorrectFilter = functionString.includes("status === 'Completed'");
+    
+    console.log('Function analysis:');
+    console.log(`  ✅ Uses getRequestsData(): ${hasRequestsData}`);
+    console.log(`  ❌ Uses getAssignmentsData(): ${hasAssignmentsData}`);
+    console.log(`  ✅ Checks ridersAssigned field: ${hasRidersAssigned}`);
+    console.log(`  ✅ Filters by status === 'Completed': ${hasCorrectFilter}`);
+    
+    if (hasRequestsData && !hasAssignmentsData && hasRidersAssigned) {
+      console.log('✅ Function appears to be the FIXED version');
+    } else {
+      console.log('❌ Function appears to be the OLD version or has issues');
+    }
+    
+    // Show first 500 characters to help identify the version
+    console.log('\nFirst 500 characters of function:');
+    console.log(functionString.substring(0, 500) + '...');
+    
+  } catch (error) {
+    console.error('❌ Function check failed:', error);
+  }
+}
+
+/**
+ * RUN COMPLETE DATA INVESTIGATION
+ * This will run all checks to identify the exact problem
+ */
+function runCompleteDataInvestigation() {
+  console.log('🚀 === COMPLETE DATA INVESTIGATION ===');
+  
+  console.log('\n1️⃣ Checking function version...');
+  checkFunctionVersion();
+  
+  console.log('\n2️⃣ Investigating data structure...');
+  const dataAnalysis = investigateDataStructure();
+  
+  console.log('\n3️⃣ Debugging specific requests...');
+  debugSpecificRequests();
+  
+  console.log('\n🎯 === INVESTIGATION SUMMARY ===');
+  if (dataAnalysis && !dataAnalysis.error) {
+    console.log(`Completed requests: ${dataAnalysis.completedRequests}`);
+    console.log(`Requests with riders: ${dataAnalysis.requestsWithRiders}`);
+    console.log(`Total rider assignments: ${dataAnalysis.totalRiderAssignments}`);
+    console.log(`Unique riders: ${dataAnalysis.uniqueRiders}`);
+    
+    // Identify the likely issues
+    const issues = [];
+    
+    if (dataAnalysis.requestsWithoutRiders > dataAnalysis.requestsWithRiders) {
+      issues.push(`❌ MAJOR ISSUE: ${dataAnalysis.requestsWithoutRiders} completed requests have no riders assigned`);
+    }
+    
+    if (dataAnalysis.totalRiderAssignments < 50 && dataAnalysis.completedRequests > 100) {
+      issues.push(`❌ MAJOR ISSUE: Very few rider assignments (${dataAnalysis.totalRiderAssignments}) compared to completed requests (${dataAnalysis.completedRequests})`);
+    }
+    
+    if (dataAnalysis.totalRiderAssignments > 50) {
+      issues.push(`🔍 INVESTIGATION NEEDED: Function should be finding ${dataAnalysis.totalRiderAssignments} rider assignments but only reports 11`);
+    }
+    
+    if (issues.length > 0) {
+      console.log('\n⚠️ IDENTIFIED ISSUES:');
+      issues.forEach(issue => console.log(issue));
+    } else {
+      console.log('\n✅ Data looks good - issue may be in function logic');
+    }
+  }
+  
+  return dataAnalysis;
+}
+
+
 function checkColumns() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
