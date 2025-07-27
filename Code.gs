@@ -2683,11 +2683,11 @@ function generateReportData(filters) {
       return matchesDate && matchesType && matchesStatus;
     });
     
-    // Calculate summary statistics
-    const totalRequests = filteredRequests.length;
+    // Calculate summary statistics - only count completed requests, not assignments
     const completedRequests = filteredRequests.filter(request => 
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
     ).length;
+    const totalRequests = completedRequests; // Only count completed requests as specified
     
     const activeRiders = ridersData.data.filter(rider =>
       getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
