@@ -747,11 +747,6 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="editSpecialRequirements">Special Requirements</label>
-                        <textarea id="editSpecialRequirements" placeholder="Enter any special requirements or notes..."></textarea>
-                    </div>
-                    
-                    <div class="form-group">
                         <label for="editNotes">Notes</label>
                         <textarea id="editNotes" placeholder="Additional notes..."></textarea>
                     </div>
@@ -874,7 +869,6 @@
      * @property {number} ridersNeeded
      * @property {string} [escortFee]
      * @property {string} status
-     * @property {string} [specialRequirements]
      * @property {string} [notes]
      * @property {string} [ridersAssigned] - Comma-separated string of rider names.
      * @property {string} [lastUpdated] - ISO DateTime string.
@@ -1481,7 +1475,6 @@
         document.getElementById('editRidersNeeded').value = request.ridersNeeded || 1;
         document.getElementById('editEscortFee').value = request.escortFee || '';
         document.getElementById('editStatus').value = request.status || 'New';
-        document.getElementById('editSpecialRequirements').value = request.specialRequirements || '';
         document.getElementById('editNotes').value = request.notes || '';
 
         document.getElementById('modalTitle').textContent = `Edit Request ${request.requestId}`;
@@ -1578,7 +1571,6 @@
             ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
             escortFee: document.getElementById('editEscortFee').value,
             status: document.getElementById('editStatus').value,
-            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
             notes: document.getElementById('editNotes').value.trim()
         };
 
@@ -1645,7 +1637,6 @@
             ridersNeeded: parseInt(document.getElementById('editRidersNeeded').value),
             escortFee: document.getElementById('editEscortFee').value,
             status: 'Completed',
-            specialRequirements: document.getElementById('editSpecialRequirements').value.trim(),
             notes: document.getElementById('editNotes').value.trim()
         };
 
