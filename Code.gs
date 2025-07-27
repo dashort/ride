@@ -2760,25 +2760,11 @@ function generateReportData(filters) {
         );
 
         if (riderAssigned) {
-          // OPTIMIZED: More flexible status matching for better counting
+          // FIXED: Only count completed requests to match rider activity report
           const statusLower = (status || '').toLowerCase().trim();
-          const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-          const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
           
-          // Count valid escort requests - expanded criteria
-          const validStatuses = ['completed', 'in progress', 'assigned', 'confirmed'];
-          const hasValidStatus = validStatuses.includes(statusLower);
-          const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
-          
-          // Count if:
-          // 1. Request has a valid working status
-          // 2. OR event has passed and was assigned (indicating work was likely done)
-          const shouldCount = hasValidStatus || 
-                             (eventHasPassed && statusLower && statusLower !== 'cancelled');
-          
-          if (shouldCount) {
+          // Only count completed requests for consistency
+          if (statusLower === 'completed') {
             escorts++;
             
             // Calculate hours based on request start/end time or realistic estimates
@@ -3213,7 +3199,8 @@ function setupActualCompletionTimeColumns() {
  */
 function generateRiderActivityReport(startDate, endDate) {
   try {
-    const assignmentsData = getAssignmentsData();
+    // FIXED: Use requests data instead of assignments to match main report calculation
+    const requestsData = getRequestsData();
     const start = parseDateString(startDate);
     const end = parseDateString(endDate);
     if (!start || !end) {
@@ -3224,55 +3211,58 @@ function generateRiderActivityReport(startDate, endDate) {
 
     const riderMap = {};
 
-    assignmentsData.data.forEach(row => {
-      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-      if (eventDate instanceof Date) {
-        if (eventDate < start || eventDate > end) return;
+    // Filter requests to only include completed ones in date range
+    const completedRequests = requestsData.data.filter(request => {
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      
+      // Date filter
+      let matchesDate = true;
+      if (requestDate instanceof Date) {
+        matchesDate = requestDate >= start && requestDate <= end;
       }
-      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-      const rider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-      if (!rider) return;
+      
+      // Only include completed requests
+      return matchesDate && status === 'Completed';
+    });
 
-      // Only count assignments that have actually been worked
-      const statusLower = (status || '').toLowerCase().trim();
-      const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+    completedRequests.forEach(request => {
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+      const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+      const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
       
-      const isCompleted = statusLower === 'completed';
-      const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
-      const wasAssigned = ['assigned', 'confirmed', 'en route', 'in progress'].includes(statusLower);
+      // Parse the riders assigned (could be comma-separated)
+      const assignedRidersList = String(ridersAssigned).split(',')
+        .map(name => name.trim())
+        .filter(name => name && name.length > 0);
       
-      if (!(isCompleted || (eventHasPassed && wasAssigned))) return;
-
-      if (!riderMap[rider]) {
-        riderMap[rider] = { escorts: 0, hours: 0 };
-      }
-      riderMap[rider].escorts++;
-      
-      // Priority 1: Use actual completion data
-      const actualStart = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime);
-      const actualEnd = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime);
-      const actualDuration = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
-      
-      let hoursToAdd = 0;
-      
-      if (actualDuration && !isNaN(parseFloat(actualDuration))) {
-        hoursToAdd = roundToQuarterHour(parseFloat(actualDuration));
-      } else if (actualStart && actualEnd) {
-        const startTime = parseTimeString(actualStart);
-        const endTime = parseTimeString(actualEnd);
-        if (startTime && endTime && endTime > startTime) {
-          hoursToAdd = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+      assignedRidersList.forEach(riderName => {
+        if (!riderName) return;
+        
+        if (!riderMap[riderName]) {
+          riderMap[riderName] = { escorts: 0, hours: 0 };
         }
-      }
-      
-      // If no actual data and event has passed, use realistic estimates
-      if (hoursToAdd === 0 && eventHasPassed) {
-        hoursToAdd = getRealisticEscortHours(row, assignmentsData.columnMap);
-      }
+        riderMap[riderName].escorts++;
+        
+        // Calculate hours from request start/end times
+        let hoursToAdd = 0;
+        
+        if (startTime && endTime) {
+          const startTimeObj = parseTimeString(startTime);
+          const endTimeObj = parseTimeString(endTime);
+          if (startTimeObj && endTimeObj && endTimeObj > startTimeObj) {
+            hoursToAdd = roundToQuarterHour((endTimeObj.getTime() - startTimeObj.getTime()) / (1000 * 60 * 60));
+          }
+        }
+        
+        // If no time data, use realistic estimates based on request type
+        if (hoursToAdd === 0) {
+          hoursToAdd = getRealisticEscortHoursFromRequestType(requestType);
+        }
 
-      riderMap[rider].hours += hoursToAdd;
+        riderMap[riderName].hours += hoursToAdd;
+      });
     });
 
     // Process rider data with consolidation and filtering
