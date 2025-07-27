@@ -2739,6 +2739,8 @@ function generateReportData(filters) {
 
     // Calculate escort count and total hours per rider based on completed requests
     const riderHours = [];
+    const consolidatedRiders = {}; // To track NOPD riders for consolidation
+    
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName) return;
@@ -2807,10 +2809,41 @@ function generateReportData(filters) {
         }
       });
 
+      // Determine display name and handle NOPD consolidation
+      let displayName = riderName;
+      if (riderName.toString().toLowerCase().includes('nopd rider')) {
+        displayName = 'NOPD';
+      }
+
+      // Only include riders with completed requests
+      if (escorts > 0) {
+        // Check if we need to consolidate NOPD riders
+        if (displayName === 'NOPD') {
+          if (!consolidatedRiders[displayName]) {
+            consolidatedRiders[displayName] = {
+              name: displayName,
+              escorts: 0,
+              hours: 0
+            };
+          }
+          consolidatedRiders[displayName].escorts += escorts;
+          consolidatedRiders[displayName].hours += totalHours;
+        } else {
+          riderHours.push({
+            name: displayName,
+            escorts: escorts,
+            hours: Math.round(totalHours * 100) / 100
+          });
+        }
+      }
+    });
+
+    // Add consolidated NOPD data if it exists
+    Object.values(consolidatedRiders).forEach(riderData => {
       riderHours.push({
-        name: riderName,
-        escorts: escorts,
-        hours: Math.round(totalHours * 100) / 100
+        name: riderData.name,
+        escorts: riderData.escorts,
+        hours: Math.round(riderData.hours * 100) / 100
       });
     });
 
@@ -3242,11 +3275,53 @@ function generateRiderActivityReport(startDate, endDate) {
       riderMap[rider].hours += hoursToAdd;
     });
 
-    const data = Object.keys(riderMap).map(name => ({
-      name: name,
-      escorts: riderMap[name].escorts,
-      hours: Math.round(riderMap[name].hours * 100) / 100
-    })).sort((a, b) => b.hours - a.hours);
+    // Process rider data with consolidation and filtering
+    const consolidatedRiders = {};
+    const filteredData = [];
+    
+    Object.keys(riderMap).forEach(name => {
+      const escorts = riderMap[name].escorts;
+      const hours = riderMap[name].hours;
+      
+      // Only include riders with completed requests
+      if (escorts > 0) {
+        // Determine display name and handle NOPD consolidation
+        let displayName = name;
+        if (name.toString().toLowerCase().includes('nopd rider')) {
+          displayName = 'NOPD';
+        }
+        
+        // Check if we need to consolidate NOPD riders
+        if (displayName === 'NOPD') {
+          if (!consolidatedRiders[displayName]) {
+            consolidatedRiders[displayName] = {
+              name: displayName,
+              escorts: 0,
+              hours: 0
+            };
+          }
+          consolidatedRiders[displayName].escorts += escorts;
+          consolidatedRiders[displayName].hours += hours;
+        } else {
+          filteredData.push({
+            name: displayName,
+            escorts: escorts,
+            hours: Math.round(hours * 100) / 100
+          });
+        }
+      }
+    });
+    
+    // Add consolidated NOPD data if it exists
+    Object.values(consolidatedRiders).forEach(riderData => {
+      filteredData.push({
+        name: riderData.name,
+        escorts: riderData.escorts,
+        hours: Math.round(riderData.hours * 100) / 100
+      });
+    });
+    
+    const data = filteredData.sort((a, b) => b.hours - a.hours);
 
   return { success: true, data };
   } catch (error) {
