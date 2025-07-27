@@ -755,12 +755,21 @@
  */
 
     function loadRidersData() {
+        console.log('🔄 loadRidersData() called');
         showLoading();
         
         if (typeof google !== 'undefined' && google.script && google.script.run) {
+            console.log('✅ Google Apps Script available, calling getPageDataForRiders...');
+            
             google.script.run
-                .withSuccessHandler(handleRidersDataSuccess)
-                .withFailureHandler(handleRidersDataFailure)
+                .withSuccessHandler(function(data) {
+                    console.log('📥 Raw data received from backend:', data);
+                    handleRidersDataSuccess(data);
+                })
+                .withFailureHandler(function(error) {
+                    console.error('📥 Error received from backend:', error);
+                    handleRidersDataFailure(error);
+                })
                 .getPageDataForRiders();
         } else {
             console.log('⚠️ Google Apps Script not available');
@@ -1269,42 +1278,87 @@ function saveRider() {
  * Update your handleRidersDataSuccess function in riders.html
  */
 function handleRidersDataSuccess(data) {
+  console.log('🎯 handleRidersDataSuccess called with data:', data);
   hideLoading();
   
+  // Enhanced validation and debugging
+  if (!data) {
+    console.error('❌ No data received from backend');
+    showError('No data received from server');
+    return;
+  }
+  
+  console.log('📊 Data validation:');
+  console.log(`  - data.success: ${data.success}`);
+  console.log(`  - data.riders: ${data.riders ? `Array(${data.riders.length})` : 'null/undefined'}`);
+  console.log(`  - data.user: ${data.user ? 'present' : 'null/undefined'}`);
+  console.log(`  - data.stats: ${data.stats ? 'present' : 'null/undefined'}`);
+  console.log(`  - data.error: ${data.error || 'none'}`);
+  
   if (data && data.success) {
-    console.log('✅ Riders data loaded:', data);
+    console.log('✅ Data validation passed, processing riders...');
+    
+    // Store data in app state
     app.user = data.user;
     app.riders = data.riders || [];
     app.filteredRiders = [...app.riders]; // Initialize filtered riders
     
-    updateUserInfo(data.user);
-    updateStats(data.stats);
-    renderRidersTable(app.filteredRiders); // Use filtered riders
-    showTable();
-    fetchAssignmentCountsForRiders(app.filteredRiders);
-
-    // IMPORTANT: Setup search after data is loaded
-    setupEventListeners();
-
-    // Ensure initial results are visible even if no filter is applied
-    // Using the same filtering logic as the dropdowns avoids cases where the
-    // table remains empty until a filter change triggers re-rendering.
-    filterRiders();
-
-    // Apply filter from URL if provided
-    const params = new URLSearchParams(window.location.search);
-    const statusParam = params.get('status');
-    if (statusParam) {
-      const statusFilter = document.getElementById('statusFilter');
-      if (statusFilter) {
-        statusFilter.value = statusParam;
-        filterRiders();
-      }
+    console.log(`📋 Stored ${app.riders.length} riders in app state`);
+    
+    // Sample first few riders for debugging
+    if (app.riders.length > 0) {
+      console.log('🔍 Sample riders:');
+      app.riders.slice(0, 3).forEach((rider, i) => {
+        console.log(`  ${i + 1}. ${rider.name || 'No Name'} (${rider.jpNumber || 'No ID'}) - Status: ${rider.status || 'No Status'}`);
+      });
     }
     
-    console.log(`🔍 Search ready with ${app.riders.length} riders`);
+    // Update UI components
+    try {
+      console.log('🔄 Updating user info...');
+      updateUserInfo(data.user);
+      
+      console.log('📊 Updating stats...');
+      updateStats(data.stats);
+      
+      console.log('📋 Rendering riders table...');
+      renderRidersTable(app.filteredRiders);
+      
+      console.log('👁️ Showing table...');
+      showTable();
+      
+      console.log('📞 Fetching assignment counts...');
+      fetchAssignmentCountsForRiders(app.filteredRiders);
+
+      console.log('🔧 Setting up event listeners...');
+      setupEventListeners();
+
+      console.log('🔍 Applying initial filters...');
+      filterRiders();
+
+      // Apply filter from URL if provided
+      const params = new URLSearchParams(window.location.search);
+      const statusParam = params.get('status');
+      if (statusParam) {
+        console.log(`🔗 Applying URL filter: ${statusParam}`);
+        const statusFilter = document.getElementById('statusFilter');
+        if (statusFilter) {
+          statusFilter.value = statusParam;
+          filterRiders();
+        }
+      }
+      
+      console.log(`✅ Riders page setup complete with ${app.riders.length} riders`);
+      
+    } catch (uiError) {
+      console.error('❌ Error during UI setup:', uiError);
+      showError('Error setting up riders page: ' + uiError.message);
+    }
+    
   } else {
-    console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
+    console.error('❌ Backend returned unsuccessful response');
+    console.error('   - data.success:', data.success);
+    console.error('   - data.error:', data.error);
     showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
   }
 }
