@@ -620,44 +620,49 @@ function getRiderNotifications(riderId) {
 // PROBLEM 1: The getPageDataForRiders function exists in multiple forms
 // SOLUTION: Update the backend function to match the expected interface
 
-// ADD THIS TO AppServices.gs or Code.gs
+/**
+ * Get page data for the riders management page
+ * Returns ALL riders (not just active ones) with comprehensive stats
+ */
 function getPageDataForRiders(user) {
   try {
-    debugLog('🔄 Loading riders for assignment popup...');
+    console.log('🔄 Loading riders page data...');
     
     // Handle authentication
     if (!user) {
-      const auth = authenticateAndAuthorizeUser();
-      user = auth.success ? auth.user : {
-        name: 'System User',
-        email: 'user@system.com',
-        roles: ['admin'],
-        permissions: ['view_riders']
-      };
+      try {
+        const auth = authenticateAndAuthorizeUser();
+        user = auth.success ? auth.user : {
+          name: 'System User',
+          email: 'user@system.com',
+          roles: ['admin'],
+          permissions: ['view_riders']
+        };
+      } catch (authError) {
+        console.warn('⚠️ Authentication failed, using default user:', authError);
+        user = {
+          name: 'System User',
+          email: 'user@system.com',
+          roles: ['admin'],
+          permissions: ['view_riders']
+        };
+      }
     }
     
-    // Get riders data using the existing getRiders function
+    // Get ALL riders data (not filtered - let frontend handle filtering)
     const riders = getRiders();
+    console.log(`📋 Retrieved ${riders.length} total riders`);
     
-    // Filter for active riders only (for assignment purposes)
-    const activeRiders = riders.filter(rider => {
-      const status = String(rider.status || '').toLowerCase();
-      return status === 'active' || 
-             status === 'available' || 
-             status === '' || 
-             !rider.status;
-    });
+    // Calculate comprehensive stats
+    const stats = calculateRiderStats(riders);
     
-    debugLog(`✅ Found ${activeRiders.length} active riders for assignment`);
+    console.log(`✅ Riders page data loaded successfully: ${riders.length} riders`);
     
     return {
       success: true,
       user: user,
-      riders: activeRiders, // This is what the frontend expects
-      stats: {
-        totalRiders: riders.length,
-        activeRiders: activeRiders.length
-      }
+      riders: riders, // Return ALL riders - frontend will filter as needed
+      stats: stats
     };
     
   } catch (error) {
@@ -665,7 +670,7 @@ function getPageDataForRiders(user) {
     
     return {
       success: false,
-      error: error.message,
+      error: error.message || 'Unknown error loading riders',
       user: user || {
         name: 'System User',
         email: 'user@system.com',
@@ -675,11 +680,58 @@ function getPageDataForRiders(user) {
       riders: [], // Empty array prevents crashes
       stats: {
         totalRiders: 0,
-        activeRiders: 0
+        activeRiders: 0,
+        inactiveRiders: 0,
+        partTimeRiders: 0,
+        fullTimeRiders: 0
       }
     };
   }
 }
+
+/**
+ * Calculate comprehensive rider statistics
+ */
+function calculateRiderStats(riders) {
+  const stats = {
+    totalRiders: riders.length,
+    activeRiders: 0,
+    inactiveRiders: 0,
+    partTimeRiders: 0,
+    fullTimeRiders: 0,
+    byStatus: {},
+    byCertification: {}
+  };
+  
+  riders.forEach(rider => {
+    const status = String(rider.status || 'Active').toLowerCase();
+    const partTime = String(rider.partTime || 'No').toLowerCase();
+    const certification = rider.certification || 'Standard';
+    
+    // Count by status
+    if (status === 'active' || status === '' || !rider.status) {
+      stats.activeRiders++;
+    } else {
+      stats.inactiveRiders++;
+    }
+    
+    // Count by employment type
+    if (partTime === 'yes' || partTime === 'true') {
+      stats.partTimeRiders++;
+    } else {
+      stats.fullTimeRiders++;
+    }
+    
+    // Count by status categories
+    const statusKey = rider.status || 'Active';
+    stats.byStatus[statusKey] = (stats.byStatus[statusKey] || 0) + 1;
+    
+    // Count by certification
+    stats.byCertification[certification] = (stats.byCertification[certification] || 0) + 1;
+  });
+  
+     return stats;
+ }
 
 // PROBLEM 2: Frontend error handling and data processing issues
 // SOLUTION: Update the frontend functions in requests.html
