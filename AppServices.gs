@@ -3109,7 +3109,6 @@ function getFilteredRequestsForWebApp(user, filter = 'All', rawRequestsInput = n
           ridersNeeded: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersNeeded) || 1,
           escortFee: getColumnValue(row, columnMap, CONFIG.columns.requests.escortFee) || '',
           status: status || 'New',
-          specialRequirements: getColumnValue(row, columnMap, CONFIG.columns.requests.requirements) || '',
           notes: getColumnValue(row, columnMap, CONFIG.columns.requests.notes) || '',
           ridersAssigned: getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '',
           courtesy: getColumnValue(row, columnMap, CONFIG.columns.requests.courtesy) || 'No',

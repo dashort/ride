@@ -365,7 +365,6 @@ function checkAndFixRequestsHeaderOrder() {
       'Riders Needed',        // CONFIG.columns.requests.ridersNeeded
       'Escort Fee',           // CONFIG.columns.requests.escortFee
       'Status',               // CONFIG.columns.requests.status
-      'Special Requirements', // CONFIG.columns.requests.specialRequirements
       'Notes',                // CONFIG.columns.requests.notes
       'Courtesy',             // CONFIG.columns.requests.courtesy
       'Riders Assigned',      // CONFIG.columns.requests.assignedRiders or ridersAssigned
@@ -461,7 +460,6 @@ function fixRequestsHeaderOrder() {
       'Riders Needed',        
       'Escort Fee',           
       'Status',               
-      'Special Requirements', 
       'Notes',                
       'Courtesy',             
       'Riders Assigned',      
@@ -641,7 +639,7 @@ function testRequestsAfterHeaderFix() {
       'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
       'Event Date', 'Start Time', 'End Time', 'Start Location', 'End Location',
       'Secondary Location', 'Request Type', 'Riders Needed', 'Escort Fee',
-      'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
+      'Status', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
     ];
     
     const headersMatch = expectedHeaders.every((expected, index) => 
