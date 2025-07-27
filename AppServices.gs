@@ -890,7 +890,7 @@ function createSampleRidersData() {
       }
     };
   }
-}
+
 
 /**
  * Create Riders sheet if it doesn't exist
