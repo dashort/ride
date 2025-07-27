@@ -396,6 +396,10 @@
                     📊 Generate Reports
                 </button>
                 
+                <button class="btn btn-secondary" onclick="debugRiderDataIssue()" style="margin-left: 10px;">
+                    🔍 Debug Rider Data
+                </button>
+                
                 <button class="btn btn-success" onclick="showCurrentFilters()" style="margin-left: 0.5rem;">
                     📋 Show Filters
                 </button>
@@ -671,6 +675,15 @@
             if (data && data.success) {
                 updateUserInfoSafely(data.user);
                 handleReportData(data.reportData);
+                
+                // Debug: Check if rider hours data is available
+                if (DEBUG_REPORTS) {
+                    const riderHoursCount = data.reportData?.tables?.riderHours?.length || 0;
+                    console.log(`📊 Rider hours entries received: ${riderHoursCount}`);
+                    if (riderHoursCount === 0) {
+                        console.log('⚠️ No rider hours data - this may be why the section is empty');
+                    }
+                }
             } else {
                 console.error('Failed to load reports data:', data ? data.error : 'No data');
                 handlePageDataFailure(data || { message: 'Received success:false or no data.' });
@@ -780,6 +793,11 @@
         }
 
         function updateTables(tables) {
+            
+            if (DEBUG_REPORTS) {
+                console.log('📊 updateTables called with:', tables);
+                console.log('   riderHours array:', tables?.riderHours);
+            }
 
             if (tables.riderHours) {
                 var hoursRows = '';
@@ -791,10 +809,17 @@
                 }
                 if (tables.riderHours.length === 0) {
                     hoursRows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
+                    
+                    if (DEBUG_REPORTS) {
+                        console.log('⚠️ Rider hours array exists but is empty');
+                    }
                 }
                 var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             } else {
+                if (DEBUG_REPORTS) {
+                    console.log('❌ No riderHours property in tables object');
+                }
                 document.getElementById('riderHoursTable').innerHTML = 
                     '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
             }
@@ -1129,12 +1154,44 @@ function displayRiderActivityReport(result) {
             showNotification('Table export for ' + tableType + ' not yet implemented', '#f39c12');
         }
 
+        // Debug function for rider data issues
+        function debugRiderDataIssue() {
+            console.log('🔍 Starting Rider Data Debug...');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                showLoading('Running debug tests...');
+                
+                // Run the debug functions we created
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        console.log('✅ Debug completed successfully');
+                        showNotification('Debug completed - check browser console for results', '#28a745');
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        console.error('❌ Debug failed:', error);
+                        showError('Debug failed: ' + error.message);
+                    })
+                    .testDataAvailability();
+            } else {
+                console.log('❌ Google Apps Script not available for debugging');
+                showError('Debug functions require Google Apps Script environment');
+            }
+        }
+
         // Add keyboard shortcuts for debugging
         document.addEventListener('keydown', function(e) {
             if (DEBUG_REPORTS && e.ctrlKey && e.shiftKey && e.key === 'R') {
                 e.preventDefault();
                 console.log('🔄 Manual report generation triggered');
                 testReportGeneration();
+            }
+            
+            if (DEBUG_REPORTS && e.ctrlKey && e.shiftKey && e.key === 'D') {
+                e.preventDefault();
+                console.log('🔍 Manual debug triggered');
+                debugRiderDataIssue();
             }
         });
     </script>

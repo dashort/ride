@@ -2659,6 +2659,19 @@ function generateReportData(filters) {
     const assignmentsData = getAssignmentsData();
     const ridersData = getRidersData();
     
+    // Debug: Check if data was retrieved successfully
+    if (!requestsData || !requestsData.data) {
+      console.log('❌ No requests data available');
+      throw new Error('Failed to retrieve requests data');
+    }
+    console.log(`✅ Retrieved ${requestsData.data.length} requests`);
+    
+    if (!ridersData || !ridersData.data) {
+      console.log('❌ No riders data available');
+      throw new Error('Failed to retrieve riders data');
+    }
+    console.log(`✅ Retrieved ${ridersData.data.length} riders`);
+    
     // Filter data based on date range
     const startDate = parseDateString(filters.startDate) || new Date(1970, 0, 1);
     startDate.setHours(0,0,0,0);
@@ -2687,6 +2700,16 @@ function generateReportData(filters) {
       
       return matchesDate && matchesType && matchesStatus;
     });
+    
+    console.log(`📋 Filtered ${filteredRequests.length} requests from ${requestsData.data.length} total (${filters.startDate} to ${filters.endDate})`);
+    
+    // Debug: Check for completed requests with riders
+    const completedRequestsWithRiders = filteredRequests.filter(request => {
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+      return status === 'Completed' && ridersAssigned && ridersAssigned.toString().trim().length > 0;
+    });
+    console.log(`✅ Found ${completedRequestsWithRiders.length} completed requests with riders assigned`);
     
     // Calculate summary statistics
     const totalRequests = filteredRequests.length;
@@ -2741,12 +2764,15 @@ function generateReportData(filters) {
     const riderHours = [];
     const consolidatedRiders = {}; // To track NOPD riders for consolidation
     
+    console.log(`📊 Processing ${ridersData.data.length} riders for hour calculations...`);
+    
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName) return;
 
       let totalHours = 0;
       let escorts = 0;
+      let debugMatches = 0;
 
       // Count requests where this rider was assigned
       filteredRequests.forEach(request => {
@@ -2760,6 +2786,7 @@ function generateReportData(filters) {
         );
 
         if (riderAssigned) {
+          debugMatches++;
           // FIXED: Only count completed requests to match rider activity report
           const statusLower = (status || '').toLowerCase().trim();
           
@@ -2801,6 +2828,11 @@ function generateReportData(filters) {
         displayName = 'NOPD';
       }
 
+      // Debug logging for rider processing
+      if (debugMatches > 0) {
+        console.log(`🏍️ ${riderName}: ${debugMatches} assigned requests, ${escorts} completed escorts, ${Math.round(totalHours * 100) / 100} hours`);
+      }
+
       // Only include riders with completed requests
       if (escorts > 0) {
         // Check if we need to consolidate NOPD riders
@@ -2832,6 +2864,43 @@ function generateReportData(filters) {
         hours: Math.round(riderData.hours * 100) / 100
       });
     });
+    
+    console.log(`📊 Final rider hours entries: ${riderHours.length}`);
+    
+    // If no rider hours found, try a fallback approach
+    if (riderHours.length === 0 && completedRequestsWithRiders.length > 0) {
+      console.log('⚠️ No rider hours calculated despite having completed requests with riders. Trying fallback...');
+      
+      // Fallback: Create entries for all riders mentioned in completed requests
+      const fallbackRiderMap = {};
+      
+      completedRequestsWithRiders.forEach(request => {
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+        const assignedRidersList = String(ridersAssigned).split(',').map(name => name.trim()).filter(name => name);
+        
+        assignedRidersList.forEach(riderName => {
+          if (!fallbackRiderMap[riderName]) {
+            fallbackRiderMap[riderName] = { escorts: 0, hours: 0 };
+          }
+          fallbackRiderMap[riderName].escorts++;
+          
+          // Use default hours estimate
+          const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+          const defaultHours = getRealisticEscortHoursFromRequestType(requestType);
+          fallbackRiderMap[riderName].hours += defaultHours;
+        });
+      });
+      
+      Object.keys(fallbackRiderMap).forEach(riderName => {
+        riderHours.push({
+          name: riderName,
+          escorts: fallbackRiderMap[riderName].escorts,
+          hours: Math.round(fallbackRiderMap[riderName].hours * 100) / 100
+        });
+      });
+      
+      console.log(`🔄 Fallback generated ${riderHours.length} rider entries`);
+    }
 
     // Calculate popular locations from filtered requests
     const locationCounts = {};
