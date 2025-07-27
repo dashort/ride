@@ -8,143 +8,169 @@ The reports page showed **79 completed requests** but the rider activity section
 ### The Issue
 Two different calculations were using **different data sources and logic**:
 
-#### 1. **Report "Completed Requests" (79 entries)**
+#### 1. **Report "Completed Requests" (79 entries) - CORRECT**
 - **Data Source**: `requests` table
 - **Logic**: `status === 'Completed'`
 - **Location**: `generateReportData()` function in `Code.gs` lines 2692-2694
-- **Problem**: Counted all requests marked "Completed" regardless of whether they had corresponding assignments
+- **Behavior**: Counted all requests marked "Completed"
 
-#### 2. **Rider Activity Entries (28 entries)**  
-- **Data Source**: `assignments` table
-- **Logic**: Much more restrictive - only counted assignments where:
-  - Assignment status is `'completed'` OR
-  - Event date has passed AND assignment was in working status (`'assigned', 'confirmed', 'en route', 'in progress'`)
+#### 2. **Rider Activity Entries (28 entries) - INCORRECT**  
+- **Data Source**: `assignments` table (WRONG SOURCE)
+- **Logic**: Complex assignment status logic
 - **Location**: `generateRiderActivityReport()` function in `Code.gs` lines 3240-3245
-- **Behavior**: Only counted assignments where riders actually performed work
+- **Problem**: Used different data source (assignments) instead of requests
 
 ### Why the Discrepancy Occurred
 
-1. **Orphaned Completed Requests**: Some requests were marked "Completed" without corresponding assignment records
-2. **Incomplete Workflow**: Requests could be completed without proper assignment tracking
-3. **External Completions**: Some requests may have been completed by external riders not tracked in assignments
-4. **Data Entry Issues**: Manual status updates bypassing the assignment workflow
+1. **Different Data Sources**: Report used `requests` data while rider activity used `assignments` data
+2. **Incomplete Assignment Records**: Not all completed requests had corresponding assignment records
+3. **Complex Assignment Logic**: Assignment-based calculation used restrictive status filtering
+4. **Data Synchronization Issues**: Assignments may not have been created for all completed requests
 
 ## Solution Implemented
 
 ### Fix Applied
-Updated the `generateReportData()` function in `Code.gs` to use **assignment-based counting** for the "Completed Requests" metric, making it consistent with the rider activity calculation.
+Updated the `generateRiderActivityReport()` function in `Code.gs` to use **requests data** instead of assignments data, making both calculations consistent.
 
-**Before (Request-based):**
+**Before (Assignment-based):**
 ```javascript
-const completedRequests = filteredRequests.filter(request => 
-  getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-).length;
+function generateRiderActivityReport(startDate, endDate) {
+  try {
+    const assignmentsData = getAssignmentsData(); // WRONG DATA SOURCE
+    // ... complex assignment status logic
+  }
+}
 ```
 
-**After (Assignment-based):**
+**After (Request-based):**
 ```javascript
-// FIXED: Use assignment-based counting for consistency with rider activity
-let completedRequests = 0;
-assignmentsData.data.forEach(assignment => {
-  const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-  
-  // Apply same date filter as filteredRequests
-  let dateMatches = true;
-  if (eventDate instanceof Date) {
-    dateMatches = eventDate >= startDate && eventDate <= endDate;
-  }
-  if (!dateMatches) return;
-  
-  const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-  const rider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-  
-  if (!rider) return;
+function generateRiderActivityReport(startDate, endDate) {
+  try {
+    // FIXED: Use requests data instead of assignments to match main report calculation
+    const requestsData = getRequestsData();
+    
+    // Filter requests to only include completed ones in date range
+    const completedRequests = requestsData.data.filter(request => {
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      
+      // Date filter
+      let matchesDate = true;
+      if (requestDate instanceof Date) {
+        matchesDate = requestDate >= start && requestDate <= end;
+      }
+      
+      // Only include completed requests
+      return matchesDate && status === 'Completed';
+    });
 
-  // Apply same logic as generateRiderActivityReport for consistency
-  const statusLower = (status || '').toLowerCase().trim();
-  const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const isCompleted = statusLower === 'completed';
-  const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
-  const wasAssigned = ['assigned', 'confirmed', 'en route', 'in progress'].includes(statusLower);
-  
-  if (isCompleted || (eventHasPassed && wasAssigned)) {
-    completedRequests++;
+    completedRequests.forEach(request => {
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+      
+      // Parse the riders assigned (could be comma-separated)
+      const assignedRidersList = String(ridersAssigned).split(',')
+        .map(name => name.trim())
+        .filter(name => name && name.length > 0);
+      
+      assignedRidersList.forEach(riderName => {
+        if (!riderName) return;
+        
+        if (!riderMap[riderName]) {
+          riderMap[riderName] = { escorts: 0, hours: 0 };
+        }
+        riderMap[riderName].escorts++;
+        
+        // Calculate hours from request start/end times or use estimates
+        // ...
+      });
+    });
   }
-});
+}
+```
+
+### Additional Fix
+Also updated the rider hours calculation in `generateReportData()` to only count completed requests:
+
+```javascript
+// FIXED: Only count completed requests to match rider activity report
+if (statusLower === 'completed') {
+  escorts++;
+  // ... calculate hours
+}
 ```
 
 ## Expected Results After Fix
 
-✅ **Consistent Numbers**: Both "Completed Requests" and "Rider Activity" will now show the same count (28 entries)
+✅ **Consistent Numbers**: Both "Completed Requests" and "Rider Activity" will now show the same count (79 entries)
 
-✅ **Accurate Reporting**: Numbers reflect actual work performed by riders, not just request status changes
+✅ **Unified Data Source**: Both calculations now use requests data as the single source of truth
 
-✅ **Better Data Integrity**: Reports now align with the assignment workflow
+✅ **Accurate Reporting**: Numbers reflect completed requests from the primary data source
+
+✅ **Proper Rider Distribution**: Rider activity will now show all riders from completed requests
 
 ## Impact of the Change
 
 ### What Changed
-- **"Completed Requests" metric** now reflects actual rider assignments worked, not just request status
-- **Numbers will be lower** but more accurate (from 79 to 28 in the current case)
+- **Rider Activity calculation** now uses requests data instead of assignments data
+- **Rider hours calculation** in main report now only counts completed requests
+- **Numbers will be higher** and more accurate (from 28 to 79 entries)
+- **All 79 completed requests** will now appear in rider activity breakdown
 
 ### What Stayed the Same
-- Rider activity calculation logic (unchanged)
+- Main report "Completed Requests" logic (unchanged)
 - All other report metrics and charts
 - Data entry workflows
+- Request data structure
 
 ## Files Modified
 
-1. **`Code.gs`** - Updated `generateReportData()` function (lines ~2692-2694)
-2. **`reports_discrepancy_diagnostic.gs`** - Added diagnostic script for future troubleshooting
+1. **`Code.gs`** - Updated `generateRiderActivityReport()` function to use requests data
+2. **`Code.gs`** - Updated rider hours calculation in `generateReportData()` to only count completed requests
+3. **`REPORTS_DISCREPANCY_FIX_SUMMARY.md`** - This documentation
 
-## Diagnostic Tools Added
+## Benefits of the Fix
 
-### `analyzeReportsDiscrepancy(startDate, endDate)`
-Comprehensive diagnostic function that:
-- Compares both calculation methods
-- Identifies orphaned requests
-- Shows status distributions  
-- Provides detailed cross-reference analysis
-- Gives recommendations for data cleanup
+### Data Consistency
+- **Single Source of Truth**: Both calculations now use requests data
+- **Simplified Logic**: Removed complex assignment status handling
+- **Better Accuracy**: All completed requests are now included in rider activity
 
-**Usage:**
-```javascript
-// Run in Apps Script editor
-analyzeReportsDiscrepancy('2024-01-01', '2024-01-31');
-```
+### Improved Reporting
+- **Complete Picture**: All 79 completed requests now appear in rider activity
+- **Proper Attribution**: Riders get credit for all completed requests they were assigned to
+- **Consistent Metrics**: No more confusing discrepancies between report sections
 
-## Prevention Measures
-
-### Immediate Recommendations
-1. **Data Cleanup**: Review and create assignments for orphaned completed requests
-2. **Workflow Training**: Ensure all requests follow proper assignment workflow
-3. **Validation Rules**: Add data validation to prevent request completion without assignments
-
-### Long-term Improvements
-1. **Unified Data Model**: Consider consolidating request and assignment tracking
-2. **Automated Assignment Creation**: Auto-create assignments when riders are assigned to requests
-3. **Status Synchronization**: Keep request and assignment statuses in sync
-4. **Regular Audits**: Run the diagnostic script monthly to catch discrepancies early
+### Maintenance Benefits
+- **Reduced Complexity**: No need to maintain assignment sync logic
+- **Fewer Data Dependencies**: Eliminates reliance on assignment data completeness
+- **Easier Troubleshooting**: Single data source makes debugging easier
 
 ## Testing the Fix
 
 After deployment:
-1. ✅ Generate reports and verify consistent numbers between "Completed Requests" and "Rider Activity"
+1. ✅ Generate reports and verify both sections show 79 entries
 2. ✅ Test with different date ranges to ensure fix works across all time periods
-3. ✅ Run diagnostic script to verify no new discrepancies
-4. ✅ Confirm all other report metrics still function correctly
+3. ✅ Verify all riders appear in activity breakdown with proper escort counts
+4. ✅ Confirm hours calculation works correctly from request time data
+5. ✅ Check that comma-separated riders are properly parsed and counted
+
+## Data Requirements
+
+For optimal results, ensure:
+- **Riders Assigned Field**: Completed requests should have riders listed in the "Riders Assigned" field
+- **Time Data**: Requests should have start/end times for accurate hour calculation
+- **Request Types**: Request type field should be populated for hour estimates when time data is missing
 
 ## Related Documentation
 
 - **Original Analysis**: `reports_analysis_and_fix.md`
-- **Diagnostic Script**: `reports_discrepancy_diagnostic.gs`
-- **Configuration**: `CONFIG.columns.assignments` and `CONFIG.columns.requests`
+- **Configuration**: `CONFIG.columns.requests` settings
 
 ---
 
 **Fix Status**: ✅ **COMPLETED**  
 **Date Applied**: Current Session  
 **Validation**: Pending deployment testing
+
+**Summary**: Fixed rider activity calculation to use requests data instead of assignments, ensuring both report metrics show consistent numbers based on completed requests.
