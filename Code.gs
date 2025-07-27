@@ -3578,11 +3578,11 @@ function generateReportData(filters) {
       return matchesDate && matchesType && matchesStatus;
     });
     
-    // Calculate summary statistics
-    const totalRequests = filteredRequests.length;
+    // Calculate summary statistics - only count completed requests
     const completedRequests = filteredRequests.filter(request => 
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
     ).length;
+    const totalRequests = completedRequests;
     
     const activeRiders = ridersData.data.filter(rider =>
       getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
@@ -3595,126 +3595,207 @@ function generateReportData(filters) {
       requestTypes[type] = (requestTypes[type] || 0) + 1;
     });
     
-    // Calculate rider performance
+    // 🔧 FIXED: Calculate rider performance from REQUESTS data instead of assignments
     const riderPerformance = [];
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName) return;
       
-      const assignments = assignmentsData.data.filter(assignment => {
-        const assignmentRider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-        const createdDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.createdDate);
+      // Count requests where this rider was assigned
+      const riderRequests = filteredRequests.filter(request => {
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+        if (!ridersAssigned) return false;
         
-        let matchesDate = true;
-        if (createdDate instanceof Date) {
-          matchesDate = createdDate >= startDate && createdDate <= endDate;
-        }
+        const assignedRidersList = String(ridersAssigned).split(',')
+          .map(name => name.trim())
+          .filter(name => name && name.length > 0);
         
-        return assignmentRider === riderName && matchesDate;
+        return assignedRidersList.some(assignedName => 
+          assignedName.toLowerCase() === riderName.toLowerCase()
+        );
       });
       
-      if (assignments.length > 0) {
-        const completed = assignments.filter(assignment =>
-          getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status) === 'Completed'
+      if (riderRequests.length > 0) {
+        const completed = riderRequests.filter(request =>
+          getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
         ).length;
         
         riderPerformance.push({
           name: riderName,
-          assignments: assignments.length,
-          completionRate: assignments.length > 0 ? Math.round((completed / assignments.length) * 100) : 0
+          assignments: riderRequests.length,
+          completionRate: riderRequests.length > 0 ? Math.round((completed / riderRequests.length) * 100) : 0
         });
       }
     });
 
-    // Calculate escort count and total hours per rider within the period
-const riderHours = [];
-ridersData.data.forEach(rider => {
-  const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-  if (!riderName || !riderName.trim()) return;
-  
-  let totalHours = 0;
-  let escorts = 0;
-  
-  // 🔧 FIXED: Use filteredRequests (from requests data) instead of assignmentsData
-  filteredRequests.forEach(request => {
-    const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-    const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-    
-    // Only count completed requests
-    if (status !== 'Completed') return;
-    
-    // Check if this rider is assigned to this request
-    if (ridersAssigned) {
-      const assignedRidersList = String(ridersAssigned).split(',')
-        .map(name => name.trim())
-        .filter(name => name && name.length > 0);
+    // 🔧 FIXED: Calculate rider hours from REQUESTS data instead of assignments
+    const riderHours = [];
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName || !riderName.trim()) return;
       
-      // Check if current rider is in the assigned list (case-insensitive)
-      const isAssigned = assignedRidersList.some(assignedName => 
-        assignedName.toLowerCase() === riderName.toLowerCase()
-      );
+      let totalHours = 0;
+      let escorts = 0;
       
-      if (isAssigned) {
-        escorts++;
+      // 🔧 FIXED: Use filteredRequests (from requests data) instead of assignmentsData
+      filteredRequests.forEach(request => {
+        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
         
-        // Add estimated hours based on request type
-        const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-        const estimates = {
-          'Funeral': 0.5,
-          'Wedding': 2.5,
-          'VIP': 4.0,
-          'Float Movement': 4.0,
-          'Other': 2.0
-        };
-        totalHours += estimates[requestType] || estimates['Other'];
-      }
-    }
-  });
-  
-  if (escorts > 0) {
-    riderHours.push({
-      rider: riderName,
-      escorts: escorts,
-      hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
-    });
-  }
-});
-      riderHours.push({
-        name: riderName,
-        escorts: escorts,
-        hours: Math.round(totalHours * 100) / 100
+        // Only count completed requests
+        if (status !== 'Completed') return;
+        
+        // Check if this rider is assigned to this request
+        if (ridersAssigned) {
+          const assignedRidersList = String(ridersAssigned).split(',')
+            .map(name => name.trim())
+            .filter(name => name && name.length > 0);
+          
+          // Check if current rider is in the assigned list (case-insensitive)
+          const isAssigned = assignedRidersList.some(assignedName => 
+            assignedName.toLowerCase() === riderName.toLowerCase()
+          );
+          
+          if (isAssigned) {
+            escorts++;
+            
+            // Calculate hours from request times or use estimates
+            const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+            const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+            const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+            
+            let hoursToAdd = 0;
+            
+            // Try to calculate from actual times
+            if (startTime && endTime) {
+              const start = startTime instanceof Date ? startTime : new Date(startTime);
+              const end = endTime instanceof Date ? endTime : new Date(endTime);
+              if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                hoursToAdd = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+              }
+            }
+            
+            // Fallback to estimates if no valid time calculation
+            if (hoursToAdd <= 0) {
+              const estimates = {
+                'Funeral': 0.5,
+                'Wedding': 2.5,
+                'VIP': 4.0,
+                'Float Movement': 4.0,
+                'Other': 2.0
+              };
+              hoursToAdd = estimates[requestType] || estimates['Other'];
+            }
+            
+            totalHours += hoursToAdd;
+          }
+        }
       });
-    
+      
+      if (escorts > 0) {
+        riderHours.push({
+          rider: riderName,
+          escorts: escorts,
+          hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
+        });
+      }
+    });
 
+    // Calculate popular locations from filtered requests
+    const locationCounts = {};
+    filteredRequests.forEach(request => {
+      const startLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startLocation);
+      const endLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endLocation);
+      const secondaryLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.secondaryLocation);
+      
+      [startLocation, endLocation, secondaryLocation].forEach(location => {
+        if (location && location.trim()) {
+          const cleanLocation = location.trim();
+          locationCounts[cleanLocation] = (locationCounts[cleanLocation] || 0) + 1;
+        }
+      });
+    });
+    
+    const popularLocations = Object.entries(locationCounts)
+      .map(([location, count]) => ({ location, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Build comprehensive report data
     const reportData = {
       summary: {
         totalRequests: totalRequests,
         completedRequests: completedRequests,
         activeRiders: activeRiders,
-        avgCompletionRate: riderPerformance.length > 0 ? Math.round(riderPerformance.reduce((sum, r) => sum + r.completionRate, 0) / riderPerformance.length) : 0
+        avgCompletionRate: riderPerformance.length > 0 ? 
+          Math.round(riderPerformance.reduce((sum, rider) => sum + rider.completionRate, 0) / riderPerformance.length) : 0
       },
       charts: {
-        requestVolume: {
-          total: totalRequests,
-          // Placeholder for actual trends, would need more complex data processing
-        },
         requestTypes: requestTypes,
-        // Placeholder for monthly trends
-        monthlyTrends: {}
+        riderPerformance: riderPerformance.slice(0, 10), // Top 10 riders
+        popularLocations: popularLocations
       },
       tables: {
-        riderPerformance: riderPerformance.sort((a, b) => b.assignments - a.assignments),
-        riderHours: riderHours.sort((a, b) => b.hours - a.hours),
-        // Placeholder for response time
-        responseTime: {}
-      }
+        riderHours: riderHours.sort((a, b) => b.hours - a.hours), // Sort by hours descending
+        recentRequests: filteredRequests.slice(0, 20).map(request => ({
+          id: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId),
+          requester: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requesterName),
+          type: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type),
+          status: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status),
+          eventDate: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate),
+          ridersAssigned: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned)
+        }))
+      },
+      // Backward compatibility
+      totalRequests: totalRequests,
+      completedRequests: completedRequests,
+      activeRiders: activeRiders,
+      requestTypes: requestTypes,
+      riderHours: riderHours,
+      riderPerformance: riderPerformance,
+      popularLocations: popularLocations
     };
-    
+
+    debugLog('Report data generated successfully:', {
+      totalRequests: reportData.totalRequests,
+      completedRequests: reportData.completedRequests,
+      riderHoursCount: reportData.riderHours.length,
+      totalEscorts: reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0)
+    });
+
     return reportData;
-    
+
   } catch (error) {
-    logError('Error generating report data', error);
-    throw error;
+    logError('Error in generateReportData', error);
+    
+    // Return safe fallback data structure
+    return {
+      success: false,
+      error: error.message,
+      summary: {
+        totalRequests: 0,
+        completedRequests: 0,
+        activeRiders: 0,
+        avgCompletionRate: 0
+      },
+      charts: {
+        requestTypes: {},
+        riderPerformance: [],
+        popularLocations: []
+      },
+      tables: {
+        riderHours: [],
+        recentRequests: []
+      },
+      // Backward compatibility
+      totalRequests: 0,
+      completedRequests: 0,
+      activeRiders: 0,
+      requestTypes: {},
+      riderHours: [],
+      riderPerformance: [],
+      popularLocations: []
+    };
   }
 }
 
