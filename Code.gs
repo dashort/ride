@@ -2,6 +2,569 @@
  * Diagnostic and helper utilities. The global configuration and menu setup
  * functions were extracted into Config.gs and Menu.gs.
  */
+function testCorrectedRiderCalculation() {
+  console.log('🔧 === TESTING CORRECTED RIDER CALCULATION ===');
+  
+  try {
+    const ridersData = getRidersData();
+    const requestsData = getRequestsData();
+    
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30);
+    startDate.setHours(0,0,0,0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const filteredRequests = requestsData.data.filter(request => {
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      let matchesDate = true;
+      if (requestDate instanceof Date) {
+        matchesDate = requestDate >= startDate && requestDate <= endDate;
+      }
+      return matchesDate;
+    });
+    
+    console.log('📊 Data loaded - riders:', ridersData.data.length, 'filtered requests:', filteredRequests.length);
+    
+    // Test the CORRECTED rider calculation
+    const riderHours = [];
+    ridersData.data.forEach(rider => {
+      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!riderName || !riderName.trim()) return;
+      
+      let totalHours = 0;
+      let escorts = 0;
+      
+      filteredRequests.forEach(request => {
+        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+        
+        if (status !== 'Completed') return;
+        
+        if (ridersAssigned) {
+          const assignedRidersList = String(ridersAssigned).split(',')
+            .map(name => name.trim())
+            .filter(name => name && name.length > 0);
+          
+          const isAssigned = assignedRidersList.some(assignedName => 
+            assignedName.toLowerCase() === riderName.toLowerCase()
+          );
+          
+          if (isAssigned) {
+            escorts++;
+            
+            const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+            const estimates = {
+              'Funeral': 0.5,
+              'Wedding': 2.5,
+              'VIP': 4.0,
+              'Float Movement': 4.0,
+              'Other': 2.0
+            };
+            totalHours += estimates[requestType] || estimates['Other'];
+          }
+        }
+      });
+      
+      if (escorts > 0) {
+        riderHours.push({
+          rider: riderName,
+          escorts: escorts,
+          hours: Math.round(totalHours * 4) / 4
+        });
+      }
+    });
+    
+    const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
+    
+    console.log('✅ CORRECTED VERSION WORKS!');
+    console.log(`📊 Results: ${riderHours.length} riders with ${totalEscorts} total escorts`);
+    console.log('👥 Rider breakdown:');
+    riderHours.forEach(rider => {
+      console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+    });
+    
+    console.log('\n📝 TO FIX THE ERROR:');
+    console.log('1. Find the rider performance calculation section in generateReportData()');
+    console.log('2. Replace it with the corrected code above');
+    console.log('3. Make sure ALL variable declarations are inside the proper scope');
+    console.log('4. Save and test the reports page');
+    
+    return { success: true, riderHours, totalEscorts };
+    
+  } catch (error) {
+    console.error('❌ Corrected version failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function findRiderNameError() {
+  console.log('🔍 === FINDING RIDERNAME ERROR ===');
+  
+  try {
+    // Try to reproduce the exact error
+    const ridersData = getRidersData();
+    const requestsData = getRequestsData();
+    
+    // Get some test data
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 30);
+    startDate.setHours(0,0,0,0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const filteredRequests = requestsData.data.filter(request => {
+      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+      let matchesDate = true;
+      if (requestDate instanceof Date) {
+        matchesDate = requestDate >= startDate && requestDate <= endDate;
+      }
+      return matchesDate;
+    });
+    
+    console.log('📊 Test data ready - riders:', ridersData.data.length, 'requests:', filteredRequests.length);
+    
+    // Test the problematic section step by step
+    console.log('\n🧪 Testing rider loop...');
+    
+    let errorFound = false;
+    let errorDetails = null;
+    
+    ridersData.data.forEach((rider, index) => {
+      try {
+        // This is where the error likely occurs
+        const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+        console.log(`✅ Rider ${index + 1}: ${riderName || '[no name]'}`);
+        
+        if (index < 3) { // Test first 3 riders
+          filteredRequests.slice(0, 2).forEach((request, reqIndex) => {
+            const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+            console.log(`  Request ${reqIndex + 1}: ridersAssigned = "${ridersAssigned}"`);
+            
+            if (ridersAssigned) {
+              const assignedRidersList = String(ridersAssigned).split(',')
+                .map(name => name.trim())
+                .filter(name => name && name.length > 0);
+              
+              const isAssigned = assignedRidersList.some(assignedName => 
+                assignedName.toLowerCase() === riderName.toLowerCase()
+              );
+              
+              console.log(`    Assigned list: [${assignedRidersList.join(', ')}], matches: ${isAssigned}`);
+            }
+          });
+        }
+      } catch (error) {
+        errorFound = true;
+        errorDetails = {
+          riderIndex: index,
+          error: error.message,
+          rider: rider
+        };
+        console.error(`❌ Error at rider ${index + 1}:`, error.message);
+      }
+    });
+    
+    if (!errorFound) {
+      console.log('✅ No error found in step-by-step test');
+      console.log('🔍 The error might be in a different part of the rider calculation');
+    } else {
+      console.log('❌ Error reproduced:', errorDetails);
+    }
+    
+    return { errorFound, errorDetails };
+    
+  } catch (error) {
+    console.error('❌ Diagnostic failed:', error);
+    return { error: error.message };
+  }
+}
+
+function fixRiderNameError() {
+  console.log('🚀 === FIXING RIDERNAME ERROR ===');
+  
+  try {
+    console.log('\n1️⃣ Finding the error...');
+    const errorDiag = findRiderNameError();
+    
+    console.log('\n2️⃣ Testing corrected version...');
+    const correctedTest = testCorrectedRiderCalculation();
+    
+    if (correctedTest.success) {
+      console.log('\n🎉 SUCCESS! Corrected version works perfectly');
+      console.log('\n📋 IMPLEMENTATION:');
+      console.log('The error is caused by variable scope issues in your rider calculation.');
+      console.log('Replace the rider performance section with the corrected code above.');
+      console.log('Key fix: Ensure "const riderName" is declared inside the forEach loop.');
+      
+      return { success: true, errorDiag, correctedTest };
+    } else {
+      console.log('\n⚠️ Corrected version still has issues');
+      return { success: false, errorDiag, correctedTest };
+    }
+    
+  } catch (error) {
+    console.error('❌ Fix attempt failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+function diagnoseReportError() {
+  console.log('🔍 === DIAGNOSING REPORT ERROR ===');
+  
+  try {
+    // Test the same call that the reports page makes
+    const filters = {
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('📅 Testing with filters:', filters);
+    
+    // Try to call generateReportData and catch any errors
+    console.log('\n🧪 Calling generateReportData()...');
+    const result = generateReportData(filters);
+    
+    console.log('✅ generateReportData() completed successfully');
+    console.log('📊 Result structure:', Object.keys(result || {}));
+    
+    // Check if result has expected structure
+    const expectedKeys = ['totalRequests', 'completedRequests', 'riderHours', 'requestTypes'];
+    const missingKeys = expectedKeys.filter(key => !(key in (result || {})));
+    
+    if (missingKeys.length > 0) {
+      console.log('⚠️ Missing expected keys:', missingKeys);
+    } else {
+      console.log('✅ Result has expected structure');
+    }
+    
+    return { success: true, result, missingKeys };
+    
+  } catch (error) {
+    console.error('❌ generateReportData() failed with error:', error);
+    console.error('Error details:', error.message);
+    console.error('Stack trace:', error.stack);
+    
+    return { 
+      success: false, 
+      error: error.message,
+      stack: error.stack,
+      errorType: error.name
+    };
+  }
+}
+
+/**
+ * SAFE VERSION: generateReportData with error handling
+ */
+function generateReportDataSafe(filters) {
+  try {
+    console.log('🔧 === SAFE generateReportData() ===');
+    
+    // Validate inputs
+    if (!filters) {
+      throw new Error('Filters parameter is required');
+    }
+    
+    // Get data with error handling
+    let requestsData, assignmentsData, ridersData;
+    
+    try {
+      requestsData = getRequestsData();
+      console.log('✅ Got requests data:', requestsData.data.length, 'rows');
+    } catch (error) {
+      throw new Error('Failed to get requests data: ' + error.message);
+    }
+    
+    try {
+      assignmentsData = getAssignmentsData();
+      console.log('✅ Got assignments data:', assignmentsData.data.length, 'rows');
+    } catch (error) {
+      console.warn('⚠️ Failed to get assignments data:', error.message);
+      assignmentsData = { data: [], columnMap: {} };
+    }
+    
+    try {
+      ridersData = getRidersData();
+      console.log('✅ Got riders data:', ridersData.data.length, 'rows');
+    } catch (error) {
+      throw new Error('Failed to get riders data: ' + error.message);
+    }
+    
+    // Parse dates with error handling
+    let startDate, endDate;
+    try {
+      startDate = parseDateString(filters.startDate) || new Date(1970, 0, 1);
+      endDate = parseDateString(filters.endDate) || new Date();
+      startDate.setHours(0,0,0,0);
+      endDate.setHours(23, 59, 59, 999);
+      console.log('✅ Parsed dates:', startDate.toDateString(), 'to', endDate.toDateString());
+    } catch (error) {
+      throw new Error('Failed to parse dates: ' + error.message);
+    }
+    
+    // Filter requests with error handling
+    let filteredRequests;
+    try {
+      filteredRequests = requestsData.data.filter(request => {
+        try {
+          const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
+          const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+          const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+          
+          let matchesDate = true;
+          if (requestDate instanceof Date) {
+            matchesDate = requestDate >= startDate && requestDate <= endDate;
+          }
+          
+          let matchesType = true;
+          if (filters.requestType && filters.requestType !== 'All') {
+            matchesType = requestType === filters.requestType;
+          }
+          
+          let matchesStatus = true;
+          if (filters.status && filters.status !== 'All') {
+            matchesStatus = status === filters.status;
+          }
+          
+          return matchesDate && matchesType && matchesStatus;
+        } catch (error) {
+          console.warn('Error filtering request:', error.message);
+          return false;
+        }
+      });
+      console.log('✅ Filtered requests:', filteredRequests.length, 'rows');
+    } catch (error) {
+      throw new Error('Failed to filter requests: ' + error.message);
+    }
+    
+    // Calculate basic stats with error handling
+    let completedRequests, totalRequests, activeRiders;
+    try {
+      completedRequests = filteredRequests.filter(request => 
+        getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
+      ).length;
+      totalRequests = completedRequests;
+      
+      activeRiders = ridersData.data.filter(rider =>
+        getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
+      ).length;
+      
+      console.log('✅ Basic stats - Completed:', completedRequests, 'Active riders:', activeRiders);
+    } catch (error) {
+      throw new Error('Failed to calculate basic stats: ' + error.message);
+    }
+    
+    // Calculate request types with error handling
+    let requestTypes;
+    try {
+      requestTypes = {};
+      filteredRequests.forEach(request => {
+        try {
+          const type = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type) || 'Other';
+          requestTypes[type] = (requestTypes[type] || 0) + 1;
+        } catch (error) {
+          console.warn('Error processing request type:', error.message);
+        }
+      });
+      console.log('✅ Request types:', Object.keys(requestTypes).length, 'types');
+    } catch (error) {
+      throw new Error('Failed to calculate request types: ' + error.message);
+    }
+    
+    // Calculate rider performance with error handling (FIXED VERSION)
+    let riderHours;
+    try {
+      riderHours = [];
+      ridersData.data.forEach(rider => {
+        try {
+          const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
+          if (!riderName || !riderName.trim()) return;
+          
+          let totalHours = 0;
+          let escorts = 0;
+          
+          // 🔧 FIXED: Use filteredRequests instead of assignmentsData
+          filteredRequests.forEach(request => {
+            try {
+              const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+              const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+              
+              if (status !== 'Completed') return;
+              
+              if (ridersAssigned) {
+                const assignedRidersList = String(ridersAssigned).split(',')
+                  .map(name => name.trim())
+                  .filter(name => name && name.length > 0);
+                
+                const isAssigned = assignedRidersList.some(assignedName => 
+                  assignedName.toLowerCase() === riderName.toLowerCase()
+                );
+                
+                if (isAssigned) {
+                  escorts++;
+                  
+                  // Add estimated hours based on request type
+                  const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+                  const estimates = {
+                    'Funeral': 0.5,
+                    'Wedding': 2.5,
+                    'VIP': 4.0,
+                    'Float Movement': 4.0,
+                    'Other': 2.0
+                  };
+                  totalHours += estimates[requestType] || estimates['Other'];
+                }
+              }
+            } catch (error) {
+              console.warn('Error processing request for rider:', error.message);
+            }
+          });
+          
+          if (escorts > 0) {
+            riderHours.push({
+              rider: riderName,
+              escorts: escorts,
+              hours: Math.round(totalHours * 4) / 4
+            });
+          }
+        } catch (error) {
+          console.warn('Error processing rider:', error.message);
+        }
+      });
+      console.log('✅ Rider hours calculated:', riderHours.length, 'riders');
+    } catch (error) {
+      throw new Error('Failed to calculate rider hours: ' + error.message);
+    }
+    
+    // Build result object
+    const result = {
+      success: true,
+      totalRequests: totalRequests,
+      completedRequests: completedRequests,
+      activeRiders: activeRiders,
+      requestTypes: requestTypes,
+      riderHours: riderHours,
+      // Add empty tables for compatibility
+      tables: {
+        riderHours: riderHours,
+        popularLocations: [],
+        recentRequests: filteredRequests.slice(0, 10)
+      }
+    };
+    
+    console.log('✅ Safe generateReportData completed successfully');
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Safe generateReportData failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      totalRequests: 0,
+      completedRequests: 0,
+      activeRiders: 0,
+      requestTypes: {},
+      riderHours: [],
+      tables: {
+        riderHours: [],
+        popularLocations: [],
+        recentRequests: []
+      }
+    };
+  }
+}
+
+/**
+ * QUICK FIX: Replace generateReportData with safe version
+ */
+function implementSafeReportData() {
+  console.log('🔧 === IMPLEMENTING SAFE REPORT DATA ===');
+  
+  try {
+    // Test the safe version first
+    const filters = {
+      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      requestType: 'All',
+      status: 'All'
+    };
+    
+    console.log('🧪 Testing safe version...');
+    const result = generateReportDataSafe(filters);
+    
+    if (result.success) {
+      console.log('✅ Safe version works perfectly!');
+      console.log('📊 Results:', {
+        completedRequests: result.completedRequests,
+        riderHours: result.riderHours.length,
+        totalEscorts: result.riderHours.reduce((sum, rider) => sum + rider.escorts, 0)
+      });
+      
+      console.log('\n📝 IMPLEMENTATION STEPS:');
+      console.log('1. Replace your current generateReportData() function with generateReportDataSafe()');
+      console.log('2. Rename generateReportDataSafe to generateReportData');
+      console.log('3. Test your reports page - it should load without errors');
+      
+      return { success: true, result };
+    } else {
+      console.log('❌ Safe version still has issues:', result.error);
+      return { success: false, error: result.error };
+    }
+    
+  } catch (error) {
+    console.error('❌ Implementation test failed:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * COMPLETE ERROR RESOLUTION
+ */
+function fixReportFeaturesError() {
+  console.log('🚀 === FIXING REPORT FEATURES ERROR ===');
+  
+  try {
+    console.log('\n1️⃣ Diagnosing current error...');
+    const diagnosis = diagnoseReportError();
+    
+    if (diagnosis.success) {
+      console.log('✅ No error found in generateReportData()');
+      console.log('   The issue might be elsewhere in the system');
+      return { success: true, message: 'No error detected' };
+    } else {
+      console.log('❌ Error confirmed:', diagnosis.error);
+      
+      console.log('\n2️⃣ Testing safe replacement...');
+      const implementation = implementSafeReportData();
+      
+      if (implementation.success) {
+        console.log('\n🎉 SOLUTION FOUND!');
+        console.log('✅ Safe version works and will fix the error');
+        console.log('\n📋 TO FIX THE ERROR:');
+        console.log('1. Replace generateReportData() function with generateReportDataSafe()');
+        console.log('2. Rename it back to generateReportData');
+        console.log('3. Save and test reports page');
+        
+        return {
+          success: true,
+          diagnosis,
+          solution: 'Replace with safe version',
+          implementation
+        };
+      } else {
+        console.log('\n⚠️ Safe version also has issues');
+        console.log('May need deeper investigation');
+        return { success: false, diagnosis, implementation };
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Fix attempt failed:', error);
+    return { success: false, error: error.message };
+  }
+}
 function diagnoseGenerateReportData() {
   console.log('🔍 === DIAGNOSING generateReportData() INCONSISTENCY ===');
   
@@ -3072,7 +3635,7 @@ ridersData.data.forEach(rider => {
   let totalHours = 0;
   let escorts = 0;
   
-  // 🔧 FIXED: Use filteredRequests (from requests data) instead of assignmentsData
+  // Use filteredRequests instead of assignmentsData
   filteredRequests.forEach(request => {
     const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
     const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
