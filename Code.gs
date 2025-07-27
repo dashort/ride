@@ -2891,7 +2891,7 @@ function generateReportData(filters) {
       },
       tables: {
         riderPerformance: riderPerformance.sort((a, b) => b.assignments - a.assignments),
-        riderHours: riderHours.sort((a, b) => b.hours - a.hours),
+        riderHours: riderHours.sort((a, b) => b.escorts - a.escorts),
         locations: popularLocations,
         responseTime: {}
       }
@@ -3321,7 +3321,7 @@ function generateRiderActivityReport(startDate, endDate) {
       });
     });
     
-    const data = filteredData.sort((a, b) => b.hours - a.hours);
+    const data = filteredData.sort((a, b) => b.escorts - a.escorts);
 
   return { success: true, data };
   } catch (error) {
