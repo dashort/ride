@@ -2078,16 +2078,32 @@ function handleRidersDataLoaded(data) {
     if (data && data.success && data.riders) {
         console.log(`📊 Received ${data.riders.length} total riders`);
         
-        // Use the SAME filtering logic as assignments page
+        // Enhanced filtering logic - be more inclusive
         availableRiders = data.riders.filter(rider => {
-            // Include riders that are Active, Available, or have no status (default to active)
-            const status = rider.status;
-            const isActive = !status || status === 'Active' || status === 'Available';
-            const hasName = rider.name && rider.name.trim();
+            // Must have a name
+            const hasName = rider.name && rider.name.trim().length > 0;
+            if (!hasName) {
+                console.log(`❌ Filtering out rider without name:`, rider);
+                return false;
+            }
             
-            console.log(`🧑‍💼 Rider: ${rider.name}, Status: ${status}, Active: ${isActive}, HasName: ${hasName}`);
+            // Include riders with Active, Available, or undefined/empty status
+            const status = (rider.status || '').toLowerCase().trim();
+            const isActiveStatus = !status || 
+                                 status === 'active' || 
+                                 status === 'available' || 
+                                 status === '';
             
-            return isActive && hasName;
+            console.log(`🧑‍💼 Rider: ${rider.name}, Status: '${rider.status}', Normalized: '${status}', Active: ${isActiveStatus}, HasName: ${hasName}`);
+            
+            // Be more lenient - only exclude if explicitly marked as inactive
+            const shouldInclude = hasName && (isActiveStatus || status !== 'inactive');
+            
+            if (!shouldInclude) {
+                console.log(`❌ Filtering out rider: ${rider.name} (status: ${rider.status})`);
+            }
+            
+            return shouldInclude;
         });
         
         console.log(`✅ Filtered to ${availableRiders.length} available riders`);
@@ -2129,9 +2145,55 @@ function handleRidersDataLoaded(data) {
 }
 
     function handleRidersDataError(error) {
+        console.error('🚨 Rider data error:', error);
+        
         document.getElementById('ridersLoadingState').style.display = 'none';
         document.getElementById('noRidersState').style.display = 'block';
-        showToast('Error loading riders: ' + (error.message || error));
+        
+        // Show detailed error information
+        const noRidersDiv = document.getElementById('noRidersState');
+        noRidersDiv.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #e74c3c;">
+                <div style="font-size: 1.2rem; margin-bottom: 1rem;">⚠️ Error Loading Riders</div>
+                <div style="font-size: 0.9rem; margin-bottom: 1rem; color: #7f8c8d;">
+                    ${error.message || error || 'Unknown error occurred'}
+                </div>
+                <button onclick="retryLoadRiders()" style="margin: 0.5rem; padding: 0.5rem 1rem; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🔄 Retry Loading Riders
+                </button>
+                <button onclick="debugRiderLoading()" style="margin: 0.5rem; padding: 0.5rem 1rem; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🔍 Debug Rider Loading
+                </button>
+            </div>
+        `;
+        
+        showToast('Error loading riders: ' + (error.message || error), 'error');
+    }
+    
+    function retryLoadRiders() {
+        console.log('🔄 Retrying rider loading...');
+        loadRidersForAssignment();
+    }
+    
+    function debugRiderLoading() {
+        console.log('🔍 Starting rider loading debug...');
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            console.log('📡 Running backend debug...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    console.log('🧪 Debug result:', result);
+                    showToast('Debug complete - check console for details', 'info');
+                })
+                .withFailureHandler(function(error) {
+                    console.error('❌ Debug failed:', error);
+                    showToast('Debug failed: ' + error.message, 'error');
+                })
+                .debugRiderAssignment();
+        } else {
+            console.warn('⚠️ Google Apps Script not available');
+            showToast('Cannot run debug - Google Apps Script not available', 'warning');
+        }
     }
 
     function displayRidersForAssignment() {
