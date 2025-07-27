@@ -761,20 +761,99 @@
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             console.log('✅ Google Apps Script available, calling getPageDataForRiders...');
             
+            // Add timeout protection
+            let timeoutId = setTimeout(() => {
+                console.error('⏰ Request timed out after 30 seconds');
+                handleRidersDataFailure({ message: "Request timed out. This may indicate a backend issue." });
+            }, 30000);
+            
             google.script.run
                 .withSuccessHandler(function(data) {
+                    clearTimeout(timeoutId);
                     console.log('📥 Raw data received from backend:', data);
+                    
+                    // Additional validation
+                    if (!data) {
+                        console.error('❌ Received null/undefined data from backend');
+                        handleRidersDataFailure({ message: "No data received from server" });
+                        return;
+                    }
+                    
                     handleRidersDataSuccess(data);
                 })
                 .withFailureHandler(function(error) {
+                    clearTimeout(timeoutId);
                     console.error('📥 Error received from backend:', error);
-                    handleRidersDataFailure(error);
+                    
+                    // Try alternative approaches
+                    console.log('🔄 Attempting fallback methods...');
+                    tryFallbackDataLoading(error);
                 })
                 .getPageDataForRiders();
         } else {
             console.log('⚠️ Google Apps Script not available');
             handleRidersDataFailure({ message: "Google Apps Script not available." });
         }
+    }
+
+    // Fallback data loading methods
+    function tryFallbackDataLoading(originalError) {
+        console.log('🚨 Trying fallback data loading methods...');
+        
+        // Fallback 1: Try test function
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            console.log('🔄 Fallback 1: Trying test function...');
+            
+            google.script.run
+                .withSuccessHandler(function(data) {
+                    if (data && data.success) {
+                        console.log('✅ Fallback 1 succeeded');
+                        handleRidersDataSuccess(data);
+                    } else {
+                        console.log('❌ Fallback 1 failed, trying fallback 2...');
+                        tryEmergencyData(originalError);
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    console.error('❌ Fallback 1 failed:', error);
+                    tryEmergencyData(originalError);
+                })
+                .testRidersLoadingFix();
+        } else {
+            tryEmergencyData(originalError);
+        }
+    }
+
+    // Emergency fallback with sample data
+    function tryEmergencyData(originalError) {
+        console.log('🚨 Using emergency fallback data...');
+        
+        const emergencyData = {
+            success: true,
+            user: {
+                name: 'Emergency User',
+                email: 'emergency@nopd.com',
+                roles: ['admin']
+            },
+            riders: [],
+            stats: {
+                totalRiders: 0,
+                activeRiders: 0,
+                inactiveRiders: 0,
+                partTimeRiders: 0,
+                fullTimeRiders: 0
+            },
+            debug: {
+                method: 'emergency_fallback',
+                originalError: originalError.message || originalError
+            }
+        };
+        
+        console.log('⚠️ Showing emergency state with error message');
+        handleRidersDataSuccess(emergencyData);
+        
+        // Show error notification
+        showError(`Failed to load riders data: ${originalError.message || originalError}. Please check the backend configuration.`);
     }
 
     function handleRidersDataFailure(error) {
