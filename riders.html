@@ -735,6 +735,9 @@
 
         loadRidersData();
         setupEventListeners();
+        
+        // Add diagnostic button for debugging
+        addDiagnosticButton();
 
         // Fetch the web app URL when running inside Apps Script
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -855,6 +858,93 @@
         
         // Show error notification
         showError(`Failed to load riders data: ${originalError.message || originalError}. Please check the backend configuration.`);
+    }
+
+    // DIAGNOSTIC FUNCTIONS - FOR DEBUGGING
+    function diagnoseFrontendIssue() {
+        console.log('\n🔍 === FRONTEND DIAGNOSTIC START ===');
+        
+        // Check Google Apps Script availability
+        console.log('1. Google Apps Script Check:');
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            console.log('✅ Google Apps Script is available');
+            
+            // Test backend connectivity
+            console.log('\n2. Testing backend connectivity...');
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    console.log('✅ Backend connectivity test passed');
+                    console.log('Backend test result:', result);
+                    
+                    // Run comprehensive fix
+                    console.log('\n3. Running comprehensive fix...');
+                    google.script.run
+                        .withSuccessHandler(function(fixResult) {
+                            console.log('🎉 Comprehensive fix completed:');
+                            console.log(fixResult);
+                            
+                            if (fixResult.success) {
+                                console.log('✅ All backend checks passed');
+                                console.log('🔄 Retrying rider data load...');
+                                loadRidersData();
+                            } else {
+                                console.log('❌ Backend issues found:');
+                                fixResult.steps.forEach(step => {
+                                    console.log(`${step.success ? '✅' : '❌'} ${step.name}: ${step.message || step.error}`);
+                                });
+                            }
+                        })
+                        .withFailureHandler(function(error) {
+                            console.error('❌ Comprehensive fix failed:', error);
+                        })
+                        .fixRidersLoadingIssue();
+                })
+                .withFailureHandler(function(error) {
+                    console.error('❌ Backend connectivity test failed:', error);
+                })
+                .quickRidersTest();
+        } else {
+            console.log('❌ Google Apps Script not available');
+            console.log('   - Check if page is running in Google Apps Script environment');
+            console.log('   - Check browser console for JavaScript errors');
+        }
+        
+        // Check page state
+        console.log('\n4. Page State Check:');
+        console.log(`   - app object exists: ${typeof app !== 'undefined'}`);
+        console.log(`   - app.riders: ${app && app.riders ? `Array(${app.riders.length})` : 'null/undefined'}`);
+        console.log(`   - app.user: ${app && app.user ? 'present' : 'null/undefined'}`);
+        
+        // Check DOM elements
+        console.log('\n5. DOM Elements Check:');
+        const elements = ['searchBox', 'statusFilter', 'ridersTable', 'totalRiders'];
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            console.log(`   - ${id}: ${element ? 'found' : 'missing'}`);
+        });
+        
+        console.log('\n🔍 === FRONTEND DIAGNOSTIC END ===\n');
+    }
+
+    // Add diagnostic button to page (for debugging)
+    function addDiagnosticButton() {
+        const button = document.createElement('button');
+        button.textContent = '🔍 Diagnose Issue';
+        button.style.cssText = `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        `;
+        button.onclick = diagnoseFrontendIssue;
+        document.body.appendChild(button);
     }
 
     function handleRidersDataFailure(error) {
