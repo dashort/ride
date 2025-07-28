@@ -775,7 +775,8 @@
                     // Additional validation
                     if (!data) {
                         console.error('❌ Received null/undefined data from backend');
-                        handleRidersDataFailure({ message: "No data received from server" });
+                        // Attempt fallbacks before showing an error
+                        tryFallbackDataLoading(new Error('No data received from server'));
                         return;
                     }
                     
