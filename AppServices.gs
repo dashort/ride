@@ -628,31 +628,16 @@ function getPageDataForRiders(user) {
   console.log('🔧 ENHANCED getPageDataForRiders called');
   
   try {
-    // Step 1: Handle authentication with fallback
-    console.log('🔐 Step 1: Handling authentication...');
-    let authenticatedUser = user;
-    
-    if (!authenticatedUser) {
-      try {
-        const auth = authenticateAndAuthorizeUser();
-        authenticatedUser = auth.success ? auth.user : null;
-        console.log('✅ Authentication result:', auth.success ? 'Success' : 'Failed');
-      } catch (authError) {
-        console.warn('⚠️ Authentication failed, using fallback user:', authError.message);
-      }
-    }
-    
-    // Always provide a fallback user to prevent crashes
-    if (!authenticatedUser) {
-      authenticatedUser = {
-        name: 'System User',
-        email: 'system@nopd.com',
-        roles: ['admin'],
-        permissions: ['view_riders', 'manage_riders']
-      };
-      console.log('🔄 Using fallback user');
-    }
-    
+    // Step 1: Skip authentication entirely for faster loading
+    console.log('🔐 Step 1: Skipping authentication (public riders page)');
+
+    let authenticatedUser = user || {
+      name: 'Guest User',
+      email: 'guest@nopd.com',
+      roles: ['guest'],
+      permissions: []
+    };
+
     console.log('👤 Final user:', authenticatedUser.name);
     
     // Step 2: Check if Riders sheet exists
