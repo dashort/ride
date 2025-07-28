@@ -392,6 +392,25 @@
             color: white !important;
         }
 
+        /* Calendar Day Cell Styling for Availability */
+        .fc-day.day-available {
+            background-color: #d4edda !important;
+            border-color: #27ae60 !important;
+        }
+
+        .fc-day.day-unavailable {
+            background-color: #f8d7da !important;
+            border-color: #e74c3c !important;
+        }
+
+        .fc-day.day-available:hover {
+            background-color: #c3e6cb !important;
+        }
+
+        .fc-day.day-unavailable:hover {
+            background-color: #f1b0b7 !important;
+        }
+
         /* Loading States */
         .loading-state {
             text-align: center;
@@ -705,6 +724,7 @@
         let allRidersData = [];
         let selectedRiders = [];
         let editingEvent = null;
+        let availabilityByDate = {}; // Store availability status by date for day cell coloring
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
@@ -784,6 +804,17 @@
                     if (status) {
                         info.el.classList.add(status);
                     }
+                },
+                dayCellClassNames: function(info) {
+                    const dateStr = info.date.toISOString().split('T')[0];
+                    const dayStatus = getDayAvailabilityStatus(dateStr);
+                    
+                    if (dayStatus === 'available') {
+                        return ['day-available'];
+                    } else if (dayStatus === 'unavailable') {
+                        return ['day-unavailable'];
+                    }
+                    return [];
                 }
             });
 
@@ -857,7 +888,10 @@
 
         function handleMyAvailabilityLoaded(events) {
             riderCalendar.removeAllEvents();
+            availabilityByDate = {}; // Reset availability tracking
+            
             events.forEach(event => {
+                // Add event to calendar
                 riderCalendar.addEvent({
                     id: event.id,
                     title: event.title || getStatusTitle(event.status),
@@ -869,7 +903,33 @@
                         riderId: event.riderId
                     }
                 });
+                
+                // Track availability by date for day cell coloring
+                const eventStart = new Date(event.start);
+                const eventEnd = new Date(event.end);
+                
+                // Handle multi-day events or single day events
+                let currentDate = new Date(eventStart);
+                while (currentDate <= eventEnd) {
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    
+                    // If multiple events on same day, prioritize available over unavailable
+                    if (!availabilityByDate[dateStr] || 
+                        (availabilityByDate[dateStr] === 'unavailable' && event.status === 'available')) {
+                        availabilityByDate[dateStr] = event.status;
+                    }
+                    
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
             });
+            
+            // Refresh calendar to apply day cell styling
+            riderCalendar.render();
+        }
+
+        // Get availability status for a specific date
+        function getDayAvailabilityStatus(dateStr) {
+            return availabilityByDate[dateStr] || null;
         }
 
         // Load all riders data (admin view)

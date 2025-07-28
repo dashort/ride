@@ -399,10 +399,6 @@
                 <button class="btn btn-success" onclick="showCurrentFilters()" style="margin-left: 0.5rem;">
                     📋 Show Filters
                 </button>
-                
-                <button class="btn btn-primary" onclick="testWithSampleData()" style="margin-left: 0.5rem; background: #9b59b6;">
-                    🧪 Test Sample Data
-                </button>
             </div>
 
             <div class="filter-section">
@@ -652,54 +648,16 @@
 
             if (DEBUG_REPORTS) {
                 console.log('📊 Calling getPageDataForReports with filters:', filters);
-                console.log('Environment check:', {
-                    googleExists: typeof google !== 'undefined',
-                    scriptExists: typeof google !== 'undefined' && typeof google.script !== 'undefined',
-                    runExists: typeof google !== 'undefined' && google.script && typeof google.script.run !== 'undefined',
-                    currentURL: window.location.href
-                });
             }
 
-            // Enhanced environment check with more detailed logging
-            if (typeof google === 'undefined') {
-                console.error('❌ Google object not found - not running in Google Apps Script environment');
-                console.log('Current location:', window.location.href);
-                console.log('To fix this, make sure you are accessing the reports page through the Google Apps Script web app URL');
-                handlePageDataFailure({ 
-                    message: 'Google Apps Script environment not detected. Please access this page through the Google Apps Script web app URL.',
-                    details: 'Current URL: ' + window.location.href
-                });
-                return;
-            }
-
-            if (!google.script) {
-                console.error('❌ google.script not found');
-                handlePageDataFailure({ message: 'Google Apps Script object not properly initialized.' });
-                return;
-            }
-
-            if (!google.script.run) {
-                console.error('❌ google.script.run not found');
-                handlePageDataFailure({ message: 'Google Apps Script run interface not available.' });
-                return;
-            }
-
-            // Make the call with enhanced error handling
-            try {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(handlePageDataSuccess)
                     .withFailureHandler(handlePageDataFailure)
                     .getPageDataForReports(filters);
-                    
-                if (DEBUG_REPORTS) {
-                    console.log('✅ Google Apps Script call initiated successfully');
-                }
-            } catch (error) {
-                console.error('❌ Error initiating Google Apps Script call:', error);
-                handlePageDataFailure({ 
-                    message: 'Failed to initiate reports call: ' + error.message,
-                    error: error
-                });
+            } else {
+                console.log('Google Apps Script not available for reports page.');
+                handlePageDataFailure({ message: 'Google Apps Script not available.' });
             }
         }
 
@@ -722,17 +680,6 @@
         function handlePageDataFailure(error) {
             hideLoading();
             console.error('Error loading reports data:', error && error.message ? error.message : error);
-            
-            // More detailed error logging
-            if (DEBUG_REPORTS) {
-                console.log('🔍 Detailed error analysis:', {
-                    errorType: typeof error,
-                    hasMessage: !!(error && error.message),
-                    hasDetails: !!(error && error.details),
-                    errorKeys: error ? Object.keys(error) : [],
-                    fullError: error
-                });
-            }
 
             var fallbackUser = (error && error.user) ? error.user : {
                 name: 'System User',
@@ -742,20 +689,6 @@
             };
 
             updateUserInfoSafely(fallbackUser);
-            
-            // Show user-friendly error message
-            var errorMessage = 'Unable to load reports data';
-            if (error && error.message) {
-                if (error.message.includes('Google Apps Script environment')) {
-                    errorMessage = 'Please access this page through the Google Apps Script web app URL';
-                } else if (error.message.includes('not available')) {
-                    errorMessage = 'Reports service temporarily unavailable';
-                } else {
-                    errorMessage = error.message;
-                }
-            }
-            
-            showError(errorMessage);
             setFallbackReportData();
         }
 
@@ -847,60 +780,37 @@
         }
 
         function updateTables(tables) {
-            if (DEBUG_REPORTS) {
-                console.log('📊 updateTables called with:', tables);
-            }
 
-            // Update rider hours table
-            if (tables.riderHours && Array.isArray(tables.riderHours)) {
+            if (tables.riderHours) {
                 var hoursRows = '';
                 for (var i = 0; i < tables.riderHours.length; i++) {
                     var r = tables.riderHours[i];
-                    var riderName = r.rider || r.name || 'Unknown Rider';
                     var escorts = (r.escorts !== undefined) ? r.escorts : 0;
                     var hours = (r.hours !== undefined) ? r.hours : 0;
-                    hoursRows += '<tr><td>' + escapeHtml(riderName) + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
+                    hoursRows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
                 }
                 if (tables.riderHours.length === 0) {
                     hoursRows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
                 }
                 var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
-                
-                if (DEBUG_REPORTS) {
-                    console.log('✅ Rider hours table updated with', tables.riderHours.length, 'riders');
-                }
             } else {
                 document.getElementById('riderHoursTable').innerHTML = 
                     '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
-                
-                if (DEBUG_REPORTS) {
-                    console.log('⚠️ No rider hours data available');
-                }
             }
 
-            // Update locations table
-            if (tables.locations && Array.isArray(tables.locations) && tables.locations.length > 0) {
+
+            if (tables.locations && tables.locations.length > 0) {
                 var locRows = '';
                 for (var i = 0; i < tables.locations.length; i++) {
                     var loc = tables.locations[i];
-                    var locationName = loc.location || loc.name || 'Unknown Location';
-                    var count = loc.count || 0;
-                    locRows += '<tr><td>' + escapeHtml(locationName) + '</td><td>' + count + '</td></tr>';
+                    locRows += '<tr><td>' + escapeHtml(loc.name) + '</td><td>' + loc.count + '</td></tr>';
                 }
                 var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
                 document.getElementById('locationHotspots').innerHTML = locationsTable;
-                
-                if (DEBUG_REPORTS) {
-                    console.log('✅ Locations table updated with', tables.locations.length, 'locations');
-                }
             } else {
                 document.getElementById('locationHotspots').innerHTML = 
                     '<div class="loading" style="color: #7f8c8d;">No location data available for the selected period</div>';
-                
-                if (DEBUG_REPORTS) {
-                    console.log('⚠️ No locations data available');
-                }
             }
         }
 
@@ -918,83 +828,15 @@
         function setFallbackReportData() {
             hideLoading();
             console.log('Using fallback data for reports');
-            
-            // Create more realistic fallback data for testing
             var data = {
-                summary: { 
-                    totalRequests: 0, 
-                    completedRequests: 0, 
-                    activeRiders: 0 
-                },
-                charts: {
-                    requestTypes: {},
-                    requestVolume: {
-                        total: 0,
-                        peakDay: null,
-                        trend: 'No data'
-                    }
-                },
-                tables: {
-                    riderHours: [],
-                    locations: []
-                }
+                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
+                charts: {},
+                tables: {}
             };
-            
             updateSummaryStats(data.summary);
             updateCharts(data.charts);
             updateTables(data.tables);
-            
-            // Enhanced notification with instructions
-            showNotification('Reports data unavailable. To fix: 1) Access via Google Apps Script web app URL, 2) Check that sheets contain data, 3) Verify date range covers existing data.', '#f39c12');
-            
-            if (DEBUG_REPORTS) {
-                console.log('💡 Fallback data structure:', data);
-                console.log('💡 To test with sample data, run: testWithSampleData()');
-            }
-        }
-        
-        // Add a test function for sample data
-        function testWithSampleData() {
-            console.log('🧪 Loading sample data for testing...');
-            
-            var sampleData = {
-                summary: {
-                    totalRequests: 15,
-                    completedRequests: 12,
-                    activeRiders: 8
-                },
-                charts: {
-                    requestTypes: {
-                        'Wedding': 5,
-                        'Funeral': 3,
-                        'VIP': 4,
-                        'Float Movement': 2,
-                        'Other': 1
-                    },
-                    requestVolume: {
-                        total: 15,
-                        peakDay: 'Friday',
-                        trend: 'Increasing'
-                    }
-                },
-                tables: {
-                    riderHours: [
-                        { rider: 'John Smith', escorts: 4, hours: 8.5 },
-                        { rider: 'Jane Doe', escorts: 3, hours: 6.0 },
-                        { rider: 'Mike Johnson', escorts: 5, hours: 12.0 },
-                        { rider: 'Sarah Wilson', escorts: 2, hours: 4.5 }
-                    ],
-                    locations: [
-                        { name: 'Downtown Church', count: 3 },
-                        { name: 'Memorial Park', count: 2 },
-                        { name: 'City Hall', count: 4 },
-                        { name: 'Convention Center', count: 1 }
-                    ]
-                }
-            };
-            
-            handleReportData(sampleData);
-            showNotification('Sample data loaded successfully! This shows how reports should look with real data.', '#27ae60');
+            showNotification('Some report features are unavailable.', '#f39c12');
         }
 
         function escapeHtml(text) {
@@ -1231,6 +1073,60 @@ function displayRiderActivityReport(result) {
             if (confirm(filterSummary)) {
                 generateReports();
             }
+        }
+
+        // Export rider activity to CSV
+        function exportRiderActivityCSV() {
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
+            
+            if (!startDate || !endDate) {
+                showError('Please select a date range');
+                return;
+            }
+
+            showLoading('Generating CSV export...');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(handleCSVExportSuccess)
+                    .withFailureHandler(handleError)
+                    .exportRiderActivityCSV(startDate, endDate);
+            } else {
+                hideLoading();
+                showError('Google Apps Script not available.');
+            }
+        }
+
+        function handleCSVExportSuccess(result) {
+            hideLoading();
+            
+            if (!result || !result.success) {
+                showError(result && result.message ? result.message : 'Failed to export CSV');
+                return;
+            }
+
+            // Create and download CSV file
+            var blob = new Blob([result.csvContent], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            var url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', result.filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('CSV exported successfully: ' + result.count + ' riders', '#27ae60');
+        }
+
+        // Placeholder export functions for chart and table exports
+        function exportChart(chartType) {
+            showNotification('Chart export for ' + chartType + ' not yet implemented', '#f39c12');
+        }
+
+        function exportTable(tableType) {
+            showNotification('Table export for ' + tableType + ' not yet implemented', '#f39c12');
         }
 
         // Add keyboard shortcuts for debugging
