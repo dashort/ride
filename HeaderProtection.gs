@@ -393,7 +393,7 @@ function dailyHeaderValidation() {
   
   try {
     const criticalSheets = [
-      { name: 'Requests', headers: ['Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact', 'Event Date', 'Start Time', 'End Time', 'Pickup', 'Dropoff', 'Second', 'Request Type', 'Riders Needed', 'Escort Fee', 'Status', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'] },
+      { name: 'Requests', headers: ['Request ID', 'Date', 'Requester Name', 'Requester Contact', 'Event Date', 'Start Time', 'End Time', 'Pickup', 'Dropoff', 'Second', 'Request Type', 'Riders Needed', 'Escort Fee', 'Status', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'] },
       { name: 'Riders', headers: ['Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status', 'Certification', 'Total Assignments', 'Last Assignment Date'] },
       { name: 'Assignments', headers: ['Assignment ID', 'Request ID', 'Event Date', 'Start Time', 'End Time', 'Start', 'Dropoff', 'Rider Name', 'JP Number', 'Status', 'Created Date', 'Notified', 'SMS Sent', 'Email Sent', 'Notes'] }
     ];
