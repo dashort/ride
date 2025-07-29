@@ -400,50 +400,7 @@ function createUser(name, email, password, role = 'rider', status = 'active') {
   }
 }
 
-/**
- * Test function to verify authentication system
- */
-function testAuthenticationSystem() {
-  console.log('=== Testing Authentication System ===');
-  
-  try {
-    // Test 1: Check if Users sheet exists or can be created
-    console.log('1. Testing Users sheet...');
-    const testUser = findUserRecord('nonexistent@test.com');
-    console.log('Users sheet test: OK');
-    
-    // Test 2: Test password hashing
-    console.log('2. Testing password hashing...');
-    const hash1 = hashPassword('test123');
-    const hash2 = hashPassword('test123');
-    const hashMatch = hash1 === hash2;
-    console.log('Password hashing consistent:', hashMatch);
-    
-    // Test 3: Test session management
-    console.log('3. Testing session management...');
-    const currentSession = getCustomSession();
-    console.log('Current session:', currentSession ? 'Active' : 'None');
-    
-    // Test 4: Test Google authentication
-    console.log('4. Testing Google authentication...');
-    const googleAuth = authenticateUser();
-    console.log('Google auth result:', googleAuth.success ? 'Success' : 'Failed');
-    
-    return {
-      success: true,
-      tests: {
-        usersSheet: true,
-        passwordHashing: hashMatch,
-        sessionManagement: true,
-        googleAuth: googleAuth.success
-      }
-    };
-    
-  } catch (error) {
-    console.error('Authentication test failed:', error);
-    return { success: false, error: error.message };
-  }
-}
+
 
 /**
  * SETUP AND UTILITY FUNCTIONS
@@ -715,44 +672,7 @@ function cleanupExpiredSessions() {
   }
 }
 
-/**
- * Quick test login for debugging
- */
-function testLogin(email, password) {
-  console.log(`🧪 Testing login for: ${email}`);
-  
-  try {
-    const result = loginWithCredentials(email, password);
-    
-    if (result.success) {
-      console.log('✅ Test login successful');
-      console.log('User:', result.user);
-      
-      // Test getting current user
-      const currentUser = getCurrentUser();
-      console.log('Current user check:', currentUser);
-      
-      return {
-        success: true,
-        loginResult: result,
-        currentUser: currentUser
-      };
-    } else {
-      console.log('❌ Test login failed:', result.message);
-      return {
-        success: false,
-        error: result.message
-      };
-    }
-    
-  } catch (error) {
-    console.error('❌ Test login error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
+
 
 /**
  * Create sample users for testing
@@ -1180,57 +1100,4 @@ function emergencyAdminAccess() {
   }
 }
 
-/**
- * TEST LOCAL AUTHENTICATION
- * Test the local email/password authentication system
- */
-function testLocalAuthentication() {
-  console.log('🧪 === TESTING LOCAL AUTHENTICATION ===');
-  
-  try {
-    // Test with sample user credentials
-    console.log('1. Testing with sample credentials...');
-    
-    const testResult = loginWithCredentials('admin@test.com', 'admin123');
-    console.log('Test login result:', testResult);
-    
-    if (testResult.success) {
-      console.log('✅ Local authentication working');
-      return {
-        success: true,
-        message: 'Local authentication is working',
-        testResult: testResult
-      };
-    } else {
-      console.log('❌ Local authentication failed:', testResult.message);
-      
-      // Check if Users sheet has sample data
-      const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
-      if (!usersSheet) {
-        console.log('❌ Users sheet missing - run initializeAuthenticationSystem()');
-        return {
-          success: false,
-          error: 'Users sheet missing',
-          recommendation: 'Run initializeAuthenticationSystem()'
-        };
-      }
-      
-      const data = usersSheet.getDataRange().getValues();
-      console.log('Users sheet has', data.length - 1, 'users');
-      
-      return {
-        success: false,
-        error: testResult.message,
-        userCount: data.length - 1,
-        recommendation: 'Check Users sheet for valid credentials or run createSampleUsers()'
-      };
-    }
-    
-  } catch (error) {
-    console.error('❌ Local auth test failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
+

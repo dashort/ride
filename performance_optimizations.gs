@@ -540,16 +540,7 @@ function logPerformanceMetric(metric) {
 // CONDITIONAL LOGGING
 // ===========================================
 
-/**
- * Debug logging that can be disabled in production
- */
-function debugLog(message, ...args) {
-  const debugMode = PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true';
-  
-  if (debugMode) {
-    console.log(`[DEBUG] ${message}`, ...args);
-  }
-}
+
 
 /**
  * Performance-aware activity logging
