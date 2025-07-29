@@ -742,14 +742,7 @@ function getPageDataForRiders(user) {
         }
       }
     }
-
-    // If no riders were found after all attempts, use sample data
-    if (!riders || riders.length === 0) {
-      console.warn('⚠️ No riders found after retrieval attempts, using sample data');
-      riders = createSampleRidersData();
-      dataMethod = `${dataMethod}_empty_fallback`;
-    }
-
+    
     // Step 4: Ensure riders have required fields
     riders = riders.map(rider => {
       return {

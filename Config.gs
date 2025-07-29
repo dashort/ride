@@ -186,7 +186,11 @@ const CONFIG = {
 /**
  * Optimized logging functions for performance
  */
-
+function debugLog(message, ...args) {
+  if (CONFIG.performance.enableDebugLogging) {
+    console.log(`[DEBUG] ${message}`, ...args);
+  }
+}
 
 function performanceLog(message, ...args) {
   if (CONFIG.performance.enablePerformanceTracking) {

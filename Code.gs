@@ -832,10 +832,20 @@ function getFreshUserSession() {
   }
 }
 
-
+function testMySetup() {
+  const result = debugSystemSetup();
+  debugLog('Debug result:', result);
+  return result;
+}
 // ISSUE 2: doGet function problems
 // Your current doGet might have issues. Here's a corrected version:
-
+function testNavigationUrls() {
+  const baseUrl = getWebAppUrl();
+  debugLog('Web app URL:', baseUrl);
+  
+  const nav = getNavigationHtmlWithDynamicUrls('requests');
+  debugLog('Generated navigation:', nav);
+}
 
 
 // ISSUE 3: getNavigationHtml function problems
@@ -3860,34 +3870,6 @@ function getColumnValue(row, columnMap, columnName) {
 }
 
 /**
- * Debug logging function that respects configuration settings
- * @param {...any} args - Arguments to log
- */
-function debugLog(...args) {
-  // Check if debug logging is enabled in CONFIG
-  if (CONFIG.performance && CONFIG.performance.enableDebugLogging) {
-    console.log('[DEBUG]', ...args);
-  } else if (CONFIG.system && CONFIG.system.enableDebugLogging) {
-    console.log('[DEBUG]', ...args);
-  }
-  // If debugging is disabled, this function does nothing (silent)
-}
-
-/**
- * Test function to validate debugLog functionality
- * Run this function in the Apps Script editor to test if debugLog works
- */
-function testDebugLog() {
-  console.log('Testing debugLog function...');
-  debugLog('This is a test debug message');
-  debugLog('Debug logging status:', 
-    'performance.enableDebugLogging:', CONFIG.performance?.enableDebugLogging,
-    'system.enableDebugLogging:', CONFIG.system?.enableDebugLogging
-  );
-  console.log('debugLog test completed. Check console output above.');
-}
-
-/**
  * Log error safely
  */
 function logError(message, error) {
@@ -4264,7 +4246,23 @@ function createSimpleUserManagementPage() {
             });
         }
         
-
+        function testSystem() {
+            updateStatus('Testing system...', 'info');
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        updateStatus('System test completed. Check console for details.', 'success');
+                        debugLog('System test result:', result);
+                    })
+                    .withFailureHandler(function(error) {
+                        updateStatus('System test failed: ' + error, 'error');
+                    })
+                    .testAuthenticationSimple();
+            } else {
+                updateStatus('Cannot test - Google Apps Script not available', 'warning');
+            }
+        }
         
         function exportUsers() {
             updateStatus('Exporting user data...', 'info');

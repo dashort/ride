@@ -14,10 +14,12 @@
  */
 function onOpen() {
   try {
+    console.log('Starting onOpen...');
     createMenu();
     displayDashboardLayout();
     setupDashboardFilterDropdown(); // Sets up dropdown and initial value
     refreshDashboard(true); // Call refresh with forceUpdate=true to ensure fresh data and layout
+    console.log('Menu created successfully, dashboard initialized.');
   } catch (error) {
     console.error('onOpen error:', error);
   }
