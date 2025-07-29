@@ -832,20 +832,10 @@ function getFreshUserSession() {
   }
 }
 
-function testMySetup() {
-  const result = debugSystemSetup();
-  debugLog('Debug result:', result);
-  return result;
-}
+
 // ISSUE 2: doGet function problems
 // Your current doGet might have issues. Here's a corrected version:
-function testNavigationUrls() {
-  const baseUrl = getWebAppUrl();
-  debugLog('Web app URL:', baseUrl);
-  
-  const nav = getNavigationHtmlWithDynamicUrls('requests');
-  debugLog('Generated navigation:', nav);
-}
+
 
 
 // ISSUE 3: getNavigationHtml function problems
@@ -4246,23 +4236,7 @@ function createSimpleUserManagementPage() {
             });
         }
         
-        function testSystem() {
-            updateStatus('Testing system...', 'info');
-            
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(result) {
-                        updateStatus('System test completed. Check console for details.', 'success');
-                        debugLog('System test result:', result);
-                    })
-                    .withFailureHandler(function(error) {
-                        updateStatus('System test failed: ' + error, 'error');
-                    })
-                    .testAuthenticationSimple();
-            } else {
-                updateStatus('Cannot test - Google Apps Script not available', 'warning');
-            }
-        }
+
         
         function exportUsers() {
             updateStatus('Exporting user data...', 'info');

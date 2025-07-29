@@ -1044,8 +1044,7 @@ function displayRiderActivityReport(result) {
         // Helper function for testing report generation
         function testReportGeneration() {
             if (DEBUG_REPORTS) {
-                console.log('🧪 Testing report generation...');
-                console.log('Current date values:', {
+                        // Testing report generation
                     startDate: document.getElementById('startDate').value,
                     endDate: document.getElementById('endDate').value,
                     requestType: document.getElementById('requestTypeFilter').value,
@@ -1133,7 +1132,7 @@ function displayRiderActivityReport(result) {
         document.addEventListener('keydown', function(e) {
             if (DEBUG_REPORTS && e.ctrlKey && e.shiftKey && e.key === 'R') {
                 e.preventDefault();
-                console.log('🔄 Manual report generation triggered');
+                // Manual report generation triggered
                 testReportGeneration();
             }
         });

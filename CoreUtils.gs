@@ -440,17 +440,11 @@ function roundToQuarterHour(hours) {
   if (typeof hours !== 'number' || isNaN(hours)) return 0;
   return Math.round(hours * 4) / 4;
 }
-// Optimized debug logging that checks CONFIG
-function debugLog(message, ...args) {
-  if (CONFIG.performance?.enableDebugLogging || CONFIG.system?.enableDebugLogging) {
-    console.log(`[DEBUG] ${message}`, ...args);
-  }
-}
+
 
 // Simplified error handling for production
 function handleError(operation, error, context = {}) {
   const errorMessage = `${operation}: ${error.message}`;
-  debugLog(errorMessage, context);
   return {
     success: false,
     error: errorMessage,
