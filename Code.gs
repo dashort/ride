@@ -6659,49 +6659,6 @@ function addNavigationToContent(content, navigationHtml) {
 }
 
 /**
- * STEP 1: Diagnose riders data issues
- */
-function diagnoseRealRidersIssue() {
-  const result = {
-    success: true,
-    sheetExists: false,
-    riderCount: 0,
-    missingHeaders: [],
-    recommendations: []
-  };
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(CONFIG.sheets.riders);
-    result.sheetExists = !!sheet;
-    if (!sheet) {
-      result.success = false;
-      result.recommendations.push({ fix: 'addSampleRiders', message: 'Riders sheet missing' });
-      return result;
-    }
-
-    const data = sheet.getDataRange().getValues();
-    const headers = data[0] || [];
-    const rows = data.slice(1);
-    result.riderCount = rows.length;
-    if (rows.length === 0) {
-      result.recommendations.push({ fix: 'addSampleRiders', message: 'No rider data' });
-    }
-
-    const required = [CONFIG.columns.riders.jpNumber, CONFIG.columns.riders.name, CONFIG.columns.riders.status];
-    result.missingHeaders = required.filter(h => !headers.includes(h));
-    if (result.missingHeaders.length > 0) {
-      result.recommendations.push({ fix: 'fixColumnHeaders', message: 'Missing headers: ' + result.missingHeaders.join(', ') });
-    }
-
-    result.success = result.recommendations.length === 0;
-    return result;
-  } catch (error) {
-    console.error('diagnoseRealRidersIssue error:', error);
-    return { success: false, error: error.message, recommendations: [] };
-  }
-}
-
-/**
  * STEP 2: Automatic fix based on diagnosis
  */
 function autoFixRidersIssue() {
