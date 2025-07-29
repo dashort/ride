@@ -3860,6 +3860,34 @@ function getColumnValue(row, columnMap, columnName) {
 }
 
 /**
+ * Debug logging function that respects configuration settings
+ * @param {...any} args - Arguments to log
+ */
+function debugLog(...args) {
+  // Check if debug logging is enabled in CONFIG
+  if (CONFIG.performance && CONFIG.performance.enableDebugLogging) {
+    console.log('[DEBUG]', ...args);
+  } else if (CONFIG.system && CONFIG.system.enableDebugLogging) {
+    console.log('[DEBUG]', ...args);
+  }
+  // If debugging is disabled, this function does nothing (silent)
+}
+
+/**
+ * Test function to validate debugLog functionality
+ * Run this function in the Apps Script editor to test if debugLog works
+ */
+function testDebugLog() {
+  console.log('Testing debugLog function...');
+  debugLog('This is a test debug message');
+  debugLog('Debug logging status:', 
+    'performance.enableDebugLogging:', CONFIG.performance?.enableDebugLogging,
+    'system.enableDebugLogging:', CONFIG.system?.enableDebugLogging
+  );
+  console.log('debugLog test completed. Check console output above.');
+}
+
+/**
  * Log error safely
  */
 function logError(message, error) {
