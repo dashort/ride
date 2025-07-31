@@ -9,14 +9,14 @@
  */
 function getCurrentUserOptimized() {
   try {
-    console.log('🚀 getCurrentUserOptimized called');
+    debugLog('🚀 getCurrentUserOptimized called');
     
     // Try immediate session first (fastest path)
     const user = Session.getActiveUser();
     const email = user.getEmail();
     
     if (email && email.trim()) {
-      console.log('✅ Got user email immediately:', email);
+      debugLog('✅ Got user email immediately:', email);
       
       // Quick role determination
       const role = determineUserRoleQuick(email);
@@ -32,7 +32,7 @@ function getCurrentUserOptimized() {
     }
     
     // If no email, return guest immediately
-    console.log('⚠️ No email found, returning guest user');
+    debugLog('⚠️ No email found, returning guest user');
     return {
       name: 'Guest User',
       email: '',
@@ -87,7 +87,7 @@ function determineUserRoleQuick(email) {
           }
         }
       } catch (e) {
-        console.log('⚠️ Could not check riders sheet:', e.message);
+        debugLog('⚠️ Could not check riders sheet:', e.message);
       }
       
       return 'guest';
@@ -117,12 +117,12 @@ function getPermissionsForRole(role) {
  */
 function getAdminDashboardDataOptimized() {
   try {
-    console.log('📊 getAdminDashboardDataOptimized called');
+    debugLog('📊 getAdminDashboardDataOptimized called');
     
     // Try to use cached data if available and fresh (under 2 minutes old)
     const cachedData = getCachedDashboardData();
     if (cachedData) {
-      console.log('✅ Using cached dashboard data');
+      debugLog('✅ Using cached dashboard data');
       return cachedData;
     }
     
@@ -132,7 +132,7 @@ function getAdminDashboardDataOptimized() {
     // Cache the result
     cacheDashboardData(quickStats);
     
-    console.log('✅ Dashboard data calculated and cached');
+    debugLog('✅ Dashboard data calculated and cached');
     return quickStats;
     
   } catch (error) {
@@ -179,7 +179,7 @@ function calculateQuickDashboardStats() {
           String(row[2] || '').trim().toLowerCase() === 'new'
         ).length;
       } catch (e) {
-        console.log('⚠️ Error counting requests:', e.message);
+        debugLog('⚠️ Error counting requests:', e.message);
       }
     }
     
@@ -193,7 +193,7 @@ function calculateQuickDashboardStats() {
         ).length;
         stats.totalRiders = activeRiders;
       } catch (e) {
-        console.log('⚠️ Error counting riders:', e.message);
+        debugLog('⚠️ Error counting riders:', e.message);
       }
     }
     
@@ -213,11 +213,11 @@ function calculateQuickDashboardStats() {
         }).length;
         
       } catch (e) {
-        console.log('⚠️ Error counting assignments:', e.message);
+        debugLog('⚠️ Error counting assignments:', e.message);
       }
     }
     
-    console.log('📊 Calculated stats:', stats);
+    debugLog('📊 Calculated stats:', stats);
     return stats;
     
   } catch (error) {
@@ -241,9 +241,9 @@ function cacheDashboardData(data) {
       JSON.stringify(cache)
     );
     
-    console.log('✅ Dashboard data cached successfully');
+    debugLog('✅ Dashboard data cached successfully');
   } catch (error) {
-    console.log('⚠️ Failed to cache dashboard data:', error.message);
+    debugLog('⚠️ Failed to cache dashboard data:', error.message);
   }
 }
 
@@ -263,14 +263,14 @@ function getCachedDashboardData() {
     
     // Cache is valid for 2 minutes (120,000 milliseconds)
     if (cacheAge < 120000) {
-      console.log('✅ Using cached dashboard data (age:', Math.round(cacheAge / 1000), 'seconds)');
+      debugLog('✅ Using cached dashboard data (age:', Math.round(cacheAge / 1000), 'seconds)');
       return cached.data;
     } else {
-      console.log('⚠️ Dashboard cache expired (age:', Math.round(cacheAge / 1000), 'seconds)');
+      debugLog('⚠️ Dashboard cache expired (age:', Math.round(cacheAge / 1000), 'seconds)');
       return null;
     }
   } catch (error) {
-    console.log('⚠️ Error reading dashboard cache:', error.message);
+    debugLog('⚠️ Error reading dashboard cache:', error.message);
     return null;
   }
 }
@@ -298,7 +298,7 @@ function getDefaultDashboardStats() {
  */
 function getPageDataForDashboardOptimized() {
   try {
-    console.log('🚀 getPageDataForDashboardOptimized called');
+    debugLog('🚀 getPageDataForDashboardOptimized called');
     
     // Get user info quickly
     const user = getCurrentUserOptimized();
@@ -319,7 +319,7 @@ function getPageDataForDashboardOptimized() {
       stats.todayAssignments = adminStats.todaysEscorts || 0;
       stats.weekAssignments = adminStats.totalAssignments || 0;
     } catch (e) {
-      console.log('⚠️ Could not get admin stats, using defaults');
+      debugLog('⚠️ Could not get admin stats, using defaults');
     }
     
     // Return minimal data set for speed
@@ -332,7 +332,7 @@ function getPageDataForDashboardOptimized() {
       notifications: [] // Empty for speed - will be loaded separately if needed
     };
     
-    console.log('✅ Optimized page data prepared');
+    debugLog('✅ Optimized page data prepared');
     return result;
     
   } catch (error) {
@@ -367,7 +367,7 @@ function getPageDataForDashboardOptimized() {
 function clearDashboardCache() {
   try {
     PropertiesService.getScriptProperties().deleteProperty('DASHBOARD_CACHE');
-    console.log('✅ Dashboard cache cleared');
+    debugLog('✅ Dashboard cache cleared');
     return { success: true, message: 'Cache cleared successfully' };
   } catch (error) {
     console.error('❌ Error clearing cache:', error);
@@ -396,23 +396,23 @@ function extractNameFromEmail(email) {
  * Test function to verify optimizations work
  */
 function testDashboardOptimizations() {
-  console.log('🧪 Testing dashboard optimizations...');
+  debugLog('🧪 Testing dashboard optimizations...');
   
   try {
     // Test user function
-    console.log('1. Testing getCurrentUserOptimized...');
+    debugLog('1. Testing getCurrentUserOptimized...');
     const user = getCurrentUserOptimized();
-    console.log('✅ User result:', user);
+    debugLog('✅ User result:', user);
     
     // Test dashboard data
-    console.log('2. Testing getAdminDashboardDataOptimized...');
+    debugLog('2. Testing getAdminDashboardDataOptimized...');
     const adminData = getAdminDashboardDataOptimized();
-    console.log('✅ Admin data result:', adminData);
+    debugLog('✅ Admin data result:', adminData);
     
     // Test page data
-    console.log('3. Testing getPageDataForDashboardOptimized...');
+    debugLog('3. Testing getPageDataForDashboardOptimized...');
     const pageData = getPageDataForDashboardOptimized();
-    console.log('✅ Page data result:', pageData);
+    debugLog('✅ Page data result:', pageData);
     
     return {
       success: true,

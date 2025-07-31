@@ -613,7 +613,7 @@ function sendAssignmentNotification(assignmentId, type) {
  */
 function sendSMS(phone, carrier, message) {
   try {
-    console.log(`📱 Sending SMS via Twilio to ${phone}`);
+    debugLog(`📱 Sending SMS via Twilio to ${phone}`);
     
     // Validate inputs
     if (!phone) {
@@ -645,7 +645,7 @@ function sendSMS(phone, carrier, message) {
     const result = sendTwilioSMS(formattedPhone, message);
     
     if (result.success) {
-      console.log(`✅ SMS sent successfully to ${formattedPhone}`);
+      debugLog(`✅ SMS sent successfully to ${formattedPhone}`);
       logActivity(`SMS sent via Twilio to ${formattedPhone}: ${result.messageSid}`);
       return { 
         success: true, 
@@ -711,14 +711,14 @@ function sendTwilioSMS(toNumber, messageBody, retryCount = 0) {
       ).join('&')
     };
     
-    console.log(`🔄 Making Twilio API call to ${toNumber}`);
+    debugLog(`🔄 Making Twilio API call to ${toNumber}`);
     
     // Make the API call
     const response = UrlFetchApp.fetch(url, options);
     const responseCode = response.getResponseCode();
     const responseText = response.getContentText();
     
-    console.log(`📡 Twilio API response code: ${responseCode}`);
+    debugLog(`📡 Twilio API response code: ${responseCode}`);
     
     if (responseCode >= 200 && responseCode < 300) {
       // Success
@@ -741,7 +741,7 @@ function sendTwilioSMS(toNumber, messageBody, retryCount = 0) {
       
       // Retry logic for certain errors
       if (retryCount < CONFIG.twilio.maxRetries && (responseCode >= 500 || responseCode === 429)) {
-        console.log(`🔄 Retrying SMS send (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
+        debugLog(`🔄 Retrying SMS send (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
         Utilities.sleep(CONFIG.twilio.retryDelay * (retryCount + 1)); // Exponential backoff
         return sendTwilioSMS(toNumber, messageBody, retryCount + 1);
       }
@@ -759,7 +759,7 @@ function sendTwilioSMS(toNumber, messageBody, retryCount = 0) {
     
     // Retry on network errors
     if (retryCount < CONFIG.twilio.maxRetries) {
-      console.log(`🔄 Retrying SMS send due to network error (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
+      debugLog(`🔄 Retrying SMS send due to network error (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
       Utilities.sleep(CONFIG.twilio.retryDelay * (retryCount + 1));
       return sendTwilioSMS(toNumber, messageBody, retryCount + 1);
     }
@@ -778,7 +778,7 @@ function sendTwilioSMS(toNumber, messageBody, retryCount = 0) {
  */
 function testTwilioSetup() {
   try {
-    console.log('🧪 Testing Twilio configuration...');
+    debugLog('🧪 Testing Twilio configuration...');
     
     // Check configuration
     if (!CONFIG.twilio.accountSid || CONFIG.twilio.accountSid === 'YOUR_TWILIO_ACCOUNT_SID') {
@@ -793,20 +793,20 @@ function testTwilioSetup() {
       throw new Error('Please set your Twilio phone number in CONFIG.twilio');
     }
     
-    console.log('✅ Twilio configuration looks good');
-    console.log(`📞 From number: ${CONFIG.twilio.fromNumber}`);
+    debugLog('✅ Twilio configuration looks good');
+    debugLog(`📞 From number: ${CONFIG.twilio.fromNumber}`);
     
     // Test with a sample phone number (replace with your own for actual testing)
     const testPhone = '5047233075'; // ⚠️ Replace with your phone number for testing
     const testMessage = '🏍️ Test SMS from Motorcycle Escort Management System via Twilio';
     
-    console.log(`📱 Sending test SMS to ${testPhone}...`);
+    debugLog(`📱 Sending test SMS to ${testPhone}...`);
     
     const result = sendSMS(testPhone, 'twilio', testMessage); // Carrier parameter is now ignored
     
     if (result.success) {
-      console.log('✅ Test SMS sent successfully!');
-      console.log('Message SID:', result.messageSid);
+      debugLog('✅ Test SMS sent successfully!');
+      debugLog('Message SID:', result.messageSid);
       SpreadsheetApp.getUi().alert('✅ Twilio Test Successful', 
         `Test SMS sent successfully!\nMessage SID: ${result.messageSid}`, 
         SpreadsheetApp.getUi().ButtonSet.OK);
@@ -866,7 +866,7 @@ function getTwilioAccountInfo() {
     const response = UrlFetchApp.fetch(url, options);
     const responseData = JSON.parse(response.getContentText());
     
-    console.log('Twilio Account Info:', {
+    debugLog('Twilio Account Info:', {
       friendlyName: responseData.friendly_name,
       status: responseData.status,
       type: responseData.type
@@ -1092,7 +1092,7 @@ function getWebAppUrl() {
   try {
     WEB_APP_URL = ScriptApp.getService().getUrl();
   } catch (error) {
-    console.log('Could not determine web app URL');
+    debugLog('Could not determine web app URL');
     WEB_APP_URL = null;
   }
   return WEB_APP_URL;
@@ -1135,7 +1135,7 @@ function sendTwilioSMSWithWebhook(toNumber, messageBody, retryCount = 0) {
       ).join('&')
     };
     
-    console.log(`🔄 Sending SMS with webhook to ${toNumber}`);
+    debugLog(`🔄 Sending SMS with webhook to ${toNumber}`);
     
     const response = UrlFetchApp.fetch(url, options);
     const responseCode = response.getResponseCode();
@@ -1156,7 +1156,7 @@ function sendTwilioSMSWithWebhook(toNumber, messageBody, retryCount = 0) {
     } else {
       // Retry logic (same as before)
       if (retryCount < CONFIG.twilio.maxRetries && (responseCode >= 500 || responseCode === 429)) {
-        console.log(`🔄 Retrying SMS send (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
+        debugLog(`🔄 Retrying SMS send (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
         Utilities.sleep(CONFIG.twilio.retryDelay * (retryCount + 1));
         return sendTwilioSMSWithWebhook(toNumber, messageBody, retryCount + 1);
       }
@@ -1180,7 +1180,7 @@ function sendTwilioSMSWithWebhook(toNumber, messageBody, retryCount = 0) {
     console.error('❌ Twilio API call error:', error);
     
     if (retryCount < CONFIG.twilio.maxRetries) {
-      console.log(`🔄 Retrying SMS send due to network error (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
+      debugLog(`🔄 Retrying SMS send due to network error (attempt ${retryCount + 1}/${CONFIG.twilio.maxRetries})`);
       Utilities.sleep(CONFIG.twilio.retryDelay * (retryCount + 1));
       return sendTwilioSMSWithWebhook(toNumber, messageBody, retryCount + 1);
     }
@@ -1224,7 +1224,7 @@ function storeSentMessageInfo(messageSid, toNumber, messageBody) {
       '' // Response time will be calculated
     ]);
     
-    console.log(`📝 Tracked message: ${messageSid}`);
+    debugLog(`📝 Tracked message: ${messageSid}`);
     
   } catch (error) {
     logError('Error storing sent message info', error);
@@ -1248,7 +1248,7 @@ function doPost(e) {
     const action = e.parameter.action;
     const data = JSON.parse(e.parameter.data || '{}');
     
-    console.log(`doPost action: ${action}`);
+    debugLog(`doPost action: ${action}`);
     
     let result = {};
     
@@ -1294,7 +1294,7 @@ function doPost(e) {
  */
 function handleSMSWebhook(e) {
   try {
-    console.log('📱 Handling SMS webhook...');
+    debugLog('📱 Handling SMS webhook...');
     
     // Twilio sends data as form parameters
     const fromNumber = e.parameter.From;
@@ -1302,7 +1302,7 @@ function handleSMSWebhook(e) {
     const messageSid = e.parameter.MessageSid;
     const toNumber = e.parameter.To; // Your Twilio number
     
-    console.log(`📨 SMS Response from ${fromNumber}: ${messageBody}`);
+    debugLog(`📨 SMS Response from ${fromNumber}: ${messageBody}`);
     
     // Process the response
     const responseResult = processSMSResponse(fromNumber, messageBody, messageSid);
@@ -1338,11 +1338,11 @@ function processSMSResponse(fromNumber, messageBody, messageSid) {
     // Find the rider by phone number
     const rider = findRiderByPhone(fromNumber);
     if (!rider) {
-      console.log(`⚠️ Unknown number responded: ${fromNumber}`);
+      debugLog(`⚠️ Unknown number responded: ${fromNumber}`);
       return { action: 'unknown_number', rider: null };
     }
     
-    console.log(`📱 Response from ${rider.name}: ${cleanMessage}`);
+    debugLog(`📱 Response from ${rider.name}: ${cleanMessage}`);
     
     // Process different response types
     let action = 'unknown';
@@ -1622,12 +1622,12 @@ function getRequestDetailsForNotification(requestId) {
  */
 function getAllAssignmentsForNotifications(useCache = true) {
   try {
-    console.log('📋 Getting all assignments for notifications...');
+    debugLog('📋 Getting all assignments for notifications...');
 
     const assignmentsData = getAssignmentsData(useCache); // This gets actual assignments
     
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      console.log('❌ No assignments data found');
+      debugLog('❌ No assignments data found');
       return [];
     }
     
@@ -1706,11 +1706,11 @@ function getAllAssignmentsForNotifications(useCache = true) {
         assignments.push(assignment);
         
       } catch (rowError) {
-        console.log(`⚠️ Error processing assignment row ${index}:`, rowError);
+        debugLog(`⚠️ Error processing assignment row ${index}:`, rowError);
       }
     });
     
-    console.log(`✅ Processed ${assignments.length} assignments for notifications`);
+    debugLog(`✅ Processed ${assignments.length} assignments for notifications`);
     return assignments;
     
   } catch (error) {
@@ -1757,7 +1757,7 @@ function determineNotificationStatus(assignmentRow, columnMap) {
  * Get notification statistics for notifications page.
  */
 function getNotificationStats() {
-  console.log('📊 Getting notification stats...');
+  debugLog('📊 Getting notification stats...');
   
   try {
     const assignmentsData = getAssignmentsData(); // Uses caching and formatting
@@ -1765,7 +1765,7 @@ function getNotificationStats() {
     const columnMap = assignmentsData.columnMap; // Map of headers to column indices
 
     if (!assignments || assignments.length === 0) {
-      console.log('⚠️ No assignments data found');
+      debugLog('⚠️ No assignments data found');
       return {
         totalAssignments: 0,
         pendingNotifications: 0,
@@ -1925,12 +1925,12 @@ function markAssignmentNotified(assignmentId, notificationType = 'SMS') {
  */
 function getEnhancedNotificationStats() {
   try {
-    console.log('📊 Getting enhanced notification stats...');
+    debugLog('📊 Getting enhanced notification stats...');
     
     // Get basic assignments data
     const assignmentsData = getAssignmentsData();
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length === 0) {
-      console.log('❌ No assignments data available');
+      debugLog('❌ No assignments data available');
       return {
         totalAssignments: 0,
         pendingNotifications: 0,
@@ -1992,7 +1992,7 @@ function getEnhancedNotificationStats() {
       assignments: processedAssignments // Include for auto-loading
     };
     
-    console.log('✅ Enhanced notification stats calculated:', stats);
+    debugLog('✅ Enhanced notification stats calculated:', stats);
     return stats;
     
   } catch (error) {
@@ -2013,7 +2013,7 @@ function getEnhancedNotificationStats() {
  */
 function sendBulkNotificationsToSelected(assignmentIds, notificationType) {
   try {
-    console.log(`📱 Sending bulk ${notificationType} to ${assignmentIds.length} assignments`);
+    debugLog(`📱 Sending bulk ${notificationType} to ${assignmentIds.length} assignments`);
     
     let successful = 0;
     let failed = 0;
@@ -2046,7 +2046,7 @@ function sendBulkNotificationsToSelected(assignmentIds, notificationType) {
       message: `Bulk notification completed: ${successful} successful, ${failed} failed`
     };
     
-    console.log('✅ Bulk notification result:', result);
+    debugLog('✅ Bulk notification result:', result);
     return result;
     
   } catch (error) {
@@ -2065,7 +2065,7 @@ function sendBulkNotificationsToSelected(assignmentIds, notificationType) {
  */
 function sendBulkNotificationsByTimeframe(filter, type) {
   try {
-    console.log(`📱 Sending bulk ${type} for filter: ${filter}`);
+    debugLog(`📱 Sending bulk ${type} for filter: ${filter}`);
     
     // Get assignments based on filter
     const assignmentsData = getAssignmentsData();
@@ -2157,39 +2157,39 @@ function convertAssignmentToRow(assignment) {
  * This function can be called from the frontend to fix assignment loading
  */
 function runImmediateAssignmentFix() {
-  console.log('🚀 Starting immediate assignment fix for notifications page...');
+  debugLog('🚀 Starting immediate assignment fix for notifications page...');
   
   try {
     // Step 1: Run diagnostics first
-    console.log('\n=== STEP 1: DIAGNOSTICS ===');
+    debugLog('\n=== STEP 1: DIAGNOSTICS ===');
     const diagnostics = debugAssignmentsSheetState();
-    console.log('Diagnostic results:', JSON.stringify(diagnostics, null, 2));
+    debugLog('Diagnostic results:', JSON.stringify(diagnostics, null, 2));
     
     // Step 2: Run the comprehensive fix
-    console.log('\n=== STEP 2: APPLYING FIXES ===');
+    debugLog('\n=== STEP 2: APPLYING FIXES ===');
     const fixResult = fixNotificationsAssignmentLoading();
-    console.log('Fix results:', JSON.stringify(fixResult, null, 2));
+    debugLog('Fix results:', JSON.stringify(fixResult, null, 2));
     
     // Step 3: Create sample data if needed
     if (!fixResult.success || (fixResult.verifyResult && fixResult.verifyResult.notificationAssignmentsCount === 0)) {
-      console.log('\n=== STEP 3: CREATING SAMPLE DATA ===');
+      debugLog('\n=== STEP 3: CREATING SAMPLE DATA ===');
       const sampleResult = createSampleAssignmentsForTesting();
-      console.log('Sample data creation result:', JSON.stringify(sampleResult, null, 2));
+      debugLog('Sample data creation result:', JSON.stringify(sampleResult, null, 2));
       
       // Also create sample riders if needed
       createSampleRidersIfNeeded();
     }
     
     // Step 4: Clear caches and verify final result
-    console.log('\n=== STEP 4: FINAL VERIFICATION ===');
+    debugLog('\n=== STEP 4: FINAL VERIFICATION ===');
     dataCache.clear('sheet_' + CONFIG.sheets.assignments);
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
     const finalAssignments = getAllAssignmentsForNotifications(false);
-    console.log(`✅ Final result: ${finalAssignments.length} assignments loaded for notifications`);
+    debugLog(`✅ Final result: ${finalAssignments.length} assignments loaded for notifications`);
     
     if (finalAssignments.length > 0) {
-      console.log('Sample assignment:', JSON.stringify(finalAssignments[0], null, 2));
+      debugLog('Sample assignment:', JSON.stringify(finalAssignments[0], null, 2));
       return {
         success: true,
         message: `Success! ${finalAssignments.length} assignments are now available for notifications`,
@@ -2218,21 +2218,21 @@ function runImmediateAssignmentFix() {
  * Quick test function to check current assignment loading status
  */
 function checkAssignmentLoadingStatus() {
-  console.log('🔍 Checking current assignment loading status...');
+  debugLog('🔍 Checking current assignment loading status...');
   
   try {
     // Test getAssignmentsData
     const rawData = getAssignmentsData(false);
-    console.log(`Raw assignments data: ${rawData.data ? rawData.data.length : 0} rows`);
+    debugLog(`Raw assignments data: ${rawData.data ? rawData.data.length : 0} rows`);
     
     // Test getAllAssignmentsForNotifications
     const notificationAssignments = getAllAssignmentsForNotifications(false);
-    console.log(`Notification assignments: ${notificationAssignments.length} items`);
+    debugLog(`Notification assignments: ${notificationAssignments.length} items`);
     
     // Test getPageDataForNotifications
     const pageData = getPageDataForNotifications();
-    console.log('Page data success:', pageData.success);
-    console.log('Page data assignments:', pageData.assignments ? pageData.assignments.length : 0);
+    debugLog('Page data success:', pageData.success);
+    debugLog('Page data assignments:', pageData.assignments ? pageData.assignments.length : 0);
     
     return {
       rawDataRows: rawData.data ? rawData.data.length : 0,

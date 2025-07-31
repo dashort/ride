@@ -81,7 +81,7 @@ function logSecurityEvent(eventType, details = {}, alertLevel = SECURITY_ALERT_L
     };
     
     // Log to console for immediate visibility
-    console.log(`🔒 SECURITY EVENT [${alertLevel}]: ${eventType}`, logEntry);
+    debugLog(`🔒 SECURITY EVENT [${alertLevel}]: ${eventType}`, logEntry);
     
     // Log to spreadsheet for persistence
     persistSecurityLog(logEntry);
@@ -97,7 +97,7 @@ function logSecurityEvent(eventType, details = {}, alertLevel = SECURITY_ALERT_L
   } catch (error) {
     console.error('❌ Security logging error:', error);
     // Fallback logging to prevent infinite recursion
-    console.log(`🔒 SECURITY EVENT (FALLBACK): ${eventType} - ${JSON.stringify(details)}`);
+    debugLog(`🔒 SECURITY EVENT (FALLBACK): ${eventType} - ${JSON.stringify(details)}`);
   }
 }
 
@@ -284,7 +284,7 @@ function archiveOldSecurityLogs(logSheet) {
     logSheet.getRange(1, 1, recentData.length, headers.length)
       .setValues(recentData);
     
-    console.log(`📚 Archived ${data.length - recentData.length} old security log entries`);
+    debugLog(`📚 Archived ${data.length - recentData.length} old security log entries`);
     
   } catch (error) {
     console.error('❌ Failed to archive security logs:', error);
@@ -326,13 +326,13 @@ function shouldAlert(eventType, alertLevel) {
  */
 function handleSecurityAlert(logEntry) {
   try {
-    console.log(`🚨 SECURITY ALERT [${logEntry.alertLevel}]: ${logEntry.eventType}`);
+    debugLog(`🚨 SECURITY ALERT [${logEntry.alertLevel}]: ${logEntry.eventType}`);
     
     // Send email alert to administrators
     sendSecurityAlertEmail(logEntry);
     
     // Log the alert action
-    console.log(`📧 Security alert sent for event: ${logEntry.eventType}`);
+    debugLog(`📧 Security alert sent for event: ${logEntry.eventType}`);
     
   } catch (error) {
     console.error('❌ Failed to handle security alert:', error);
@@ -346,7 +346,7 @@ function sendSecurityAlertEmail(logEntry) {
   try {
     const adminEmails = getAdminUsersSafe();
     if (!adminEmails || adminEmails.length === 0) {
-      console.log('⚠️ No admin emails configured for security alerts');
+      debugLog('⚠️ No admin emails configured for security alerts');
       return;
     }
     
@@ -632,7 +632,7 @@ function exportSecurityLogs(daysBack = 30) {
  * Test security audit functions
  */
 function testSecurityAudit() {
-  console.log('🔍 Testing Security Audit Functions...');
+  debugLog('🔍 Testing Security Audit Functions...');
   
   // Test different types of security events
   logSecurityEvent('TEST_EVENT', { testData: 'sample' }, SECURITY_ALERT_LEVELS.INFO);
@@ -641,11 +641,11 @@ function testSecurityAudit() {
   
   // Test metrics
   const metrics = getSecurityMetrics(7);
-  console.log('Security metrics (7 days):', metrics);
+  debugLog('Security metrics (7 days):', metrics);
   
   // Test report generation
   const report = generateSecurityReport(7);
-  console.log('Security report:', report);
+  debugLog('Security report:', report);
   
-  console.log('🔍 Security audit testing completed.');
+  debugLog('🔍 Security audit testing completed.');
 }

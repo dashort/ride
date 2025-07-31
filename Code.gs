@@ -13,7 +13,7 @@
  * Test the exact same call that the reports page makes
  */
 function debugReportLoading() {
-  console.log('🔍 === DEBUGGING REPORT LOADING ===');
+  debugLog('🔍 === DEBUGGING REPORT LOADING ===');
   
   try {
     // Test the same filters that the reports page would use
@@ -24,50 +24,50 @@ function debugReportLoading() {
       status: 'All'
     };
     
-    console.log('📅 Testing with filters:', filters);
+    debugLog('📅 Testing with filters:', filters);
     
     // Test each step of the process
-    console.log('\n1️⃣ Testing getPageDataForReports...');
+    debugLog('\n1️⃣ Testing getPageDataForReports...');
     const pageData = getPageDataForReports(filters);
-    console.log('getPageDataForReports result:', pageData);
+    debugLog('getPageDataForReports result:', pageData);
     
     if (!pageData) {
-      console.log('❌ getPageDataForReports returned null/undefined');
+      debugLog('❌ getPageDataForReports returned null/undefined');
       return { issue: 'getPageDataForReports_null' };
     }
     
     if (!pageData.success) {
-      console.log('❌ getPageDataForReports returned success: false');
-      console.log('Error:', pageData.error);
+      debugLog('❌ getPageDataForReports returned success: false');
+      debugLog('Error:', pageData.error);
       return { issue: 'getPageDataForReports_failed', error: pageData.error };
     }
     
-    console.log('\n2️⃣ Testing generateReportData directly...');
+    debugLog('\n2️⃣ Testing generateReportData directly...');
     const reportData = generateReportData(filters);
-    console.log('generateReportData result:', reportData);
+    debugLog('generateReportData result:', reportData);
     
     if (!reportData) {
-      console.log('❌ generateReportData returned null/undefined');
+      debugLog('❌ generateReportData returned null/undefined');
       return { issue: 'generateReportData_null' };
     }
     
     if (reportData.success === false) {
-      console.log('❌ generateReportData returned success: false');
-      console.log('Error:', reportData.error);
+      debugLog('❌ generateReportData returned success: false');
+      debugLog('Error:', reportData.error);
       return { issue: 'generateReportData_failed', error: reportData.error };
     }
     
-    console.log('\n3️⃣ Checking data structure...');
+    debugLog('\n3️⃣ Checking data structure...');
     const requiredFields = ['totalRequests', 'completedRequests', 'riderHours'];
     const missingFields = requiredFields.filter(field => !(field in reportData));
     
     if (missingFields.length > 0) {
-      console.log('❌ Missing required fields:', missingFields);
+      debugLog('❌ Missing required fields:', missingFields);
       return { issue: 'missing_fields', missingFields };
     }
     
-    console.log('✅ All checks passed!');
-    console.log('📊 Report summary:', {
+    debugLog('✅ All checks passed!');
+    debugLog('📊 Report summary:', {
       totalRequests: reportData.totalRequests,
       completedRequests: reportData.completedRequests,
       riderHours: reportData.riderHours ? reportData.riderHours.length : 'undefined',
@@ -100,30 +100,30 @@ function debugReportLoading() {
  * Test just the data retrieval functions
  */
 function testDataRetrieval() {
-  console.log('🔍 === TESTING DATA RETRIEVAL ===');
+  debugLog('🔍 === TESTING DATA RETRIEVAL ===');
   
   try {
-    console.log('\n📊 Testing getRequestsData...');
+    debugLog('\n📊 Testing getRequestsData...');
     const requestsData = getRequestsData();
-    console.log('Requests data:', {
+    debugLog('Requests data:', {
       hasData: !!requestsData,
       rowCount: requestsData ? requestsData.data.length : 0,
       hasColumnMap: !!requestsData?.columnMap,
       sampleColumns: requestsData?.columnMap ? Object.keys(requestsData.columnMap).slice(0, 5) : []
     });
     
-    console.log('\n👥 Testing getRidersData...');
+    debugLog('\n👥 Testing getRidersData...');
     const ridersData = getRidersData();
-    console.log('Riders data:', {
+    debugLog('Riders data:', {
       hasData: !!ridersData,
       rowCount: ridersData ? ridersData.data.length : 0,
       hasColumnMap: !!ridersData?.columnMap,
       sampleColumns: ridersData?.columnMap ? Object.keys(ridersData.columnMap).slice(0, 5) : []
     });
     
-    console.log('\n📋 Testing getAssignmentsData...');
+    debugLog('\n📋 Testing getAssignmentsData...');
     const assignmentsData = getAssignmentsData();
-    console.log('Assignments data:', {
+    debugLog('Assignments data:', {
       hasData: !!assignmentsData,
       rowCount: assignmentsData ? assignmentsData.data.length : 0,
       hasColumnMap: !!assignmentsData?.columnMap,
@@ -139,7 +139,7 @@ function testDataRetrieval() {
       return { issue: 'no_riders_data' };
     }
     
-    console.log('✅ All data retrieval successful');
+    debugLog('✅ All data retrieval successful');
     return { success: true };
     
   } catch (error) {
@@ -152,27 +152,27 @@ function testDataRetrieval() {
  * Check if the issue is in CONFIG or column mappings
  */
 function testColumnMappings() {
-  console.log('🔍 === TESTING COLUMN MAPPINGS ===');
+  debugLog('🔍 === TESTING COLUMN MAPPINGS ===');
   
   try {
-    console.log('📋 CONFIG.columns.requests:', CONFIG.columns.requests);
-    console.log('👥 CONFIG.columns.riders:', CONFIG.columns.riders);
+    debugLog('📋 CONFIG.columns.requests:', CONFIG.columns.requests);
+    debugLog('👥 CONFIG.columns.riders:', CONFIG.columns.riders);
     
     const requestsData = getRequestsData();
     if (requestsData && requestsData.columnMap) {
-      console.log('\n📊 Requests column mapping:');
-      console.log('  status column exists:', CONFIG.columns.requests.status in requestsData.columnMap);
-      console.log('  ridersAssigned column exists:', CONFIG.columns.requests.ridersAssigned in requestsData.columnMap);
-      console.log('  date column exists:', CONFIG.columns.requests.date in requestsData.columnMap);
-      console.log('  Available columns:', Object.keys(requestsData.columnMap));
+      debugLog('\n📊 Requests column mapping:');
+      debugLog('  status column exists:', CONFIG.columns.requests.status in requestsData.columnMap);
+      debugLog('  ridersAssigned column exists:', CONFIG.columns.requests.ridersAssigned in requestsData.columnMap);
+      debugLog('  date column exists:', CONFIG.columns.requests.date in requestsData.columnMap);
+      debugLog('  Available columns:', Object.keys(requestsData.columnMap));
     }
     
     const ridersData = getRidersData();
     if (ridersData && ridersData.columnMap) {
-      console.log('\n👥 Riders column mapping:');
-      console.log('  name column exists:', CONFIG.columns.riders.name in ridersData.columnMap);
-      console.log('  status column exists:', CONFIG.columns.riders.status in ridersData.columnMap);
-      console.log('  Available columns:', Object.keys(ridersData.columnMap));
+      debugLog('\n👥 Riders column mapping:');
+      debugLog('  name column exists:', CONFIG.columns.riders.name in ridersData.columnMap);
+      debugLog('  status column exists:', CONFIG.columns.riders.status in ridersData.columnMap);
+      debugLog('  Available columns:', Object.keys(ridersData.columnMap));
     }
     
     return { success: true };
@@ -188,7 +188,7 @@ function testColumnMappings() {
  */
 function generateReportDataMinimal(filters) {
   try {
-    console.log('🔧 === MINIMAL REPORT DATA GENERATION ===');
+    debugLog('🔧 === MINIMAL REPORT DATA GENERATION ===');
     
     // Just return basic structure to test if the issue is in the logic
     const result = {
@@ -215,7 +215,7 @@ function generateReportDataMinimal(filters) {
       }
     };
     
-    console.log('✅ Minimal structure created successfully');
+    debugLog('✅ Minimal structure created successfully');
     return result;
     
   } catch (error) {
@@ -231,39 +231,39 @@ function generateReportDataMinimal(filters) {
  * COMPLETE DIAGNOSTIC - Run this to find the exact issue
  */
 function runCompleteReportDiagnostic() {
-  console.log('🚀 === COMPLETE REPORT DIAGNOSTIC ===');
+  debugLog('🚀 === COMPLETE REPORT DIAGNOSTIC ===');
   
   try {
-    console.log('\n1️⃣ Testing data retrieval...');
+    debugLog('\n1️⃣ Testing data retrieval...');
     const dataTest = testDataRetrieval();
     if (!dataTest.success) {
-      console.log('❌ Data retrieval failed:', dataTest);
+      debugLog('❌ Data retrieval failed:', dataTest);
       return dataTest;
     }
     
-    console.log('\n2️⃣ Testing column mappings...');
+    debugLog('\n2️⃣ Testing column mappings...');
     const columnTest = testColumnMappings();
     if (!columnTest.success) {
-      console.log('❌ Column mapping failed:', columnTest);
+      debugLog('❌ Column mapping failed:', columnTest);
       return columnTest;
     }
     
-    console.log('\n3️⃣ Testing minimal report generation...');
+    debugLog('\n3️⃣ Testing minimal report generation...');
     const minimalTest = generateReportDataMinimal({});
     if (!minimalTest.success) {
-      console.log('❌ Even minimal generation failed:', minimalTest);
+      debugLog('❌ Even minimal generation failed:', minimalTest);
       return minimalTest;
     }
     
-    console.log('\n4️⃣ Testing full report loading...');
+    debugLog('\n4️⃣ Testing full report loading...');
     const reportTest = debugReportLoading();
     if (!reportTest.success) {
-      console.log('❌ Full report loading failed:', reportTest);
+      debugLog('❌ Full report loading failed:', reportTest);
       return reportTest;
     }
     
-    console.log('\n🎉 ALL TESTS PASSED!');
-    console.log('The issue may be in the frontend or how the data is being called.');
+    debugLog('\n🎉 ALL TESTS PASSED!');
+    debugLog('The issue may be in the frontend or how the data is being called.');
     
     return { 
       success: true, 
@@ -285,7 +285,7 @@ function runCompleteReportDiagnostic() {
  * QUICK TEST - Test the exact scenario
  */
 function quickReportTest() {
-  console.log('⚡ === QUICK REPORT TEST ===');
+  debugLog('⚡ === QUICK REPORT TEST ===');
   
   try {
     // Test the exact same call pattern as the frontend
@@ -296,23 +296,23 @@ function quickReportTest() {
       status: 'All'
     };
     
-    console.log('Testing generateReportData with filters:', filters);
+    debugLog('Testing generateReportData with filters:', filters);
     const result = generateReportData(filters);
     
-    console.log('Result type:', typeof result);
-    console.log('Result structure:', Object.keys(result || {}));
-    console.log('Success flag:', result?.success);
-    console.log('Error:', result?.error);
+    debugLog('Result type:', typeof result);
+    debugLog('Result structure:', Object.keys(result || {}));
+    debugLog('Success flag:', result?.success);
+    debugLog('Error:', result?.error);
     
     if (result && result.totalRequests !== undefined) {
-      console.log('✅ SUCCESS: generateReportData returned valid data');
-      console.log('📊 Data summary:', {
+      debugLog('✅ SUCCESS: generateReportData returned valid data');
+      debugLog('📊 Data summary:', {
         totalRequests: result.totalRequests,
         completedRequests: result.completedRequests,
         riderHours: result.riderHours?.length || 0
       });
     } else {
-      console.log('❌ FAILED: generateReportData did not return expected structure');
+      debugLog('❌ FAILED: generateReportData did not return expected structure');
     }
     
     return result;
@@ -323,7 +323,7 @@ function quickReportTest() {
   }
 }
 function testCorrectedRiderCalculation() {
-  console.log('🔧 === TESTING CORRECTED RIDER CALCULATION ===');
+  debugLog('🔧 === TESTING CORRECTED RIDER CALCULATION ===');
   
   try {
     const ridersData = getRidersData();
@@ -344,7 +344,7 @@ function testCorrectedRiderCalculation() {
       return matchesDate;
     });
     
-    console.log('📊 Data loaded - riders:', ridersData.data.length, 'filtered requests:', filteredRequests.length);
+    debugLog('📊 Data loaded - riders:', ridersData.data.length, 'filtered requests:', filteredRequests.length);
     
     // Test the CORRECTED rider calculation
     const riderHours = [];
@@ -397,18 +397,18 @@ function testCorrectedRiderCalculation() {
     
     const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
     
-    console.log('✅ CORRECTED VERSION WORKS!');
-    console.log(`📊 Results: ${riderHours.length} riders with ${totalEscorts} total escorts`);
-    console.log('👥 Rider breakdown:');
+    debugLog('✅ CORRECTED VERSION WORKS!');
+    debugLog(`📊 Results: ${riderHours.length} riders with ${totalEscorts} total escorts`);
+    debugLog('👥 Rider breakdown:');
     riderHours.forEach(rider => {
-      console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+      debugLog(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
     });
     
-    console.log('\n📝 TO FIX THE ERROR:');
-    console.log('1. Find the rider performance calculation section in generateReportData()');
-    console.log('2. Replace it with the corrected code above');
-    console.log('3. Make sure ALL variable declarations are inside the proper scope');
-    console.log('4. Save and test the reports page');
+    debugLog('\n📝 TO FIX THE ERROR:');
+    debugLog('1. Find the rider performance calculation section in generateReportData()');
+    debugLog('2. Replace it with the corrected code above');
+    debugLog('3. Make sure ALL variable declarations are inside the proper scope');
+    debugLog('4. Save and test the reports page');
     
     return { success: true, riderHours, totalEscorts };
     
@@ -419,7 +419,7 @@ function testCorrectedRiderCalculation() {
 }
 
 function findRiderNameError() {
-  console.log('🔍 === FINDING RIDERNAME ERROR ===');
+  debugLog('🔍 === FINDING RIDERNAME ERROR ===');
   
   try {
     // Try to reproduce the exact error
@@ -442,10 +442,10 @@ function findRiderNameError() {
       return matchesDate;
     });
     
-    console.log('📊 Test data ready - riders:', ridersData.data.length, 'requests:', filteredRequests.length);
+    debugLog('📊 Test data ready - riders:', ridersData.data.length, 'requests:', filteredRequests.length);
     
     // Test the problematic section step by step
-    console.log('\n🧪 Testing rider loop...');
+    debugLog('\n🧪 Testing rider loop...');
     
     let errorFound = false;
     let errorDetails = null;
@@ -454,12 +454,12 @@ function findRiderNameError() {
       try {
         // This is where the error likely occurs
         const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-        console.log(`✅ Rider ${index + 1}: ${riderName || '[no name]'}`);
+        debugLog(`✅ Rider ${index + 1}: ${riderName || '[no name]'}`);
         
         if (index < 3) { // Test first 3 riders
           filteredRequests.slice(0, 2).forEach((request, reqIndex) => {
             const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-            console.log(`  Request ${reqIndex + 1}: ridersAssigned = "${ridersAssigned}"`);
+            debugLog(`  Request ${reqIndex + 1}: ridersAssigned = "${ridersAssigned}"`);
             
             if (ridersAssigned) {
               const assignedRidersList = String(ridersAssigned).split(',')
@@ -470,7 +470,7 @@ function findRiderNameError() {
                 assignedName.toLowerCase() === riderName.toLowerCase()
               );
               
-              console.log(`    Assigned list: [${assignedRidersList.join(', ')}], matches: ${isAssigned}`);
+              debugLog(`    Assigned list: [${assignedRidersList.join(', ')}], matches: ${isAssigned}`);
             }
           });
         }
@@ -486,10 +486,10 @@ function findRiderNameError() {
     });
     
     if (!errorFound) {
-      console.log('✅ No error found in step-by-step test');
-      console.log('🔍 The error might be in a different part of the rider calculation');
+      debugLog('✅ No error found in step-by-step test');
+      debugLog('🔍 The error might be in a different part of the rider calculation');
     } else {
-      console.log('❌ Error reproduced:', errorDetails);
+      debugLog('❌ Error reproduced:', errorDetails);
     }
     
     return { errorFound, errorDetails };
@@ -501,25 +501,25 @@ function findRiderNameError() {
 }
 
 function fixRiderNameError() {
-  console.log('🚀 === FIXING RIDERNAME ERROR ===');
+  debugLog('🚀 === FIXING RIDERNAME ERROR ===');
   
   try {
-    console.log('\n1️⃣ Finding the error...');
+    debugLog('\n1️⃣ Finding the error...');
     const errorDiag = findRiderNameError();
     
-    console.log('\n2️⃣ Testing corrected version...');
+    debugLog('\n2️⃣ Testing corrected version...');
     const correctedTest = testCorrectedRiderCalculation();
     
     if (correctedTest.success) {
-      console.log('\n🎉 SUCCESS! Corrected version works perfectly');
-      console.log('\n📋 IMPLEMENTATION:');
-      console.log('The error is caused by variable scope issues in your rider calculation.');
-      console.log('Replace the rider performance section with the corrected code above.');
-      console.log('Key fix: Ensure "const riderName" is declared inside the forEach loop.');
+      debugLog('\n🎉 SUCCESS! Corrected version works perfectly');
+      debugLog('\n📋 IMPLEMENTATION:');
+      debugLog('The error is caused by variable scope issues in your rider calculation.');
+      debugLog('Replace the rider performance section with the corrected code above.');
+      debugLog('Key fix: Ensure "const riderName" is declared inside the forEach loop.');
       
       return { success: true, errorDiag, correctedTest };
     } else {
-      console.log('\n⚠️ Corrected version still has issues');
+      debugLog('\n⚠️ Corrected version still has issues');
       return { success: false, errorDiag, correctedTest };
     }
     
@@ -529,7 +529,7 @@ function fixRiderNameError() {
   }
 }
 function diagnoseReportError() {
-  console.log('🔍 === DIAGNOSING REPORT ERROR ===');
+  debugLog('🔍 === DIAGNOSING REPORT ERROR ===');
   
   try {
     // Test the same call that the reports page makes
@@ -540,23 +540,23 @@ function diagnoseReportError() {
       status: 'All'
     };
     
-    console.log('📅 Testing with filters:', filters);
+    debugLog('📅 Testing with filters:', filters);
     
     // Try to call generateReportData and catch any errors
-    console.log('\n🧪 Calling generateReportData()...');
+    debugLog('\n🧪 Calling generateReportData()...');
     const result = generateReportData(filters);
     
-    console.log('✅ generateReportData() completed successfully');
-    console.log('📊 Result structure:', Object.keys(result || {}));
+    debugLog('✅ generateReportData() completed successfully');
+    debugLog('📊 Result structure:', Object.keys(result || {}));
     
     // Check if result has expected structure
     const expectedKeys = ['totalRequests', 'completedRequests', 'riderHours', 'requestTypes'];
     const missingKeys = expectedKeys.filter(key => !(key in (result || {})));
     
     if (missingKeys.length > 0) {
-      console.log('⚠️ Missing expected keys:', missingKeys);
+      debugLog('⚠️ Missing expected keys:', missingKeys);
     } else {
-      console.log('✅ Result has expected structure');
+      debugLog('✅ Result has expected structure');
     }
     
     return { success: true, result, missingKeys };
@@ -576,7 +576,7 @@ function diagnoseReportError() {
 }
 
 function implementSafeReportData() {
-  console.log('🔧 === IMPLEMENTING SAFE REPORT DATA ===');
+  debugLog('🔧 === IMPLEMENTING SAFE REPORT DATA ===');
   
   try {
     // Test the safe version first
@@ -587,25 +587,25 @@ function implementSafeReportData() {
       status: 'All'
     };
     
-    console.log('🧪 Testing safe version...');
+    debugLog('🧪 Testing safe version...');
     const result = generateReportDataSafe(filters);
     
     if (result.success) {
-      console.log('✅ Safe version works perfectly!');
-      console.log('📊 Results:', {
+      debugLog('✅ Safe version works perfectly!');
+      debugLog('📊 Results:', {
         completedRequests: result.completedRequests,
         riderHours: result.riderHours.length,
         totalEscorts: result.riderHours.reduce((sum, rider) => sum + rider.escorts, 0)
       });
       
-      console.log('\n📝 IMPLEMENTATION STEPS:');
-      console.log('1. Replace your current generateReportData() function with generateReportDataSafe()');
-      console.log('2. Rename generateReportDataSafe to generateReportData');
-      console.log('3. Test your reports page - it should load without errors');
+      debugLog('\n📝 IMPLEMENTATION STEPS:');
+      debugLog('1. Replace your current generateReportData() function with generateReportDataSafe()');
+      debugLog('2. Rename generateReportDataSafe to generateReportData');
+      debugLog('3. Test your reports page - it should load without errors');
       
       return { success: true, result };
     } else {
-      console.log('❌ Safe version still has issues:', result.error);
+      debugLog('❌ Safe version still has issues:', result.error);
       return { success: false, error: result.error };
     }
     
@@ -619,29 +619,29 @@ function implementSafeReportData() {
  * COMPLETE ERROR RESOLUTION
  */
 function fixReportFeaturesError() {
-  console.log('🚀 === FIXING REPORT FEATURES ERROR ===');
+  debugLog('🚀 === FIXING REPORT FEATURES ERROR ===');
   
   try {
-    console.log('\n1️⃣ Diagnosing current error...');
+    debugLog('\n1️⃣ Diagnosing current error...');
     const diagnosis = diagnoseReportError();
     
     if (diagnosis.success) {
-      console.log('✅ No error found in generateReportData()');
-      console.log('   The issue might be elsewhere in the system');
+      debugLog('✅ No error found in generateReportData()');
+      debugLog('   The issue might be elsewhere in the system');
       return { success: true, message: 'No error detected' };
     } else {
-      console.log('❌ Error confirmed:', diagnosis.error);
+      debugLog('❌ Error confirmed:', diagnosis.error);
       
-      console.log('\n2️⃣ Testing safe replacement...');
+      debugLog('\n2️⃣ Testing safe replacement...');
       const implementation = implementSafeReportData();
       
       if (implementation.success) {
-        console.log('\n🎉 SOLUTION FOUND!');
-        console.log('✅ Safe version works and will fix the error');
-        console.log('\n📋 TO FIX THE ERROR:');
-        console.log('1. Replace generateReportData() function with generateReportDataSafe()');
-        console.log('2. Rename it back to generateReportData');
-        console.log('3. Save and test reports page');
+        debugLog('\n🎉 SOLUTION FOUND!');
+        debugLog('✅ Safe version works and will fix the error');
+        debugLog('\n📋 TO FIX THE ERROR:');
+        debugLog('1. Replace generateReportData() function with generateReportDataSafe()');
+        debugLog('2. Rename it back to generateReportData');
+        debugLog('3. Save and test reports page');
         
         return {
           success: true,
@@ -650,8 +650,8 @@ function fixReportFeaturesError() {
           implementation
         };
       } else {
-        console.log('\n⚠️ Safe version also has issues');
-        console.log('May need deeper investigation');
+        debugLog('\n⚠️ Safe version also has issues');
+        debugLog('May need deeper investigation');
         return { success: false, diagnosis, implementation };
       }
     }
@@ -662,7 +662,7 @@ function fixReportFeaturesError() {
   }
 }
 function diagnoseGenerateReportData() {
-  console.log('🔍 === DIAGNOSING generateReportData() INCONSISTENCY ===');
+  debugLog('🔍 === DIAGNOSING generateReportData() INCONSISTENCY ===');
   
   try {
     // Get the same filters that the reports page would use
@@ -677,24 +677,24 @@ function diagnoseGenerateReportData() {
       status: 'All'
     };
     
-    console.log(`📅 Using filters:`, filters);
+    debugLog(`📅 Using filters:`, filters);
     
     // Test the current generateReportData function
-    console.log('\n🧪 Testing current generateReportData()...');
+    debugLog('\n🧪 Testing current generateReportData()...');
     const reportData = generateReportData(filters);
     
-    console.log('\n📊 CURRENT RESULTS:');
-    console.log(`Total Requests: ${reportData.totalRequests || 'undefined'}`);
-    console.log(`Completed Requests: ${reportData.completedRequests || 'undefined'}`);
-    console.log(`Rider Hours entries: ${reportData.riderHours ? reportData.riderHours.length : 'undefined'}`);
+    debugLog('\n📊 CURRENT RESULTS:');
+    debugLog(`Total Requests: ${reportData.totalRequests || 'undefined'}`);
+    debugLog(`Completed Requests: ${reportData.completedRequests || 'undefined'}`);
+    debugLog(`Rider Hours entries: ${reportData.riderHours ? reportData.riderHours.length : 'undefined'}`);
     
     if (reportData.riderHours) {
       const totalEscorts = reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-      console.log(`Total Escorts from Rider Hours: ${totalEscorts}`);
+      debugLog(`Total Escorts from Rider Hours: ${totalEscorts}`);
       
-      console.log('\n👥 Rider breakdown:');
+      debugLog('\n👥 Rider breakdown:');
       reportData.riderHours.forEach(rider => {
-        console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+        debugLog(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
       });
     }
     
@@ -703,17 +703,17 @@ function diagnoseGenerateReportData() {
     const riderEscortsCount = reportData.riderHours ? 
       reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0) : 0;
     
-    console.log('\n🎯 === DISCREPANCY ANALYSIS ===');
-    console.log(`Completed Requests (from requests data): ${completedCount}`);
-    console.log(`Rider Escorts (from assignments data): ${riderEscortsCount}`);
-    console.log(`Gap: ${Math.abs(completedCount - riderEscortsCount)}`);
+    debugLog('\n🎯 === DISCREPANCY ANALYSIS ===');
+    debugLog(`Completed Requests (from requests data): ${completedCount}`);
+    debugLog(`Rider Escorts (from assignments data): ${riderEscortsCount}`);
+    debugLog(`Gap: ${Math.abs(completedCount - riderEscortsCount)}`);
     
     if (Math.abs(completedCount - riderEscortsCount) > 10) {
-      console.log('\n❌ CONFIRMED: generateReportData() has data source inconsistency!');
-      console.log('   Main stats use requests data, rider performance uses assignments data');
-      console.log('\n💡 SOLUTION: Update rider performance calculation to use requests data');
+      debugLog('\n❌ CONFIRMED: generateReportData() has data source inconsistency!');
+      debugLog('   Main stats use requests data, rider performance uses assignments data');
+      debugLog('\n💡 SOLUTION: Update rider performance calculation to use requests data');
     } else {
-      console.log('\n✅ No major discrepancy found in generateReportData()');
+      debugLog('\n✅ No major discrepancy found in generateReportData()');
     }
     
     return {
@@ -733,7 +733,7 @@ function diagnoseGenerateReportData() {
  * TEST: What the fixed version would produce
  */
 function testFixedGenerateReportData() {
-  console.log('🧪 === TESTING FIXED generateReportData() LOGIC ===');
+  debugLog('🧪 === TESTING FIXED generateReportData() LOGIC ===');
   
   try {
     // Simulate the same logic as the fixed version
@@ -761,7 +761,7 @@ function testFixedGenerateReportData() {
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
     ).length;
     
-    console.log(`📊 Completed requests: ${completedRequests}`);
+    debugLog(`📊 Completed requests: ${completedRequests}`);
     
     // FIXED: Calculate rider performance from requests data instead of assignments
     const riderHours = [];
@@ -816,22 +816,22 @@ function testFixedGenerateReportData() {
     
     const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
     
-    console.log('\n🔧 FIXED VERSION RESULTS:');
-    console.log(`Completed Requests: ${completedRequests}`);
-    console.log(`Rider Escorts: ${totalEscorts}`);
-    console.log(`Gap: ${Math.abs(completedRequests - totalEscorts)}`);
-    console.log(`Riders with activity: ${riderHours.length}`);
+    debugLog('\n🔧 FIXED VERSION RESULTS:');
+    debugLog(`Completed Requests: ${completedRequests}`);
+    debugLog(`Rider Escorts: ${totalEscorts}`);
+    debugLog(`Gap: ${Math.abs(completedRequests - totalEscorts)}`);
+    debugLog(`Riders with activity: ${riderHours.length}`);
     
     if (Math.abs(completedRequests - totalEscorts) < 10) {
-      console.log('\n✅ SUCCESS: Fixed version shows consistent numbers!');
-      console.log('📝 IMPLEMENTATION: Replace the rider performance section in generateReportData()');
+      debugLog('\n✅ SUCCESS: Fixed version shows consistent numbers!');
+      debugLog('📝 IMPLEMENTATION: Replace the rider performance section in generateReportData()');
     } else {
-      console.log('\n⚠️ Gap still exists. May need additional investigation.');
+      debugLog('\n⚠️ Gap still exists. May need additional investigation.');
     }
     
-    console.log('\n👥 Fixed rider breakdown:');
+    debugLog('\n👥 Fixed rider breakdown:');
     riderHours.forEach(rider => {
-      console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+      debugLog(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
     });
     
     return {
@@ -851,35 +851,35 @@ function testFixedGenerateReportData() {
  * COMPLETE SOLUTION TEST
  */
 function testCompleteGenerateReportDataFix() {
-  console.log('🚀 === COMPLETE generateReportData() FIX TEST ===');
+  debugLog('🚀 === COMPLETE generateReportData() FIX TEST ===');
   
   try {
-    console.log('\n1️⃣ Diagnosing current generateReportData()...');
+    debugLog('\n1️⃣ Diagnosing current generateReportData()...');
     const diagnosis = diagnoseGenerateReportData();
     
-    console.log('\n2️⃣ Testing fixed version...');
+    debugLog('\n2️⃣ Testing fixed version...');
     const fixedTest = testFixedGenerateReportData();
     
-    console.log('\n🎯 === COMPARISON SUMMARY ===');
-    console.log(`BEFORE (Current):`);
-    console.log(`  Completed Requests: ${diagnosis.completedRequests}`);
-    console.log(`  Rider Escorts: ${diagnosis.riderEscorts}`);
-    console.log(`  Gap: ${diagnosis.gap}`);
+    debugLog('\n🎯 === COMPARISON SUMMARY ===');
+    debugLog(`BEFORE (Current):`);
+    debugLog(`  Completed Requests: ${diagnosis.completedRequests}`);
+    debugLog(`  Rider Escorts: ${diagnosis.riderEscorts}`);
+    debugLog(`  Gap: ${diagnosis.gap}`);
     
-    console.log(`\nAFTER (Fixed):`);
-    console.log(`  Completed Requests: ${fixedTest.completedRequests}`);
-    console.log(`  Rider Escorts: ${fixedTest.riderEscorts}`);
-    console.log(`  Gap: ${fixedTest.gap}`);
+    debugLog(`\nAFTER (Fixed):`);
+    debugLog(`  Completed Requests: ${fixedTest.completedRequests}`);
+    debugLog(`  Rider Escorts: ${fixedTest.riderEscorts}`);
+    debugLog(`  Gap: ${fixedTest.gap}`);
     
     const improvement = diagnosis.gap - fixedTest.gap;
-    console.log(`\nImprovement: ${improvement} (smaller gap is better)`);
+    debugLog(`\nImprovement: ${improvement} (smaller gap is better)`);
     
     if (fixedTest.gap < 10 && diagnosis.gap > 50) {
-      console.log('\n🎉 EXCELLENT! The fix resolves the discrepancy');
-      console.log('\n📝 NEXT STEPS:');
-      console.log('1. Locate the "Calculate rider performance" section in generateReportData()');
-      console.log('2. Replace it with the fixed code above');
-      console.log('3. Test your reports page - numbers should now match!');
+      debugLog('\n🎉 EXCELLENT! The fix resolves the discrepancy');
+      debugLog('\n📝 NEXT STEPS:');
+      debugLog('1. Locate the "Calculate rider performance" section in generateReportData()');
+      debugLog('2. Replace it with the fixed code above');
+      debugLog('3. Test your reports page - numbers should now match!');
     }
     
     return { diagnosis, fixedTest, improvement };
@@ -898,7 +898,7 @@ var AUTH_TRACE = [];
  * Trace function calls to see which authentication functions are being used
  */
 function checkRidersAssignedColumn() {
-  console.log('🔍 === CHECKING RIDERS ASSIGNED COLUMN ===');
+  debugLog('🔍 === CHECKING RIDERS ASSIGNED COLUMN ===');
   
   try {
     const requestsData = getRequestsData();
@@ -906,14 +906,14 @@ function checkRidersAssignedColumn() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 30);
     
-    console.log('📊 Column Analysis:');
-    console.log(`CONFIG.columns.requests.ridersAssigned = "${CONFIG.columns.requests.ridersAssigned}"`);
-    console.log(`Column index = ${requestsData.columnMap[CONFIG.columns.requests.ridersAssigned]}`);
+    debugLog('📊 Column Analysis:');
+    debugLog(`CONFIG.columns.requests.ridersAssigned = "${CONFIG.columns.requests.ridersAssigned}"`);
+    debugLog(`Column index = ${requestsData.columnMap[CONFIG.columns.requests.ridersAssigned]}`);
     
     // Check if the column exists
     if (requestsData.columnMap[CONFIG.columns.requests.ridersAssigned] === undefined) {
-      console.log('❌ MAJOR ISSUE: ridersAssigned column not found in sheet!');
-      console.log('📋 Available columns:', Object.keys(requestsData.columnMap));
+      debugLog('❌ MAJOR ISSUE: ridersAssigned column not found in sheet!');
+      debugLog('📋 Available columns:', Object.keys(requestsData.columnMap));
       return { issue: 'COLUMN_NOT_FOUND', availableColumns: Object.keys(requestsData.columnMap) };
     }
     
@@ -962,30 +962,30 @@ function checkRidersAssignedColumn() {
           
           // Show first 5 empty examples
           if (requestsWithEmptyRiders <= 5) {
-            console.log(`❌ Request ${requestId}: Status='Completed' but ridersAssigned='${ridersValue}' (type: ${typeof ridersValue})`);
+            debugLog(`❌ Request ${requestId}: Status='Completed' but ridersAssigned='${ridersValue}' (type: ${typeof ridersValue})`);
           }
         }
       }
     });
     
-    console.log('\n📊 RESULTS:');
-    console.log(`Total completed requests in range: ${completedRequests}`);
-    console.log(`Requests WITH riders assigned: ${requestsWithRiders}`);
-    console.log(`Requests WITH EMPTY riders assigned: ${requestsWithEmptyRiders}`);
-    console.log('\n📝 Examples of ridersAssigned values:');
+    debugLog('\n📊 RESULTS:');
+    debugLog(`Total completed requests in range: ${completedRequests}`);
+    debugLog(`Requests WITH riders assigned: ${requestsWithRiders}`);
+    debugLog(`Requests WITH EMPTY riders assigned: ${requestsWithEmptyRiders}`);
+    debugLog('\n📝 Examples of ridersAssigned values:');
     ridersAssignedExamples.forEach(example => {
-      console.log(`  ${example.requestId}: "${example.ridersString}" (${example.type}, length ${example.length})`);
+      debugLog(`  ${example.requestId}: "${example.ridersString}" (${example.type}, length ${example.length})`);
     });
     
     // This is likely the issue!
     if (requestsWithEmptyRiders > requestsWithRiders) {
-      console.log('\n🎯 === ISSUE IDENTIFIED ===');
-      console.log('❌ MAJOR PROBLEM: Most completed requests have empty ridersAssigned field!');
-      console.log(`   ${requestsWithEmptyRiders} requests have no riders assigned`);
-      console.log(`   ${requestsWithRiders} requests have riders assigned`);
-      console.log('\n💡 SOLUTION NEEDED:');
-      console.log('   Option 1: Populate ridersAssigned field in completed requests');
-      console.log('   Option 2: Modify function to get riders from assignments when field is empty');
+      debugLog('\n🎯 === ISSUE IDENTIFIED ===');
+      debugLog('❌ MAJOR PROBLEM: Most completed requests have empty ridersAssigned field!');
+      debugLog(`   ${requestsWithEmptyRiders} requests have no riders assigned`);
+      debugLog(`   ${requestsWithRiders} requests have riders assigned`);
+      debugLog('\n💡 SOLUTION NEEDED:');
+      debugLog('   Option 1: Populate ridersAssigned field in completed requests');
+      debugLog('   Option 2: Modify function to get riders from assignments when field is empty');
     }
     
     return {
@@ -4049,7 +4049,7 @@ function setupActualCompletionTimeColumns() {
  */
 function generateRiderActivityReport(startDate, endDate) {
   try {
-    console.log('🔧 === FIXED RIDER ACTIVITY REPORT ===');
+    debugLog('🔧 === FIXED RIDER ACTIVITY REPORT ===');
     
     const requestsData = getRequestsData();
     const start = parseDateString(startDate);
@@ -4061,7 +4061,7 @@ function generateRiderActivityReport(startDate, endDate) {
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    console.log(`📅 Date range: ${start.toDateString()} to ${end.toDateString()}`);
+    debugLog(`📅 Date range: ${start.toDateString()} to ${end.toDateString()}`);
 
     const riderMap = {};
 
@@ -4082,14 +4082,14 @@ function generateRiderActivityReport(startDate, endDate) {
         matchesDate = requestDate >= start && requestDate <= end;
       } else {
         // If no valid date, include it (assume it's recent)
-        console.log(`⚠️ Including request with no/invalid date: ${getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId)}`);
+        debugLog(`⚠️ Including request with no/invalid date: ${getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId)}`);
         matchesDate = true;
       }
       
       return matchesDate;
     });
 
-    console.log(`📊 Found ${completedRequests.length} completed requests (including those without dates)`);
+    debugLog(`📊 Found ${completedRequests.length} completed requests (including those without dates)`);
 
     let totalRiderAssignments = 0;
     
@@ -4103,7 +4103,7 @@ function generateRiderActivityReport(startDate, endDate) {
         .filter(name => name && name.length > 0);
       
       if (assignedRidersList.length > 0) {
-        console.log(`📋 Request ${requestId}: ${assignedRidersList.length} riders - [${assignedRidersList.join(', ')}]`);
+        debugLog(`📋 Request ${requestId}: ${assignedRidersList.length} riders - [${assignedRidersList.join(', ')}]`);
         totalRiderAssignments += assignedRidersList.length;
       }
       
@@ -4130,7 +4130,7 @@ function generateRiderActivityReport(startDate, endDate) {
     }));
 
     const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-    console.log(`✅ FIXED RESULT: ${riderHours.length} riders with ${totalEscorts} total escorts (${totalRiderAssignments} total assignments)`);
+    debugLog(`✅ FIXED RESULT: ${riderHours.length} riders with ${totalEscorts} total escorts (${totalRiderAssignments} total assignments)`);
 
     return {
       success: true,
@@ -4149,7 +4149,7 @@ function generateRiderActivityReport(startDate, endDate) {
 }
 
 function testColumnMappingFix() {
-  console.log('🧪 === TESTING COLUMN MAPPING FIX ===');
+  debugLog('🧪 === TESTING COLUMN MAPPING FIX ===');
   
   try {
     // Get test date range
@@ -4160,29 +4160,29 @@ function testColumnMappingFix() {
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
     
-    console.log(`📅 Testing date range: ${startDateStr} to ${endDateStr}`);
+    debugLog(`📅 Testing date range: ${startDateStr} to ${endDateStr}`);
     
     // Test with the corrected function
-    console.log('\n🔧 Testing CORRECTED function...');
+    debugLog('\n🔧 Testing CORRECTED function...');
     const result = generateRiderActivityReport(startDateStr, endDateStr);
     
     if (result.success) {
       const totalEscorts = result.data.reduce((sum, rider) => sum + rider.escorts, 0);
-      console.log(`✅ SUCCESS: Found ${totalEscorts} total escorts from ${result.data.length} riders`);
-      console.log('📊 Rider breakdown:', result.data);
+      debugLog(`✅ SUCCESS: Found ${totalEscorts} total escorts from ${result.data.length} riders`);
+      debugLog('📊 Rider breakdown:', result.data);
       
       if (totalEscorts > 50) {
-        console.log('🎯 EXCELLENT: The fix found significantly more escorts!');
-        console.log('');
-        console.log('📝 NEXT STEPS:');
-        console.log('1. Replace your generateRiderActivityReport function with the corrected version above');
-        console.log('2. The key change is: CONFIG.columns.requests.eventDate instead of CONFIG.columns.requests.date');
-        console.log('3. Test your reports page - numbers should now match!');
+        debugLog('🎯 EXCELLENT: The fix found significantly more escorts!');
+        debugLog('');
+        debugLog('📝 NEXT STEPS:');
+        debugLog('1. Replace your generateRiderActivityReport function with the corrected version above');
+        debugLog('2. The key change is: CONFIG.columns.requests.eventDate instead of CONFIG.columns.requests.date');
+        debugLog('3. Test your reports page - numbers should now match!');
       } else {
-        console.log('⚠️ Still low numbers. May need additional investigation.');
+        debugLog('⚠️ Still low numbers. May need additional investigation.');
       }
     } else {
-      console.log('❌ Test failed:', result.error);
+      debugLog('❌ Test failed:', result.error);
     }
     
     return result;
@@ -4197,7 +4197,7 @@ function testColumnMappingFix() {
  * QUICK COMPARISON: Old vs New column mapping
  */
 function compareColumnMappings() {
-  console.log('🔍 === COLUMN MAPPING COMPARISON ===');
+  debugLog('🔍 === COLUMN MAPPING COMPARISON ===');
   
   try {
     const requestsData = getRequestsData();
@@ -4237,19 +4237,19 @@ function compareColumnMappings() {
       }
     });
     
-    console.log('📊 COLUMN MAPPING COMPARISON:');
-    console.log(`Using CONFIG.columns.requests.date: ${countWithDate} completed requests`);
-    console.log(`Using CONFIG.columns.requests.eventDate: ${countWithEventDate} completed requests`);
-    console.log('');
+    debugLog('📊 COLUMN MAPPING COMPARISON:');
+    debugLog(`Using CONFIG.columns.requests.date: ${countWithDate} completed requests`);
+    debugLog(`Using CONFIG.columns.requests.eventDate: ${countWithEventDate} completed requests`);
+    debugLog('');
     
     if (countWithEventDate > countWithDate) {
-      console.log('✅ CONFIRMED: eventDate column has more data than date column');
-      console.log('🔧 FIX: Change CONFIG.columns.requests.date to CONFIG.columns.requests.eventDate');
+      debugLog('✅ CONFIRMED: eventDate column has more data than date column');
+      debugLog('🔧 FIX: Change CONFIG.columns.requests.date to CONFIG.columns.requests.eventDate');
     } else if (countWithDate > countWithEventDate) {
-      console.log('⚠️ WARNING: date column has more data than eventDate column');
-      console.log('🔧 Your system might use the date column instead');
+      debugLog('⚠️ WARNING: date column has more data than eventDate column');
+      debugLog('🔧 Your system might use the date column instead');
     } else {
-      console.log('🤔 Both columns have the same count. May need different investigation.');
+      debugLog('🤔 Both columns have the same count. May need different investigation.');
     }
     
     return {

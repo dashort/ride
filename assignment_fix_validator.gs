@@ -4,7 +4,7 @@
  */
 
 function validateAndFixAssignments() {
-  console.log('🔍 Validating assignment fixes...');
+  debugLog('🔍 Validating assignment fixes...');
   
   const result = {
     success: false,
@@ -16,18 +16,18 @@ function validateAndFixAssignments() {
   
   try {
     // Step 1: Check if assignments sheet exists and has data
-    console.log('\n=== STEP 1: CHECKING ASSIGNMENT DATA ===');
+    debugLog('\n=== STEP 1: CHECKING ASSIGNMENT DATA ===');
     const dataCheck = checkAssignmentData();
     
     if (dataCheck.needsSampleData) {
-      console.log('\n=== STEP 2: CREATING SAMPLE DATA ===');
+      debugLog('\n=== STEP 2: CREATING SAMPLE DATA ===');
       const sampleResult = createSampleAssignmentData();
       result.sampleDataCreated = sampleResult.success;
       result.fixes.push(`Created ${sampleResult.count} sample assignments`);
     }
     
     // Step 3: Test getAllAssignmentsForNotifications
-    console.log('\n=== STEP 3: TESTING FUNCTION ===');
+    debugLog('\n=== STEP 3: TESTING FUNCTION ===');
     const functionTest = testGetAllAssignmentsForNotifications();
     result.assignmentCount = functionTest.count;
     result.success = functionTest.success;
@@ -37,17 +37,17 @@ function validateAndFixAssignments() {
     }
     
     // Step 4: Fix missing rider names if any
-    console.log('\n=== STEP 4: FIXING RIDER NAMES ===');
+    debugLog('\n=== STEP 4: FIXING RIDER NAMES ===');
     const riderFix = fixMissingRiderNames();
     if (riderFix.fixed > 0) {
       result.fixes.push(`Fixed ${riderFix.fixed} missing rider names`);
     }
     
-    console.log('\n=== VALIDATION COMPLETE ===');
+    debugLog('\n=== VALIDATION COMPLETE ===');
     if (result.success) {
-      console.log(`✅ SUCCESS: ${result.assignmentCount} assignments now loading correctly`);
+      debugLog(`✅ SUCCESS: ${result.assignmentCount} assignments now loading correctly`);
     } else {
-      console.log('❌ ISSUES REMAIN:', result.issues);
+      debugLog('❌ ISSUES REMAIN:', result.issues);
     }
     
     return result;
@@ -60,7 +60,7 @@ function validateAndFixAssignments() {
 }
 
 function checkAssignmentData() {
-  console.log('📊 Checking assignment data...');
+  debugLog('📊 Checking assignment data...');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -68,7 +68,7 @@ function checkAssignmentData() {
     let sheet = spreadsheet.getSheetByName(assignmentsSheetName);
     
     if (!sheet) {
-      console.log('📋 Creating assignments sheet...');
+      debugLog('📋 Creating assignments sheet...');
       sheet = getOrCreateSheet(assignmentsSheetName, Object.values(CONFIG.columns.assignments));
       return { needsSampleData: true, reason: 'Sheet did not exist' };
     }
@@ -80,7 +80,7 @@ function checkAssignmentData() {
       return { needsSampleData: true, reason: 'No data rows found' };
     }
     
-    console.log(`📊 Found ${values.length - 1} assignment rows`);
+    debugLog(`📊 Found ${values.length - 1} assignment rows`);
     return { needsSampleData: false, rowCount: values.length - 1 };
     
   } catch (error) {
@@ -90,14 +90,14 @@ function checkAssignmentData() {
 }
 
 function createSampleAssignmentData() {
-  console.log('📋 Creating sample assignment data...');
+  debugLog('📋 Creating sample assignment data...');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getSheetByName(CONFIG.sheets.assignments);
     
     if (!sheet) {
-      console.log('❌ Assignments sheet not found');
+      debugLog('❌ Assignments sheet not found');
       return { success: false, count: 0 };
     }
     
@@ -188,7 +188,7 @@ function createSampleAssignmentData() {
     const range = sheet.getRange(startRow, 1, sampleAssignments.length, sampleAssignments[0].length);
     range.setValues(sampleAssignments);
     
-    console.log(`✅ Created ${sampleAssignments.length} sample assignments`);
+    debugLog(`✅ Created ${sampleAssignments.length} sample assignments`);
     return { success: true, count: sampleAssignments.length };
     
   } catch (error) {
@@ -198,13 +198,13 @@ function createSampleAssignmentData() {
 }
 
 function testGetAllAssignmentsForNotifications() {
-  console.log('🧪 Testing getAllAssignmentsForNotifications...');
+  debugLog('🧪 Testing getAllAssignmentsForNotifications...');
   
   try {
     const assignments = getAllAssignmentsForNotifications(false);
     const count = assignments ? assignments.length : 0;
     
-    console.log(`📊 Function returned ${count} assignments`);
+    debugLog(`📊 Function returned ${count} assignments`);
     
     if (count === 0) {
       return {
@@ -227,7 +227,7 @@ function testGetAllAssignmentsForNotifications() {
       };
     }
     
-    console.log('📋 Sample assignment structure:', {
+    debugLog('📋 Sample assignment structure:', {
       id: firstAssignment.id,
       requestId: firstAssignment.requestId,
       riderName: firstAssignment.riderName,
@@ -252,12 +252,12 @@ function testGetAllAssignmentsForNotifications() {
 }
 
 function fixMissingRiderNames() {
-  console.log('🔧 Fixing missing rider names...');
+  debugLog('🔧 Fixing missing rider names...');
   
   try {
     const assignmentsData = getAssignmentsData(false);
     if (!assignmentsData || !assignmentsData.data || assignmentsData.data.length <= 1) {
-      console.log('⚠️ No assignment data to fix');
+      debugLog('⚠️ No assignment data to fix');
       return { fixed: 0 };
     }
     
@@ -265,7 +265,7 @@ function fixMissingRiderNames() {
     const sheet = spreadsheet.getSheetByName(CONFIG.sheets.assignments);
     
     if (!sheet) {
-      console.log('⚠️ Assignments sheet not found');
+      debugLog('⚠️ Assignments sheet not found');
       return { fixed: 0 };
     }
     
@@ -274,7 +274,7 @@ function fixMissingRiderNames() {
     const riderNameColIndex = columnMap[CONFIG.columns.assignments.riderName];
     
     if (riderNameColIndex === undefined) {
-      console.log('⚠️ Rider Name column not found');
+      debugLog('⚠️ Rider Name column not found');
       return { fixed: 0 };
     }
     
@@ -290,15 +290,15 @@ function fixMissingRiderNames() {
           sheet.getRange(i + 1, riderNameColIndex + 1).setValue('Unassigned');
           fixedCount++;
         } catch (cellError) {
-          console.log(`⚠️ Could not update cell for row ${i + 1}`);
+          debugLog(`⚠️ Could not update cell for row ${i + 1}`);
         }
       }
     }
     
     if (fixedCount > 0) {
-      console.log(`✅ Fixed ${fixedCount} missing rider names`);
+      debugLog(`✅ Fixed ${fixedCount} missing rider names`);
     } else {
-      console.log('✅ No missing rider names found');
+      debugLog('✅ No missing rider names found');
     }
     
     return { fixed: fixedCount };
@@ -310,6 +310,6 @@ function fixMissingRiderNames() {
 }
 
 // Run the validation when this script is executed
-console.log('🚀 Starting assignment validation and fix...');
+debugLog('🚀 Starting assignment validation and fix...');
 const validationResult = validateAndFixAssignments();
-console.log('🏁 Validation completed:', validationResult);
+debugLog('🏁 Validation completed:', validationResult);

@@ -4,7 +4,7 @@
  */
 
 function diagnoseRidersLoading() {
-  console.log('🔍 Starting comprehensive riders loading diagnosis...');
+  debugLog('🔍 Starting comprehensive riders loading diagnosis...');
   
   const results = {
     timestamp: new Date().toISOString(),
@@ -18,38 +18,38 @@ function diagnoseRidersLoading() {
   
   try {
     // Test 1: Check if Riders sheet exists
-    console.log('\n📋 Test 1: Checking Riders sheet existence...');
+    debugLog('\n📋 Test 1: Checking Riders sheet existence...');
     results.tests.sheetExists = testSheetExists();
     
     // Test 2: Check CONFIG settings
-    console.log('\n⚙️ Test 2: Checking CONFIG settings...');
+    debugLog('\n⚙️ Test 2: Checking CONFIG settings...');
     results.tests.config = testConfigSettings();
     
     // Test 3: Test getRidersData function
-    console.log('\n📊 Test 3: Testing getRidersData function...');
+    debugLog('\n📊 Test 3: Testing getRidersData function...');
     results.tests.getRidersData = testGetRidersData();
     
     // Test 4: Test getRiders function  
-    console.log('\n👥 Test 4: Testing getRiders function...');
+    debugLog('\n👥 Test 4: Testing getRiders function...');
     results.tests.getRiders = testGetRiders();
     
     // Test 5: Test getPageDataForRiders function
-    console.log('\n🌐 Test 5: Testing getPageDataForRiders function...');
+    debugLog('\n🌐 Test 5: Testing getPageDataForRiders function...');
     results.tests.getPageDataForRiders = testGetPageDataForRiders();
     
     // Test 6: Test authentication
-    console.log('\n🔐 Test 6: Testing authentication...');
+    debugLog('\n🔐 Test 6: Testing authentication...');
     results.tests.authentication = testAuthentication();
     
     // Test 7: Check sheet data structure
-    console.log('\n🏗️ Test 7: Checking sheet data structure...');
+    debugLog('\n🏗️ Test 7: Checking sheet data structure...');
     results.tests.dataStructure = testDataStructure();
     
     // Analyze results and provide recommendations
     analyzeResults(results);
     
-    console.log('\n✅ Diagnosis complete!');
-    console.log(JSON.stringify(results, null, 2));
+    debugLog('\n✅ Diagnosis complete!');
+    debugLog(JSON.stringify(results, null, 2));
     
     return results;
     
@@ -324,32 +324,32 @@ function analyzeResults(results) {
  * Quick test function for immediate results
  */
 function quickRidersDiagnosis() {
-  console.log('🚀 Quick riders diagnosis...');
+  debugLog('🚀 Quick riders diagnosis...');
   
   try {
     // Test 1: Check sheet
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    console.log('Sheet exists:', !!sheet);
+    debugLog('Sheet exists:', !!sheet);
     
     if (sheet) {
-      console.log('Last row:', sheet.getLastRow());
-      console.log('Last column:', sheet.getLastColumn());
+      debugLog('Last row:', sheet.getLastRow());
+      debugLog('Last column:', sheet.getLastColumn());
     }
     
     // Test 2: Check getRidersData
     const ridersData = getRidersData(false);
-    console.log('getRidersData success:', !!ridersData);
-    console.log('Data rows:', ridersData.data ? ridersData.data.length : 0);
+    debugLog('getRidersData success:', !!ridersData);
+    debugLog('Data rows:', ridersData.data ? ridersData.data.length : 0);
     
     // Test 3: Check getRiders
     const riders = getRiders();
-    console.log('getRiders success:', !!riders);
-    console.log('Riders count:', riders.length);
+    debugLog('getRiders success:', !!riders);
+    debugLog('Riders count:', riders.length);
     
     // Test 4: Check getPageDataForRiders
     const pageData = getPageDataForRiders();
-    console.log('getPageDataForRiders success:', pageData.success);
-    console.log('Page data riders count:', pageData.riders ? pageData.riders.length : 0);
+    debugLog('getPageDataForRiders success:', pageData.success);
+    debugLog('Page data riders count:', pageData.riders ? pageData.riders.length : 0);
     
     return {
       sheetExists: !!sheet,

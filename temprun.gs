@@ -9,8 +9,8 @@
  */
 
 function diagnoseAndFixRidersLoading() {
-  console.log('🩺 COMPREHENSIVE RIDERS LOADING DIAGNOSTIC & FIX');
-  console.log('=================================================');
+  debugLog('🩺 COMPREHENSIVE RIDERS LOADING DIAGNOSTIC & FIX');
+  debugLog('=================================================');
   
   const results = {
     diagnosis: {},
@@ -22,12 +22,12 @@ function diagnoseAndFixRidersLoading() {
   
   try {
     // Step 1: Check spreadsheet access
-    console.log('\n📋 Step 1: Checking Spreadsheet Access...');
+    debugLog('\n📋 Step 1: Checking Spreadsheet Access...');
     let spreadsheet;
     try {
       spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       results.diagnosis.spreadsheetAccess = true;
-      console.log('✅ Spreadsheet access: OK');
+      debugLog('✅ Spreadsheet access: OK');
     } catch (error) {
       results.diagnosis.spreadsheetAccess = false;
       console.error('❌ Spreadsheet access failed:', error.message);
@@ -35,11 +35,11 @@ function diagnoseAndFixRidersLoading() {
     }
     
     // Step 2: Check if Riders sheet exists
-    console.log('\n📊 Step 2: Checking Riders Sheet...');
+    debugLog('\n📊 Step 2: Checking Riders Sheet...');
     let ridersSheet = spreadsheet.getSheetByName(CONFIG.sheets.riders);
     
     if (!ridersSheet) {
-      console.log('❌ Riders sheet not found. Creating it...');
+      debugLog('❌ Riders sheet not found. Creating it...');
       
       try {
         ridersSheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
@@ -61,7 +61,7 @@ function diagnoseAndFixRidersLoading() {
         
         ridersSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
         
-        console.log('✅ Created Riders sheet with sample data');
+        debugLog('✅ Created Riders sheet with sample data');
         results.fixes.push('Created missing Riders sheet with sample data');
         
       } catch (createError) {
@@ -70,21 +70,21 @@ function diagnoseAndFixRidersLoading() {
         return results;
       }
     } else {
-      console.log('✅ Riders sheet exists');
+      debugLog('✅ Riders sheet exists');
     }
     
     results.diagnosis.ridersSheetExists = true;
     
     // Step 3: Check sheet data
-    console.log('\n📝 Step 3: Analyzing Sheet Data...');
+    debugLog('\n📝 Step 3: Analyzing Sheet Data...');
     const dataRange = ridersSheet.getDataRange();
     const allValues = dataRange.getValues();
     
-    console.log(`   - Total rows: ${allValues.length}`);
-    console.log(`   - Headers: ${JSON.stringify(allValues[0])}`);
+    debugLog(`   - Total rows: ${allValues.length}`);
+    debugLog(`   - Headers: ${JSON.stringify(allValues[0])}`);
     
     if (allValues.length < 2) {
-      console.log('❌ No data rows found. Adding sample data...');
+      debugLog('❌ No data rows found. Adding sample data...');
       
       const sampleData = [
         ['JP001', 'John Smith', '504-123-4567', 'john.smith@nopd.com', 'Active', 'A Platoon', 'No', 'Motorcycle', 'NOPD', 5],
@@ -93,28 +93,28 @@ function diagnoseAndFixRidersLoading() {
       ];
       
       ridersSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
-      console.log('✅ Added sample rider data');
+      debugLog('✅ Added sample rider data');
       results.fixes.push('Added sample rider data to empty sheet');
       
       // Re-read the data
       const updatedDataRange = ridersSheet.getDataRange();
       const updatedAllValues = updatedDataRange.getValues();
-      console.log(`   - Updated total rows: ${updatedAllValues.length}`);
+      debugLog(`   - Updated total rows: ${updatedAllValues.length}`);
     }
     
     // Step 4: Test data retrieval methods
-    console.log('\n🔍 Step 4: Testing Data Retrieval Methods...');
+    debugLog('\n🔍 Step 4: Testing Data Retrieval Methods...');
     
     // Test Method 1: getRiders()
     try {
-      console.log('Testing getRiders()...');
+      debugLog('Testing getRiders()...');
       const ridersMethod1 = getRiders();
-      console.log(`✅ getRiders() returned ${ridersMethod1.length} riders`);
+      debugLog(`✅ getRiders() returned ${ridersMethod1.length} riders`);
       results.diagnosis.getRidersWorks = true;
       
       if (ridersMethod1.length > 0) {
         results.riders = ridersMethod1;
-        console.log('Sample rider from getRiders():', JSON.stringify(ridersMethod1[0], null, 2));
+        debugLog('Sample rider from getRiders():', JSON.stringify(ridersMethod1[0], null, 2));
       }
       
     } catch (error) {
@@ -124,9 +124,9 @@ function diagnoseAndFixRidersLoading() {
     
     // Test Method 2: getRidersWithFallback()
     try {
-      console.log('Testing getRidersWithFallback()...');
+      debugLog('Testing getRidersWithFallback()...');
       const ridersMethod2 = getRidersWithFallback();
-      console.log(`✅ getRidersWithFallback() returned ${ridersMethod2.length} riders`);
+      debugLog(`✅ getRidersWithFallback() returned ${ridersMethod2.length} riders`);
       results.diagnosis.getRidersWithFallbackWorks = true;
       
       if (!results.riders || results.riders.length === 0) {
@@ -140,7 +140,7 @@ function diagnoseAndFixRidersLoading() {
     
     // Test Method 3: Direct sheet reading
     try {
-      console.log('Testing direct sheet reading...');
+      debugLog('Testing direct sheet reading...');
       const headers = allValues[0];
       const dataRows = allValues.slice(1);
       
@@ -160,7 +160,7 @@ function diagnoseAndFixRidersLoading() {
         return rider;
       }).filter(rider => rider.name && rider.name.trim().length > 0);
       
-      console.log(`✅ Direct sheet reading returned ${directRiders.length} riders`);
+      debugLog(`✅ Direct sheet reading returned ${directRiders.length} riders`);
       results.diagnosis.directReadingWorks = true;
       
       if (!results.riders || results.riders.length === 0) {
@@ -173,24 +173,24 @@ function diagnoseAndFixRidersLoading() {
     }
     
     // Step 5: Test main function
-    console.log('\n🎯 Step 5: Testing Main Function...');
+    debugLog('\n🎯 Step 5: Testing Main Function...');
     try {
-      console.log('Testing getPageDataForRiders()...');
+      debugLog('Testing getPageDataForRiders()...');
       const pageData = getPageDataForRiders();
       
-      console.log('✅ getPageDataForRiders() completed');
-      console.log(`   - Success: ${pageData.success}`);
-      console.log(`   - Riders count: ${pageData.riders ? pageData.riders.length : 0}`);
-      console.log(`   - User: ${pageData.user ? pageData.user.name : 'None'}`);
-      console.log(`   - Error: ${pageData.error || 'None'}`);
+      debugLog('✅ getPageDataForRiders() completed');
+      debugLog(`   - Success: ${pageData.success}`);
+      debugLog(`   - Riders count: ${pageData.riders ? pageData.riders.length : 0}`);
+      debugLog(`   - User: ${pageData.user ? pageData.user.name : 'None'}`);
+      debugLog(`   - Error: ${pageData.error || 'None'}`);
       
       if (pageData.success && pageData.riders && pageData.riders.length > 0) {
         results.success = true;
         results.riders = pageData.riders;
         results.stats = pageData.stats;
-        console.log('🎉 SUCCESS: Main function works correctly!');
+        debugLog('🎉 SUCCESS: Main function works correctly!');
       } else {
-        console.log('⚠️ Main function completed but with issues');
+        debugLog('⚠️ Main function completed but with issues');
       }
       
       results.diagnosis.mainFunctionWorks = pageData.success;
@@ -213,28 +213,28 @@ function diagnoseAndFixRidersLoading() {
     }
     
     // Step 7: Final summary
-    console.log('\n📊 DIAGNOSTIC SUMMARY:');
-    console.log('======================');
-    console.log(`Spreadsheet Access: ${results.diagnosis.spreadsheetAccess ? '✅' : '❌'}`);
-    console.log(`Riders Sheet Exists: ${results.diagnosis.ridersSheetExists ? '✅' : '❌'}`);
-    console.log(`getRiders() Works: ${results.diagnosis.getRidersWorks ? '✅' : '❌'}`);
-    console.log(`getRidersWithFallback() Works: ${results.diagnosis.getRidersWithFallbackWorks ? '✅' : '❌'}`);
-    console.log(`Direct Reading Works: ${results.diagnosis.directReadingWorks ? '✅' : '❌'}`);
-    console.log(`Main Function Works: ${results.diagnosis.mainFunctionWorks ? '✅' : '❌'}`);
-    console.log(`Total Riders Found: ${results.riders.length}`);
-    console.log(`Fixes Applied: ${results.fixes.length}`);
+    debugLog('\n📊 DIAGNOSTIC SUMMARY:');
+    debugLog('======================');
+    debugLog(`Spreadsheet Access: ${results.diagnosis.spreadsheetAccess ? '✅' : '❌'}`);
+    debugLog(`Riders Sheet Exists: ${results.diagnosis.ridersSheetExists ? '✅' : '❌'}`);
+    debugLog(`getRiders() Works: ${results.diagnosis.getRidersWorks ? '✅' : '❌'}`);
+    debugLog(`getRidersWithFallback() Works: ${results.diagnosis.getRidersWithFallbackWorks ? '✅' : '❌'}`);
+    debugLog(`Direct Reading Works: ${results.diagnosis.directReadingWorks ? '✅' : '❌'}`);
+    debugLog(`Main Function Works: ${results.diagnosis.mainFunctionWorks ? '✅' : '❌'}`);
+    debugLog(`Total Riders Found: ${results.riders.length}`);
+    debugLog(`Fixes Applied: ${results.fixes.length}`);
     
     if (results.fixes.length > 0) {
-      console.log('\nFixes Applied:');
+      debugLog('\nFixes Applied:');
       results.fixes.forEach((fix, index) => {
-        console.log(`${index + 1}. ${fix}`);
+        debugLog(`${index + 1}. ${fix}`);
       });
     }
     
     if (results.success) {
-      console.log('\n🎉 RESULT: Riders loading is now working correctly!');
+      debugLog('\n🎉 RESULT: Riders loading is now working correctly!');
     } else {
-      console.log('\n⚠️ RESULT: Issues still exist. Check the diagnosis above.');
+      debugLog('\n⚠️ RESULT: Issues still exist. Check the diagnosis above.');
     }
     
     return results;
@@ -250,26 +250,26 @@ function diagnoseAndFixRidersLoading() {
  * Quick test function to check if riders loading is working
  */
 function quickRidersTest() {
-  console.log('🚀 Quick Riders Loading Test');
-  console.log('============================');
+  debugLog('🚀 Quick Riders Loading Test');
+  debugLog('============================');
   
   try {
     const result = getPageDataForRiders();
     
     if (result.success && result.riders && result.riders.length > 0) {
-      console.log('✅ SUCCESS: Riders loading works!');
-      console.log(`   Found ${result.riders.length} riders`);
-      console.log(`   User: ${result.user ? result.user.name : 'Unknown'}`);
+      debugLog('✅ SUCCESS: Riders loading works!');
+      debugLog(`   Found ${result.riders.length} riders`);
+      debugLog(`   User: ${result.user ? result.user.name : 'Unknown'}`);
       
       // Show first few riders
       result.riders.slice(0, 3).forEach((rider, i) => {
-        console.log(`   ${i + 1}. ${rider.name} (${rider.jpNumber}) - ${rider.status}`);
+        debugLog(`   ${i + 1}. ${rider.name} (${rider.jpNumber}) - ${rider.status}`);
       });
       
       return { success: true, count: result.riders.length };
     } else {
-      console.log('❌ FAILED: No riders returned or error occurred');
-      console.log(`   Error: ${result.error || 'Unknown error'}`);
+      debugLog('❌ FAILED: No riders returned or error occurred');
+      debugLog(`   Error: ${result.error || 'Unknown error'}`);
       return { success: false, error: result.error };
     }
     
@@ -283,8 +283,8 @@ function quickRidersTest() {
  * Force fix for riders loading issues
  */
 function forceFixRidersLoading() {
-  console.log('🔧 FORCE FIX: Riders Loading Issues');
-  console.log('===================================');
+  debugLog('🔧 FORCE FIX: Riders Loading Issues');
+  debugLog('===================================');
   
   try {
     // Step 1: Ensure sheet exists with proper structure
@@ -292,7 +292,7 @@ function forceFixRidersLoading() {
     let ridersSheet = spreadsheet.getSheetByName(CONFIG.sheets.riders);
     
     if (!ridersSheet) {
-      console.log('Creating Riders sheet...');
+      debugLog('Creating Riders sheet...');
       ridersSheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
     }
     
@@ -318,16 +318,16 @@ function forceFixRidersLoading() {
     
     ridersSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
     
-    console.log('✅ Rebuilt Riders sheet with sample data');
+    debugLog('✅ Rebuilt Riders sheet with sample data');
     
     // Step 4: Test the fix
     const testResult = quickRidersTest();
     
     if (testResult.success) {
-      console.log('🎉 FORCE FIX SUCCESSFUL! Riders loading now works.');
+      debugLog('🎉 FORCE FIX SUCCESSFUL! Riders loading now works.');
       return { success: true, ridersCount: testResult.count };
     } else {
-      console.log('⚠️ Force fix completed but test still fails.');
+      debugLog('⚠️ Force fix completed but test still fails.');
       return { success: false, error: testResult.error };
     }
     
@@ -341,7 +341,7 @@ function forceFixRidersLoading() {
  */
 
 function investigateDataStructure() {
-  console.log('🔍 === INVESTIGATING DATA STRUCTURE ===');
+  debugLog('🔍 === INVESTIGATING DATA STRUCTURE ===');
   
   try {
     // Get current date range (last 30 days)
@@ -349,12 +349,12 @@ function investigateDataStructure() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 30);
     
-    console.log(`📅 Investigating date range: ${startDate.toDateString()} to ${endDate.toDateString()}`);
+    debugLog(`📅 Investigating date range: ${startDate.toDateString()} to ${endDate.toDateString()}`);
     
     // 1. Check requests data structure
-    console.log('\n📊 === REQUESTS DATA ANALYSIS ===');
+    debugLog('\n📊 === REQUESTS DATA ANALYSIS ===');
     const requestsData = getRequestsData();
-    console.log(`Total requests in system: ${requestsData.data.length}`);
+    debugLog(`Total requests in system: ${requestsData.data.length}`);
     
     // Check completed requests
     let completedRequests = 0;
@@ -399,20 +399,20 @@ function investigateDataStructure() {
             
             // Show examples of requests without riders
             if (requestsWithoutRiders <= 5) {
-              console.log(`   ⚠️ Request ${requestId}: Status='${status}' but no riders assigned`);
+              debugLog(`   ⚠️ Request ${requestId}: Status='${status}' but no riders assigned`);
             }
           }
         }
       }
     });
     
-    console.log(`✅ Completed requests in date range: ${completedRequests}`);
-    console.log(`👥 Requests WITH riders assigned: ${requestsWithRiders}`);
-    console.log(`❌ Requests WITHOUT riders assigned: ${requestsWithoutRiders}`);
-    console.log(`📝 Rider field examples:`, riderFieldExamples);
+    debugLog(`✅ Completed requests in date range: ${completedRequests}`);
+    debugLog(`👥 Requests WITH riders assigned: ${requestsWithRiders}`);
+    debugLog(`❌ Requests WITHOUT riders assigned: ${requestsWithoutRiders}`);
+    debugLog(`📝 Rider field examples:`, riderFieldExamples);
     
     // 2. Check the ridersAssigned field structure
-    console.log('\n👥 === RIDERS ASSIGNED FIELD ANALYSIS ===');
+    debugLog('\n👥 === RIDERS ASSIGNED FIELD ANALYSIS ===');
     
     const riderCounts = {};
     let totalRiderAssignments = 0;
@@ -440,7 +440,7 @@ function investigateDataStructure() {
           .map(name => name.trim())
           .filter(name => name && name.length > 0);
         
-        console.log(`📋 Request ${requestId}: Found ${assignedRidersList.length} riders: [${assignedRidersList.join(', ')}]`);
+        debugLog(`📋 Request ${requestId}: Found ${assignedRidersList.length} riders: [${assignedRidersList.join(', ')}]`);
         
         assignedRidersList.forEach(riderName => {
           if (riderName) {
@@ -451,12 +451,12 @@ function investigateDataStructure() {
       }
     });
     
-    console.log(`🎯 Total rider assignments found: ${totalRiderAssignments}`);
-    console.log(`👤 Unique riders with assignments:`, Object.keys(riderCounts).length);
-    console.log(`📊 Rider breakdown:`, riderCounts);
+    debugLog(`🎯 Total rider assignments found: ${totalRiderAssignments}`);
+    debugLog(`👤 Unique riders with assignments:`, Object.keys(riderCounts).length);
+    debugLog(`📊 Rider breakdown:`, riderCounts);
     
     // 3. Check what the current generateRiderActivityReport actually returns
-    console.log('\n🔍 === TESTING CURRENT RIDER ACTIVITY FUNCTION ===');
+    debugLog('\n🔍 === TESTING CURRENT RIDER ACTIVITY FUNCTION ===');
     
     try {
       // Test the actual function that should be fixed
@@ -465,12 +465,12 @@ function investigateDataStructure() {
         endDate.toISOString().split('T')[0]
       );
       
-      console.log(`📈 generateRiderActivityReport result:`, riderActivityResult);
+      debugLog(`📈 generateRiderActivityReport result:`, riderActivityResult);
       
       if (riderActivityResult && riderActivityResult.data) {
         const totalEscorts = riderActivityResult.data.reduce((sum, rider) => sum + (rider.escorts || 0), 0);
-        console.log(`📊 Total escorts from function: ${totalEscorts}`);
-        console.log(`📋 Riders returned: ${riderActivityResult.data.length}`);
+        debugLog(`📊 Total escorts from function: ${totalEscorts}`);
+        debugLog(`📋 Riders returned: ${riderActivityResult.data.length}`);
       }
       
     } catch (functionError) {
@@ -478,16 +478,16 @@ function investigateDataStructure() {
     }
     
     // 4. Check CONFIG columns mapping
-    console.log('\n⚙️ === CONFIG COLUMNS CHECK ===');
-    console.log('CONFIG.columns.requests.ridersAssigned:', CONFIG.columns.requests.ridersAssigned);
-    console.log('CONFIG.columns.requests.status:', CONFIG.columns.requests.status);
-    console.log('CONFIG.columns.requests.eventDate:', CONFIG.columns.requests.eventDate);
+    debugLog('\n⚙️ === CONFIG COLUMNS CHECK ===');
+    debugLog('CONFIG.columns.requests.ridersAssigned:', CONFIG.columns.requests.ridersAssigned);
+    debugLog('CONFIG.columns.requests.status:', CONFIG.columns.requests.status);
+    debugLog('CONFIG.columns.requests.eventDate:', CONFIG.columns.requests.eventDate);
     
     // Check if the column mappings are correct
-    console.log('Column mappings:');
-    console.log('  ridersAssigned column index:', requestsData.columnMap[CONFIG.columns.requests.ridersAssigned]);
-    console.log('  status column index:', requestsData.columnMap[CONFIG.columns.requests.status]);
-    console.log('  eventDate column index:', requestsData.columnMap[CONFIG.columns.requests.eventDate]);
+    debugLog('Column mappings:');
+    debugLog('  ridersAssigned column index:', requestsData.columnMap[CONFIG.columns.requests.ridersAssigned]);
+    debugLog('  status column index:', requestsData.columnMap[CONFIG.columns.requests.status]);
+    debugLog('  eventDate column index:', requestsData.columnMap[CONFIG.columns.requests.eventDate]);
     
     return {
       completedRequests,
@@ -510,7 +510,7 @@ function investigateDataStructure() {
  * This will help identify the exact issue
  */
 function debugSpecificRequests() {
-  console.log('🔎 === DEBUGGING SPECIFIC REQUESTS ===');
+  debugLog('🔎 === DEBUGGING SPECIFIC REQUESTS ===');
   
   try {
     const requestsData = getRequestsData();
@@ -518,7 +518,7 @@ function debugSpecificRequests() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 30);
     
-    console.log('Looking at first 10 completed requests to see why they might not count...');
+    debugLog('Looking at first 10 completed requests to see why they might not count...');
     
     let debugCount = 0;
     
@@ -561,12 +561,12 @@ function debugSpecificRequests() {
         
         const shouldCount = inDateRange && ridersAssigned && ridersCount > 0;
         
-        console.log(`📋 Request ${requestId}:`);
-        console.log(`   Status: '${status}' (✅ completed)`);
-        console.log(`   Date: ${dateInfo}`);
-        console.log(`   Riders: ${riderInfo}`);
-        console.log(`   Should count: ${shouldCount ? '✅ YES' : '❌ NO'}`);
-        console.log('');
+        debugLog(`📋 Request ${requestId}:`);
+        debugLog(`   Status: '${status}' (✅ completed)`);
+        debugLog(`   Date: ${dateInfo}`);
+        debugLog(`   Riders: ${riderInfo}`);
+        debugLog(`   Should count: ${shouldCount ? '✅ YES' : '❌ NO'}`);
+        debugLog('');
       }
     });
     
@@ -580,13 +580,13 @@ function debugSpecificRequests() {
  * Sometimes old cached versions cause issues
  */
 function checkFunctionVersion() {
-  console.log('🔍 === CHECKING FUNCTION VERSION ===');
+  debugLog('🔍 === CHECKING FUNCTION VERSION ===');
   
   try {
     // Get the actual function code to see if it's the fixed version
     const functionString = generateRiderActivityReport.toString();
     
-    console.log('Function length:', functionString.length, 'characters');
+    debugLog('Function length:', functionString.length, 'characters');
     
     // Check for key indicators of the fixed version
     const hasRequestsData = functionString.includes('getRequestsData()');
@@ -594,21 +594,21 @@ function checkFunctionVersion() {
     const hasRidersAssigned = functionString.includes('ridersAssigned');
     const hasCorrectFilter = functionString.includes("status === 'Completed'");
     
-    console.log('Function analysis:');
-    console.log(`  ✅ Uses getRequestsData(): ${hasRequestsData}`);
-    console.log(`  ❌ Uses getAssignmentsData(): ${hasAssignmentsData}`);
-    console.log(`  ✅ Checks ridersAssigned field: ${hasRidersAssigned}`);
-    console.log(`  ✅ Filters by status === 'Completed': ${hasCorrectFilter}`);
+    debugLog('Function analysis:');
+    debugLog(`  ✅ Uses getRequestsData(): ${hasRequestsData}`);
+    debugLog(`  ❌ Uses getAssignmentsData(): ${hasAssignmentsData}`);
+    debugLog(`  ✅ Checks ridersAssigned field: ${hasRidersAssigned}`);
+    debugLog(`  ✅ Filters by status === 'Completed': ${hasCorrectFilter}`);
     
     if (hasRequestsData && !hasAssignmentsData && hasRidersAssigned) {
-      console.log('✅ Function appears to be the FIXED version');
+      debugLog('✅ Function appears to be the FIXED version');
     } else {
-      console.log('❌ Function appears to be the OLD version or has issues');
+      debugLog('❌ Function appears to be the OLD version or has issues');
     }
     
     // Show first 500 characters to help identify the version
-    console.log('\nFirst 500 characters of function:');
-    console.log(functionString.substring(0, 500) + '...');
+    debugLog('\nFirst 500 characters of function:');
+    debugLog(functionString.substring(0, 500) + '...');
     
   } catch (error) {
     console.error('❌ Function check failed:', error);
@@ -620,23 +620,23 @@ function checkFunctionVersion() {
  * This will run all checks to identify the exact problem
  */
 function runCompleteDataInvestigation() {
-  console.log('🚀 === COMPLETE DATA INVESTIGATION ===');
+  debugLog('🚀 === COMPLETE DATA INVESTIGATION ===');
   
-  console.log('\n1️⃣ Checking function version...');
+  debugLog('\n1️⃣ Checking function version...');
   checkFunctionVersion();
   
-  console.log('\n2️⃣ Investigating data structure...');
+  debugLog('\n2️⃣ Investigating data structure...');
   const dataAnalysis = investigateDataStructure();
   
-  console.log('\n3️⃣ Debugging specific requests...');
+  debugLog('\n3️⃣ Debugging specific requests...');
   debugSpecificRequests();
   
-  console.log('\n🎯 === INVESTIGATION SUMMARY ===');
+  debugLog('\n🎯 === INVESTIGATION SUMMARY ===');
   if (dataAnalysis && !dataAnalysis.error) {
-    console.log(`Completed requests: ${dataAnalysis.completedRequests}`);
-    console.log(`Requests with riders: ${dataAnalysis.requestsWithRiders}`);
-    console.log(`Total rider assignments: ${dataAnalysis.totalRiderAssignments}`);
-    console.log(`Unique riders: ${dataAnalysis.uniqueRiders}`);
+    debugLog(`Completed requests: ${dataAnalysis.completedRequests}`);
+    debugLog(`Requests with riders: ${dataAnalysis.requestsWithRiders}`);
+    debugLog(`Total rider assignments: ${dataAnalysis.totalRiderAssignments}`);
+    debugLog(`Unique riders: ${dataAnalysis.uniqueRiders}`);
     
     // Identify the likely issues
     const issues = [];
@@ -654,10 +654,10 @@ function runCompleteDataInvestigation() {
     }
     
     if (issues.length > 0) {
-      console.log('\n⚠️ IDENTIFIED ISSUES:');
-      issues.forEach(issue => console.log(issue));
+      debugLog('\n⚠️ IDENTIFIED ISSUES:');
+      issues.forEach(issue => debugLog(issue));
     } else {
-      console.log('\n✅ Data looks good - issue may be in function logic');
+      debugLog('\n✅ Data looks good - issue may be in function logic');
     }
   }
   
@@ -668,8 +668,8 @@ function runCompleteDataInvestigation() {
 function checkColumns() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  console.log('Current headers:', headers);
-  console.log('Expected headers:', CONFIG.columns.riders);
+  debugLog('Current headers:', headers);
+  debugLog('Expected headers:', CONFIG.columns.riders);
 }
 /**
  * FIX FOR ASSIGNMENT STATUS SYNCHRONIZATION
@@ -680,7 +680,7 @@ function checkColumns() {
  * Main function to fix assignment statuses
  */
 function fixAssignmentStatuses() {
-  console.log('🔧 === FIXING ASSIGNMENT STATUSES ===');
+  debugLog('🔧 === FIXING ASSIGNMENT STATUSES ===');
   
   try {
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
@@ -702,7 +702,7 @@ function fixAssignmentStatuses() {
       throw new Error('Status column not found in Assignments sheet');
     }
     
-    console.log(`📊 Processing ${assignmentsData.data.length} assignments...`);
+    debugLog(`📊 Processing ${assignmentsData.data.length} assignments...`);
     
     // Process each assignment
     assignmentsData.data.forEach((assignment, index) => {
@@ -714,7 +714,7 @@ function fixAssignmentStatuses() {
       
       // Skip if already has a status
       if (currentStatus && currentStatus.trim()) {
-        console.log(`   ⏭️  Skipping ${requestId} - already has status: ${currentStatus}`);
+        debugLog(`   ⏭️  Skipping ${requestId} - already has status: ${currentStatus}`);
         return;
       }
       
@@ -724,14 +724,14 @@ function fixAssignmentStatuses() {
       );
       
       if (!correspondingRequest) {
-        console.log(`   ⚠️  No matching request found for assignment ${requestId}`);
+        debugLog(`   ⚠️  No matching request found for assignment ${requestId}`);
         return;
       }
       
       const requestStatus = getColumnValue(correspondingRequest, requestsData.columnMap, CONFIG.columns.requests.status);
       
       if (!requestStatus || !requestStatus.trim()) {
-        console.log(`   ⚠️  Request ${requestId} has no status`);
+        debugLog(`   ⚠️  Request ${requestId} has no status`);
         return;
       }
       
@@ -778,16 +778,16 @@ function fixAssignmentStatuses() {
           requestStatus: requestStatus
         });
         
-        console.log(`   ✅ Updated ${requestId} (${riderName || 'No Rider'}): "${currentStatus || 'Empty'}" → "${newAssignmentStatus}"`);
+        debugLog(`   ✅ Updated ${requestId} (${riderName || 'No Rider'}): "${currentStatus || 'Empty'}" → "${newAssignmentStatus}"`);
         
       } catch (updateError) {
         console.error(`   ❌ Failed to update ${requestId}:`, updateError);
       }
     });
     
-    console.log(`\n🎯 === SUMMARY ===`);
-    console.log(`✅ Updated ${updatedCount} assignment statuses`);
-    console.log(`📊 Status distribution after update:`);
+    debugLog(`\n🎯 === SUMMARY ===`);
+    debugLog(`✅ Updated ${updatedCount} assignment statuses`);
+    debugLog(`📊 Status distribution after update:`);
     
     // Show new status distribution
     const newStatusCounts = {};
@@ -796,7 +796,7 @@ function fixAssignmentStatuses() {
     });
     
     Object.keys(newStatusCounts).forEach(status => {
-      console.log(`   ${status}: ${newStatusCounts[status]}`);
+      debugLog(`   ${status}: ${newStatusCounts[status]}`);
     });
     
     return {
@@ -819,41 +819,41 @@ function fixAssignmentStatuses() {
  * Test the fix by running the diagnostic again
  */
 function testStatusFix() {
-  console.log('🧪 === TESTING STATUS FIX ===');
+  debugLog('🧪 === TESTING STATUS FIX ===');
   
   try {
     // Run the fix
-    console.log('1. Applying status fix...');
+    debugLog('1. Applying status fix...');
     const fixResult = fixAssignmentStatuses();
     
     if (!fixResult.success) {
       throw new Error('Status fix failed: ' + fixResult.error);
     }
     
-    console.log(`✅ Fix applied: ${fixResult.updatedCount} assignments updated`);
+    debugLog(`✅ Fix applied: ${fixResult.updatedCount} assignments updated`);
     
     // Wait a moment for updates to process
     Utilities.sleep(2000);
     
     // Run diagnostic again
-    console.log('\n2. Running diagnostic again...');
+    debugLog('\n2. Running diagnostic again...');
     const diagnostic = diagnoseReportsDiscrepancy();
     
-    console.log('\n🎯 === RESULTS COMPARISON ===');
-    console.log(`Before Fix:`);
-    console.log(`   Completed Requests: 69`);
-    console.log(`   Rider Activity: 4`);
-    console.log(`   Gap: 65 missing escorts`);
+    debugLog('\n🎯 === RESULTS COMPARISON ===');
+    debugLog(`Before Fix:`);
+    debugLog(`   Completed Requests: 69`);
+    debugLog(`   Rider Activity: 4`);
+    debugLog(`   Gap: 65 missing escorts`);
     
-    console.log(`\nAfter Fix:`);
-    console.log(`   Completed Requests: ${diagnostic.completedEscorts || 'Error'}`);
-    console.log(`   Rider Activity: ${diagnostic.riderActivity || 'Error'}`);
-    console.log(`   Gap: ${Math.abs((diagnostic.completedEscorts || 0) - (diagnostic.riderActivity || 0))}`);
+    debugLog(`\nAfter Fix:`);
+    debugLog(`   Completed Requests: ${diagnostic.completedEscorts || 'Error'}`);
+    debugLog(`   Rider Activity: ${diagnostic.riderActivity || 'Error'}`);
+    debugLog(`   Gap: ${Math.abs((diagnostic.completedEscorts || 0) - (diagnostic.riderActivity || 0))}`);
     
     if (diagnostic.riderActivity > 10) {
-      console.log('✅ SUCCESS: Rider activity significantly increased!');
+      debugLog('✅ SUCCESS: Rider activity significantly increased!');
     } else {
-      console.log('⚠️ Partial success: May need additional fixes');
+      debugLog('⚠️ Partial success: May need additional fixes');
     }
     
     return {
@@ -875,7 +875,7 @@ function testStatusFix() {
  * Quick fix for assignments with riders but no status from past dates
  */
 function quickFixPastAssignments() {
-  console.log('⚡ === QUICK FIX FOR PAST ASSIGNMENTS ===');
+  debugLog('⚡ === QUICK FIX FOR PAST ASSIGNMENTS ===');
   
   try {
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
@@ -907,14 +907,14 @@ function quickFixPastAssignments() {
         try {
           assignmentsSheet.getRange(rowNumber, statusColumnIndex + 1).setValue('Completed');
           fixedCount++;
-          console.log(`   ✅ Quick fix: ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - ${riderName} → Completed`);
+          debugLog(`   ✅ Quick fix: ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - ${riderName} → Completed`);
         } catch (error) {
           console.error(`   ❌ Failed to quick fix assignment:`, error);
         }
       }
     });
     
-    console.log(`⚡ Quick fixed ${fixedCount} past assignments with riders`);
+    debugLog(`⚡ Quick fixed ${fixedCount} past assignments with riders`);
     
     return {
       success: true,
@@ -934,15 +934,15 @@ function quickFixPastAssignments() {
  * Run just the quick fix if you want immediate results
  */
 function runQuickFix() {
-  console.log('🚀 === RUNNING QUICK FIX ===');
+  debugLog('🚀 === RUNNING QUICK FIX ===');
   
   const result = quickFixPastAssignments();
   
   if (result.success) {
-    console.log(`✅ Quick fix completed: ${result.fixedCount} assignments marked as completed`);
-    console.log('💡 Now check your reports page - rider activity should show more escorts!');
+    debugLog(`✅ Quick fix completed: ${result.fixedCount} assignments marked as completed`);
+    debugLog('💡 Now check your reports page - rider activity should show more escorts!');
   } else {
-    console.log(`❌ Quick fix failed: ${result.error}`);
+    debugLog(`❌ Quick fix failed: ${result.error}`);
   }
   
   return result;
@@ -963,7 +963,7 @@ function runQuickFix() {
  */
 
 function diagnoseReportsDiscrepancy() {
-  console.log('🔍 === REPORTS DISCREPANCY DIAGNOSIS ===');
+  debugLog('🔍 === REPORTS DISCREPANCY DIAGNOSIS ===');
   
   try {
     // Get current date range (assuming last 30 days or similar)
@@ -971,28 +971,28 @@ function diagnoseReportsDiscrepancy() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 30); // Last 30 days
     
-    console.log(`📅 Date range: ${startDate.toDateString()} to ${endDate.toDateString()}`);
+    debugLog(`📅 Date range: ${startDate.toDateString()} to ${endDate.toDateString()}`);
     
     // 1. Check how "completed escorts" is calculated
     const completedEscortsCount = diagnoseCompletedEscortsCalculation(startDate, endDate);
-    console.log(`\n📊 COMPLETED ESCORTS COUNT: ${completedEscortsCount}`);
+    debugLog(`\n📊 COMPLETED ESCORTS COUNT: ${completedEscortsCount}`);
     
     // 2. Check how "rider activity" is calculated  
     const riderActivityCount = diagnoseRiderActivityCalculation(startDate, endDate);
-    console.log(`\n👥 RIDER ACTIVITY COUNT: ${riderActivityCount} total escorts from all riders`);
+    debugLog(`\n👥 RIDER ACTIVITY COUNT: ${riderActivityCount} total escorts from all riders`);
     
     // 3. Check assignment data directly
     const assignmentAnalysis = analyzeAssignmentData(startDate, endDate);
-    console.log(`\n📋 ASSIGNMENT DATA ANALYSIS:`);
-    console.log(`   Total assignments in period: ${assignmentAnalysis.totalAssignments}`);
-    console.log(`   Status breakdown:`, assignmentAnalysis.statusBreakdown);
-    console.log(`   Riders with assignments: ${assignmentAnalysis.ridersWithAssignments}`);
-    console.log(`   Assignments with riders: ${assignmentAnalysis.assignmentsWithRiders}`);
+    debugLog(`\n📋 ASSIGNMENT DATA ANALYSIS:`);
+    debugLog(`   Total assignments in period: ${assignmentAnalysis.totalAssignments}`);
+    debugLog(`   Status breakdown:`, assignmentAnalysis.statusBreakdown);
+    debugLog(`   Riders with assignments: ${assignmentAnalysis.ridersWithAssignments}`);
+    debugLog(`   Assignments with riders: ${assignmentAnalysis.assignmentsWithRiders}`);
     
     // 4. Check for data inconsistencies
     const inconsistencies = findDataInconsistencies();
-    console.log(`\n⚠️  DATA INCONSISTENCIES:`);
-    console.log(inconsistencies);
+    debugLog(`\n⚠️  DATA INCONSISTENCIES:`);
+    debugLog(inconsistencies);
     
     return {
       completedEscorts: completedEscortsCount,
@@ -1012,7 +1012,7 @@ function diagnoseReportsDiscrepancy() {
  */
 function diagnoseCompletedEscortsCalculation(startDate, endDate) {
   try {
-    console.log('\n🔍 Analyzing "Completed Escorts" calculation...');
+    debugLog('\n🔍 Analyzing "Completed Escorts" calculation...');
     
     // This likely comes from generateReportData() or similar function
     // Check Requests sheet for completed requests
@@ -1036,12 +1036,12 @@ function diagnoseCompletedEscortsCalculation(startDate, endDate) {
         const statusLower = (status || '').toLowerCase().trim();
         if (statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished') {
           completedCount++;
-          console.log(`   ✅ Request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requestId)} - ${status}`);
+          debugLog(`   ✅ Request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.requestId)} - ${status}`);
         }
       }
     });
     
-    console.log(`   📊 Completed requests method: ${completedCount}`);
+    debugLog(`   📊 Completed requests method: ${completedCount}`);
     
     // Also check assignments approach
     const assignmentsData = getAssignmentsData();
@@ -1067,7 +1067,7 @@ function diagnoseCompletedEscortsCalculation(startDate, endDate) {
       }
     });
     
-    console.log(`   📊 Completed assignments method: ${completedAssignments}`);
+    debugLog(`   📊 Completed assignments method: ${completedAssignments}`);
     
     return Math.max(completedCount, completedAssignments);
     
@@ -1082,7 +1082,7 @@ function diagnoseCompletedEscortsCalculation(startDate, endDate) {
  */
 function diagnoseRiderActivityCalculation(startDate, endDate) {
   try {
-    console.log('\n🔍 Analyzing "Rider Activity" calculation...');
+    debugLog('\n🔍 Analyzing "Rider Activity" calculation...');
     
     const ridersData = getRidersData();
     const assignmentsData = getAssignmentsData();
@@ -1119,7 +1119,7 @@ function diagnoseRiderActivityCalculation(startDate, endDate) {
           if (statusLower === 'completed') {
             riderEscorts++;
           }
-          console.log(`   👥 ${riderName}: Assignment ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - Status: ${status} - Counted: ${statusLower === 'completed'}`);
+          debugLog(`   👥 ${riderName}: Assignment ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - Status: ${status} - Counted: ${statusLower === 'completed'}`);
         }
       });
       
@@ -1129,8 +1129,8 @@ function diagnoseRiderActivityCalculation(startDate, endDate) {
       }
     });
     
-    console.log(`   👥 Rider breakdown:`, riderBreakdown);
-    console.log(`   👥 Total rider escorts: ${totalRiderEscorts}`);
+    debugLog(`   👥 Rider breakdown:`, riderBreakdown);
+    debugLog(`   👥 Total rider escorts: ${totalRiderEscorts}`);
     
     return totalRiderEscorts;
     
@@ -1259,7 +1259,7 @@ function findDataInconsistencies() {
  * Run this to automatically fix past assignments that have riders but no status
  */
 function quickFixPastAssignments() {
-  console.log('⚡ === QUICK FIX FOR PAST ASSIGNMENTS ===');
+  debugLog('⚡ === QUICK FIX FOR PAST ASSIGNMENTS ===');
   
   try {
     const assignmentsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Assignments');
@@ -1291,14 +1291,14 @@ function quickFixPastAssignments() {
         try {
           assignmentsSheet.getRange(rowNumber, statusColumnIndex + 1).setValue('Completed');
           fixedCount++;
-          console.log(`   ✅ Quick fix: ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - ${riderName} → Completed`);
+          debugLog(`   ✅ Quick fix: ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId)} - ${riderName} → Completed`);
         } catch (error) {
           console.error(`   ❌ Failed to quick fix assignment:`, error);
         }
       }
     });
     
-    console.log(`⚡ Quick fixed ${fixedCount} past assignments with riders`);
+    debugLog(`⚡ Quick fixed ${fixedCount} past assignments with riders`);
     
     return {
       success: true,
@@ -1319,49 +1319,49 @@ function quickFixPastAssignments() {
  * Run this to diagnose the issue and apply fixes automatically
  */
 function runCompleteReportsFix() {
-  console.log('🚀 === COMPLETE REPORTS FIX ===');
+  debugLog('🚀 === COMPLETE REPORTS FIX ===');
   
   try {
     // 1. Run diagnostic first
-    console.log('\n1. Running initial diagnostic...');
+    debugLog('\n1. Running initial diagnostic...');
     const initialDiagnostic = diagnoseReportsDiscrepancy();
     
-    console.log(`\n📊 INITIAL STATE:`);
-    console.log(`   Completed Escorts: ${initialDiagnostic.completedEscorts}`);
-    console.log(`   Rider Activity: ${initialDiagnostic.riderActivity}`);
-    console.log(`   Gap: ${Math.abs(initialDiagnostic.completedEscorts - initialDiagnostic.riderActivity)}`);
+    debugLog(`\n📊 INITIAL STATE:`);
+    debugLog(`   Completed Escorts: ${initialDiagnostic.completedEscorts}`);
+    debugLog(`   Rider Activity: ${initialDiagnostic.riderActivity}`);
+    debugLog(`   Gap: ${Math.abs(initialDiagnostic.completedEscorts - initialDiagnostic.riderActivity)}`);
     
     // 2. Apply quick fix for past assignments
-    console.log('\n2. Applying quick fix...');
+    debugLog('\n2. Applying quick fix...');
     const fixResult = quickFixPastAssignments();
     
     if (!fixResult.success) {
       throw new Error('Quick fix failed: ' + fixResult.error);
     }
     
-    console.log(`✅ Quick fix applied: ${fixResult.fixedCount} assignments updated`);
+    debugLog(`✅ Quick fix applied: ${fixResult.fixedCount} assignments updated`);
     
     // 3. Wait and run diagnostic again
     Utilities.sleep(2000);
-    console.log('\n3. Running diagnostic again...');
+    debugLog('\n3. Running diagnostic again...');
     const finalDiagnostic = diagnoseReportsDiscrepancy();
     
-    console.log(`\n🎯 === RESULTS COMPARISON ===`);
-    console.log(`Before Fix:`);
-    console.log(`   Completed Escorts: ${initialDiagnostic.completedEscorts}`);
-    console.log(`   Rider Activity: ${initialDiagnostic.riderActivity}`);
-    console.log(`   Gap: ${Math.abs(initialDiagnostic.completedEscorts - initialDiagnostic.riderActivity)}`);
+    debugLog(`\n🎯 === RESULTS COMPARISON ===`);
+    debugLog(`Before Fix:`);
+    debugLog(`   Completed Escorts: ${initialDiagnostic.completedEscorts}`);
+    debugLog(`   Rider Activity: ${initialDiagnostic.riderActivity}`);
+    debugLog(`   Gap: ${Math.abs(initialDiagnostic.completedEscorts - initialDiagnostic.riderActivity)}`);
     
-    console.log(`\nAfter Fix:`);
-    console.log(`   Completed Escorts: ${finalDiagnostic.completedEscorts || 'Error'}`);
-    console.log(`   Rider Activity: ${finalDiagnostic.riderActivity || 'Error'}`);
-    console.log(`   Gap: ${Math.abs((finalDiagnostic.completedEscorts || 0) - (finalDiagnostic.riderActivity || 0))}`);
+    debugLog(`\nAfter Fix:`);
+    debugLog(`   Completed Escorts: ${finalDiagnostic.completedEscorts || 'Error'}`);
+    debugLog(`   Rider Activity: ${finalDiagnostic.riderActivity || 'Error'}`);
+    debugLog(`   Gap: ${Math.abs((finalDiagnostic.completedEscorts || 0) - (finalDiagnostic.riderActivity || 0))}`);
     
     const improvement = (finalDiagnostic.riderActivity || 0) - initialDiagnostic.riderActivity;
     if (improvement > 0) {
-      console.log(`✅ SUCCESS: Rider activity increased by ${improvement} escorts!`);
+      debugLog(`✅ SUCCESS: Rider activity increased by ${improvement} escorts!`);
     } else {
-      console.log(`⚠️ No improvement detected. May need manual investigation.`);
+      debugLog(`⚠️ No improvement detected. May need manual investigation.`);
     }
     
     return {
@@ -1386,7 +1386,7 @@ function runCompleteReportsFix() {
  */
 function diagnoseCompletedEscortsCalculation(startDate, endDate) {
   try {
-    console.log('\n🔍 Analyzing "Completed Escorts" calculation...');
+    debugLog('\n🔍 Analyzing "Completed Escorts" calculation...');
     
     // This likely comes from generateReportData() or similar function
     // Check Requests sheet for completed requests
@@ -1411,14 +1411,14 @@ function diagnoseCompletedEscortsCalculation(startDate, endDate) {
         const statusLower = (status || '').toLowerCase().trim();
         if (statusLower === 'completed' || statusLower === 'done' || statusLower === 'finished') {
           completedCount++;
-          console.log(`   ✅ Completed request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id)} - ${status}`);
+          debugLog(`   ✅ Completed request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id)} - ${status}`);
         } else if (status) {
-          console.log(`   ⏸️  Non-completed request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id)} - ${status}`);
+          debugLog(`   ⏸️  Non-completed request: ${getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id)} - ${status}`);
         }
       }
     });
     
-    console.log(`   📊 Completed requests method: ${completedCount}`);
+    debugLog(`   📊 Completed requests method: ${completedCount}`);
     
     // Alternative: Check assignments for completed escorts
     const assignmentsData = getAssignmentsData();
@@ -1445,7 +1445,7 @@ function diagnoseCompletedEscortsCalculation(startDate, endDate) {
       }
     });
     
-    console.log(`   📊 Completed assignments method: ${completedAssignments}`);
+    debugLog(`   📊 Completed assignments method: ${completedAssignments}`);
     
     return Math.max(completedCount, completedAssignments);
     
@@ -1460,7 +1460,7 @@ function diagnoseCompletedEscortsCalculation(startDate, endDate) {
  */
 function diagnoseRiderActivityCalculation(startDate, endDate) {
   try {
-    console.log('\n🔍 Analyzing "Rider Activity" calculation...');
+    debugLog('\n🔍 Analyzing "Rider Activity" calculation...');
     
     const ridersData = getRidersData();
     const assignmentsData = getAssignmentsData();
@@ -1493,25 +1493,25 @@ function diagnoseRiderActivityCalculation(startDate, endDate) {
         if (riderMatches && dateInRange) {
           // Check what statuses are being counted
           const statusLower = (status || '').toLowerCase().trim();
-          console.log(`   👤 ${riderName}: Assignment ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.assignmentId)} - Status: "${status}" - Date: ${eventDate}`);
+          debugLog(`   👤 ${riderName}: Assignment ${getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.assignmentId)} - Status: "${status}" - Date: ${eventDate}`);
           
           // Original restrictive logic (only 'completed')
           if (statusLower === 'completed') {
             riderEscorts++;
-            console.log(`     ✅ COUNTED (completed status)`);
+            debugLog(`     ✅ COUNTED (completed status)`);
           } else {
-            console.log(`     ❌ NOT COUNTED (status: ${statusLower})`);
+            debugLog(`     ❌ NOT COUNTED (status: ${statusLower})`);
           }
         }
       });
       
       if (riderEscorts > 0) {
-        console.log(`   📊 ${riderName}: ${riderEscorts} escorts`);
+        debugLog(`   📊 ${riderName}: ${riderEscorts} escorts`);
         totalRiderEscorts += riderEscorts;
       }
     });
     
-    console.log(`   📊 Total from rider activity: ${totalRiderEscorts}`);
+    debugLog(`   📊 Total from rider activity: ${totalRiderEscorts}`);
     return totalRiderEscorts;
     
   } catch (error) {
@@ -1649,24 +1649,24 @@ function findDataInconsistencies() {
  * Fix the rider activity calculation to match completed escorts
  */
 function fixRiderActivityCalculation() {
-  console.log('🔧 === FIXING RIDER ACTIVITY CALCULATION ===');
+  debugLog('🔧 === FIXING RIDER ACTIVITY CALCULATION ===');
   
   try {
     // The fix is to update the generateRiderActivityReport function
     // or wherever rider hours are calculated to use the same logic as completed escorts
     
-    console.log('The fix involves updating these functions in Code.gs:');
-    console.log('1. generateReportData() - around line 2750');
-    console.log('2. generateRiderActivityReport() - if it exists');
-    console.log('3. Any other functions that calculate rider hours');
+    debugLog('The fix involves updating these functions in Code.gs:');
+    debugLog('1. generateReportData() - around line 2750');
+    debugLog('2. generateRiderActivityReport() - if it exists');
+    debugLog('3. Any other functions that calculate rider hours');
     
-    console.log('\nRecommended changes:');
-    console.log('1. Change status filtering from only "Completed" to include:');
-    console.log('   - "Completed", "Done", "Finished"');
-    console.log('   - Or count assignments where event date has passed');
-    console.log('');
-    console.log('2. Improve rider name matching to be case-insensitive');
-    console.log('3. Add fallback hour estimation when actual times missing');
+    debugLog('\nRecommended changes:');
+    debugLog('1. Change status filtering from only "Completed" to include:');
+    debugLog('   - "Completed", "Done", "Finished"');
+    debugLog('   - Or count assignments where event date has passed');
+    debugLog('');
+    debugLog('2. Improve rider name matching to be case-insensitive');
+    debugLog('3. Add fallback hour estimation when actual times missing');
     
     return {
       success: true,
@@ -1802,22 +1802,22 @@ function estimateHoursByRequestType(requestId) {
  */
 
 function fixDataValidationIssues() {
-  console.log('🔧 Starting data validation fix...');
+  debugLog('🔧 Starting data validation fix...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const ridersSheet = ss.getSheetByName('Riders');
     
     if (!ridersSheet) {
-      console.log('❌ Riders sheet not found');
+      debugLog('❌ Riders sheet not found');
       return { success: false, message: 'Riders sheet not found' };
     }
     
-    console.log('📋 Analyzing data validation rules...');
+    debugLog('📋 Analyzing data validation rules...');
     
     // Step 1: Check what's in cell E1 currently
     const e1Value = ridersSheet.getRange('E1').getValue();
-    console.log(`🔍 Current E1 value: "${e1Value}"`);
+    debugLog(`🔍 Current E1 value: "${e1Value}"`);
     
     // Step 2: Get all data validation rules in the sheet
     const dataRange = ridersSheet.getDataRange();
@@ -1839,7 +1839,7 @@ function fixDataValidationIssues() {
             values: validation.getCriteriaValues()
           });
           
-          console.log(`📍 Found validation rule in ${cellA1} (row ${row}):`, {
+          debugLog(`📍 Found validation rule in ${cellA1} (row ${row}):`, {
             criteria: validation.getCriteriaType(),
             values: validation.getCriteriaValues()
           });
@@ -1847,25 +1847,25 @@ function fixDataValidationIssues() {
       }
     }
     
-    console.log(`📊 Found ${validationRules.length} validation rules`);
+    debugLog(`📊 Found ${validationRules.length} validation rules`);
     
     // Step 3: Remove validation rules from header row (row 1)
     const headerValidationRules = validationRules.filter(rule => rule.row === 1);
     
     if (headerValidationRules.length > 0) {
-      console.log(`🚫 Removing ${headerValidationRules.length} validation rules from header row...`);
+      debugLog(`🚫 Removing ${headerValidationRules.length} validation rules from header row...`);
       
       headerValidationRules.forEach(rule => {
         const range = ridersSheet.getRange(rule.cell);
         range.clearDataValidations();
-        console.log(`   ✅ Cleared validation from ${rule.cell}`);
+        debugLog(`   ✅ Cleared validation from ${rule.cell}`);
       });
     } else {
-      console.log('✅ No validation rules found in header row');
+      debugLog('✅ No validation rules found in header row');
     }
     
     // Step 4: Set proper headers
-    console.log('🔤 Setting proper headers...');
+    debugLog('🔤 Setting proper headers...');
     const expectedHeaders = [
       'Rider ID',
       'Full Name', 
@@ -1891,10 +1891,10 @@ function fixDataValidationIssues() {
               .setFontColor('white')
               .setHorizontalAlignment('center');
     
-    console.log('✅ Headers set successfully');
+    debugLog('✅ Headers set successfully');
     
     // Step 5: Set up proper data validation for data rows only (not headers)
-    console.log('🛡️ Setting up proper data validation for data rows...');
+    debugLog('🛡️ Setting up proper data validation for data rows...');
     
     // Status column validation (column E, starting from row 2)
     const statusColumn = 5; // Column E
@@ -1909,7 +1909,7 @@ function fixDataValidationIssues() {
         .build();
       
       statusRange.setDataValidation(statusValidation);
-      console.log(`   ✅ Applied status validation to E2:E${lastRow}`);
+      debugLog(`   ✅ Applied status validation to E2:E${lastRow}`);
     }
     
     // Certification column validation (column F, starting from row 2)
@@ -1923,39 +1923,39 @@ function fixDataValidationIssues() {
         .build();
       
       certRange.setDataValidation(certValidation);
-      console.log(`   ✅ Applied certification validation to F2:F${lastRow}`);
+      debugLog(`   ✅ Applied certification validation to F2:F${lastRow}`);
     }
     
     // Step 6: Protect header row from future modifications
-    console.log('🛡️ Protecting header row...');
+    debugLog('🛡️ Protecting header row...');
     try {
       const headerProtection = headerRange.protect();
       headerProtection.setDescription('Rider Headers - Do Not Modify');
       headerProtection.setWarningOnly(true); // Allow edits with warning
-      console.log('✅ Header row protected');
+      debugLog('✅ Header row protected');
     } catch (protectionError) {
-      console.log('⚠️ Could not protect headers:', protectionError.message);
+      debugLog('⚠️ Could not protect headers:', protectionError.message);
     }
     
     // Step 7: Test that headers work now
-    console.log('🧪 Testing header access...');
+    debugLog('🧪 Testing header access...');
     try {
       const testHeaders = ridersSheet.getRange(1, 1, 1, expectedHeaders.length).getValues()[0];
-      console.log('✅ Headers read successfully:', testHeaders);
+      debugLog('✅ Headers read successfully:', testHeaders);
       
       // Verify E1 specifically
       const e1Test = ridersSheet.getRange('E1').getValue();
-      console.log(`✅ E1 value: "${e1Test}"`);
+      debugLog(`✅ E1 value: "${e1Test}"`);
       
       if (e1Test === 'Status') {
-        console.log('🎉 E1 validation issue fixed!');
+        debugLog('🎉 E1 validation issue fixed!');
       }
     } catch (testError) {
-      console.log('❌ Header test failed:', testError.message);
+      debugLog('❌ Header test failed:', testError.message);
       throw testError;
     }
     
-    console.log('\n🎉 Data validation fix completed successfully!');
+    debugLog('\n🎉 Data validation fix completed successfully!');
     
     return {
       success: true,
@@ -1978,33 +1978,33 @@ function fixDataValidationIssues() {
  * 🔍 DIAGNOSTIC: Check current data validation rules
  */
 function diagnoseDataValidationIssues() {
-  console.log('🔍 Diagnosing data validation issues...');
+  debugLog('🔍 Diagnosing data validation issues...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const ridersSheet = ss.getSheetByName('Riders');
     
     if (!ridersSheet) {
-      console.log('❌ Riders sheet not found');
+      debugLog('❌ Riders sheet not found');
       return;
     }
     
     // Check E1 specifically
-    console.log('\n📍 Checking cell E1:');
+    debugLog('\n📍 Checking cell E1:');
     const e1Range = ridersSheet.getRange('E1');
     const e1Value = e1Range.getValue();
     const e1Validation = e1Range.getDataValidation();
     
-    console.log(`   Value: "${e1Value}"`);
-    console.log(`   Has validation: ${!!e1Validation}`);
+    debugLog(`   Value: "${e1Value}"`);
+    debugLog(`   Has validation: ${!!e1Validation}`);
     
     if (e1Validation) {
-      console.log(`   Validation type: ${e1Validation.getCriteriaType()}`);
-      console.log(`   Validation values: [${e1Validation.getCriteriaValues()}]`);
+      debugLog(`   Validation type: ${e1Validation.getCriteriaType()}`);
+      debugLog(`   Validation values: [${e1Validation.getCriteriaValues()}]`);
     }
     
     // Check all validation rules
-    console.log('\n📋 All validation rules in sheet:');
+    debugLog('\n📋 All validation rules in sheet:');
     const dataRange = ridersSheet.getDataRange();
     let validationCount = 0;
     let headerRowValidations = 0;
@@ -2021,20 +2021,20 @@ function diagnoseDataValidationIssues() {
           const cellA1 = cell.getA1Notation();
           const cellValue = cell.getValue();
           
-          console.log(`   ${cellA1}: "${cellValue}" - ${validation.getCriteriaType()}`);
+          debugLog(`   ${cellA1}: "${cellValue}" - ${validation.getCriteriaType()}`);
         }
       }
     }
     
-    console.log(`\n📊 Summary:`);
-    console.log(`   Total validation rules found: ${validationCount}`);
-    console.log(`   Validation rules in header row: ${headerRowValidations}`);
+    debugLog(`\n📊 Summary:`);
+    debugLog(`   Total validation rules found: ${validationCount}`);
+    debugLog(`   Validation rules in header row: ${headerRowValidations}`);
     
     if (headerRowValidations > 0) {
-      console.log('❌ PROBLEM: Header row has validation rules - this will cause errors');
-      console.log('🔧 SOLUTION: Run fixDataValidationIssues() to fix this');
+      debugLog('❌ PROBLEM: Header row has validation rules - this will cause errors');
+      debugLog('🔧 SOLUTION: Run fixDataValidationIssues() to fix this');
     } else {
-      console.log('✅ No validation rules in header row');
+      debugLog('✅ No validation rules in header row');
     }
     
     return {
@@ -2054,14 +2054,14 @@ function diagnoseDataValidationIssues() {
  * 🚨 EMERGENCY: Remove ALL validation rules from sheet
  */
 function emergencyRemoveAllValidation() {
-  console.log('🚨 EMERGENCY: Removing ALL validation rules...');
+  debugLog('🚨 EMERGENCY: Removing ALL validation rules...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const ridersSheet = ss.getSheetByName('Riders');
     
     if (!ridersSheet) {
-      console.log('❌ Riders sheet not found');
+      debugLog('❌ Riders sheet not found');
       return;
     }
     
@@ -2069,7 +2069,7 @@ function emergencyRemoveAllValidation() {
     const dataRange = ridersSheet.getDataRange();
     dataRange.clearDataValidations();
     
-    console.log('✅ All validation rules removed');
+    debugLog('✅ All validation rules removed');
     
     // Set headers again
     const expectedHeaders = [
@@ -2079,8 +2079,8 @@ function emergencyRemoveAllValidation() {
     
     ridersSheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
     
-    console.log('✅ Headers reset');
-    console.log('🎉 Emergency fix completed - try your original script now');
+    debugLog('✅ Headers reset');
+    debugLog('🎉 Emergency fix completed - try your original script now');
     
     return { success: true, message: 'All validation rules removed' };
     
@@ -2094,7 +2094,7 @@ function emergencyRemoveAllValidation() {
  * 🔄 QUICK TEST: Verify the fix worked
  */
 function testValidationFix() {
-  console.log('🧪 Testing validation fix...');
+  debugLog('🧪 Testing validation fix...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2102,20 +2102,20 @@ function testValidationFix() {
     
     // Test E1 access
     const e1Value = ridersSheet.getRange('E1').getValue();
-    console.log(`✅ E1 reads successfully: "${e1Value}"`);
+    debugLog(`✅ E1 reads successfully: "${e1Value}"`);
     
     // Test setting headers
     const testHeaders = ['Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status'];
     ridersSheet.getRange(1, 1, 1, testHeaders.length).setValues([testHeaders]);
-    console.log('✅ Headers can be set without errors');
+    debugLog('✅ Headers can be set without errors');
     
     // Test that E1 is now "Status"
     const e1After = ridersSheet.getRange('E1').getValue();
     if (e1After === 'Status') {
-      console.log('🎉 SUCCESS: E1 validation issue is fixed!');
+      debugLog('🎉 SUCCESS: E1 validation issue is fixed!');
       return true;
     } else {
-      console.log(`❌ E1 still has wrong value: "${e1After}"`);
+      debugLog(`❌ E1 still has wrong value: "${e1After}"`);
       return false;
     }
     
@@ -2131,20 +2131,20 @@ function testValidationFix() {
  */
 
 function checkAndFixRequestsHeaderOrder() {
-  console.log('🔍 Checking Requests sheet header order...');
+  debugLog('🔍 Checking Requests sheet header order...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const requestsSheet = ss.getSheetByName('Requests');
     
     if (!requestsSheet) {
-      console.log('❌ Requests sheet not found');
+      debugLog('❌ Requests sheet not found');
       return { success: false, message: 'Requests sheet not found' };
     }
     
     // Get current headers
     const currentHeaders = requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0];
-    console.log('📋 Current headers:', currentHeaders);
+    debugLog('📋 Current headers:', currentHeaders);
     
     // Based on your CONFIG patterns, this is the correct order
     const correctHeaders = [
@@ -2170,7 +2170,7 @@ function checkAndFixRequestsHeaderOrder() {
       'Last Updated'          // CONFIG.columns.requests.lastUpdated or lastModified
     ];
     
-    console.log('✅ Expected headers:', correctHeaders);
+    debugLog('✅ Expected headers:', correctHeaders);
     
     // Check if headers match
     let headersMismatch = false;
@@ -2192,7 +2192,7 @@ function checkAndFixRequestsHeaderOrder() {
     }
     
     if (!headersMismatch) {
-      console.log('✅ Headers are already in correct order!');
+      debugLog('✅ Headers are already in correct order!');
       return { 
         success: true, 
         message: 'Headers are already correct',
@@ -2202,15 +2202,15 @@ function checkAndFixRequestsHeaderOrder() {
     }
     
     // Show issues found
-    console.log('❌ Header issues found:');
-    issues.forEach(issue => console.log(`   ${issue}`));
+    debugLog('❌ Header issues found:');
+    issues.forEach(issue => debugLog(`   ${issue}`));
     
     // Ask for confirmation to fix
-    console.log('\n🔧 Ready to fix headers. This will:');
-    console.log('   1. Clear any data validation from header row');
-    console.log('   2. Set headers to correct order');
-    console.log('   3. Reapply proper formatting');
-    console.log('   4. Set up data validation for data rows only');
+    debugLog('\n🔧 Ready to fix headers. This will:');
+    debugLog('   1. Clear any data validation from header row');
+    debugLog('   2. Set headers to correct order');
+    debugLog('   3. Reapply proper formatting');
+    debugLog('   4. Set up data validation for data rows only');
     
     return {
       success: false,
@@ -2232,7 +2232,7 @@ function checkAndFixRequestsHeaderOrder() {
  * 🔧 Fix the Requests header order
  */
 function fixRequestsHeaderOrder() {
-  console.log('🔧 Fixing Requests sheet header order...');
+  debugLog('🔧 Fixing Requests sheet header order...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -2266,14 +2266,14 @@ function fixRequestsHeaderOrder() {
       'Last Updated'          
     ];
     
-    console.log('📝 Backing up current data...');
+    debugLog('📝 Backing up current data...');
     
     // Get all data including headers
     const allData = requestsSheet.getDataRange().getValues();
     const currentHeaders = allData[0];
     const dataRows = allData.slice(1);
     
-    console.log(`📊 Found ${dataRows.length} data rows to preserve`);
+    debugLog(`📊 Found ${dataRows.length} data rows to preserve`);
     
     // Create mapping from old headers to new positions
     const headerMapping = {};
@@ -2282,11 +2282,11 @@ function fixRequestsHeaderOrder() {
       if (newIndex !== -1) {
         headerMapping[oldIndex] = newIndex;
       } else {
-        console.log(`⚠️ Current header "${header}" not found in correct headers - data will be lost`);
+        debugLog(`⚠️ Current header "${header}" not found in correct headers - data will be lost`);
       }
     });
     
-    console.log('🗺️ Header mapping:', headerMapping);
+    debugLog('🗺️ Header mapping:', headerMapping);
     
     // Reorganize data according to new header order
     const reorganizedData = [];
@@ -2302,7 +2302,7 @@ function fixRequestsHeaderOrder() {
       reorganizedData.push(newRow);
     });
     
-    console.log('🔄 Clearing sheet and rewriting with correct order...');
+    debugLog('🔄 Clearing sheet and rewriting with correct order...');
     
     // Clear the sheet
     requestsSheet.clear();
@@ -2321,7 +2321,7 @@ function fixRequestsHeaderOrder() {
     if (reorganizedData.length > 0) {
       const dataRange = requestsSheet.getRange(2, 1, reorganizedData.length, correctHeaders.length);
       dataRange.setValues(reorganizedData);
-      console.log(`✅ Restored ${reorganizedData.length} data rows`);
+      debugLog(`✅ Restored ${reorganizedData.length} data rows`);
     }
     
     // Set up proper data validation for data rows only
@@ -2332,12 +2332,12 @@ function fixRequestsHeaderOrder() {
       const headerProtection = headerRange.protect();
       headerProtection.setDescription('🛡️ Request Headers - Protected');
       headerProtection.setWarningOnly(true);
-      console.log('🛡️ Headers protected');
+      debugLog('🛡️ Headers protected');
     } catch (protectionError) {
-      console.log('⚠️ Could not protect headers:', protectionError.message);
+      debugLog('⚠️ Could not protect headers:', protectionError.message);
     }
     
-    console.log('✅ Requests header order fixed successfully!');
+    debugLog('✅ Requests header order fixed successfully!');
     
     return {
       success: true,
@@ -2357,7 +2357,7 @@ function fixRequestsHeaderOrder() {
  * 🎯 Set up data validation for corrected headers
  */
 function setupRequestsDataValidationCorrected(sheet, headers) {
-  console.log('🎯 Setting up data validation for corrected headers...');
+  debugLog('🎯 Setting up data validation for corrected headers...');
   
   try {
     const lastRow = Math.max(sheet.getLastRow(), 20);
@@ -2375,7 +2375,7 @@ function setupRequestsDataValidationCorrected(sheet, headers) {
         .setHelpText('Select request status')
         .build();
       statusRange.setDataValidation(statusValidation);
-      console.log(`   ✅ Status validation: ${statusRange.getA1Notation()}`);
+      debugLog(`   ✅ Status validation: ${statusRange.getA1Notation()}`);
     }
     
     // Request Type validation
@@ -2388,7 +2388,7 @@ function setupRequestsDataValidationCorrected(sheet, headers) {
         .setHelpText('Select request type')
         .build();
       typeRange.setDataValidation(typeValidation);
-      console.log(`   ✅ Request Type validation: ${typeRange.getA1Notation()}`);
+      debugLog(`   ✅ Request Type validation: ${typeRange.getA1Notation()}`);
     }
     
     // Courtesy validation
@@ -2401,10 +2401,10 @@ function setupRequestsDataValidationCorrected(sheet, headers) {
         .setHelpText('Is this a courtesy request?')
         .build();
       courtesyRange.setDataValidation(courtesyValidation);
-      console.log(`   ✅ Courtesy validation: ${courtesyRange.getA1Notation()}`);
+      debugLog(`   ✅ Courtesy validation: ${courtesyRange.getA1Notation()}`);
     }
     
-    console.log('✅ Data validation applied to data rows only');
+    debugLog('✅ Data validation applied to data rows only');
     
   } catch (error) {
     console.error('❌ Data validation setup failed:', error);
@@ -2415,23 +2415,23 @@ function setupRequestsDataValidationCorrected(sheet, headers) {
  * 🧪 Test requests functionality after header fix
  */
 function testRequestsAfterHeaderFix() {
-  console.log('🧪 Testing requests functionality after header fix...');
+  debugLog('🧪 Testing requests functionality after header fix...');
   
   try {
     // Test 1: Basic data loading
-    console.log('Test 1: getRequestsData()');
+    debugLog('Test 1: getRequestsData()');
     const requestsData = getRequestsData();
     const requestsCount = requestsData?.data?.length || 0;
-    console.log(`   Result: ${requestsCount} requests loaded`);
+    debugLog(`   Result: ${requestsCount} requests loaded`);
     
     // Test 2: Filtered requests
-    console.log('Test 2: getFilteredRequestsForAssignments()');
+    debugLog('Test 2: getFilteredRequestsForAssignments()');
     const assignableRequests = getFilteredRequestsForAssignments();
     const assignableCount = assignableRequests?.length || 0;
-    console.log(`   Result: ${assignableCount} assignable requests`);
+    debugLog(`   Result: ${assignableCount} assignable requests`);
     
     // Test 3: Header validation
-    console.log('Test 3: Header validation');
+    debugLog('Test 3: Header validation');
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
@@ -2446,20 +2446,20 @@ function testRequestsAfterHeaderFix() {
       currentHeaders[index] === expected
     );
     
-    console.log(`   Result: Headers ${headersMatch ? 'MATCH' : 'DO NOT MATCH'}`);
+    debugLog(`   Result: Headers ${headersMatch ? 'MATCH' : 'DO NOT MATCH'}`);
     
     if (!headersMatch) {
-      console.log('   Expected:', expectedHeaders);
-      console.log('   Actual  :', currentHeaders);
+      debugLog('   Expected:', expectedHeaders);
+      debugLog('   Actual  :', currentHeaders);
     }
     
     // Summary
     const allTestsPassed = requestsCount >= 0 && headersMatch;
-    console.log(`\n📋 Test Summary: ${allTestsPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`);
+    debugLog(`\n📋 Test Summary: ${allTestsPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'}`);
     
     if (allTestsPassed) {
-      console.log('🎉 Your Requests sheet is now properly configured!');
-      console.log('💡 Test your web app to ensure requests are loading correctly');
+      debugLog('🎉 Your Requests sheet is now properly configured!');
+      debugLog('💡 Test your web app to ensure requests are loading correctly');
     }
     
     return {
@@ -2485,29 +2485,29 @@ function testRequestsAfterHeaderFix() {
  * 📋 Show current requests sheet status
  */
 function showRequestsSheetStatus() {
-  console.log('📋 Current Requests sheet status:');
+  debugLog('📋 Current Requests sheet status:');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const requestsSheet = ss.getSheetByName('Requests');
     
     if (!requestsSheet) {
-      console.log('❌ Requests sheet not found');
+      debugLog('❌ Requests sheet not found');
       return;
     }
     
     const currentHeaders = requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0];
     const dataRowCount = requestsSheet.getLastRow() - 1; // Exclude header
     
-    console.log(`📊 Sheet info:`);
-    console.log(`   Total columns: ${currentHeaders.length}`);
-    console.log(`   Data rows: ${dataRowCount}`);
-    console.log(`   Headers: [${currentHeaders.join(', ')}]`);
+    debugLog(`📊 Sheet info:`);
+    debugLog(`   Total columns: ${currentHeaders.length}`);
+    debugLog(`   Data rows: ${dataRowCount}`);
+    debugLog(`   Headers: [${currentHeaders.join(', ')}]`);
     
     // Check for protection
     const protections = requestsSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
     const headerProtections = protections.filter(p => p.getRange().getRow() === 1);
-    console.log(`   Header protections: ${headerProtections.length}`);
+    debugLog(`   Header protections: ${headerProtections.length}`);
     
     // Check for data validation in headers
     let headerValidationCount = 0;
@@ -2516,7 +2516,7 @@ function showRequestsSheetStatus() {
         headerValidationCount++;
       }
     }
-    console.log(`   Header validation rules: ${headerValidationCount} (should be 0)`);
+    debugLog(`   Header validation rules: ${headerValidationCount} (should be 0)`);
     
     return {
       totalColumns: currentHeaders.length,
@@ -2535,14 +2535,14 @@ function showRequestsSheetStatus() {
  * Change the headerChanges object below to specify your desired changes
  */
 function updateSpecificHeaders() {
-  console.log('🔧 Updating specific header names...');
+  debugLog('🔧 Updating specific header names...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const requestsSheet = ss.getSheetByName('Requests');
     
     if (!requestsSheet) {
-      console.log('❌ Requests sheet not found');
+      debugLog('❌ Requests sheet not found');
       return { success: false, message: 'Requests sheet not found' };
     }
     
@@ -2558,13 +2558,13 @@ function updateSpecificHeaders() {
     const headerRange = requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn());
     const currentHeaders = headerRange.getValues()[0];
     
-    console.log('📋 Current headers:', currentHeaders);
+    debugLog('📋 Current headers:', currentHeaders);
     
     // Apply changes
     let changesApplied = 0;
     const newHeaders = currentHeaders.map(header => {
       if (headerChanges[header]) {
-        console.log(`✏️ Changing "${header}" to "${headerChanges[header]}"`);
+        debugLog(`✏️ Changing "${header}" to "${headerChanges[header]}"`);
         changesApplied++;
         return headerChanges[header];
       }
@@ -2572,7 +2572,7 @@ function updateSpecificHeaders() {
     });
     
     if (changesApplied === 0) {
-      console.log('ℹ️ No matching headers found to change');
+      debugLog('ℹ️ No matching headers found to change');
       return { 
         success: true, 
         message: 'No changes needed',
@@ -2589,17 +2589,17 @@ function updateSpecificHeaders() {
               .setFontColor('white')
               .setHorizontalAlignment('center');
     
-    console.log(`✅ Successfully updated ${changesApplied} headers`);
-    console.log('📋 New headers:', newHeaders);
+    debugLog(`✅ Successfully updated ${changesApplied} headers`);
+    debugLog('📋 New headers:', newHeaders);
     
     // Protect the updated headers
     try {
       const protection = headerRange.protect();
       protection.setDescription('🛡️ Request Headers - Protected');
       protection.setWarningOnly(true);
-      console.log('🛡️ Headers protected');
+      debugLog('🛡️ Headers protected');
     } catch (protectionError) {
-      console.log('⚠️ Could not protect headers:', protectionError.message);
+      debugLog('⚠️ Could not protect headers:', protectionError.message);
     }
     
     return {
@@ -2620,7 +2620,7 @@ function updateSpecificHeaders() {
  * Preview what headers will be changed without actually changing them
  */
 function previewHeaderChanges() {
-  console.log('👀 Previewing header changes...');
+  debugLog('👀 Previewing header changes...');
   
   // MODIFY THIS TO MATCH YOUR DESIRED CHANGES
   const headerChanges = {
@@ -2634,29 +2634,29 @@ function previewHeaderChanges() {
     const requestsSheet = ss.getSheetByName('Requests');
     
     if (!requestsSheet) {
-      console.log('❌ Requests sheet not found');
+      debugLog('❌ Requests sheet not found');
       return;
     }
     
     const currentHeaders = requestsSheet.getRange(1, 1, 1, requestsSheet.getLastColumn()).getValues()[0];
     
-    console.log('📋 Preview of changes:');
-    console.log('Current headers:', currentHeaders);
+    debugLog('📋 Preview of changes:');
+    debugLog('Current headers:', currentHeaders);
     
     let changesFound = 0;
     currentHeaders.forEach((header, index) => {
       if (headerChanges[header]) {
-        console.log(`Column ${index + 1}: "${header}" → "${headerChanges[header]}"`);
+        debugLog(`Column ${index + 1}: "${header}" → "${headerChanges[header]}"`);
         changesFound++;
       }
     });
     
     if (changesFound === 0) {
-      console.log('ℹ️ No matching headers found for changes');
-      console.log('💡 Available headers to change:', currentHeaders);
+      debugLog('ℹ️ No matching headers found for changes');
+      debugLog('💡 Available headers to change:', currentHeaders);
     } else {
-      console.log(`✅ Found ${changesFound} headers that will be changed`);
-      console.log('💡 Run updateSpecificHeaders() to apply these changes');
+      debugLog(`✅ Found ${changesFound} headers that will be changed`);
+      debugLog('💡 Run updateSpecificHeaders() to apply these changes');
     }
     
   } catch (error) {

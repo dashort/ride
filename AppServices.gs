@@ -27,20 +27,20 @@
  * Test if the frontend is calling the right function with the right parameters
  */
 function testFrontendBackendCommunication() {
-  console.log('🔍 === TESTING FRONTEND-BACKEND COMMUNICATION ===');
+  debugLog('🔍 === TESTING FRONTEND-BACKEND COMMUNICATION ===');
   
   try {
     // 1. Check if the function exists and is callable
-    console.log('1️⃣ Testing function availability...');
+    debugLog('1️⃣ Testing function availability...');
     
     if (typeof getPageDataForReports !== 'function') {
-      console.log('❌ getPageDataForReports function not found!');
+      debugLog('❌ getPageDataForReports function not found!');
       return { issue: 'function_missing' };
     }
-    console.log('✅ getPageDataForReports function exists');
+    debugLog('✅ getPageDataForReports function exists');
     
     // 2. Test with the exact parameters the frontend sends
-    console.log('\n2️⃣ Testing with frontend-style parameters...');
+    debugLog('\n2️⃣ Testing with frontend-style parameters...');
     
     // Test different parameter formats the frontend might send
     const testCases = [
@@ -77,7 +77,7 @@ function testFrontendBackendCommunication() {
     const results = {};
     
     testCases.forEach(testCase => {
-      console.log(`\n   Testing: ${testCase.name}`);
+      debugLog(`\n   Testing: ${testCase.name}`);
       try {
         const result = getPageDataForReports(testCase.params);
         results[testCase.name] = {
@@ -86,19 +86,19 @@ function testFrontendBackendCommunication() {
           error: result?.error,
           type: typeof result
         };
-        console.log(`   Result: ${result?.success ? 'SUCCESS' : 'FAILED'} - ${result?.error || 'No error'}`);
+        debugLog(`   Result: ${result?.success ? 'SUCCESS' : 'FAILED'} - ${result?.error || 'No error'}`);
       } catch (error) {
         results[testCase.name] = {
           success: false,
           error: error.message,
           exception: true
         };
-        console.log(`   Exception: ${error.message}`);
+        debugLog(`   Exception: ${error.message}`);
       }
     });
     
     // 3. Test the exact call pattern from reports.html
-    console.log('\n3️⃣ Testing exact frontend call pattern...');
+    debugLog('\n3️⃣ Testing exact frontend call pattern...');
     
     // This simulates exactly what reports.html does
     const frontendFilters = {
@@ -108,9 +108,9 @@ function testFrontendBackendCommunication() {
       status: 'All'
     };
     
-    console.log('   Frontend-style filters:', frontendFilters);
+    debugLog('   Frontend-style filters:', frontendFilters);
     const frontendResult = getPageDataForReports(frontendFilters);
-    console.log('   Frontend result:', {
+    debugLog('   Frontend result:', {
       success: frontendResult?.success,
       hasReportData: !!frontendResult?.reportData,
       error: frontendResult?.error
@@ -136,33 +136,33 @@ function testFrontendBackendCommunication() {
  * Check if there are multiple versions of the function
  */
 function checkForDuplicateFunctions() {
-  console.log('🔍 === CHECKING FOR DUPLICATE FUNCTIONS ===');
+  debugLog('🔍 === CHECKING FOR DUPLICATE FUNCTIONS ===');
   
   try {
     // Check if there are multiple getPageDataForReports functions
     const functionString = getPageDataForReports.toString();
-    console.log('Current function length:', functionString.length);
-    console.log('Function starts with:', functionString.substring(0, 100) + '...');
+    debugLog('Current function length:', functionString.length);
+    debugLog('Function starts with:', functionString.substring(0, 100) + '...');
     
     // Check if it's the auth version or no-auth version
     const hasAuth = functionString.includes('authenticateAndAuthorizeUser');
     const hasDefaultUser = functionString.includes('defaultUser') || functionString.includes('System User');
     
-    console.log('Function analysis:');
-    console.log('  Has authentication:', hasAuth);
-    console.log('  Has default user:', hasDefaultUser);
+    debugLog('Function analysis:');
+    debugLog('  Has authentication:', hasAuth);
+    debugLog('  Has default user:', hasDefaultUser);
     
     if (hasAuth && hasDefaultUser) {
-      console.log('⚠️ WARNING: Function has both auth and no-auth code!');
+      debugLog('⚠️ WARNING: Function has both auth and no-auth code!');
       return { issue: 'mixed_function' };
     } else if (hasAuth) {
-      console.log('❌ ISSUE: Function still has authentication code');
+      debugLog('❌ ISSUE: Function still has authentication code');
       return { issue: 'still_has_auth' };
     } else if (hasDefaultUser) {
-      console.log('✅ Function is the no-auth version');
+      debugLog('✅ Function is the no-auth version');
       return { status: 'no_auth_version' };
     } else {
-      console.log('❓ UNKNOWN: Function doesn\'t match expected patterns');
+      debugLog('❓ UNKNOWN: Function doesn\'t match expected patterns');
       return { issue: 'unknown_version' };
     }
     
@@ -176,7 +176,7 @@ function checkForDuplicateFunctions() {
  * Create a test function that mimics google.script.run behavior
  */
 function simulateGoogleScriptRun() {
-  console.log('🔍 === SIMULATING GOOGLE.SCRIPT.RUN ===');
+  debugLog('🔍 === SIMULATING GOOGLE.SCRIPT.RUN ===');
   
   try {
     // This simulates how google.script.run calls the function
@@ -187,13 +187,13 @@ function simulateGoogleScriptRun() {
       status: 'All'
     };
     
-    console.log('Simulating google.script.run.getPageDataForReports with:', filters);
+    debugLog('Simulating google.script.run.getPageDataForReports with:', filters);
     
     // Call the function exactly like google.script.run would
     const result = getPageDataForReports(filters);
     
-    console.log('Result type:', typeof result);
-    console.log('Result keys:', Object.keys(result || {}));
+    debugLog('Result type:', typeof result);
+    debugLog('Result keys:', Object.keys(result || {}));
     
     // Check if result matches what frontend expects
     const expectedStructure = {
@@ -211,16 +211,16 @@ function simulateGoogleScriptRun() {
       };
     });
     
-    console.log('Structure check:', structureCheck);
+    debugLog('Structure check:', structureCheck);
     
     // Test serialization (google.script.run serializes the result)
     try {
       const serialized = JSON.stringify(result);
       const deserialized = JSON.parse(serialized);
-      console.log('✅ Serialization test passed');
-      console.log('Serialized size:', serialized.length, 'characters');
+      debugLog('✅ Serialization test passed');
+      debugLog('Serialized size:', serialized.length, 'characters');
     } catch (serError) {
-      console.log('❌ Serialization failed:', serError.message);
+      debugLog('❌ Serialization failed:', serError.message);
       return { 
         issue: 'serialization_failed', 
         error: serError.message,
@@ -248,23 +248,23 @@ function simulateGoogleScriptRun() {
  * COMPLETE FRONTEND-BACKEND DIAGNOSTIC
  */
 function diagnoseFrontendBackendIssue() {
-  console.log('🚀 === COMPLETE FRONTEND-BACKEND DIAGNOSTIC ===');
+  debugLog('🚀 === COMPLETE FRONTEND-BACKEND DIAGNOSTIC ===');
   
-  console.log('\n1️⃣ Checking for duplicate functions...');
+  debugLog('\n1️⃣ Checking for duplicate functions...');
   const duplicateCheck = checkForDuplicateFunctions();
   
-  console.log('\n2️⃣ Testing communication...');
+  debugLog('\n2️⃣ Testing communication...');
   const commTest = testFrontendBackendCommunication();
   
-  console.log('\n3️⃣ Simulating google.script.run...');
+  debugLog('\n3️⃣ Simulating google.script.run...');
   const scriptTest = simulateGoogleScriptRun();
   
-  console.log('\n🎯 === DIAGNOSIS RESULTS ===');
+  debugLog('\n🎯 === DIAGNOSIS RESULTS ===');
   
   // Analyze results and provide recommendations
   if (duplicateCheck.issue === 'still_has_auth') {
-    console.log('❌ ISSUE FOUND: Function still has authentication code');
-    console.log('💡 SOLUTION: Replace the function with the no-auth version');
+    debugLog('❌ ISSUE FOUND: Function still has authentication code');
+    debugLog('💡 SOLUTION: Replace the function with the no-auth version');
     return {
       issue: 'authentication_not_removed',
       solution: 'Replace getPageDataForReports with no-auth version'
@@ -272,8 +272,8 @@ function diagnoseFrontendBackendIssue() {
   }
   
   if (scriptTest.issue === 'serialization_failed') {
-    console.log('❌ ISSUE FOUND: Result cannot be serialized');
-    console.log('💡 SOLUTION: Check for circular references in reportData');
+    debugLog('❌ ISSUE FOUND: Result cannot be serialized');
+    debugLog('💡 SOLUTION: Check for circular references in reportData');
     return {
       issue: 'serialization_problem',
       solution: 'Fix circular references in generateReportData'
@@ -281,17 +281,17 @@ function diagnoseFrontendBackendIssue() {
   }
   
   if (commTest.frontendResult?.success) {
-    console.log('✅ Backend works fine');
-    console.log('💡 ISSUE: Problem is in frontend JavaScript or communication');
-    console.log('📝 CHECK: Browser console for JavaScript errors');
-    console.log('📝 CHECK: Network tab for failed requests');
+    debugLog('✅ Backend works fine');
+    debugLog('💡 ISSUE: Problem is in frontend JavaScript or communication');
+    debugLog('📝 CHECK: Browser console for JavaScript errors');
+    debugLog('📝 CHECK: Network tab for failed requests');
     return {
       issue: 'frontend_problem',
       solution: 'Check browser console and network tab'
     };
   }
   
-  console.log('❓ UNKNOWN: Unable to identify specific issue');
+  debugLog('❓ UNKNOWN: Unable to identify specific issue');
   return {
     issue: 'unknown',
     duplicateCheck,
@@ -316,7 +316,7 @@ function testReportsConnection() {
  * Quick fix: Create a simple test function the frontend can call
  */
 function createSimpleTestFunction() {
-  console.log('🔧 === CREATING SIMPLE TEST FUNCTION ===');
+  debugLog('🔧 === CREATING SIMPLE TEST FUNCTION ===');
   
   const testFunctionCode = `
 // Add this test function to your Code.gs
@@ -337,12 +337,12 @@ function testReportsConnection() {
 }
 `;
   
-  console.log('Test function code:');
-  console.log(testFunctionCode);
-  console.log('\nTo test:');
-  console.log('1. Add this function to your Code.gs');
-  console.log('2. In browser console, run: google.script.run.withSuccessHandler(console.log).testReportsConnection()');
-  console.log('3. If this works, the issue is in getPageDataForReports');
+  debugLog('Test function code:');
+  debugLog(testFunctionCode);
+  debugLog('\nTo test:');
+  debugLog('1. Add this function to your Code.gs');
+  debugLog('2. In browser console, run: google.script.run.withSuccessHandler(console.log).testReportsConnection()');
+  debugLog('3. If this works, the issue is in getPageDataForReports');
   
   return { testFunctionCode };
 }
@@ -356,10 +356,10 @@ function testReportsConnection() {
  * Enhanced version of getPageDataForReports with detailed error catching
  */
 function getPageDataForReportsDebug(filters) {
-  console.log('🔍 === DEBUG VERSION OF getPageDataForReports ===');
+  debugLog('🔍 === DEBUG VERSION OF getPageDataForReports ===');
   
   try {
-    console.log('1️⃣ Function called with filters:', filters);
+    debugLog('1️⃣ Function called with filters:', filters);
 
     // Create a default user without authentication
     const defaultUser = {
@@ -368,11 +368,11 @@ function getPageDataForReportsDebug(filters) {
       roles: ['admin'],
       permissions: ['view_reports', 'export_reports', 'view_all']
     };
-    console.log('2️⃣ Created default user:', defaultUser);
+    debugLog('2️⃣ Created default user:', defaultUser);
 
     // Test if generateReportData exists
     if (typeof generateReportData !== 'function') {
-      console.log('❌ generateReportData function not found!');
+      debugLog('❌ generateReportData function not found!');
       return { 
         success: false, 
         error: 'generateReportData function not found',
@@ -380,15 +380,15 @@ function getPageDataForReportsDebug(filters) {
         reportData: null 
       };
     }
-    console.log('3️⃣ generateReportData function exists');
+    debugLog('3️⃣ generateReportData function exists');
 
     // Try to call generateReportData with enhanced error catching
-    console.log('4️⃣ Calling generateReportData...');
+    debugLog('4️⃣ Calling generateReportData...');
     let reportData;
     
     try {
       reportData = generateReportData(filters);
-      console.log('5️⃣ generateReportData returned:', {
+      debugLog('5️⃣ generateReportData returned:', {
         exists: !!reportData,
         type: typeof reportData,
         keys: reportData ? Object.keys(reportData) : null,
@@ -409,7 +409,7 @@ function getPageDataForReportsDebug(filters) {
 
     // Check if reportData is valid
     if (!reportData) {
-      console.log('❌ generateReportData returned null/undefined');
+      debugLog('❌ generateReportData returned null/undefined');
       return { 
         success: false, 
         error: 'generateReportData returned null',
@@ -420,8 +420,8 @@ function getPageDataForReportsDebug(filters) {
 
     // Check if reportData has error flag
     if (reportData.success === false) {
-      console.log('❌ generateReportData returned success: false');
-      console.log('Error from generateReportData:', reportData.error);
+      debugLog('❌ generateReportData returned success: false');
+      debugLog('Error from generateReportData:', reportData.error);
       return { 
         success: false, 
         error: 'generateReportData failed: ' + (reportData.error || 'unknown error'),
@@ -430,7 +430,7 @@ function getPageDataForReportsDebug(filters) {
       };
     }
 
-    console.log('6️⃣ Success! Returning data');
+    debugLog('6️⃣ Success! Returning data');
     return { 
       success: true, 
       user: defaultUser, 
@@ -454,7 +454,7 @@ function getPageDataForReportsDebug(filters) {
  * Test the debug version directly
  */
 function testDebugVersion() {
-  console.log('🧪 === TESTING DEBUG VERSION ===');
+  debugLog('🧪 === TESTING DEBUG VERSION ===');
   
   const filters = {
     startDate: '2024-12-01',
@@ -463,17 +463,17 @@ function testDebugVersion() {
     status: 'All'
   };
   
-  console.log('Testing with filters:', filters);
+  debugLog('Testing with filters:', filters);
   const result = getPageDataForReportsDebug(filters);
   
-  console.log('\n🎯 === FINAL RESULT ===');
-  console.log('Success:', result.success);
-  console.log('Error:', result.error);
-  console.log('Has reportData:', !!result.reportData);
-  console.log('User:', result.user);
+  debugLog('\n🎯 === FINAL RESULT ===');
+  debugLog('Success:', result.success);
+  debugLog('Error:', result.error);
+  debugLog('Has reportData:', !!result.reportData);
+  debugLog('User:', result.user);
   
   if (result.stack) {
-    console.log('Stack trace:', result.stack);
+    debugLog('Stack trace:', result.stack);
   }
   
   return result;
@@ -483,7 +483,7 @@ function testDebugVersion() {
  * Step-by-step test of generateReportData
  */
 function testGenerateReportDataStepByStep() {
-  console.log('🔍 === STEP BY STEP TEST OF generateReportData ===');
+  debugLog('🔍 === STEP BY STEP TEST OF generateReportData ===');
   
   try {
     const filters = {
@@ -493,33 +493,33 @@ function testGenerateReportDataStepByStep() {
       status: 'All'
     };
     
-    console.log('1️⃣ Testing data retrieval functions...');
+    debugLog('1️⃣ Testing data retrieval functions...');
     
     // Test each data source individually
-    console.log('   Testing getRequestsData...');
+    debugLog('   Testing getRequestsData...');
     const requestsData = getRequestsData();
-    console.log('   ✅ Requests:', requestsData ? requestsData.data.length : 'FAILED');
+    debugLog('   ✅ Requests:', requestsData ? requestsData.data.length : 'FAILED');
     
-    console.log('   Testing getAssignmentsData...');
+    debugLog('   Testing getAssignmentsData...');
     const assignmentsData = getAssignmentsData();
-    console.log('   ✅ Assignments:', assignmentsData ? assignmentsData.data.length : 'FAILED');
+    debugLog('   ✅ Assignments:', assignmentsData ? assignmentsData.data.length : 'FAILED');
     
-    console.log('   Testing getRidersData...');
+    debugLog('   Testing getRidersData...');
     const ridersData = getRidersData();
-    console.log('   ✅ Riders:', ridersData ? ridersData.data.length : 'FAILED');
+    debugLog('   ✅ Riders:', ridersData ? ridersData.data.length : 'FAILED');
     
-    console.log('\n2️⃣ Testing date parsing...');
+    debugLog('\n2️⃣ Testing date parsing...');
     const startDate = parseDateString(filters.startDate);
     const endDate = parseDateString(filters.endDate);
-    console.log('   Start date:', startDate);
-    console.log('   End date:', endDate);
+    debugLog('   Start date:', startDate);
+    debugLog('   End date:', endDate);
     
     if (!startDate || !endDate) {
-      console.log('❌ Date parsing failed!');
+      debugLog('❌ Date parsing failed!');
       return { issue: 'date_parsing' };
     }
     
-    console.log('\n3️⃣ Testing request filtering...');
+    debugLog('\n3️⃣ Testing request filtering...');
     const filteredRequests = requestsData.data.filter(request => {
       const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
       const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
@@ -532,15 +532,15 @@ function testGenerateReportDataStepByStep() {
       
       return matchesDate;
     });
-    console.log('   Filtered requests:', filteredRequests.length);
+    debugLog('   Filtered requests:', filteredRequests.length);
     
-    console.log('\n4️⃣ Testing completed requests calculation...');
+    debugLog('\n4️⃣ Testing completed requests calculation...');
     const completedRequests = filteredRequests.filter(request => 
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
     ).length;
-    console.log('   Completed requests:', completedRequests);
+    debugLog('   Completed requests:', completedRequests);
     
-    console.log('\n5️⃣ Testing rider hours calculation...');
+    debugLog('\n5️⃣ Testing rider hours calculation...');
     let riderHoursCount = 0;
     try {
       ridersData.data.forEach(rider => {
@@ -573,13 +573,13 @@ function testGenerateReportDataStepByStep() {
           riderHoursCount++;
         }
       });
-      console.log('   Riders with hours:', riderHoursCount);
+      debugLog('   Riders with hours:', riderHoursCount);
     } catch (riderError) {
       console.error('❌ Rider hours calculation failed:', riderError);
       return { issue: 'rider_hours_calculation', error: riderError.message };
     }
     
-    console.log('\n✅ All steps completed successfully');
+    debugLog('\n✅ All steps completed successfully');
     return {
       success: true,
       completedRequests,
@@ -597,7 +597,7 @@ function testGenerateReportDataStepByStep() {
  * Create a minimal working version for testing
  */
 function generateReportDataMinimal(filters) {
-  console.log('🔧 === MINIMAL VERSION TEST ===');
+  debugLog('🔧 === MINIMAL VERSION TEST ===');
   
   try {
     // Just return the absolute minimum structure
@@ -628,32 +628,32 @@ function generateReportDataMinimal(filters) {
  * COMPLETE DIAGNOSTIC - Run this to find the exact issue
  */
 function findExactError() {
-  console.log('🚀 === FINDING EXACT ERROR ===');
+  debugLog('🚀 === FINDING EXACT ERROR ===');
   
-  console.log('\n1️⃣ Testing step-by-step...');
+  debugLog('\n1️⃣ Testing step-by-step...');
   const stepTest = testGenerateReportDataStepByStep();
   if (!stepTest.success) {
-    console.log('❌ Step-by-step failed:', stepTest);
+    debugLog('❌ Step-by-step failed:', stepTest);
     return stepTest;
   }
   
-  console.log('\n2️⃣ Testing minimal version...');
+  debugLog('\n2️⃣ Testing minimal version...');
   try {
     const minimal = generateReportDataMinimal({});
-    console.log('✅ Minimal version works');
+    debugLog('✅ Minimal version works');
   } catch (error) {
-    console.log('❌ Even minimal version failed:', error);
+    debugLog('❌ Even minimal version failed:', error);
     return { issue: 'minimal_failed', error: error.message };
   }
   
-  console.log('\n3️⃣ Testing debug version...');
+  debugLog('\n3️⃣ Testing debug version...');
   const debugResult = testDebugVersion();
   
-  console.log('\n🎯 === DIAGNOSIS COMPLETE ===');
+  debugLog('\n🎯 === DIAGNOSIS COMPLETE ===');
   if (debugResult.success) {
-    console.log('✅ Debug version works - issue may be intermittent');
+    debugLog('✅ Debug version works - issue may be intermittent');
   } else {
-    console.log('❌ Found the issue:', debugResult.error);
+    debugLog('❌ Found the issue:', debugResult.error);
   }
   
   return debugResult;
@@ -1270,7 +1270,7 @@ function getPageDataForRiders(user) {
 // SOLUTION: Update the frontend functions in requests.html
 
 function loadRidersForAssignment() {
-    console.log('🔄 Loading riders for assignment...');
+    debugLog('🔄 Loading riders for assignment...');
     
     // Show loading state
     document.getElementById('ridersLoadingState').style.display = 'block';
@@ -1278,7 +1278,7 @@ function loadRidersForAssignment() {
     document.getElementById('noRidersState').style.display = 'none';
 
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        console.log('📡 Calling backend getPageDataForRiders...');
+        debugLog('📡 Calling backend getPageDataForRiders...');
         
         google.script.run
             .withSuccessHandler(handleRidersDataLoaded)
@@ -1291,7 +1291,7 @@ function loadRidersForAssignment() {
 }
 
 function handleRidersDataLoaded(data) {
-    console.log('📥 Received riders data:', data);
+    debugLog('📥 Received riders data:', data);
     
     document.getElementById('ridersLoadingState').style.display = 'none';
     
@@ -1342,13 +1342,13 @@ function handleRidersDataLoaded(data) {
                         !rider.status;
         
         if (!isActive) {
-            console.log(`📋 Filtering out rider ${rider.name} with status: ${rider.status}`);
+            debugLog(`📋 Filtering out rider ${rider.name} with status: ${rider.status}`);
         }
         
         return isActive;
     });
     
-    console.log(`✅ Processed ${availableRiders.length} active riders from ${data.riders.length} total`);
+    debugLog(`✅ Processed ${availableRiders.length} active riders from ${data.riders.length} total`);
     
     if (availableRiders.length > 0) {
         document.getElementById('ridersAssignmentGrid').style.display = 'grid';
@@ -1408,18 +1408,18 @@ function handleRidersDataError(error) {
 
 // PROBLEM 3: Add debugging function to help troubleshoot
 function debugRiderLoading() {
-    console.log('🔍 Debug: Rider loading diagnosis...');
-    console.log('Current user:', currentUser);
-    console.log('Current editing request:', currentEditingRequest);
-    console.log('Available riders:', availableRiders);
-    console.log('Google Apps Script available:', typeof google !== 'undefined' && google.script);
+    debugLog('🔍 Debug: Rider loading diagnosis...');
+    debugLog('Current user:', currentUser);
+    debugLog('Current editing request:', currentEditingRequest);
+    debugLog('Available riders:', availableRiders);
+    debugLog('Google Apps Script available:', typeof google !== 'undefined' && google.script);
     
     // Try to call the backend directly for debugging
     if (typeof google !== 'undefined' && google.script && google.script.run) {
-        console.log('📡 Attempting direct backend call for debugging...');
+        debugLog('📡 Attempting direct backend call for debugging...');
         google.script.run
             .withSuccessHandler(function(data) {
-                console.log('🔍 Debug - Backend returned:', data);
+                debugLog('🔍 Debug - Backend returned:', data);
                 alert('Debug Results:\n' + JSON.stringify(data, null, 2));
             })
             .withFailureHandler(function(error) {
@@ -1433,7 +1433,7 @@ function debugRiderLoading() {
 // PROBLEM 4: Ensure proper initialization
 // Make sure this runs when the assignment modal opens
 function openRiderAssignmentModal() {
-    console.log('🔄 Opening rider assignment modal...');
+    debugLog('🔄 Opening rider assignment modal...');
     
     if (currentEditingRequest && currentEditingRequest.requestId) {
         // Reset state
@@ -5683,7 +5683,7 @@ function cleanupOldAssignmentTriggers() {
  */
 function diagnoseAssignmentIssues(requestId = null) {
   try {
-    console.log('🔍 Starting assignment issues diagnosis...');
+    debugLog('🔍 Starting assignment issues diagnosis...');
     
     // Clear all caches first
     if (typeof clearRequestsCache === 'function') {
@@ -5709,11 +5709,11 @@ function diagnoseAssignmentIssues(requestId = null) {
     
     // Get requests data
     const requestsData = getRequestsData(false);
-    console.log(`📊 Found ${requestsData.data.length} requests in sheet`);
+    debugLog(`📊 Found ${requestsData.data.length} requests in sheet`);
     
     // If specific request ID provided, focus on that
     if (requestId) {
-      console.log(`🎯 Focusing diagnosis on request: ${requestId}`);
+      debugLog(`🎯 Focusing diagnosis on request: ${requestId}`);
       
       const trimmedRequestId = String(requestId).trim();
       let foundRequest = null;
@@ -5747,7 +5747,7 @@ function diagnoseAssignmentIssues(requestId = null) {
         });
         
         if (similarIds.length > 0) {
-          console.log(`🔍 Similar request IDs found: ${similarIds.join(', ')}`);
+          debugLog(`🔍 Similar request IDs found: ${similarIds.join(', ')}`);
           fixes.push(`Check if request ID should be one of: ${similarIds.join(', ')}`);
         }
         
@@ -5757,23 +5757,23 @@ function diagnoseAssignmentIssues(requestId = null) {
           return String(id).trim();
         }).filter(id => id.length > 0).slice(0, 20);
         
-        console.log(`📋 Available request IDs (first 20): ${allIds.join(', ')}`);
+        debugLog(`📋 Available request IDs (first 20): ${allIds.join(', ')}`);
         
       } else {
-        console.log(`✅ Found request ${requestId} at row ${foundRequest.sheetRow}`);
+        debugLog(`✅ Found request ${requestId} at row ${foundRequest.sheetRow}`);
         
         // Check request details
         const status = getColumnValue(foundRequest.data, requestsData.columnMap, CONFIG.columns.requests.status);
         const ridersAssigned = getColumnValue(foundRequest.data, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
         const ridersNeeded = getColumnValue(foundRequest.data, requestsData.columnMap, CONFIG.columns.requests.ridersNeeded);
         
-        console.log(`  Status: ${status}`);
-        console.log(`  Riders Assigned: ${ridersAssigned}`);
-        console.log(`  Riders Needed: ${ridersNeeded}`);
+        debugLog(`  Status: ${status}`);
+        debugLog(`  Riders Assigned: ${ridersAssigned}`);
+        debugLog(`  Riders Needed: ${ridersNeeded}`);
         
         // Check for orphaned assignments
         const assignments = getAssignmentsForRequest(requestId);
-        console.log(`  Assignments found: ${assignments.length}`);
+        debugLog(`  Assignments found: ${assignments.length}`);
         
         if (assignments.length > 0) {
           const assignedRiderNames = assignments.map(a => a.riderName).filter(name => name);
@@ -5788,7 +5788,7 @@ function diagnoseAssignmentIssues(requestId = null) {
     }
     
     // General data integrity checks
-    console.log('🔧 Running general data integrity checks...');
+    debugLog('🔧 Running general data integrity checks...');
     
     // Check for duplicate request IDs
     const requestIds = requestsData.data.map(row => {
@@ -5821,12 +5821,12 @@ function diagnoseAssignmentIssues(requestId = null) {
       timestamp: new Date().toISOString()
     };
     
-    console.log(`📋 Diagnosis complete. Issues found: ${issues.length}`);
+    debugLog(`📋 Diagnosis complete. Issues found: ${issues.length}`);
     if (issues.length > 0) {
-      console.log('❌ Issues:', issues);
-      console.log('🔧 Suggested fixes:', fixes);
+      debugLog('❌ Issues:', issues);
+      debugLog('🔧 Suggested fixes:', fixes);
     } else {
-      console.log('✅ No issues found');
+      debugLog('✅ No issues found');
     }
     
     return result;
@@ -5848,19 +5848,19 @@ function diagnoseAssignmentIssues(requestId = null) {
  */
 function syncAssignmentsWithRequest(requestId) {
   try {
-    console.log(`🔄 Syncing assignments for request ${requestId}...`);
+    debugLog(`🔄 Syncing assignments for request ${requestId}...`);
     
     // Get assignments for this request
     const assignments = getAssignmentsForRequest(requestId);
     const assignedRiderNames = assignments.map(a => a.riderName).filter(name => name && name.trim());
     
-    console.log(`Found ${assignments.length} assignments for request ${requestId}`);
-    console.log(`Rider names: ${assignedRiderNames.join(', ')}`);
+    debugLog(`Found ${assignments.length} assignments for request ${requestId}`);
+    debugLog(`Rider names: ${assignedRiderNames.join(', ')}`);
     
     // Update the request with the current assignments
     updateRequestWithAssignedRiders(requestId, assignedRiderNames);
     
-    console.log(`✅ Successfully synced request ${requestId} with ${assignedRiderNames.length} riders`);
+    debugLog(`✅ Successfully synced request ${requestId} with ${assignedRiderNames.length} riders`);
     
     return {
       success: true,
