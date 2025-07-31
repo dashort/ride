@@ -28,7 +28,7 @@ function getOrCreateSheet(sheetName, headers = []) {
       }
     }
     
-    debugLog(`✅ Created protected sheet: ${sheetName}`);
+    console.log(`✅ Created protected sheet: ${sheetName}`);
     logActivity(`Created sheet: ${sheetName}`); // Assumes logActivity is defined
     
   } else {
@@ -46,12 +46,12 @@ function getOrCreateSheet(sheetName, headers = []) {
         
         if (!headersMatch) {
           console.warn(`⚠️ Header mismatch in existing sheet: ${sheetName}`);
-          debugLog('Expected:', expectedTrimmed);
-          debugLog('Current:', currentTrimmed);
+          console.log('Expected:', expectedTrimmed);
+          console.log('Current:', currentTrimmed);
           
           // Auto-fix if column count matches
           if (currentHeaders.length === headers.length) {
-            debugLog(`🔧 Auto-fixing headers for ${sheetName}...`);
+            console.log(`🔧 Auto-fixing headers for ${sheetName}...`);
             sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
             
             // Ensure protection is applied
@@ -67,7 +67,7 @@ function getOrCreateSheet(sheetName, headers = []) {
               console.warn(`⚠️ Could not protect headers for ${sheetName}:`, protectionError);
             }
             
-            debugLog(`✅ Fixed headers for ${sheetName}`);
+            console.log(`✅ Fixed headers for ${sheetName}`);
           } else {
             console.error(`❌ Cannot auto-fix ${sheetName}: column count mismatch (expected: ${headers.length}, current: ${currentHeaders.length})`);
           }
@@ -143,7 +143,7 @@ function validateAllCriticalSheets() {
   const results = [];
   let totalIssues = 0;
   
-  debugLog('🔍 Validating all critical sheets...');
+  console.log('🔍 Validating all critical sheets...');
   
   sheetsToValidate.forEach(({ name, headers }) => {
     const result = validateSheetHeaders(name, headers);
@@ -153,11 +153,11 @@ function validateAllCriticalSheets() {
       totalIssues++;
       console.warn(`❌ Issues found in ${name}:`, result.error || 'Header mismatch');
     } else {
-      debugLog(`✅ ${name} headers are valid`);
+      console.log(`✅ ${name} headers are valid`);
     }
   });
   
-  debugLog(`📊 Validation complete: ${results.length - totalIssues}/${results.length} sheets valid`);
+  console.log(`📊 Validation complete: ${results.length - totalIssues}/${results.length} sheets valid`);
   
   return {
     results: results,

@@ -4,8 +4,8 @@
  */
 
 function diagnoseAndFixRidersLoading() {
-  debugLog('🩺 COMPREHENSIVE RIDERS LOADING DIAGNOSTIC & FIX');
-  debugLog('=================================================');
+  console.log('🩺 COMPREHENSIVE RIDERS LOADING DIAGNOSTIC & FIX');
+  console.log('=================================================');
   
   const results = {
     diagnosis: {},
@@ -17,12 +17,12 @@ function diagnoseAndFixRidersLoading() {
   
   try {
     // Step 1: Check spreadsheet access
-    debugLog('\n📋 Step 1: Checking Spreadsheet Access...');
+    console.log('\n📋 Step 1: Checking Spreadsheet Access...');
     let spreadsheet;
     try {
       spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
       results.diagnosis.spreadsheetAccess = true;
-      debugLog('✅ Spreadsheet access: OK');
+      console.log('✅ Spreadsheet access: OK');
     } catch (error) {
       results.diagnosis.spreadsheetAccess = false;
       console.error('❌ Spreadsheet access failed:', error.message);
@@ -30,11 +30,11 @@ function diagnoseAndFixRidersLoading() {
     }
     
     // Step 2: Check if Riders sheet exists
-    debugLog('\n📊 Step 2: Checking Riders Sheet...');
+    console.log('\n📊 Step 2: Checking Riders Sheet...');
     let ridersSheet = spreadsheet.getSheetByName(CONFIG.sheets.riders);
     
     if (!ridersSheet) {
-      debugLog('❌ Riders sheet not found. Creating it...');
+      console.log('❌ Riders sheet not found. Creating it...');
       
       try {
         ridersSheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
@@ -56,7 +56,7 @@ function diagnoseAndFixRidersLoading() {
         
         ridersSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
         
-        debugLog('✅ Created Riders sheet with sample data');
+        console.log('✅ Created Riders sheet with sample data');
         results.fixes.push('Created missing Riders sheet with sample data');
         
       } catch (createError) {
@@ -65,21 +65,21 @@ function diagnoseAndFixRidersLoading() {
         return results;
       }
     } else {
-      debugLog('✅ Riders sheet exists');
+      console.log('✅ Riders sheet exists');
     }
     
     results.diagnosis.ridersSheetExists = true;
     
     // Step 3: Check sheet data
-    debugLog('\n📝 Step 3: Analyzing Sheet Data...');
+    console.log('\n📝 Step 3: Analyzing Sheet Data...');
     const dataRange = ridersSheet.getDataRange();
     const allValues = dataRange.getValues();
     
-    debugLog(`   - Total rows: ${allValues.length}`);
-    debugLog(`   - Headers: ${JSON.stringify(allValues[0])}`);
+    console.log(`   - Total rows: ${allValues.length}`);
+    console.log(`   - Headers: ${JSON.stringify(allValues[0])}`);
     
     if (allValues.length < 2) {
-      debugLog('❌ No data rows found. Adding sample data...');
+      console.log('❌ No data rows found. Adding sample data...');
       
       const sampleData = [
         ['JP001', 'John Smith', '504-123-4567', 'john.smith@nopd.com', 'Active', 'A Platoon', 'No', 'Motorcycle', 'NOPD', 5],
@@ -88,28 +88,28 @@ function diagnoseAndFixRidersLoading() {
       ];
       
       ridersSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
-      debugLog('✅ Added sample rider data');
+      console.log('✅ Added sample rider data');
       results.fixes.push('Added sample rider data to empty sheet');
       
       // Re-read the data
       const updatedDataRange = ridersSheet.getDataRange();
       const updatedAllValues = updatedDataRange.getValues();
-      debugLog(`   - Updated total rows: ${updatedAllValues.length}`);
+      console.log(`   - Updated total rows: ${updatedAllValues.length}`);
     }
     
     // Step 4: Test data retrieval methods
-    debugLog('\n🔍 Step 4: Testing Data Retrieval Methods...');
+    console.log('\n🔍 Step 4: Testing Data Retrieval Methods...');
     
     // Test Method 1: getRiders()
     try {
-      debugLog('Testing getRiders()...');
+      console.log('Testing getRiders()...');
       const ridersMethod1 = getRiders();
-      debugLog(`✅ getRiders() returned ${ridersMethod1.length} riders`);
+      console.log(`✅ getRiders() returned ${ridersMethod1.length} riders`);
       results.diagnosis.getRidersWorks = true;
       
       if (ridersMethod1.length > 0) {
         results.riders = ridersMethod1;
-        debugLog('Sample rider from getRiders():', JSON.stringify(ridersMethod1[0], null, 2));
+        console.log('Sample rider from getRiders():', JSON.stringify(ridersMethod1[0], null, 2));
       }
       
     } catch (error) {
@@ -119,9 +119,9 @@ function diagnoseAndFixRidersLoading() {
     
     // Test Method 2: getRidersWithFallback()
     try {
-      debugLog('Testing getRidersWithFallback()...');
+      console.log('Testing getRidersWithFallback()...');
       const ridersMethod2 = getRidersWithFallback();
-      debugLog(`✅ getRidersWithFallback() returned ${ridersMethod2.length} riders`);
+      console.log(`✅ getRidersWithFallback() returned ${ridersMethod2.length} riders`);
       results.diagnosis.getRidersWithFallbackWorks = true;
       
       if (!results.riders || results.riders.length === 0) {
@@ -135,7 +135,7 @@ function diagnoseAndFixRidersLoading() {
     
     // Test Method 3: Direct sheet reading
     try {
-      debugLog('Testing direct sheet reading...');
+      console.log('Testing direct sheet reading...');
       const headers = allValues[0];
       const dataRows = allValues.slice(1);
       
@@ -155,7 +155,7 @@ function diagnoseAndFixRidersLoading() {
         return rider;
       }).filter(rider => rider.name && rider.name.trim().length > 0);
       
-      debugLog(`✅ Direct sheet reading returned ${directRiders.length} riders`);
+      console.log(`✅ Direct sheet reading returned ${directRiders.length} riders`);
       results.diagnosis.directReadingWorks = true;
       
       if (!results.riders || results.riders.length === 0) {
@@ -168,24 +168,24 @@ function diagnoseAndFixRidersLoading() {
     }
     
     // Step 5: Test main function
-    debugLog('\n🎯 Step 5: Testing Main Function...');
+    console.log('\n🎯 Step 5: Testing Main Function...');
     try {
-      debugLog('Testing getPageDataForRiders()...');
+      console.log('Testing getPageDataForRiders()...');
       const pageData = getPageDataForRiders();
       
-      debugLog('✅ getPageDataForRiders() completed');
-      debugLog(`   - Success: ${pageData.success}`);
-      debugLog(`   - Riders count: ${pageData.riders ? pageData.riders.length : 0}`);
-      debugLog(`   - User: ${pageData.user ? pageData.user.name : 'None'}`);
-      debugLog(`   - Error: ${pageData.error || 'None'}`);
+      console.log('✅ getPageDataForRiders() completed');
+      console.log(`   - Success: ${pageData.success}`);
+      console.log(`   - Riders count: ${pageData.riders ? pageData.riders.length : 0}`);
+      console.log(`   - User: ${pageData.user ? pageData.user.name : 'None'}`);
+      console.log(`   - Error: ${pageData.error || 'None'}`);
       
       if (pageData.success && pageData.riders && pageData.riders.length > 0) {
         results.success = true;
         results.riders = pageData.riders;
         results.stats = pageData.stats;
-        debugLog('🎉 SUCCESS: Main function works correctly!');
+        console.log('🎉 SUCCESS: Main function works correctly!');
       } else {
-        debugLog('⚠️ Main function completed but with issues');
+        console.log('⚠️ Main function completed but with issues');
       }
       
       results.diagnosis.mainFunctionWorks = pageData.success;
@@ -208,28 +208,28 @@ function diagnoseAndFixRidersLoading() {
     }
     
     // Step 7: Final summary
-    debugLog('\n📊 DIAGNOSTIC SUMMARY:');
-    debugLog('======================');
-    debugLog(`Spreadsheet Access: ${results.diagnosis.spreadsheetAccess ? '✅' : '❌'}`);
-    debugLog(`Riders Sheet Exists: ${results.diagnosis.ridersSheetExists ? '✅' : '❌'}`);
-    debugLog(`getRiders() Works: ${results.diagnosis.getRidersWorks ? '✅' : '❌'}`);
-    debugLog(`getRidersWithFallback() Works: ${results.diagnosis.getRidersWithFallbackWorks ? '✅' : '❌'}`);
-    debugLog(`Direct Reading Works: ${results.diagnosis.directReadingWorks ? '✅' : '❌'}`);
-    debugLog(`Main Function Works: ${results.diagnosis.mainFunctionWorks ? '✅' : '❌'}`);
-    debugLog(`Total Riders Found: ${results.riders.length}`);
-    debugLog(`Fixes Applied: ${results.fixes.length}`);
+    console.log('\n📊 DIAGNOSTIC SUMMARY:');
+    console.log('======================');
+    console.log(`Spreadsheet Access: ${results.diagnosis.spreadsheetAccess ? '✅' : '❌'}`);
+    console.log(`Riders Sheet Exists: ${results.diagnosis.ridersSheetExists ? '✅' : '❌'}`);
+    console.log(`getRiders() Works: ${results.diagnosis.getRidersWorks ? '✅' : '❌'}`);
+    console.log(`getRidersWithFallback() Works: ${results.diagnosis.getRidersWithFallbackWorks ? '✅' : '❌'}`);
+    console.log(`Direct Reading Works: ${results.diagnosis.directReadingWorks ? '✅' : '❌'}`);
+    console.log(`Main Function Works: ${results.diagnosis.mainFunctionWorks ? '✅' : '❌'}`);
+    console.log(`Total Riders Found: ${results.riders.length}`);
+    console.log(`Fixes Applied: ${results.fixes.length}`);
     
     if (results.fixes.length > 0) {
-      debugLog('\nFixes Applied:');
+      console.log('\nFixes Applied:');
       results.fixes.forEach((fix, index) => {
-        debugLog(`${index + 1}. ${fix}`);
+        console.log(`${index + 1}. ${fix}`);
       });
     }
     
     if (results.success) {
-      debugLog('\n🎉 RESULT: Riders loading is now working correctly!');
+      console.log('\n🎉 RESULT: Riders loading is now working correctly!');
     } else {
-      debugLog('\n⚠️ RESULT: Issues still exist. Check the diagnosis above.');
+      console.log('\n⚠️ RESULT: Issues still exist. Check the diagnosis above.');
     }
     
     return results;
@@ -245,26 +245,26 @@ function diagnoseAndFixRidersLoading() {
  * Quick test function to check if riders loading is working
  */
 function quickRidersTest() {
-  debugLog('🚀 Quick Riders Loading Test');
-  debugLog('============================');
+  console.log('🚀 Quick Riders Loading Test');
+  console.log('============================');
   
   try {
     const result = getPageDataForRiders();
     
     if (result.success && result.riders && result.riders.length > 0) {
-      debugLog('✅ SUCCESS: Riders loading works!');
-      debugLog(`   Found ${result.riders.length} riders`);
-      debugLog(`   User: ${result.user ? result.user.name : 'Unknown'}`);
+      console.log('✅ SUCCESS: Riders loading works!');
+      console.log(`   Found ${result.riders.length} riders`);
+      console.log(`   User: ${result.user ? result.user.name : 'Unknown'}`);
       
       // Show first few riders
       result.riders.slice(0, 3).forEach((rider, i) => {
-        debugLog(`   ${i + 1}. ${rider.name} (${rider.jpNumber}) - ${rider.status}`);
+        console.log(`   ${i + 1}. ${rider.name} (${rider.jpNumber}) - ${rider.status}`);
       });
       
       return { success: true, count: result.riders.length };
     } else {
-      debugLog('❌ FAILED: No riders returned or error occurred');
-      debugLog(`   Error: ${result.error || 'Unknown error'}`);
+      console.log('❌ FAILED: No riders returned or error occurred');
+      console.log(`   Error: ${result.error || 'Unknown error'}`);
       return { success: false, error: result.error };
     }
     
@@ -278,8 +278,8 @@ function quickRidersTest() {
  * Force fix for riders loading issues
  */
 function forceFixRidersLoading() {
-  debugLog('🔧 FORCE FIX: Riders Loading Issues');
-  debugLog('===================================');
+  console.log('🔧 FORCE FIX: Riders Loading Issues');
+  console.log('===================================');
   
   try {
     // Step 1: Ensure sheet exists with proper structure
@@ -287,7 +287,7 @@ function forceFixRidersLoading() {
     let ridersSheet = spreadsheet.getSheetByName(CONFIG.sheets.riders);
     
     if (!ridersSheet) {
-      debugLog('Creating Riders sheet...');
+      console.log('Creating Riders sheet...');
       ridersSheet = spreadsheet.insertSheet(CONFIG.sheets.riders);
     }
     
@@ -313,16 +313,16 @@ function forceFixRidersLoading() {
     
     ridersSheet.getRange(2, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
     
-    debugLog('✅ Rebuilt Riders sheet with sample data');
+    console.log('✅ Rebuilt Riders sheet with sample data');
     
     // Step 4: Test the fix
     const testResult = quickRidersTest();
     
     if (testResult.success) {
-      debugLog('🎉 FORCE FIX SUCCESSFUL! Riders loading now works.');
+      console.log('🎉 FORCE FIX SUCCESSFUL! Riders loading now works.');
       return { success: true, ridersCount: testResult.count };
     } else {
-      debugLog('⚠️ Force fix completed but test still fails.');
+      console.log('⚠️ Force fix completed but test still fails.');
       return { success: false, error: testResult.error };
     }
     

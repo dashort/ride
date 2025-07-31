@@ -645,7 +645,7 @@ function isValidEmail(email) {
  * Test security functions
  */
 function testSecurityFunctions() {
-  debugLog('🔒 Testing Security Functions...');
+  console.log('🔒 Testing Security Functions...');
   
   // Test password validation
   const passwordTests = [
@@ -657,15 +657,15 @@ function testSecurityFunctions() {
   
   passwordTests.forEach(pwd => {
     const result = validatePasswordStrength(pwd);
-    debugLog(`Password "${pwd}": ${result.valid ? 'Valid' : 'Invalid'} - ${result.message || result.strength}`);
+    console.log(`Password "${pwd}": ${result.valid ? 'Valid' : 'Invalid'} - ${result.message || result.strength}`);
   });
   
   // Test rate limiting
-  debugLog('\nTesting rate limiting...');
+  console.log('\nTesting rate limiting...');
   const testEmail = 'test@example.com';
   for (let i = 0; i < 12; i++) {
     recordAttempt(testEmail, 'login');
-    debugLog(`Attempt ${i + 1}: Rate limited = ${isRateLimited(testEmail, 'login')}`);
+    console.log(`Attempt ${i + 1}: Rate limited = ${isRateLimited(testEmail, 'login')}`);
   }
   
   // Test input sanitization
@@ -676,10 +676,10 @@ function testSecurityFunctions() {
     '+1-555-123-4567'
   ];
   
-  debugLog('\nTesting input sanitization...');
+  console.log('\nTesting input sanitization...');
   testInputs.forEach(input => {
-    debugLog(`Input: "${input}" -> Sanitized: "${sanitizeInput(input)}"`);
+    console.log(`Input: "${input}" -> Sanitized: "${sanitizeInput(input)}"`);
   });
   
-  debugLog('🔒 Security function testing completed.');
+  console.log('🔒 Security function testing completed.');
 }

@@ -3,7 +3,7 @@
  */
 function createSampleAssignmentsForTesting() {
   try {
-    debugLog('🧪 Creating sample assignments for testing...');
+    console.log('🧪 Creating sample assignments for testing...');
     
     // Get or create the assignments sheet
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -14,7 +14,7 @@ function createSampleAssignmentsForTesting() {
     
     // Check if there are already assignments
     const existingData = getAssignmentsData();
-    debugLog(`📊 Found ${existingData.data.length} existing assignments`);
+    console.log(`📊 Found ${existingData.data.length} existing assignments`);
     
     // Sample data
     const sampleAssignments = [
@@ -85,9 +85,9 @@ function createSampleAssignmentsForTesting() {
         const row = headers.map(header => assignment[header] || '');
         assignmentsSheet.appendRow(row);
         rowsAdded++;
-        debugLog(`✅ Added assignment: ${assignment[CONFIG.columns.assignments.id]}`);
+        console.log(`✅ Added assignment: ${assignment[CONFIG.columns.assignments.id]}`);
       } else {
-        debugLog(`⚠️ Assignment ${assignment[CONFIG.columns.assignments.id]} already exists, skipping`);
+        console.log(`⚠️ Assignment ${assignment[CONFIG.columns.assignments.id]} already exists, skipping`);
       }
     }
     
@@ -98,7 +98,7 @@ function createSampleAssignmentsForTesting() {
     dataCache.clear('sheet_' + CONFIG.sheets.assignments);
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
-    debugLog(`✅ Sample assignment creation complete. Added ${rowsAdded} new assignments.`);
+    console.log(`✅ Sample assignment creation complete. Added ${rowsAdded} new assignments.`);
     
     return {
       success: true,
@@ -171,11 +171,11 @@ function createSampleRidersIfNeeded() {
         const row = headers.map(header => rider[header] || '');
         ridersSheet.appendRow(row);
         ridersAdded++;
-        debugLog(`✅ Added rider: ${rider[CONFIG.columns.riders.name]}`);
+        console.log(`✅ Added rider: ${rider[CONFIG.columns.riders.name]}`);
       }
     }
     
-    debugLog(`✅ Added ${ridersAdded} sample riders`);
+    console.log(`✅ Added ${ridersAdded} sample riders`);
     
   } catch (error) {
     console.error('❌ Error creating sample riders:', error);

@@ -4,8 +4,8 @@
  */
 
 function debugReportsDataIssue() {
-  debugLog('🔍 === COMPREHENSIVE REPORTS DEBUG ===');
-  debugLog('Time:', new Date().toISOString());
+  console.log('🔍 === COMPREHENSIVE REPORTS DEBUG ===');
+  console.log('Time:', new Date().toISOString());
   
   const results = {
     environment: {},
@@ -16,89 +16,89 @@ function debugReportsDataIssue() {
   };
   
   // 1. CHECK ENVIRONMENT
-  debugLog('\n1️⃣ CHECKING ENVIRONMENT...');
+  console.log('\n1️⃣ CHECKING ENVIRONMENT...');
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     results.environment.spreadsheetAccess = true;
     results.environment.spreadsheetId = ss.getId();
     results.environment.spreadsheetName = ss.getName();
-    debugLog('✅ Spreadsheet access: OK');
-    debugLog('   ID:', ss.getId());
-    debugLog('   Name:', ss.getName());
+    console.log('✅ Spreadsheet access: OK');
+    console.log('   ID:', ss.getId());
+    console.log('   Name:', ss.getName());
   } catch (error) {
     results.environment.spreadsheetAccess = false;
     results.environment.error = error.message;
-    debugLog('❌ Spreadsheet access: FAILED');
-    debugLog('   Error:', error.message);
+    console.log('❌ Spreadsheet access: FAILED');
+    console.log('   Error:', error.message);
     results.recommendations.push('Fix spreadsheet access permissions');
   }
   
   // 2. CHECK DATA FUNCTIONS
-  debugLog('\n2️⃣ CHECKING DATA FUNCTIONS...');
+  console.log('\n2️⃣ CHECKING DATA FUNCTIONS...');
   
   // Test getRequestsData
   try {
-    debugLog('Testing getRequestsData...');
+    console.log('Testing getRequestsData...');
     const requestsData = getRequestsData();
     results.dataAccess.requestsData = {
       success: true,
       rowCount: requestsData?.data?.length || 0,
       hasColumnMap: !!requestsData?.columnMap
     };
-    debugLog(`✅ getRequestsData: ${requestsData?.data?.length || 0} rows`);
+    console.log(`✅ getRequestsData: ${requestsData?.data?.length || 0} rows`);
   } catch (error) {
     results.dataAccess.requestsData = {
       success: false,
       error: error.message
     };
-    debugLog('❌ getRequestsData failed:', error.message);
+    console.log('❌ getRequestsData failed:', error.message);
     results.recommendations.push('Fix getRequestsData function or check Requests sheet');
   }
   
   // Test getRidersData  
   try {
-    debugLog('Testing getRidersData...');
+    console.log('Testing getRidersData...');
     const ridersData = getRidersData();
     results.dataAccess.ridersData = {
       success: true,
       rowCount: ridersData?.data?.length || 0,
       hasColumnMap: !!ridersData?.columnMap
     };
-    debugLog(`✅ getRidersData: ${ridersData?.data?.length || 0} rows`);
+    console.log(`✅ getRidersData: ${ridersData?.data?.length || 0} rows`);
   } catch (error) {
     results.dataAccess.ridersData = {
       success: false,
       error: error.message
     };
-    debugLog('❌ getRidersData failed:', error.message);
+    console.log('❌ getRidersData failed:', error.message);
     results.recommendations.push('Fix getRidersData function or check Riders sheet');
   }
   
   // Test getAssignmentsData
   try {
-    debugLog('Testing getAssignmentsData...');
+    console.log('Testing getAssignmentsData...');
     const assignmentsData = getAssignmentsData();
     results.dataAccess.assignmentsData = {
       success: true,
       rowCount: assignmentsData?.data?.length || 0,
       hasColumnMap: !!assignmentsData?.columnMap
     };
-    debugLog(`✅ getAssignmentsData: ${assignmentsData?.data?.length || 0} rows`);
+    console.log(`✅ getAssignmentsData: ${assignmentsData?.data?.length || 0} rows`);
   } catch (error) {
     results.dataAccess.assignmentsData = {
       success: false,
       error: error.message
     };
-    debugLog('❌ getAssignmentsData failed:', error.message);
+    console.log('❌ getAssignmentsData failed:', error.message);
     results.recommendations.push('Fix getAssignmentsData function or check Assignments sheet');
   }
   
   // 3. CHECK MAIN FUNCTIONS
-  debugLog('\n3️⃣ CHECKING MAIN FUNCTIONS...');
+  console.log('\n3️⃣ CHECKING MAIN FUNCTIONS...');
   
   // Test generateReportData
   try {
-    debugLog('Testing generateReportData...');
+    console.log('Testing generateReportData...');
     const testFilters = {
       startDate: '2024-01-01',
       endDate: '2024-12-31',
@@ -114,22 +114,22 @@ function debugReportsDataIssue() {
     };
     if (reportData?.success === false) {
       results.functions.generateReportData.error = reportData.error;
-      debugLog('❌ generateReportData returned error:', reportData.error);
+      console.log('❌ generateReportData returned error:', reportData.error);
     } else {
-      debugLog('✅ generateReportData: OK');
+      console.log('✅ generateReportData: OK');
     }
   } catch (error) {
     results.functions.generateReportData = {
       success: false,
       error: error.message
     };
-    debugLog('❌ generateReportData failed:', error.message);
+    console.log('❌ generateReportData failed:', error.message);
     results.recommendations.push('Fix generateReportData function');
   }
   
   // Test getPageDataForReports
   try {
-    debugLog('Testing getPageDataForReports...');
+    console.log('Testing getPageDataForReports...');
     const testFilters = {
       startDate: '2024-01-01',
       endDate: '2024-12-31',
@@ -144,9 +144,9 @@ function debugReportsDataIssue() {
       error: pageData?.error
     };
     if (pageData?.success) {
-      debugLog('✅ getPageDataForReports: OK');
+      console.log('✅ getPageDataForReports: OK');
     } else {
-      debugLog('❌ getPageDataForReports failed:', pageData?.error);
+      console.log('❌ getPageDataForReports failed:', pageData?.error);
       results.recommendations.push('Fix getPageDataForReports function');
     }
   } catch (error) {
@@ -154,12 +154,12 @@ function debugReportsDataIssue() {
       success: false,
       error: error.message
     };
-    debugLog('❌ getPageDataForReports failed:', error.message);
+    console.log('❌ getPageDataForReports failed:', error.message);
     results.recommendations.push('Fix getPageDataForReports function');
   }
   
   // 4. CHECK SAMPLE DATA
-  debugLog('\n4️⃣ CHECKING FOR SAMPLE DATA...');
+  console.log('\n4️⃣ CHECKING FOR SAMPLE DATA...');
   if (results.dataAccess.requestsData?.success && results.dataAccess.requestsData.rowCount > 0) {
     try {
       const requestsData = getRequestsData();
@@ -167,7 +167,7 @@ function debugReportsDataIssue() {
       const dateColumn = getColumnValue(sampleRequest, requestsData.columnMap, CONFIG.columns.requests.date);
       results.sampleData.hasSampleRequest = true;
       results.sampleData.sampleDate = dateColumn;
-      debugLog('✅ Sample request found with date:', dateColumn);
+      console.log('✅ Sample request found with date:', dateColumn);
       
       // Check if dates are in the future (common issue)
       if (dateColumn instanceof Date) {
@@ -181,26 +181,26 @@ function debugReportsDataIssue() {
         };
         
         if (isInFuture) {
-          debugLog('⚠️  Sample date is in the future:', dateColumn);
+          console.log('⚠️  Sample date is in the future:', dateColumn);
           results.recommendations.push('Adjust date range to include future dates OR check data entry');
         } else if (isOld) {
-          debugLog('⚠️  Sample date is very old:', dateColumn);
+          console.log('⚠️  Sample date is very old:', dateColumn);
           results.recommendations.push('Adjust date range to include older dates OR check data entry');
         } else {
-          debugLog('✅ Sample date looks reasonable:', dateColumn);
+          console.log('✅ Sample date looks reasonable:', dateColumn);
         }
       }
     } catch (error) {
-      debugLog('❌ Error analyzing sample data:', error.message);
+      console.log('❌ Error analyzing sample data:', error.message);
     }
   } else {
     results.sampleData.hasSampleRequest = false;
     results.recommendations.push('Add sample data to test reports');
-    debugLog('❌ No sample requests found - this is likely the main issue!');
+    console.log('❌ No sample requests found - this is likely the main issue!');
   }
   
   // 5. FINAL RECOMMENDATIONS
-  debugLog('\n5️⃣ FINAL DIAGNOSIS & RECOMMENDATIONS...');
+  console.log('\n5️⃣ FINAL DIAGNOSIS & RECOMMENDATIONS...');
   
   const criticalIssues = [];
   if (!results.environment.spreadsheetAccess) criticalIssues.push('Spreadsheet access');
@@ -210,43 +210,43 @@ function debugReportsDataIssue() {
   if (results.dataAccess.requestsData?.rowCount === 0) criticalIssues.push('No requests data');
   
   if (criticalIssues.length === 0) {
-    debugLog('✅ All major components working - issue might be with date range or web app access');
+    console.log('✅ All major components working - issue might be with date range or web app access');
     results.recommendations.push('Check that you are accessing via Google Apps Script web app URL');
     results.recommendations.push('Verify date range includes your actual data dates');
   } else {
-    debugLog('❌ Critical issues found:', criticalIssues.join(', '));
+    console.log('❌ Critical issues found:', criticalIssues.join(', '));
   }
   
-  debugLog('\n📋 SUMMARY OF RECOMMENDATIONS:');
+  console.log('\n📋 SUMMARY OF RECOMMENDATIONS:');
   results.recommendations.forEach((rec, index) => {
-    debugLog(`${index + 1}. ${rec}`);
+    console.log(`${index + 1}. ${rec}`);
   });
   
   // 6. PROVIDE SPECIFIC FIXES
-  debugLog('\n🔧 SPECIFIC FIXES TO TRY:');
+  console.log('\n🔧 SPECIFIC FIXES TO TRY:');
   
   if (results.dataAccess.requestsData?.rowCount === 0) {
-    debugLog('🎯 MAIN ISSUE: No data in Requests sheet');
-    debugLog('   → Add some sample requests to the Requests sheet');
-    debugLog('   → Or check if data is in a different sheet');
+    console.log('🎯 MAIN ISSUE: No data in Requests sheet');
+    console.log('   → Add some sample requests to the Requests sheet');
+    console.log('   → Or check if data is in a different sheet');
   }
   
   if (!results.functions.getPageDataForReports?.success) {
-    debugLog('🎯 MAIN ISSUE: getPageDataForReports function failing');
-    debugLog('   → Check the function exists in AppServices.gs or Code.gs');
-    debugLog('   → Check for syntax errors in the function');
+    console.log('🎯 MAIN ISSUE: getPageDataForReports function failing');
+    console.log('   → Check the function exists in AppServices.gs or Code.gs');
+    console.log('   → Check for syntax errors in the function');
   }
   
   if (!results.environment.spreadsheetAccess) {
-    debugLog('🎯 MAIN ISSUE: Cannot access spreadsheet');
-    debugLog('   → Check script is bound to correct spreadsheet');
-    debugLog('   → Check spreadsheet permissions');
+    console.log('🎯 MAIN ISSUE: Cannot access spreadsheet');
+    console.log('   → Check script is bound to correct spreadsheet');
+    console.log('   → Check spreadsheet permissions');
   }
   
-  debugLog('\n🌐 WEB APP ACCESS CHECK:');
-  debugLog('Make sure you are accessing reports via the web app URL that looks like:');
-  debugLog('https://script.google.com/macros/s/{SCRIPT_ID}/exec');
-  debugLog('NOT a file:// URL or Apps Script editor preview');
+  console.log('\n🌐 WEB APP ACCESS CHECK:');
+  console.log('Make sure you are accessing reports via the web app URL that looks like:');
+  console.log('https://script.google.com/macros/s/{SCRIPT_ID}/exec');
+  console.log('NOT a file:// URL or Apps Script editor preview');
   
   return results;
 }
@@ -255,7 +255,7 @@ function debugReportsDataIssue() {
  * Quick fix to test if reports work with minimal data
  */
 function testReportsWithMinimalData() {
-  debugLog('🧪 Testing reports with minimal data...');
+  console.log('🧪 Testing reports with minimal data...');
   
   try {
     // Test with a wide date range
@@ -267,17 +267,17 @@ function testReportsWithMinimalData() {
     };
     
     const result = getPageDataForReports(filters);
-    debugLog('Test result:', result);
+    console.log('Test result:', result);
     
     if (result?.success) {
-      debugLog('✅ Reports function works - issue is likely data or date range');
+      console.log('✅ Reports function works - issue is likely data or date range');
       return { success: true, message: 'Function works, check date range and data' };
     } else {
-      debugLog('❌ Reports function failing:', result?.error);
+      console.log('❌ Reports function failing:', result?.error);
       return { success: false, error: result?.error };
     }
   } catch (error) {
-    debugLog('❌ Reports function error:', error.message);
+    console.log('❌ Reports function error:', error.message);
     return { success: false, error: error.message };
   }
 }
@@ -286,7 +286,7 @@ function testReportsWithMinimalData() {
  * Create sample data for testing
  */
 function createSampleDataForReports() {
-  debugLog('📝 Creating sample data for reports testing...');
+  console.log('📝 Creating sample data for reports testing...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -294,7 +294,7 @@ function createSampleDataForReports() {
     // Check if Requests sheet exists
     let requestsSheet = ss.getSheetByName('Requests');
     if (!requestsSheet) {
-      debugLog('Creating Requests sheet...');
+      console.log('Creating Requests sheet...');
       requestsSheet = ss.insertSheet('Requests');
     }
     
@@ -319,14 +319,14 @@ function createSampleDataForReports() {
     
     requestsSheet.getRange(lastRow + 1, 1, sampleData.length, sampleData[0].length).setValues(sampleData);
     
-    debugLog('✅ Sample data created successfully');
-    debugLog('   Added 3 sample requests');
-    debugLog('   Date range:', new Date(today.getTime() - 2*24*60*60*1000).toDateString(), 'to', today.toDateString());
+    console.log('✅ Sample data created successfully');
+    console.log('   Added 3 sample requests');
+    console.log('   Date range:', new Date(today.getTime() - 2*24*60*60*1000).toDateString(), 'to', today.toDateString());
     
     return { success: true, message: 'Sample data created' };
     
   } catch (error) {
-    debugLog('❌ Error creating sample data:', error.message);
+    console.log('❌ Error creating sample data:', error.message);
     return { success: false, error: error.message };
   }
 }

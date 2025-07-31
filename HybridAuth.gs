@@ -18,7 +18,7 @@ function findUserRecord(email) {
     
     // Create Users sheet if it doesn't exist
     if (!sheet) {
-      debugLog('Creating Users sheet...');
+      console.log('Creating Users sheet...');
       sheet = ss.insertSheet('Users');
       setupUsersSheet(sheet);
       return null; // No existing users yet
@@ -84,7 +84,7 @@ function setupUsersSheet(sheet) {
   sheet.getRange(2, 1, 1, sampleUser.length).setValues([sampleUser]);
   
   sheet.autoResizeColumns(1, headers.length);
-  debugLog('Users sheet created with sample data');
+  console.log('Users sheet created with sample data');
 }
 
 /**
@@ -107,7 +107,7 @@ function createCustomSession(user) {
   
   try {
     PropertiesService.getUserProperties().setProperty('CUSTOM_SESSION', JSON.stringify(session));
-    debugLog('Session created for:', user.email);
+    console.log('Session created for:', user.email);
     
     // Update last login time if this is a spreadsheet user
     if (user.loginMethod === 'spreadsheet') {
@@ -175,7 +175,7 @@ function updateLastLogin(email) {
  * Login with email/password credentials (spreadsheet authentication)
  */
 function loginWithCredentials(email, password) {
-  debugLog('Attempting credentials login for:', email);
+  console.log('Attempting credentials login for:', email);
   
   if (!email || !password) {
     return { success: false, message: 'Email and password are required' };
@@ -185,18 +185,18 @@ function loginWithCredentials(email, password) {
     const user = findUserRecord(email.trim());
     
     if (!user) {
-      debugLog('User not found:', email);
+      console.log('User not found:', email);
       return { success: false, message: 'Invalid credentials' };
     }
     
     if (user.status !== 'active') {
-      debugLog('User not active:', email, 'Status:', user.status);
+      console.log('User not active:', email, 'Status:', user.status);
       return { success: false, message: 'Account is not active' };
     }
     
     const hashedInput = hashPassword(password);
     if (hashedInput !== user.hashedPassword) {
-      debugLog('Password mismatch for:', email);
+      console.log('Password mismatch for:', email);
       return { success: false, message: 'Invalid credentials' };
     }
     
@@ -208,7 +208,7 @@ function loginWithCredentials(email, password) {
       return { success: false, message: 'Failed to create session' };
     }
     
-    debugLog('Credentials login successful for:', email);
+    console.log('Credentials login successful for:', email);
     return { 
       success: true, 
       url: getWebAppUrlSafe(),
@@ -229,14 +229,14 @@ function loginWithCredentials(email, password) {
  * Login with Google OAuth
  */
 function loginWithGoogle() {
-  debugLog('Attempting Google OAuth login...');
+  console.log('Attempting Google OAuth login...');
   
   try {
     // Use the existing authenticateUser function that handles Google OAuth
     const auth = authenticateUser();
     
     if (!auth.success) {
-      debugLog('Google authentication failed:', auth.message);
+      console.log('Google authentication failed:', auth.message);
       return auth;
     }
     
@@ -249,7 +249,7 @@ function loginWithGoogle() {
       return { success: false, message: 'Failed to create session' };
     }
     
-    debugLog('Google login successful for:', user.email);
+    console.log('Google login successful for:', user.email);
     return { 
       success: true, 
       url: getWebAppUrlSafe(),
@@ -272,7 +272,7 @@ function loginWithGoogle() {
 function logoutUser() {
   try {
     PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
-    debugLog('User logged out successfully');
+    console.log('User logged out successfully');
     return { success: true };
   } catch (error) {
     console.error('Logout error:', error);
@@ -391,7 +391,7 @@ function createUser(name, email, password, role = 'rider', status = 'active') {
     
     sheet.appendRow(newUser);
     
-    debugLog('User created:', email);
+    console.log('User created:', email);
     return { success: true, message: 'User created successfully' };
     
   } catch (error) {
@@ -404,30 +404,30 @@ function createUser(name, email, password, role = 'rider', status = 'active') {
  * Test function to verify authentication system
  */
 function testAuthenticationSystem() {
-  debugLog('=== Testing Authentication System ===');
+  console.log('=== Testing Authentication System ===');
   
   try {
     // Test 1: Check if Users sheet exists or can be created
-    debugLog('1. Testing Users sheet...');
+    console.log('1. Testing Users sheet...');
     const testUser = findUserRecord('nonexistent@test.com');
-    debugLog('Users sheet test: OK');
+    console.log('Users sheet test: OK');
     
     // Test 2: Test password hashing
-    debugLog('2. Testing password hashing...');
+    console.log('2. Testing password hashing...');
     const hash1 = hashPassword('test123');
     const hash2 = hashPassword('test123');
     const hashMatch = hash1 === hash2;
-    debugLog('Password hashing consistent:', hashMatch);
+    console.log('Password hashing consistent:', hashMatch);
     
     // Test 3: Test session management
-    debugLog('3. Testing session management...');
+    console.log('3. Testing session management...');
     const currentSession = getCustomSession();
-    debugLog('Current session:', currentSession ? 'Active' : 'None');
+    console.log('Current session:', currentSession ? 'Active' : 'None');
     
     // Test 4: Test Google authentication
-    debugLog('4. Testing Google authentication...');
+    console.log('4. Testing Google authentication...');
     const googleAuth = authenticateUser();
-    debugLog('Google auth result:', googleAuth.success ? 'Success' : 'Failed');
+    console.log('Google auth result:', googleAuth.success ? 'Success' : 'Failed');
     
     return {
       success: true,
@@ -453,7 +453,7 @@ function testAuthenticationSystem() {
  * Initialize the authentication system - run this once to set everything up
  */
 function initializeAuthenticationSystem() {
-  debugLog('🚀 Initializing authentication system...');
+  console.log('🚀 Initializing authentication system...');
   
   try {
     const results = {
@@ -468,32 +468,32 @@ function initializeAuthenticationSystem() {
     // 1. Create or verify Users sheet
     let usersSheet = ss.getSheetByName('Users');
     if (!usersSheet) {
-      debugLog('📄 Creating Users sheet...');
+      console.log('📄 Creating Users sheet...');
       usersSheet = ss.insertSheet('Users');
       setupUsersSheet(usersSheet);
       results.sampleUser = true;
     } else {
-      debugLog('✅ Users sheet already exists');
+      console.log('✅ Users sheet already exists');
     }
     results.usersSheet = true;
     
     // 2. Create or verify Settings sheet (for admin/dispatcher emails)
     let settingsSheet = ss.getSheetByName('Settings');
     if (!settingsSheet) {
-      debugLog('📄 Creating Settings sheet...');
+      console.log('📄 Creating Settings sheet...');
       settingsSheet = ss.insertSheet('Settings');
       setupSettingsSheet(settingsSheet);
     } else {
-      debugLog('✅ Settings sheet already exists');
+      console.log('✅ Settings sheet already exists');
     }
     results.settingsSheet = true;
     
     // 3. Test the system
-    debugLog('🧪 Testing authentication system...');
+    console.log('🧪 Testing authentication system...');
     const testResult = testAuthenticationSystem();
     
     if (testResult.success) {
-      debugLog('✅ Authentication system initialized successfully!');
+      console.log('✅ Authentication system initialized successfully!');
       return {
         success: true,
         message: 'Authentication system ready',
@@ -501,7 +501,7 @@ function initializeAuthenticationSystem() {
         test: testResult
       };
     } else {
-      debugLog('⚠️ Authentication system has issues:', testResult.error);
+      console.log('⚠️ Authentication system has issues:', testResult.error);
       return {
         success: false,
         message: 'System initialized but has issues',
@@ -550,7 +550,7 @@ function setupSettingsSheet(sheet) {
     .setFontColor('white');
   
   sheet.autoResizeColumns(1, headers.length);
-  debugLog('Settings sheet created with sample data');
+  console.log('Settings sheet created with sample data');
 }
 
 /**
@@ -560,7 +560,7 @@ function addNewUser(name, email, password, role = 'rider', status = 'active') {
   const result = createUser(name, email, password, role, status);
   
   if (result.success) {
-    debugLog(`✅ User added: ${name} (${email}) as ${role}`);
+    console.log(`✅ User added: ${name} (${email}) as ${role}`);
   } else {
     console.error(`❌ Failed to add user: ${result.message}`);
   }
@@ -594,7 +594,7 @@ function updateUserPassword(email, newPassword) {
         const hashedPassword = hashPassword(newPassword);
         sheet.getRange(i + 1, passwordCol + 1).setValue(hashedPassword);
         
-        debugLog(`✅ Password updated for: ${email}`);
+        console.log(`✅ Password updated for: ${email}`);
         return { success: true, message: 'Password updated successfully' };
       }
     }
@@ -639,7 +639,7 @@ function listAllUsers() {
       users.push(user);
     }
     
-    debugLog(`Found ${users.length} users in system`);
+    console.log(`Found ${users.length} users in system`);
     return { success: true, users: users };
     
   } catch (error) {
@@ -676,7 +676,7 @@ function toggleUserStatus(email) {
         
         sheet.getRange(i + 1, statusCol + 1).setValue(newStatus);
         
-        debugLog(`✅ Status changed for ${email}: ${currentStatus} → ${newStatus}`);
+        console.log(`✅ Status changed for ${email}: ${currentStatus} → ${newStatus}`);
         return { 
           success: true, 
           message: `User status changed to ${newStatus}`,
@@ -702,11 +702,11 @@ function cleanupExpiredSessions() {
     // For now, just clear the current user's session if it's expired
     const session = getCustomSession();
     if (!session) {
-      debugLog('No active sessions to clean up');
+      console.log('No active sessions to clean up');
       return { success: true, message: 'No expired sessions found' };
     }
     
-    debugLog('Active session found, no cleanup needed');
+    console.log('Active session found, no cleanup needed');
     return { success: true, message: 'Sessions are current' };
     
   } catch (error) {
@@ -719,18 +719,18 @@ function cleanupExpiredSessions() {
  * Quick test login for debugging
  */
 function testLogin(email, password) {
-  debugLog(`🧪 Testing login for: ${email}`);
+  console.log(`🧪 Testing login for: ${email}`);
   
   try {
     const result = loginWithCredentials(email, password);
     
     if (result.success) {
-      debugLog('✅ Test login successful');
-      debugLog('User:', result.user);
+      console.log('✅ Test login successful');
+      console.log('User:', result.user);
       
       // Test getting current user
       const currentUser = getCurrentUser();
-      debugLog('Current user check:', currentUser);
+      console.log('Current user check:', currentUser);
       
       return {
         success: true,
@@ -738,7 +738,7 @@ function testLogin(email, password) {
         currentUser: currentUser
       };
     } else {
-      debugLog('❌ Test login failed:', result.message);
+      console.log('❌ Test login failed:', result.message);
       return {
         success: false,
         error: result.message
@@ -758,7 +758,7 @@ function testLogin(email, password) {
  * Create sample users for testing
  */
 function createSampleUsers() {
-  debugLog('👥 Creating sample users...');
+  console.log('👥 Creating sample users...');
   
   const sampleUsers = [
     { name: 'Admin User', email: 'admin@test.com', password: 'admin123', role: 'admin' },
@@ -781,7 +781,7 @@ function createSampleUsers() {
   });
   
   const successCount = results.filter(r => r.success).length;
-  debugLog(`✅ Created ${successCount} out of ${sampleUsers.length} sample users`);
+  console.log(`✅ Created ${successCount} out of ${sampleUsers.length} sample users`);
   
   return {
     success: successCount > 0,
@@ -795,11 +795,11 @@ function createSampleUsers() {
  * Complete setup wizard - run this to get everything working
  */
 function runCompleteSetup() {
-  debugLog('🎯 Running complete authentication setup...');
+  console.log('🎯 Running complete authentication setup...');
   
   try {
     // Step 1: Initialize system
-    debugLog('Step 1: Initializing system...');
+    console.log('Step 1: Initializing system...');
     const initResult = initializeAuthenticationSystem();
     
     if (!initResult.success) {
@@ -807,11 +807,11 @@ function runCompleteSetup() {
     }
     
     // Step 2: Create sample users
-    debugLog('Step 2: Creating sample users...');
+    console.log('Step 2: Creating sample users...');
     const usersResult = createSampleUsers();
     
     // Step 3: Test authentication
-    debugLog('Step 3: Testing authentication...');
+    console.log('Step 3: Testing authentication...');
     const testResult = testLogin('admin@test.com', 'admin123');
     
     // Step 4: Generate summary
@@ -835,9 +835,9 @@ function runCompleteSetup() {
       ]
     };
     
-    debugLog('✅ Setup complete!');
-    debugLog('Instructions:');
-    summary.instructions.forEach(instruction => debugLog(instruction));
+    console.log('✅ Setup complete!');
+    console.log('Instructions:');
+    summary.instructions.forEach(instruction => console.log(instruction));
     
     return summary;
     
@@ -856,7 +856,7 @@ function runCompleteSetup() {
  * Run this function to diagnose current authentication issues
  */
 function diagnosePersistentAuthIssue() {
-  debugLog('🔍 === COMPREHENSIVE AUTH DIAGNOSTIC ===');
+  console.log('🔍 === COMPREHENSIVE AUTH DIAGNOSTIC ===');
   
   const results = {
     sessionCheck: {},
@@ -868,79 +868,79 @@ function diagnosePersistentAuthIssue() {
   
   try {
     // 1. SESSION DIAGNOSTICS
-    debugLog('\n1. 📋 SESSION DIAGNOSTICS:');
+    console.log('\n1. 📋 SESSION DIAGNOSTICS:');
     
     try {
       const user = Session.getActiveUser();
       const email = user.getEmail();
       results.sessionCheck.activeUser = email;
       results.sessionCheck.activeUserSuccess = true;
-      debugLog('✅ Session.getActiveUser():', email);
+      console.log('✅ Session.getActiveUser():', email);
     } catch (e) {
       results.sessionCheck.activeUserSuccess = false;
       results.sessionCheck.activeUserError = e.message;
-      debugLog('❌ Session.getActiveUser() failed:', e.message);
+      console.log('❌ Session.getActiveUser() failed:', e.message);
     }
     
     try {
       const customSession = getCustomSession();
       results.sessionCheck.customSession = customSession;
-      debugLog('✅ Custom session:', customSession ? customSession.email : 'None');
+      console.log('✅ Custom session:', customSession ? customSession.email : 'None');
     } catch (e) {
       results.sessionCheck.customSessionError = e.message;
-      debugLog('❌ Custom session error:', e.message);
+      console.log('❌ Custom session error:', e.message);
     }
     
     // 2. AUTHENTICATION FLOW TEST
-    debugLog('\n2. 🔐 AUTHENTICATION FLOW TEST:');
+    console.log('\n2. 🔐 AUTHENTICATION FLOW TEST:');
     
     try {
       const authResult = authenticateUser();
       results.authFlow.googleAuth = authResult;
-      debugLog('✅ Google authenticateUser():', authResult.success ? 'SUCCESS' : 'FAILED');
+      console.log('✅ Google authenticateUser():', authResult.success ? 'SUCCESS' : 'FAILED');
       if (authResult.user) {
-        debugLog('   User:', authResult.user.email, 'Role:', authResult.user.role);
+        console.log('   User:', authResult.user.email, 'Role:', authResult.user.role);
       }
     } catch (e) {
       results.authFlow.googleAuthError = e.message;
-      debugLog('❌ Google auth error:', e.message);
+      console.log('❌ Google auth error:', e.message);
     }
     
     try {
       const currentUser = getCurrentUser();
       results.authFlow.currentUser = currentUser;
-      debugLog('✅ getCurrentUser():', currentUser.success ? 'SUCCESS' : 'FAILED');
+      console.log('✅ getCurrentUser():', currentUser.success ? 'SUCCESS' : 'FAILED');
       if (currentUser.user) {
-        debugLog('   User:', currentUser.user.email, 'Role:', currentUser.user.role);
+        console.log('   User:', currentUser.user.email, 'Role:', currentUser.user.role);
       }
     } catch (e) {
       results.authFlow.currentUserError = e.message;
-      debugLog('❌ getCurrentUser() error:', e.message);
+      console.log('❌ getCurrentUser() error:', e.message);
     }
     
     // 3. PERMISSION SYSTEM TEST
-    debugLog('\n3. 🔒 PERMISSION SYSTEM TEST:');
+    console.log('\n3. 🔒 PERMISSION SYSTEM TEST:');
     
     try {
       const admins = getAdminUsers();
       results.permissions.adminUsers = admins;
-      debugLog('✅ Admin users:', admins);
+      console.log('✅ Admin users:', admins);
     } catch (e) {
       results.permissions.adminUsersError = e.message;
-      debugLog('❌ Admin users error:', e.message);
+      console.log('❌ Admin users error:', e.message);
     }
     
     try {
       const dispatchers = getDispatcherUsers();
       results.permissions.dispatcherUsers = dispatchers;
-      debugLog('✅ Dispatcher users:', dispatchers);
+      console.log('✅ Dispatcher users:', dispatchers);
     } catch (e) {
       results.permissions.dispatcherUsersError = e.message;
-      debugLog('❌ Dispatcher users error:', e.message);
+      console.log('❌ Dispatcher users error:', e.message);
     }
     
     // 4. USER DATA CHECK
-    debugLog('\n4. 📊 USER DATA CHECK:');
+    console.log('\n4. 📊 USER DATA CHECK:');
     
     try {
       const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
@@ -948,45 +948,45 @@ function diagnosePersistentAuthIssue() {
         const data = usersSheet.getDataRange().getValues();
         results.userDataCheck.usersSheetExists = true;
         results.userDataCheck.userCount = data.length - 1; // Minus header
-        debugLog('✅ Users sheet exists with', data.length - 1, 'users');
+        console.log('✅ Users sheet exists with', data.length - 1, 'users');
       } else {
         results.userDataCheck.usersSheetExists = false;
-        debugLog('❌ Users sheet not found');
+        console.log('❌ Users sheet not found');
       }
     } catch (e) {
       results.userDataCheck.usersSheetError = e.message;
-      debugLog('❌ Users sheet error:', e.message);
+      console.log('❌ Users sheet error:', e.message);
     }
     
     // 5. GENERATE RECOMMENDATIONS
-    debugLog('\n5. 💡 RECOMMENDATIONS:');
+    console.log('\n5. 💡 RECOMMENDATIONS:');
     
     if (!results.sessionCheck.activeUserSuccess) {
       results.recommendations.push('No active Google session - user needs to sign in with Google');
-      debugLog('• User needs to sign in with Google');
+      console.log('• User needs to sign in with Google');
     }
     
     if (results.authFlow.googleAuth && !results.authFlow.googleAuth.success) {
       if (results.authFlow.googleAuth.error === 'UNAUTHORIZED') {
         results.recommendations.push('User email not in authorized lists - add to Settings sheet');
-        debugLog('• Add user email to admin or dispatcher list in Settings sheet');
+        console.log('• Add user email to admin or dispatcher list in Settings sheet');
       }
     }
     
     if (!results.userDataCheck.usersSheetExists) {
       results.recommendations.push('Initialize authentication system - run initializeAuthenticationSystem()');
-      debugLog('• Run initializeAuthenticationSystem() to set up sheets');
+      console.log('• Run initializeAuthenticationSystem() to set up sheets');
     }
     
     if (results.permissions.adminUsers && results.permissions.adminUsers.length === 0) {
       results.recommendations.push('No admin users configured - update Settings sheet');
-      debugLog('• Configure admin users in Settings sheet');
+      console.log('• Configure admin users in Settings sheet');
     }
     
-    debugLog('\n🎯 NEXT STEPS:');
-    debugLog('1. Review the recommendations above');
-    debugLog('2. Run fixAuthenticationIssues() to apply automatic fixes');
-    debugLog('3. Test login again after fixes');
+    console.log('\n🎯 NEXT STEPS:');
+    console.log('1. Review the recommendations above');
+    console.log('2. Run fixAuthenticationIssues() to apply automatic fixes');
+    console.log('3. Test login again after fixes');
     
     return results;
     
@@ -1002,7 +1002,7 @@ function diagnosePersistentAuthIssue() {
  * Run this after diagnosePersistentAuthIssue() to apply fixes
  */
 function fixAuthenticationIssues() {
-  debugLog('🔧 === APPLYING AUTHENTICATION FIXES ===');
+  console.log('🔧 === APPLYING AUTHENTICATION FIXES ===');
   
   const fixes = {
     settingsSheet: false,
@@ -1014,14 +1014,14 @@ function fixAuthenticationIssues() {
   
   try {
     // Fix 1: Ensure Settings sheet exists and has proper admin emails
-    debugLog('\n1. 📄 Fixing Settings sheet...');
+    console.log('\n1. 📄 Fixing Settings sheet...');
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let settingsSheet = ss.getSheetByName('Settings');
     
     if (!settingsSheet) {
       settingsSheet = ss.insertSheet('Settings');
-      debugLog('✅ Created Settings sheet');
+      console.log('✅ Created Settings sheet');
     }
     
     // Get current user email to add as admin
@@ -1030,7 +1030,7 @@ function fixAuthenticationIssues() {
       const user = Session.getActiveUser();
       currentUserEmail = user.getEmail();
     } catch (e) {
-      debugLog('⚠️ Could not get current user email');
+      console.log('⚠️ Could not get current user email');
     }
     
     // Set up proper structure
@@ -1060,61 +1060,61 @@ function fixAuthenticationIssues() {
     
     settingsSheet.autoResizeColumns(1, headers.length);
     fixes.settingsSheet = true;
-    debugLog('✅ Settings sheet configured with admin emails');
+    console.log('✅ Settings sheet configured with admin emails');
     
     // Fix 2: Ensure Users sheet exists
-    debugLog('\n2. 👥 Fixing Users sheet...');
+    console.log('\n2. 👥 Fixing Users sheet...');
     
     let usersSheet = ss.getSheetByName('Users');
     if (!usersSheet) {
       usersSheet = ss.insertSheet('Users');
       setupUsersSheet(usersSheet);
       fixes.usersSheet = true;
-      debugLog('✅ Created Users sheet with sample data');
+      console.log('✅ Created Users sheet with sample data');
     } else {
-      debugLog('✅ Users sheet already exists');
+      console.log('✅ Users sheet already exists');
       fixes.usersSheet = true;
     }
     
     // Fix 3: Clear any cached authentication data
-    debugLog('\n3. 🧹 Clearing authentication cache...');
+    console.log('\n3. 🧹 Clearing authentication cache...');
     
     try {
       PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
       PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
       PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_NAME');
       fixes.sessionClear = true;
-      debugLog('✅ Authentication cache cleared');
+      console.log('✅ Authentication cache cleared');
     } catch (e) {
-      debugLog('⚠️ Cache clear error:', e.message);
+      console.log('⚠️ Cache clear error:', e.message);
     }
     
     // Fix 4: Test the fixes
-    debugLog('\n4. 🧪 Testing fixes...');
+    console.log('\n4. 🧪 Testing fixes...');
     
     try {
       const testAdmins = getAdminUsers();
       fixes.adminEmails = testAdmins.length > 0;
-      debugLog('✅ Admin emails test:', testAdmins);
+      console.log('✅ Admin emails test:', testAdmins);
     } catch (e) {
-      debugLog('❌ Admin emails test failed:', e.message);
+      console.log('❌ Admin emails test failed:', e.message);
     }
     
-    debugLog('\n✅ FIXES APPLIED SUCCESSFULLY!');
-    debugLog('📝 Summary:');
-    debugLog('• Settings sheet:', fixes.settingsSheet ? 'FIXED' : 'FAILED');
-    debugLog('• Users sheet:', fixes.usersSheet ? 'FIXED' : 'FAILED');
-    debugLog('• Admin emails:', fixes.adminEmails ? 'WORKING' : 'FAILED');
-    debugLog('• Cache cleared:', fixes.sessionClear ? 'YES' : 'NO');
+    console.log('\n✅ FIXES APPLIED SUCCESSFULLY!');
+    console.log('📝 Summary:');
+    console.log('• Settings sheet:', fixes.settingsSheet ? 'FIXED' : 'FAILED');
+    console.log('• Users sheet:', fixes.usersSheet ? 'FIXED' : 'FAILED');
+    console.log('• Admin emails:', fixes.adminEmails ? 'WORKING' : 'FAILED');
+    console.log('• Cache cleared:', fixes.sessionClear ? 'YES' : 'NO');
     
     if (currentUserEmail) {
-      debugLog(`• Current user (${currentUserEmail}) added as admin`);
+      console.log(`• Current user (${currentUserEmail}) added as admin`);
     }
     
-    debugLog('\n🎯 NEXT STEPS:');
-    debugLog('1. Refresh your browser/app');
-    debugLog('2. Try logging in again');
-    debugLog('3. Run diagnosePersistentAuthIssue() to verify fixes');
+    console.log('\n🎯 NEXT STEPS:');
+    console.log('1. Refresh your browser/app');
+    console.log('2. Try logging in again');
+    console.log('3. Run diagnosePersistentAuthIssue() to verify fixes');
     
     return {
       success: true,
@@ -1139,7 +1139,7 @@ function fixAuthenticationIssues() {
  * Use this only for debugging - creates a temporary admin session
  */
 function emergencyAdminAccess() {
-  debugLog('🚨 EMERGENCY ADMIN ACCESS - FOR DEBUGGING ONLY');
+  console.log('🚨 EMERGENCY ADMIN ACCESS - FOR DEBUGGING ONLY');
   
   try {
     let userEmail = '';
@@ -1162,8 +1162,8 @@ function emergencyAdminAccess() {
     
     PropertiesService.getUserProperties().setProperty('CUSTOM_SESSION', JSON.stringify(emergencySession));
     
-    debugLog('✅ Emergency admin session created for:', userEmail);
-    debugLog('⚠️ THIS IS TEMPORARY - Apply proper fixes ASAP');
+    console.log('✅ Emergency admin session created for:', userEmail);
+    console.log('⚠️ THIS IS TEMPORARY - Apply proper fixes ASAP');
     
     return {
       success: true,
@@ -1185,29 +1185,29 @@ function emergencyAdminAccess() {
  * Test the local email/password authentication system
  */
 function testLocalAuthentication() {
-  debugLog('🧪 === TESTING LOCAL AUTHENTICATION ===');
+  console.log('🧪 === TESTING LOCAL AUTHENTICATION ===');
   
   try {
     // Test with sample user credentials
-    debugLog('1. Testing with sample credentials...');
+    console.log('1. Testing with sample credentials...');
     
     const testResult = loginWithCredentials('admin@test.com', 'admin123');
-    debugLog('Test login result:', testResult);
+    console.log('Test login result:', testResult);
     
     if (testResult.success) {
-      debugLog('✅ Local authentication working');
+      console.log('✅ Local authentication working');
       return {
         success: true,
         message: 'Local authentication is working',
         testResult: testResult
       };
     } else {
-      debugLog('❌ Local authentication failed:', testResult.message);
+      console.log('❌ Local authentication failed:', testResult.message);
       
       // Check if Users sheet has sample data
       const usersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Users');
       if (!usersSheet) {
-        debugLog('❌ Users sheet missing - run initializeAuthenticationSystem()');
+        console.log('❌ Users sheet missing - run initializeAuthenticationSystem()');
         return {
           success: false,
           error: 'Users sheet missing',
@@ -1216,7 +1216,7 @@ function testLocalAuthentication() {
       }
       
       const data = usersSheet.getDataRange().getValues();
-      debugLog('Users sheet has', data.length - 1, 'users');
+      console.log('Users sheet has', data.length - 1, 'users');
       
       return {
         success: false,

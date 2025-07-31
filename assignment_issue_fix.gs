@@ -4,21 +4,21 @@
  */
 
 function fixAssignmentIssue() {
-  debugLog('🔧 Starting assignment issue fix...');
+  console.log('🔧 Starting assignment issue fix...');
   
   try {
     // First, diagnose the issue with the specific request ID
     const diagnosisResult = diagnoseAssignmentIssues('I-01-25');
     
-    debugLog('📋 Diagnosis Result:', JSON.stringify(diagnosisResult, null, 2));
+    console.log('📋 Diagnosis Result:', JSON.stringify(diagnosisResult, null, 2));
     
     if (!diagnosisResult.success) {
-      debugLog('❌ Issues found. Attempting automatic fixes...');
+      console.log('❌ Issues found. Attempting automatic fixes...');
       
       // Try to find and fix common issues
       return attemptAutomaticFixes('I-01-25');
     } else {
-      debugLog('✅ No issues found with request I-01-25');
+      console.log('✅ No issues found with request I-01-25');
       return { success: true, message: 'No issues found' };
     }
     
@@ -32,14 +32,14 @@ function fixAssignmentIssue() {
  * Attempts to automatically fix common assignment issues
  */
 function attemptAutomaticFixes(requestId) {
-  debugLog(`🔨 Attempting automatic fixes for request ${requestId}...`);
+  console.log(`🔨 Attempting automatic fixes for request ${requestId}...`);
   
   const fixes = [];
   const errors = [];
   
   try {
     // Fix 1: Clear all caches
-    debugLog('🧹 Clearing all caches...');
+    console.log('🧹 Clearing all caches...');
     if (typeof clearRequestsCache === 'function') {
       clearRequestsCache();
       fixes.push('Cleared requests cache');
@@ -51,7 +51,7 @@ function attemptAutomaticFixes(requestId) {
     }
     
     // Fix 2: Check if request exists in different format
-    debugLog('🔍 Checking for request with similar ID...');
+    console.log('🔍 Checking for request with similar ID...');
     const requestsData = getRequestsData(false);
     
     const allRequestIds = requestsData.data.map(row => {
@@ -59,15 +59,15 @@ function attemptAutomaticFixes(requestId) {
       return String(id).trim();
     }).filter(id => id.length > 0);
     
-    debugLog(`📊 Found ${allRequestIds.length} total requests`);
-    debugLog(`🔍 First 10 request IDs: ${allRequestIds.slice(0, 10).join(', ')}`);
+    console.log(`📊 Found ${allRequestIds.length} total requests`);
+    console.log(`🔍 First 10 request IDs: ${allRequestIds.slice(0, 10).join(', ')}`);
     
     // Look for similar IDs
     const searchId = String(requestId).trim();
     const exactMatch = allRequestIds.find(id => id === searchId);
     
     if (exactMatch) {
-      debugLog(`✅ Found exact match: ${exactMatch}`);
+      console.log(`✅ Found exact match: ${exactMatch}`);
       fixes.push(`Found exact match for ${requestId}`);
     } else {
       // Look for similar IDs
@@ -78,20 +78,20 @@ function attemptAutomaticFixes(requestId) {
       });
       
       if (similarIds.length > 0) {
-        debugLog(`🔍 Found similar IDs: ${similarIds.join(', ')}`);
+        console.log(`🔍 Found similar IDs: ${similarIds.join(', ')}`);
         fixes.push(`Found similar IDs: ${similarIds.join(', ')} - check if any of these is the correct ID`);
       } else {
-        debugLog('❌ No similar IDs found');
+        console.log('❌ No similar IDs found');
         errors.push(`Request ${requestId} not found in any format`);
       }
     }
     
     // Fix 3: Check assignments sheet for orphaned assignments
-    debugLog('🔍 Checking assignments sheet for orphaned assignments...');
+    console.log('🔍 Checking assignments sheet for orphaned assignments...');
     try {
       const assignments = getAssignmentsForRequest(requestId);
       if (assignments.length > 0) {
-        debugLog(`📋 Found ${assignments.length} assignments for ${requestId}`);
+        console.log(`📋 Found ${assignments.length} assignments for ${requestId}`);
         fixes.push(`Found ${assignments.length} assignments - may need to clean up orphaned assignments`);
         
         // Try to sync if request exists
@@ -104,7 +104,7 @@ function attemptAutomaticFixes(requestId) {
           }
         }
       } else {
-        debugLog(`📋 No assignments found for ${requestId}`);
+        console.log(`📋 No assignments found for ${requestId}`);
         fixes.push(`No orphaned assignments found for ${requestId}`);
       }
     } catch (assignmentError) {
@@ -113,7 +113,7 @@ function attemptAutomaticFixes(requestId) {
     }
     
     // Fix 4: Validate sheet structure
-    debugLog('🏗️ Validating sheet structure...');
+    console.log('🏗️ Validating sheet structure...');
     try {
       const requestsSheet = getSheet(CONFIG.sheets.requests);
       const assignmentsSheet = getSheet(CONFIG.sheets.assignments);
@@ -159,10 +159,10 @@ function attemptAutomaticFixes(requestId) {
       timestamp: new Date().toISOString()
     };
     
-    debugLog('🔧 Automatic fixes completed');
-    debugLog('✅ Fixes applied:', fixes);
+    console.log('🔧 Automatic fixes completed');
+    console.log('✅ Fixes applied:', fixes);
     if (errors.length > 0) {
-      debugLog('❌ Errors encountered:', errors);
+      console.log('❌ Errors encountered:', errors);
     }
     
     return result;
@@ -183,7 +183,7 @@ function attemptAutomaticFixes(requestId) {
  * Function to manually check all requests and their status
  */
 function checkAllRequestsStatus() {
-  debugLog('📊 Checking all requests status...');
+  console.log('📊 Checking all requests status...');
   
   try {
     // Clear cache first
@@ -194,7 +194,7 @@ function checkAllRequestsStatus() {
     const requestsData = getRequestsData(false);
     const columnMap = requestsData.columnMap;
     
-    debugLog(`📋 Total requests: ${requestsData.data.length}`);
+    console.log(`📋 Total requests: ${requestsData.data.length}`);
     
     const statusSummary = {};
     const recentRequests = [];
@@ -223,10 +223,10 @@ function checkAllRequestsStatus() {
       }
     });
     
-    debugLog('📊 Status Summary:', statusSummary);
-    debugLog('📋 Recent Requests (first 20):');
+    console.log('📊 Status Summary:', statusSummary);
+    console.log('📋 Recent Requests (first 20):');
     recentRequests.forEach(req => {
-      debugLog(`  ${req.id} - ${req.status} - ${req.eventDate} (Row ${req.rowIndex})`);
+      console.log(`  ${req.id} - ${req.status} - ${req.eventDate} (Row ${req.rowIndex})`);
     });
     
     return {

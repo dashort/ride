@@ -12,7 +12,7 @@
  * COMPLETE TEST FUNCTION - Run this to verify the dashboard stats fix
  */
 function testDashboardFixComplete() {
-  debugLog('🚀 === TESTING COMPLETE DASHBOARD STATS FIX ===');
+  console.log('🚀 === TESTING COMPLETE DASHBOARD STATS FIX ===');
   
   const results = {
     timestamp: new Date(),
@@ -23,19 +23,19 @@ function testDashboardFixComplete() {
   
   try {
     // Test 1: Core Data Functions
-    debugLog('\n📋 Test 1: Core Data Access Functions');
+    console.log('\n📋 Test 1: Core Data Access Functions');
     results.tests.dataFunctions = testDataFunctions();
     
     // Test 2: Dashboard Function
-    debugLog('\n📊 Test 2: Dashboard Stats Function');
+    console.log('\n📊 Test 2: Dashboard Stats Function');
     results.tests.dashboardFunction = testDashboardFunction();
     
     // Test 3: Frontend Simulation
-    debugLog('\n🌐 Test 3: Frontend Call Simulation');
+    console.log('\n🌐 Test 3: Frontend Call Simulation');
     results.tests.frontendSimulation = testFrontendSimulation();
     
     // Test 4: Error Handling
-    debugLog('\n🛡️ Test 4: Error Handling');
+    console.log('\n🛡️ Test 4: Error Handling');
     results.tests.errorHandling = testErrorHandling();
     
     // Calculate overall success
@@ -45,16 +45,16 @@ function testDashboardFixComplete() {
     // Create summary
     if (allTestsPassed) {
       results.summary = '✅ ALL TESTS PASSED! Dashboard stats should now work correctly.';
-      debugLog('\n🎉 ' + results.summary);
-      debugLog('\nNext steps:');
-      debugLog('1. Deploy your Google Apps Script project');
-      debugLog('2. Refresh your dashboard page');
-      debugLog('3. Stats should load within 2-3 seconds');
+      console.log('\n🎉 ' + results.summary);
+      console.log('\nNext steps:');
+      console.log('1. Deploy your Google Apps Script project');
+      console.log('2. Refresh your dashboard page');
+      console.log('3. Stats should load within 2-3 seconds');
     } else {
       const failedTests = Object.keys(results.tests).filter(key => !results.tests[key].success);
       results.summary = `❌ Some tests failed: ${failedTests.join(', ')}`;
-      debugLog('\n⚠️ ' + results.summary);
-      debugLog('\nPlease check the individual test results above for details.');
+      console.log('\n⚠️ ' + results.summary);
+      console.log('\nPlease check the individual test results above for details.');
     }
     
     return results;
@@ -72,20 +72,20 @@ function testDashboardFixComplete() {
  */
 function testDataFunctions() {
   try {
-    debugLog('  Testing getRequestsData...');
+    console.log('  Testing getRequestsData...');
     const requestsData = getRequestsData();
     const requestsOk = requestsData && typeof requestsData === 'object' && Array.isArray(requestsData.data);
-    debugLog(`  ✅ Requests: ${requestsOk ? requestsData.data.length + ' rows' : 'FAILED'}`);
+    console.log(`  ✅ Requests: ${requestsOk ? requestsData.data.length + ' rows' : 'FAILED'}`);
     
-    debugLog('  Testing getRidersData...');
+    console.log('  Testing getRidersData...');
     const ridersData = getRidersData();
     const ridersOk = ridersData && typeof ridersData === 'object' && Array.isArray(ridersData.data);
-    debugLog(`  ✅ Riders: ${ridersOk ? ridersData.data.length + ' rows' : 'FAILED'}`);
+    console.log(`  ✅ Riders: ${ridersOk ? ridersData.data.length + ' rows' : 'FAILED'}`);
     
-    debugLog('  Testing getAssignmentsData...');
+    console.log('  Testing getAssignmentsData...');
     const assignmentsData = getAssignmentsData();
     const assignmentsOk = assignmentsData && typeof assignmentsData === 'object' && Array.isArray(assignmentsData.data);
-    debugLog(`  ✅ Assignments: ${assignmentsOk ? assignmentsData.data.length + ' rows' : 'FAILED'}`);
+    console.log(`  ✅ Assignments: ${assignmentsOk ? assignmentsData.data.length + ' rows' : 'FAILED'}`);
     
     const success = requestsOk && ridersOk && assignmentsOk;
     
@@ -109,7 +109,7 @@ function testDataFunctions() {
  */
 function testDashboardFunction() {
   try {
-    debugLog('  Testing getAdminDashboardData...');
+    console.log('  Testing getAdminDashboardData...');
     const dashboardData = getAdminDashboardData();
     
     const requiredFields = [
@@ -121,9 +121,9 @@ function testDashboardFunction() {
     const hasAllFields = requiredFields.every(field => dashboardData.hasOwnProperty(field));
     const allFieldsAreNumbers = requiredFields.every(field => typeof dashboardData[field] === 'number');
     
-    debugLog('  ✅ Dashboard data structure:', hasAllFields ? 'VALID' : 'MISSING FIELDS');
-    debugLog('  ✅ Data types:', allFieldsAreNumbers ? 'ALL NUMBERS' : 'INVALID TYPES');
-    debugLog('  📊 Sample stats:', JSON.stringify({
+    console.log('  ✅ Dashboard data structure:', hasAllFields ? 'VALID' : 'MISSING FIELDS');
+    console.log('  ✅ Data types:', allFieldsAreNumbers ? 'ALL NUMBERS' : 'INVALID TYPES');
+    console.log('  📊 Sample stats:', JSON.stringify({
       totalRequests: dashboardData.totalRequests,
       totalRiders: dashboardData.totalRiders,
       totalAssignments: dashboardData.totalAssignments,
@@ -152,7 +152,7 @@ function testDashboardFunction() {
  */
 function testFrontendSimulation() {
   try {
-    debugLog('  Simulating frontend call to getAdminDashboardData...');
+    console.log('  Simulating frontend call to getAdminDashboardData...');
     
     // This simulates what the frontend JavaScript does
     const startTime = new Date();
@@ -162,9 +162,9 @@ function testFrontendSimulation() {
     
     const isValidResult = result && typeof result === 'object' && typeof result.totalRequests === 'number';
     
-    debugLog(`  ✅ Response time: ${duration}ms`);
-    debugLog(`  ✅ Valid result: ${isValidResult ? 'YES' : 'NO'}`);
-    debugLog(`  📊 Frontend would receive:`, {
+    console.log(`  ✅ Response time: ${duration}ms`);
+    console.log(`  ✅ Valid result: ${isValidResult ? 'YES' : 'NO'}`);
+    console.log(`  📊 Frontend would receive:`, {
       totalRequests: result.totalRequests,
       totalRiders: result.totalRiders,
       newRequests: result.newRequests,
@@ -188,7 +188,7 @@ function testFrontendSimulation() {
  */
 function testErrorHandling() {
   try {
-    debugLog('  Testing error handling resilience...');
+    console.log('  Testing error handling resilience...');
     
     // Test that the function doesn't crash even with broken dependencies
     const originalGetRequestsData = getRequestsData;
@@ -203,8 +203,8 @@ function testErrorHandling() {
     
     const gracefulDegradation = result && typeof result.totalRequests === 'number';
     
-    debugLog(`  ✅ Graceful error handling: ${gracefulDegradation ? 'PASSED' : 'FAILED'}`);
-    debugLog(`  📊 Error scenario result:`, {
+    console.log(`  ✅ Graceful error handling: ${gracefulDegradation ? 'PASSED' : 'FAILED'}`);
+    console.log(`  📊 Error scenario result:`, {
       totalRequests: result.totalRequests,
       totalRiders: result.totalRiders
     });
@@ -224,7 +224,7 @@ function testErrorHandling() {
  * QUICK DIAGNOSTIC - Run this for a fast check
  */
 function quickDashboardDiagnostic() {
-  debugLog('🔍 === QUICK DASHBOARD DIAGNOSTIC ===');
+  console.log('🔍 === QUICK DASHBOARD DIAGNOSTIC ===');
   
   try {
     // Check if sheets exist
@@ -235,34 +235,34 @@ function quickDashboardDiagnostic() {
       assignments: ss.getSheetByName('Assignments')
     };
     
-    debugLog('📋 Sheet Status:');
+    console.log('📋 Sheet Status:');
     Object.keys(sheets).forEach(name => {
       const sheet = sheets[name];
       const status = sheet ? `✅ EXISTS (${sheet.getLastRow()} rows)` : '❌ MISSING';
-      debugLog(`  ${name}: ${status}`);
+      console.log(`  ${name}: ${status}`);
     });
     
     // Quick function test
-    debugLog('\n🔧 Function Status:');
+    console.log('\n🔧 Function Status:');
     const functions = ['getRequestsData', 'getRidersData', 'getAssignmentsData', 'getAdminDashboardData'];
     functions.forEach(funcName => {
       try {
         const func = eval(funcName);
         const exists = typeof func === 'function';
-        debugLog(`  ${funcName}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
+        console.log(`  ${funcName}: ${exists ? '✅ EXISTS' : '❌ MISSING'}`);
       } catch (e) {
-        debugLog(`  ${funcName}: ❌ ERROR - ${e.message}`);
+        console.log(`  ${funcName}: ❌ ERROR - ${e.message}`);
       }
     });
     
     // Quick stats test
-    debugLog('\n📊 Quick Stats Test:');
+    console.log('\n📊 Quick Stats Test:');
     try {
       const stats = getAdminDashboardData();
-      debugLog('  Dashboard stats:', JSON.stringify(stats, null, 2));
+      console.log('  Dashboard stats:', JSON.stringify(stats, null, 2));
       return { success: true, stats: stats };
     } catch (error) {
-      debugLog('  ❌ Stats failed:', error.message);
+      console.log('  ❌ Stats failed:', error.message);
       return { success: false, error: error.message };
     }
     
@@ -276,7 +276,7 @@ function quickDashboardDiagnostic() {
  * DEPLOYMENT CHECKLIST - Run this before deploying
  */
 function deploymentChecklist() {
-  debugLog('📋 === DEPLOYMENT CHECKLIST ===');
+  console.log('📋 === DEPLOYMENT CHECKLIST ===');
   
   const checklist = [];
   
@@ -312,28 +312,28 @@ function deploymentChecklist() {
   const hasErrors = checklist.some(item => !item.status);
   checklist.push({ item: 'No critical errors', status: !hasErrors });
   
-  debugLog('\n📋 Checklist Results:');
+  console.log('\n📋 Checklist Results:');
   checklist.forEach(item => {
-    debugLog(`  ${item.status ? '✅' : '❌'} ${item.item}`);
+    console.log(`  ${item.status ? '✅' : '❌'} ${item.item}`);
   });
   
   const readyToDeploy = checklist.every(item => item.status);
-  debugLog(`\n🚀 Ready to deploy: ${readyToDeploy ? '✅ YES' : '❌ NO'}`);
+  console.log(`\n🚀 Ready to deploy: ${readyToDeploy ? '✅ YES' : '❌ NO'}`);
   
   if (readyToDeploy) {
-    debugLog('\n✅ Your dashboard stats fix is ready!');
-    debugLog('   1. Deploy your Apps Script project');
-    debugLog('   2. Refresh your dashboard');
-    debugLog('   3. Stats should load properly now');
+    console.log('\n✅ Your dashboard stats fix is ready!');
+    console.log('   1. Deploy your Apps Script project');
+    console.log('   2. Refresh your dashboard');
+    console.log('   3. Stats should load properly now');
   } else {
-    debugLog('\n❌ Please fix the failing items before deploying');
+    console.log('\n❌ Please fix the failing items before deploying');
   }
   
   return { readyToDeploy: readyToDeploy, checklist: checklist };
 }
 
 // Export test functions for easy access
-debugLog('📋 Dashboard Stats Test Functions Available:');
-debugLog('  - testDashboardFixComplete() - Run complete test suite');
-debugLog('  - quickDashboardDiagnostic() - Quick health check');
-debugLog('  - deploymentChecklist() - Pre-deployment verification');
+console.log('📋 Dashboard Stats Test Functions Available:');
+console.log('  - testDashboardFixComplete() - Run complete test suite');
+console.log('  - quickDashboardDiagnostic() - Quick health check');
+console.log('  - deploymentChecklist() - Pre-deployment verification');

@@ -2,893 +2,7 @@
  * Diagnostic and helper utilities. The global configuration and menu setup
  * functions were extracted into Config.gs and Menu.gs.
  */
-/**
- * DEBUG REPORT LOADING ISSUE
- * 
- * The error "No data" suggests generateReportData() is failing
- * Let's find exactly what's wrong
- */
 
-/**
- * Test the exact same call that the reports page makes
- */
-function debugReportLoading() {
-  debugLog('🔍 === DEBUGGING REPORT LOADING ===');
-  
-  try {
-    // Test the same filters that the reports page would use
-    const filters = {
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      requestType: 'All',
-      status: 'All'
-    };
-    
-    debugLog('📅 Testing with filters:', filters);
-    
-    // Test each step of the process
-    debugLog('\n1️⃣ Testing getPageDataForReports...');
-    const pageData = getPageDataForReports(filters);
-    debugLog('getPageDataForReports result:', pageData);
-    
-    if (!pageData) {
-      debugLog('❌ getPageDataForReports returned null/undefined');
-      return { issue: 'getPageDataForReports_null' };
-    }
-    
-    if (!pageData.success) {
-      debugLog('❌ getPageDataForReports returned success: false');
-      debugLog('Error:', pageData.error);
-      return { issue: 'getPageDataForReports_failed', error: pageData.error };
-    }
-    
-    debugLog('\n2️⃣ Testing generateReportData directly...');
-    const reportData = generateReportData(filters);
-    debugLog('generateReportData result:', reportData);
-    
-    if (!reportData) {
-      debugLog('❌ generateReportData returned null/undefined');
-      return { issue: 'generateReportData_null' };
-    }
-    
-    if (reportData.success === false) {
-      debugLog('❌ generateReportData returned success: false');
-      debugLog('Error:', reportData.error);
-      return { issue: 'generateReportData_failed', error: reportData.error };
-    }
-    
-    debugLog('\n3️⃣ Checking data structure...');
-    const requiredFields = ['totalRequests', 'completedRequests', 'riderHours'];
-    const missingFields = requiredFields.filter(field => !(field in reportData));
-    
-    if (missingFields.length > 0) {
-      debugLog('❌ Missing required fields:', missingFields);
-      return { issue: 'missing_fields', missingFields };
-    }
-    
-    debugLog('✅ All checks passed!');
-    debugLog('📊 Report summary:', {
-      totalRequests: reportData.totalRequests,
-      completedRequests: reportData.completedRequests,
-      riderHours: reportData.riderHours ? reportData.riderHours.length : 'undefined',
-      totalEscorts: reportData.riderHours ? reportData.riderHours.reduce((sum, r) => sum + r.escorts, 0) : 0
-    });
-    
-    return { 
-      success: true, 
-      pageData, 
-      reportData,
-      summary: {
-        totalRequests: reportData.totalRequests,
-        completedRequests: reportData.completedRequests,
-        riderHours: reportData.riderHours ? reportData.riderHours.length : 0
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Debug failed with error:', error);
-    console.error('Stack trace:', error.stack);
-    return { 
-      issue: 'exception', 
-      error: error.message, 
-      stack: error.stack 
-    };
-  }
-}
-
-/**
- * Test just the data retrieval functions
- */
-function testDataRetrieval() {
-  debugLog('🔍 === TESTING DATA RETRIEVAL ===');
-  
-  try {
-    debugLog('\n📊 Testing getRequestsData...');
-    const requestsData = getRequestsData();
-    debugLog('Requests data:', {
-      hasData: !!requestsData,
-      rowCount: requestsData ? requestsData.data.length : 0,
-      hasColumnMap: !!requestsData?.columnMap,
-      sampleColumns: requestsData?.columnMap ? Object.keys(requestsData.columnMap).slice(0, 5) : []
-    });
-    
-    debugLog('\n👥 Testing getRidersData...');
-    const ridersData = getRidersData();
-    debugLog('Riders data:', {
-      hasData: !!ridersData,
-      rowCount: ridersData ? ridersData.data.length : 0,
-      hasColumnMap: !!ridersData?.columnMap,
-      sampleColumns: ridersData?.columnMap ? Object.keys(ridersData.columnMap).slice(0, 5) : []
-    });
-    
-    debugLog('\n📋 Testing getAssignmentsData...');
-    const assignmentsData = getAssignmentsData();
-    debugLog('Assignments data:', {
-      hasData: !!assignmentsData,
-      rowCount: assignmentsData ? assignmentsData.data.length : 0,
-      hasColumnMap: !!assignmentsData?.columnMap,
-      sampleColumns: assignmentsData?.columnMap ? Object.keys(assignmentsData.columnMap).slice(0, 5) : []
-    });
-    
-    // Test if any data is completely missing
-    if (!requestsData || !requestsData.data || requestsData.data.length === 0) {
-      return { issue: 'no_requests_data' };
-    }
-    
-    if (!ridersData || !ridersData.data || ridersData.data.length === 0) {
-      return { issue: 'no_riders_data' };
-    }
-    
-    debugLog('✅ All data retrieval successful');
-    return { success: true };
-    
-  } catch (error) {
-    console.error('❌ Data retrieval failed:', error);
-    return { issue: 'data_retrieval_error', error: error.message };
-  }
-}
-
-/**
- * Check if the issue is in CONFIG or column mappings
- */
-function testColumnMappings() {
-  debugLog('🔍 === TESTING COLUMN MAPPINGS ===');
-  
-  try {
-    debugLog('📋 CONFIG.columns.requests:', CONFIG.columns.requests);
-    debugLog('👥 CONFIG.columns.riders:', CONFIG.columns.riders);
-    
-    const requestsData = getRequestsData();
-    if (requestsData && requestsData.columnMap) {
-      debugLog('\n📊 Requests column mapping:');
-      debugLog('  status column exists:', CONFIG.columns.requests.status in requestsData.columnMap);
-      debugLog('  ridersAssigned column exists:', CONFIG.columns.requests.ridersAssigned in requestsData.columnMap);
-      debugLog('  date column exists:', CONFIG.columns.requests.date in requestsData.columnMap);
-      debugLog('  Available columns:', Object.keys(requestsData.columnMap));
-    }
-    
-    const ridersData = getRidersData();
-    if (ridersData && ridersData.columnMap) {
-      debugLog('\n👥 Riders column mapping:');
-      debugLog('  name column exists:', CONFIG.columns.riders.name in ridersData.columnMap);
-      debugLog('  status column exists:', CONFIG.columns.riders.status in ridersData.columnMap);
-      debugLog('  Available columns:', Object.keys(ridersData.columnMap));
-    }
-    
-    return { success: true };
-    
-  } catch (error) {
-    console.error('❌ Column mapping test failed:', error);
-    return { issue: 'column_mapping_error', error: error.message };
-  }
-}
-
-/**
- * Create a safe minimal version of generateReportData for testing
- */
-function generateReportDataMinimal(filters) {
-  try {
-    debugLog('🔧 === MINIMAL REPORT DATA GENERATION ===');
-    
-    // Just return basic structure to test if the issue is in the logic
-    const result = {
-      success: true,
-      totalRequests: 0,
-      completedRequests: 0,
-      activeRiders: 0,
-      requestTypes: {},
-      riderHours: [],
-      summary: {
-        totalRequests: 0,
-        completedRequests: 0,
-        activeRiders: 0,
-        avgCompletionRate: 0
-      },
-      charts: {
-        requestTypes: {},
-        riderPerformance: [],
-        popularLocations: []
-      },
-      tables: {
-        riderHours: [],
-        recentRequests: []
-      }
-    };
-    
-    debugLog('✅ Minimal structure created successfully');
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Even minimal version failed:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-}
-
-/**
- * COMPLETE DIAGNOSTIC - Run this to find the exact issue
- */
-function runCompleteReportDiagnostic() {
-  debugLog('🚀 === COMPLETE REPORT DIAGNOSTIC ===');
-  
-  try {
-    debugLog('\n1️⃣ Testing data retrieval...');
-    const dataTest = testDataRetrieval();
-    if (!dataTest.success) {
-      debugLog('❌ Data retrieval failed:', dataTest);
-      return dataTest;
-    }
-    
-    debugLog('\n2️⃣ Testing column mappings...');
-    const columnTest = testColumnMappings();
-    if (!columnTest.success) {
-      debugLog('❌ Column mapping failed:', columnTest);
-      return columnTest;
-    }
-    
-    debugLog('\n3️⃣ Testing minimal report generation...');
-    const minimalTest = generateReportDataMinimal({});
-    if (!minimalTest.success) {
-      debugLog('❌ Even minimal generation failed:', minimalTest);
-      return minimalTest;
-    }
-    
-    debugLog('\n4️⃣ Testing full report loading...');
-    const reportTest = debugReportLoading();
-    if (!reportTest.success) {
-      debugLog('❌ Full report loading failed:', reportTest);
-      return reportTest;
-    }
-    
-    debugLog('\n🎉 ALL TESTS PASSED!');
-    debugLog('The issue may be in the frontend or how the data is being called.');
-    
-    return { 
-      success: true, 
-      message: 'All backend tests passed',
-      recommendation: 'Check frontend console for more details'
-    };
-    
-  } catch (error) {
-    console.error('❌ Complete diagnostic failed:', error);
-    return { 
-      issue: 'diagnostic_error', 
-      error: error.message,
-      stack: error.stack
-    };
-  }
-}
-
-/**
- * QUICK TEST - Test the exact scenario
- */
-function quickReportTest() {
-  debugLog('⚡ === QUICK REPORT TEST ===');
-  
-  try {
-    // Test the exact same call pattern as the frontend
-    const filters = {
-      startDate: '2024-12-01',
-      endDate: '2025-01-27',
-      requestType: 'All',
-      status: 'All'
-    };
-    
-    debugLog('Testing generateReportData with filters:', filters);
-    const result = generateReportData(filters);
-    
-    debugLog('Result type:', typeof result);
-    debugLog('Result structure:', Object.keys(result || {}));
-    debugLog('Success flag:', result?.success);
-    debugLog('Error:', result?.error);
-    
-    if (result && result.totalRequests !== undefined) {
-      debugLog('✅ SUCCESS: generateReportData returned valid data');
-      debugLog('📊 Data summary:', {
-        totalRequests: result.totalRequests,
-        completedRequests: result.completedRequests,
-        riderHours: result.riderHours?.length || 0
-      });
-    } else {
-      debugLog('❌ FAILED: generateReportData did not return expected structure');
-    }
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Quick test failed:', error);
-    return { error: error.message, stack: error.stack };
-  }
-}
-function testCorrectedRiderCalculation() {
-  debugLog('🔧 === TESTING CORRECTED RIDER CALCULATION ===');
-  
-  try {
-    const ridersData = getRidersData();
-    const requestsData = getRequestsData();
-    
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    startDate.setHours(0,0,0,0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    const filteredRequests = requestsData.data.filter(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
-      let matchesDate = true;
-      if (requestDate instanceof Date) {
-        matchesDate = requestDate >= startDate && requestDate <= endDate;
-      }
-      return matchesDate;
-    });
-    
-    debugLog('📊 Data loaded - riders:', ridersData.data.length, 'filtered requests:', filteredRequests.length);
-    
-    // Test the CORRECTED rider calculation
-    const riderHours = [];
-    ridersData.data.forEach(rider => {
-      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-      if (!riderName || !riderName.trim()) return;
-      
-      let totalHours = 0;
-      let escorts = 0;
-      
-      filteredRequests.forEach(request => {
-        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-        
-        if (status !== 'Completed') return;
-        
-        if (ridersAssigned) {
-          const assignedRidersList = String(ridersAssigned).split(',')
-            .map(name => name.trim())
-            .filter(name => name && name.length > 0);
-          
-          const isAssigned = assignedRidersList.some(assignedName => 
-            assignedName.toLowerCase() === riderName.toLowerCase()
-          );
-          
-          if (isAssigned) {
-            escorts++;
-            
-            const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-            const estimates = {
-              'Funeral': 0.5,
-              'Wedding': 2.5,
-              'VIP': 4.0,
-              'Float Movement': 4.0,
-              'Other': 2.0
-            };
-            totalHours += estimates[requestType] || estimates['Other'];
-          }
-        }
-      });
-      
-      if (escorts > 0) {
-        riderHours.push({
-          rider: riderName,
-          escorts: escorts,
-          hours: Math.round(totalHours * 4) / 4
-        });
-      }
-    });
-    
-    const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-    
-    debugLog('✅ CORRECTED VERSION WORKS!');
-    debugLog(`📊 Results: ${riderHours.length} riders with ${totalEscorts} total escorts`);
-    debugLog('👥 Rider breakdown:');
-    riderHours.forEach(rider => {
-      debugLog(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
-    });
-    
-    debugLog('\n📝 TO FIX THE ERROR:');
-    debugLog('1. Find the rider performance calculation section in generateReportData()');
-    debugLog('2. Replace it with the corrected code above');
-    debugLog('3. Make sure ALL variable declarations are inside the proper scope');
-    debugLog('4. Save and test the reports page');
-    
-    return { success: true, riderHours, totalEscorts };
-    
-  } catch (error) {
-    console.error('❌ Corrected version failed:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-function findRiderNameError() {
-  debugLog('🔍 === FINDING RIDERNAME ERROR ===');
-  
-  try {
-    // Try to reproduce the exact error
-    const ridersData = getRidersData();
-    const requestsData = getRequestsData();
-    
-    // Get some test data
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    startDate.setHours(0,0,0,0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    const filteredRequests = requestsData.data.filter(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
-      let matchesDate = true;
-      if (requestDate instanceof Date) {
-        matchesDate = requestDate >= startDate && requestDate <= endDate;
-      }
-      return matchesDate;
-    });
-    
-    debugLog('📊 Test data ready - riders:', ridersData.data.length, 'requests:', filteredRequests.length);
-    
-    // Test the problematic section step by step
-    debugLog('\n🧪 Testing rider loop...');
-    
-    let errorFound = false;
-    let errorDetails = null;
-    
-    ridersData.data.forEach((rider, index) => {
-      try {
-        // This is where the error likely occurs
-        const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-        debugLog(`✅ Rider ${index + 1}: ${riderName || '[no name]'}`);
-        
-        if (index < 3) { // Test first 3 riders
-          filteredRequests.slice(0, 2).forEach((request, reqIndex) => {
-            const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-            debugLog(`  Request ${reqIndex + 1}: ridersAssigned = "${ridersAssigned}"`);
-            
-            if (ridersAssigned) {
-              const assignedRidersList = String(ridersAssigned).split(',')
-                .map(name => name.trim())
-                .filter(name => name && name.length > 0);
-              
-              const isAssigned = assignedRidersList.some(assignedName => 
-                assignedName.toLowerCase() === riderName.toLowerCase()
-              );
-              
-              debugLog(`    Assigned list: [${assignedRidersList.join(', ')}], matches: ${isAssigned}`);
-            }
-          });
-        }
-      } catch (error) {
-        errorFound = true;
-        errorDetails = {
-          riderIndex: index,
-          error: error.message,
-          rider: rider
-        };
-        console.error(`❌ Error at rider ${index + 1}:`, error.message);
-      }
-    });
-    
-    if (!errorFound) {
-      debugLog('✅ No error found in step-by-step test');
-      debugLog('🔍 The error might be in a different part of the rider calculation');
-    } else {
-      debugLog('❌ Error reproduced:', errorDetails);
-    }
-    
-    return { errorFound, errorDetails };
-    
-  } catch (error) {
-    console.error('❌ Diagnostic failed:', error);
-    return { error: error.message };
-  }
-}
-
-function fixRiderNameError() {
-  debugLog('🚀 === FIXING RIDERNAME ERROR ===');
-  
-  try {
-    debugLog('\n1️⃣ Finding the error...');
-    const errorDiag = findRiderNameError();
-    
-    debugLog('\n2️⃣ Testing corrected version...');
-    const correctedTest = testCorrectedRiderCalculation();
-    
-    if (correctedTest.success) {
-      debugLog('\n🎉 SUCCESS! Corrected version works perfectly');
-      debugLog('\n📋 IMPLEMENTATION:');
-      debugLog('The error is caused by variable scope issues in your rider calculation.');
-      debugLog('Replace the rider performance section with the corrected code above.');
-      debugLog('Key fix: Ensure "const riderName" is declared inside the forEach loop.');
-      
-      return { success: true, errorDiag, correctedTest };
-    } else {
-      debugLog('\n⚠️ Corrected version still has issues');
-      return { success: false, errorDiag, correctedTest };
-    }
-    
-  } catch (error) {
-    console.error('❌ Fix attempt failed:', error);
-    return { success: false, error: error.message };
-  }
-}
-function diagnoseReportError() {
-  debugLog('🔍 === DIAGNOSING REPORT ERROR ===');
-  
-  try {
-    // Test the same call that the reports page makes
-    const filters = {
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      requestType: 'All',
-      status: 'All'
-    };
-    
-    debugLog('📅 Testing with filters:', filters);
-    
-    // Try to call generateReportData and catch any errors
-    debugLog('\n🧪 Calling generateReportData()...');
-    const result = generateReportData(filters);
-    
-    debugLog('✅ generateReportData() completed successfully');
-    debugLog('📊 Result structure:', Object.keys(result || {}));
-    
-    // Check if result has expected structure
-    const expectedKeys = ['totalRequests', 'completedRequests', 'riderHours', 'requestTypes'];
-    const missingKeys = expectedKeys.filter(key => !(key in (result || {})));
-    
-    if (missingKeys.length > 0) {
-      debugLog('⚠️ Missing expected keys:', missingKeys);
-    } else {
-      debugLog('✅ Result has expected structure');
-    }
-    
-    return { success: true, result, missingKeys };
-    
-  } catch (error) {
-    console.error('❌ generateReportData() failed with error:', error);
-    console.error('Error details:', error.message);
-    console.error('Stack trace:', error.stack);
-    
-    return { 
-      success: false, 
-      error: error.message,
-      stack: error.stack,
-      errorType: error.name
-    };
-  }
-}
-
-function implementSafeReportData() {
-  debugLog('🔧 === IMPLEMENTING SAFE REPORT DATA ===');
-  
-  try {
-    // Test the safe version first
-    const filters = {
-      startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      requestType: 'All',
-      status: 'All'
-    };
-    
-    debugLog('🧪 Testing safe version...');
-    const result = generateReportDataSafe(filters);
-    
-    if (result.success) {
-      debugLog('✅ Safe version works perfectly!');
-      debugLog('📊 Results:', {
-        completedRequests: result.completedRequests,
-        riderHours: result.riderHours.length,
-        totalEscorts: result.riderHours.reduce((sum, rider) => sum + rider.escorts, 0)
-      });
-      
-      debugLog('\n📝 IMPLEMENTATION STEPS:');
-      debugLog('1. Replace your current generateReportData() function with generateReportDataSafe()');
-      debugLog('2. Rename generateReportDataSafe to generateReportData');
-      debugLog('3. Test your reports page - it should load without errors');
-      
-      return { success: true, result };
-    } else {
-      debugLog('❌ Safe version still has issues:', result.error);
-      return { success: false, error: result.error };
-    }
-    
-  } catch (error) {
-    console.error('❌ Implementation test failed:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-/**
- * COMPLETE ERROR RESOLUTION
- */
-function fixReportFeaturesError() {
-  debugLog('🚀 === FIXING REPORT FEATURES ERROR ===');
-  
-  try {
-    debugLog('\n1️⃣ Diagnosing current error...');
-    const diagnosis = diagnoseReportError();
-    
-    if (diagnosis.success) {
-      debugLog('✅ No error found in generateReportData()');
-      debugLog('   The issue might be elsewhere in the system');
-      return { success: true, message: 'No error detected' };
-    } else {
-      debugLog('❌ Error confirmed:', diagnosis.error);
-      
-      debugLog('\n2️⃣ Testing safe replacement...');
-      const implementation = implementSafeReportData();
-      
-      if (implementation.success) {
-        debugLog('\n🎉 SOLUTION FOUND!');
-        debugLog('✅ Safe version works and will fix the error');
-        debugLog('\n📋 TO FIX THE ERROR:');
-        debugLog('1. Replace generateReportData() function with generateReportDataSafe()');
-        debugLog('2. Rename it back to generateReportData');
-        debugLog('3. Save and test reports page');
-        
-        return {
-          success: true,
-          diagnosis,
-          solution: 'Replace with safe version',
-          implementation
-        };
-      } else {
-        debugLog('\n⚠️ Safe version also has issues');
-        debugLog('May need deeper investigation');
-        return { success: false, diagnosis, implementation };
-      }
-    }
-    
-  } catch (error) {
-    console.error('❌ Fix attempt failed:', error);
-    return { success: false, error: error.message };
-  }
-}
-function diagnoseGenerateReportData() {
-  debugLog('🔍 === DIAGNOSING generateReportData() INCONSISTENCY ===');
-  
-  try {
-    // Get the same filters that the reports page would use
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    
-    const filters = {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      requestType: 'All',
-      status: 'All'
-    };
-    
-    debugLog(`📅 Using filters:`, filters);
-    
-    // Test the current generateReportData function
-    debugLog('\n🧪 Testing current generateReportData()...');
-    const reportData = generateReportData(filters);
-    
-    debugLog('\n📊 CURRENT RESULTS:');
-    debugLog(`Total Requests: ${reportData.totalRequests || 'undefined'}`);
-    debugLog(`Completed Requests: ${reportData.completedRequests || 'undefined'}`);
-    debugLog(`Rider Hours entries: ${reportData.riderHours ? reportData.riderHours.length : 'undefined'}`);
-    
-    if (reportData.riderHours) {
-      const totalEscorts = reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-      debugLog(`Total Escorts from Rider Hours: ${totalEscorts}`);
-      
-      debugLog('\n👥 Rider breakdown:');
-      reportData.riderHours.forEach(rider => {
-        debugLog(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
-      });
-    }
-    
-    // Show the discrepancy
-    const completedCount = reportData.completedRequests || 0;
-    const riderEscortsCount = reportData.riderHours ? 
-      reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0) : 0;
-    
-    debugLog('\n🎯 === DISCREPANCY ANALYSIS ===');
-    debugLog(`Completed Requests (from requests data): ${completedCount}`);
-    debugLog(`Rider Escorts (from assignments data): ${riderEscortsCount}`);
-    debugLog(`Gap: ${Math.abs(completedCount - riderEscortsCount)}`);
-    
-    if (Math.abs(completedCount - riderEscortsCount) > 10) {
-      debugLog('\n❌ CONFIRMED: generateReportData() has data source inconsistency!');
-      debugLog('   Main stats use requests data, rider performance uses assignments data');
-      debugLog('\n💡 SOLUTION: Update rider performance calculation to use requests data');
-    } else {
-      debugLog('\n✅ No major discrepancy found in generateReportData()');
-    }
-    
-    return {
-      completedRequests: completedCount,
-      riderEscorts: riderEscortsCount,
-      gap: Math.abs(completedCount - riderEscortsCount),
-      reportData: reportData
-    };
-    
-  } catch (error) {
-    console.error('❌ Diagnosis failed:', error);
-    return { error: error.message };
-  }
-}
-
-/**
- * TEST: What the fixed version would produce
- */
-function testFixedGenerateReportData() {
-  debugLog('🧪 === TESTING FIXED generateReportData() LOGIC ===');
-  
-  try {
-    // Simulate the same logic as the fixed version
-    const requestsData = getRequestsData();
-    const ridersData = getRidersData();
-    
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    startDate.setHours(0,0,0,0);
-    endDate.setHours(23, 59, 59, 999);
-    
-    // Filter requests (same as current logic)
-    const filteredRequests = requestsData.data.filter(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
-      let matchesDate = true;
-      if (requestDate instanceof Date) {
-        matchesDate = requestDate >= startDate && requestDate <= endDate;
-      }
-      return matchesDate;
-    });
-    
-    // Count completed requests (same as current logic)
-    const completedRequests = filteredRequests.filter(request => 
-      getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-    ).length;
-    
-    debugLog(`📊 Completed requests: ${completedRequests}`);
-    
-    // FIXED: Calculate rider performance from requests data instead of assignments
-    const riderHours = [];
-    ridersData.data.forEach(rider => {
-      const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-      if (!riderName || !riderName.trim()) return;
-      
-      let totalHours = 0;
-      let escorts = 0;
-      
-      // Use filteredRequests instead of assignmentsData
-      filteredRequests.forEach(request => {
-        const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-        
-        if (status !== 'Completed') return;
-        
-        if (ridersAssigned) {
-          const assignedRidersList = String(ridersAssigned).split(',')
-            .map(name => name.trim())
-            .filter(name => name && name.length > 0);
-          
-          const isAssigned = assignedRidersList.some(assignedName => 
-            assignedName.toLowerCase() === riderName.toLowerCase()
-          );
-          
-          if (isAssigned) {
-            escorts++;
-            
-            // Add estimated hours
-            const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-            const estimates = {
-              'Funeral': 0.5,
-              'Wedding': 2.5,
-              'VIP': 4.0,
-              'Float Movement': 4.0,
-              'Other': 2.0
-            };
-            totalHours += estimates[requestType] || estimates['Other'];
-          }
-        }
-      });
-      
-      if (escorts > 0) {
-        riderHours.push({
-          rider: riderName,
-          escorts: escorts,
-          hours: Math.round(totalHours * 4) / 4
-        });
-      }
-    });
-    
-    const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-    
-    debugLog('\n🔧 FIXED VERSION RESULTS:');
-    debugLog(`Completed Requests: ${completedRequests}`);
-    debugLog(`Rider Escorts: ${totalEscorts}`);
-    debugLog(`Gap: ${Math.abs(completedRequests - totalEscorts)}`);
-    debugLog(`Riders with activity: ${riderHours.length}`);
-    
-    if (Math.abs(completedRequests - totalEscorts) < 10) {
-      debugLog('\n✅ SUCCESS: Fixed version shows consistent numbers!');
-      debugLog('📝 IMPLEMENTATION: Replace the rider performance section in generateReportData()');
-    } else {
-      debugLog('\n⚠️ Gap still exists. May need additional investigation.');
-    }
-    
-    debugLog('\n👥 Fixed rider breakdown:');
-    riderHours.forEach(rider => {
-      debugLog(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
-    });
-    
-    return {
-      completedRequests,
-      riderEscorts: totalEscorts,
-      gap: Math.abs(completedRequests - totalEscorts),
-      riderHours
-    };
-    
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    return { error: error.message };
-  }
-}
-
-/**
- * COMPLETE SOLUTION TEST
- */
-function testCompleteGenerateReportDataFix() {
-  debugLog('🚀 === COMPLETE generateReportData() FIX TEST ===');
-  
-  try {
-    debugLog('\n1️⃣ Diagnosing current generateReportData()...');
-    const diagnosis = diagnoseGenerateReportData();
-    
-    debugLog('\n2️⃣ Testing fixed version...');
-    const fixedTest = testFixedGenerateReportData();
-    
-    debugLog('\n🎯 === COMPARISON SUMMARY ===');
-    debugLog(`BEFORE (Current):`);
-    debugLog(`  Completed Requests: ${diagnosis.completedRequests}`);
-    debugLog(`  Rider Escorts: ${diagnosis.riderEscorts}`);
-    debugLog(`  Gap: ${diagnosis.gap}`);
-    
-    debugLog(`\nAFTER (Fixed):`);
-    debugLog(`  Completed Requests: ${fixedTest.completedRequests}`);
-    debugLog(`  Rider Escorts: ${fixedTest.riderEscorts}`);
-    debugLog(`  Gap: ${fixedTest.gap}`);
-    
-    const improvement = diagnosis.gap - fixedTest.gap;
-    debugLog(`\nImprovement: ${improvement} (smaller gap is better)`);
-    
-    if (fixedTest.gap < 10 && diagnosis.gap > 50) {
-      debugLog('\n🎉 EXCELLENT! The fix resolves the discrepancy');
-      debugLog('\n📝 NEXT STEPS:');
-      debugLog('1. Locate the "Calculate rider performance" section in generateReportData()');
-      debugLog('2. Replace it with the fixed code above');
-      debugLog('3. Test your reports page - numbers should now match!');
-    }
-    
-    return { diagnosis, fixedTest, improvement };
-    
-  } catch (error) {
-    console.error('❌ Complete test failed:', error);
-    return { error: error.message };
-  }
-}
 /**
  * Comprehensive authentication diagnostic function
  * Add this to your Code.gs file and run it to diagnose the authentication issue
@@ -897,111 +11,6 @@ var AUTH_TRACE = [];
 /**
  * Trace function calls to see which authentication functions are being used
  */
-function checkRidersAssignedColumn() {
-  debugLog('🔍 === CHECKING RIDERS ASSIGNED COLUMN ===');
-  
-  try {
-    const requestsData = getRequestsData();
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    
-    debugLog('📊 Column Analysis:');
-    debugLog(`CONFIG.columns.requests.ridersAssigned = "${CONFIG.columns.requests.ridersAssigned}"`);
-    debugLog(`Column index = ${requestsData.columnMap[CONFIG.columns.requests.ridersAssigned]}`);
-    
-    // Check if the column exists
-    if (requestsData.columnMap[CONFIG.columns.requests.ridersAssigned] === undefined) {
-      debugLog('❌ MAJOR ISSUE: ridersAssigned column not found in sheet!');
-      debugLog('📋 Available columns:', Object.keys(requestsData.columnMap));
-      return { issue: 'COLUMN_NOT_FOUND', availableColumns: Object.keys(requestsData.columnMap) };
-    }
-    
-    let completedRequests = 0;
-    let requestsWithRiders = 0;
-    let requestsWithEmptyRiders = 0;
-    let ridersAssignedExamples = [];
-    
-    requestsData.data.forEach((request, index) => {
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-      const requestId = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId);
-      
-      // Check if in date range
-      let inDateRange = true;
-      if (eventDate) {
-        const requestDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
-        if (!isNaN(requestDate.getTime())) {
-          inDateRange = requestDate >= startDate && requestDate <= endDate;
-        }
-      }
-      
-      if (inDateRange && status === 'Completed') {
-        completedRequests++;
-        
-        // Check the ridersAssigned field
-        const ridersValue = ridersAssigned;
-        const ridersString = String(ridersValue || '').trim();
-        
-        if (ridersString && ridersString.length > 0) {
-          requestsWithRiders++;
-          
-          // Collect examples (first 10)
-          if (ridersAssignedExamples.length < 10) {
-            ridersAssignedExamples.push({
-              requestId: requestId,
-              ridersAssigned: ridersValue,
-              ridersString: ridersString,
-              type: typeof ridersValue,
-              length: ridersString.length
-            });
-          }
-        } else {
-          requestsWithEmptyRiders++;
-          
-          // Show first 5 empty examples
-          if (requestsWithEmptyRiders <= 5) {
-            debugLog(`❌ Request ${requestId}: Status='Completed' but ridersAssigned='${ridersValue}' (type: ${typeof ridersValue})`);
-          }
-        }
-      }
-    });
-    
-    debugLog('\n📊 RESULTS:');
-    debugLog(`Total completed requests in range: ${completedRequests}`);
-    debugLog(`Requests WITH riders assigned: ${requestsWithRiders}`);
-    debugLog(`Requests WITH EMPTY riders assigned: ${requestsWithEmptyRiders}`);
-    debugLog('\n📝 Examples of ridersAssigned values:');
-    ridersAssignedExamples.forEach(example => {
-      debugLog(`  ${example.requestId}: "${example.ridersString}" (${example.type}, length ${example.length})`);
-    });
-    
-    // This is likely the issue!
-    if (requestsWithEmptyRiders > requestsWithRiders) {
-      debugLog('\n🎯 === ISSUE IDENTIFIED ===');
-      debugLog('❌ MAJOR PROBLEM: Most completed requests have empty ridersAssigned field!');
-      debugLog(`   ${requestsWithEmptyRiders} requests have no riders assigned`);
-      debugLog(`   ${requestsWithRiders} requests have riders assigned`);
-      debugLog('\n💡 SOLUTION NEEDED:');
-      debugLog('   Option 1: Populate ridersAssigned field in completed requests');
-      debugLog('   Option 2: Modify function to get riders from assignments when field is empty');
-    }
-    
-    return {
-      completedRequests,
-      requestsWithRiders,
-      requestsWithEmptyRiders,
-      ridersAssignedExamples,
-      issue: requestsWithEmptyRiders > requestsWithRiders ? 'EMPTY_RIDERS_FIELD' : 'UNKNOWN'
-    };
-    
-  } catch (error) {
-    console.error('❌ Check failed:', error);
-    return { error: error.message };
-  }
-}
-
 function traceAuthFunction(functionName, email, source) {
   const timestamp = new Date().toISOString();
   AUTH_TRACE.push({
@@ -3208,9 +2217,7 @@ function appendEmailResponseToAssignments(riderName, messageBody) {
       const assignmentRider = row[riderCol];
       const status = statusCol !== undefined ? row[statusCol] : '';
 
-      const statusLower = (status || '').toLowerCase().trim();
-const validStatuses = ['completed', 'done', 'finished', 'assigned', 'confirmed'];
-if (assignmentRider === riderName && validStatuses.includes(statusLower) && dateMatches) {
+      if (assignmentRider === riderName && status !== 'Completed' && status !== 'Cancelled') {
         const rowNumber = i + 2; // Account for header row
         const existingNote = row[notesCol] || '';
         const newNote = existingNote ? existingNote + '\n' + noteText : noteText;
@@ -3635,6 +2642,13 @@ function getDispatchNotifications() {
  * Generates report data based on filters.
  * @param {object} filters An object containing filter criteria (startDate, endDate, requestType, status).
  * @return {object} Structured report data for display.
+ * Generate report data for the reports page
+ * FIXED: Now pulls data from requests instead of assignments for accurate reporting
+ * - Rider performance is based on completed requests (not assignments)
+ * - Hours calculation is based on request duration or realistic estimates
+ * - Location data comes directly from requests
+ * @param {Object} filters - Filter criteria for date range, request type, status
+ * @return {Object} Report data containing summary, charts, and tables
  * @throws {Error} If an error occurs during report generation.
  */
 function generateReportData(filters) {
@@ -3674,11 +2688,11 @@ function generateReportData(filters) {
       return matchesDate && matchesType && matchesStatus;
     });
     
-    // Calculate summary statistics - only count completed requests
+    // Calculate summary statistics
+    const totalRequests = filteredRequests.length;
     const completedRequests = filteredRequests.filter(request => 
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
     ).length;
-    const totalRequests = completedRequests;
     
     const activeRiders = ridersData.data.filter(rider =>
       getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
@@ -3691,24 +2705,23 @@ function generateReportData(filters) {
       requestTypes[type] = (requestTypes[type] || 0) + 1;
     });
     
-    // 🔧 FIXED: Calculate rider performance from REQUESTS data instead of assignments
+    // Calculate rider performance based on completed requests (not assignments)
     const riderPerformance = [];
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName) return;
       
-      // Count requests where this rider was assigned
+      // Count requests where this rider was assigned and filter by date
       const riderRequests = filteredRequests.filter(request => {
-        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-        if (!ridersAssigned) return false;
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+        const assignedRidersList = String(ridersAssigned).split(',').map(name => name.trim().toLowerCase()).filter(name => name);
         
-        const assignedRidersList = String(ridersAssigned).split(',')
-          .map(name => name.trim())
-          .filter(name => name && name.length > 0);
-        
-        return assignedRidersList.some(assignedName => 
-          assignedName.toLowerCase() === riderName.toLowerCase()
+        // Check if this rider was assigned to the request
+        const riderAssigned = assignedRidersList.some(assignedName => 
+          assignedName === riderName.toString().trim().toLowerCase()
         );
+        
+        return riderAssigned;
       });
       
       if (riderRequests.length > 0) {
@@ -3724,174 +2737,171 @@ function generateReportData(filters) {
       }
     });
 
-    // 🔧 FIXED: Calculate rider hours from REQUESTS data instead of assignments
+    // Calculate escort count and total hours per rider based on completed requests
     const riderHours = [];
+    const consolidatedRiders = {}; // To track NOPD riders for consolidation
+    
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
-      if (!riderName || !riderName.trim()) return;
-      
+      if (!riderName) return;
+
       let totalHours = 0;
       let escorts = 0;
-      
-      // 🔧 FIXED: Use filteredRequests (from requests data) instead of assignmentsData
+
+      // Count requests where this rider was assigned
       filteredRequests.forEach(request => {
+        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+        const assignedRidersList = String(ridersAssigned).split(',').map(name => name.trim().toLowerCase()).filter(name => name);
         const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-        const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
         
-        // Only count completed requests
-        if (status !== 'Completed') return;
-        
-        // Check if this rider is assigned to this request
-        if (ridersAssigned) {
-          const assignedRidersList = String(ridersAssigned).split(',')
-            .map(name => name.trim())
-            .filter(name => name && name.length > 0);
+        // Check if this rider was assigned to the request
+        const riderAssigned = assignedRidersList.some(assignedName => 
+          assignedName === riderName.toString().trim().toLowerCase()
+        );
+
+        if (riderAssigned) {
+          // OPTIMIZED: More flexible status matching for better counting
+          const statusLower = (status || '').toLowerCase().trim();
+          const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+          const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
           
-          // Check if current rider is in the assigned list (case-insensitive)
-          const isAssigned = assignedRidersList.some(assignedName => 
-            assignedName.toLowerCase() === riderName.toLowerCase()
-          );
+          // Count valid escort requests - expanded criteria
+          const validStatuses = ['completed', 'in progress', 'assigned', 'confirmed'];
+          const hasValidStatus = validStatuses.includes(statusLower);
+          const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
           
-          if (isAssigned) {
+          // Count if:
+          // 1. Request has a valid working status
+          // 2. OR event has passed and was assigned (indicating work was likely done)
+          const shouldCount = hasValidStatus || 
+                             (eventHasPassed && statusLower && statusLower !== 'cancelled');
+          
+          if (shouldCount) {
             escorts++;
             
-            // Calculate hours from request times or use estimates
+            // Calculate hours based on request start/end time or realistic estimates
             const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
             const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
             const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
             
             let hoursToAdd = 0;
             
-            // Try to calculate from actual times
             if (startTime && endTime) {
-              const start = startTime instanceof Date ? startTime : new Date(startTime);
-              const end = endTime instanceof Date ? endTime : new Date(endTime);
-              if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-                hoursToAdd = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+              // Calculate from request start/end times
+              const startTimeObj = parseTimeString(startTime);
+              const endTimeObj = parseTimeString(endTime);
+              if (startTimeObj && endTimeObj && endTimeObj > startTimeObj) {
+                hoursToAdd = roundToQuarterHour((endTimeObj.getTime() - startTimeObj.getTime()) / (1000 * 60 * 60));
+                debugLog(`Calculated from request times: ${hoursToAdd} hours for ${riderName} on ${requestType}`);
               }
-            }
+            } 
             
-            // Fallback to estimates if no valid time calculation
-            if (hoursToAdd <= 0) {
-              const estimates = {
-                'Funeral': 0.5,
-                'Wedding': 2.5,
-                'VIP': 4.0,
-                'Float Movement': 4.0,
-                'Other': 2.0
-              };
-              hoursToAdd = estimates[requestType] || estimates['Other'];
+            if (hoursToAdd === 0) {
+              // Use realistic estimate based on request type
+              hoursToAdd = getRealisticEscortHoursFromRequestType(requestType);
+              debugLog(`Using realistic estimate: ${hoursToAdd} hours for ${riderName} on ${requestType}`);
             }
             
             totalHours += hoursToAdd;
           }
         }
       });
-      
-      if (escorts > 0) {
-        riderHours.push({
-          rider: riderName,
-          escorts: escorts,
-          hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
-        });
+
+      // Determine display name and handle NOPD consolidation
+      let displayName = riderName;
+      if (riderName.toString().toLowerCase().includes('nopd rider')) {
+        displayName = 'NOPD';
       }
+
+      // Only include riders with completed requests
+      if (escorts > 0) {
+        // Check if we need to consolidate NOPD riders
+        if (displayName === 'NOPD') {
+          if (!consolidatedRiders[displayName]) {
+            consolidatedRiders[displayName] = {
+              name: displayName,
+              escorts: 0,
+              hours: 0
+            };
+          }
+          consolidatedRiders[displayName].escorts += escorts;
+          consolidatedRiders[displayName].hours += totalHours;
+        } else {
+          riderHours.push({
+            name: displayName,
+            escorts: escorts,
+            hours: Math.round(totalHours * 100) / 100
+          });
+        }
+      }
+    });
+
+    // Add consolidated NOPD data if it exists
+    Object.values(consolidatedRiders).forEach(riderData => {
+      riderHours.push({
+        name: riderData.name,
+        escorts: riderData.escorts,
+        hours: Math.round(riderData.hours * 100) / 100
+      });
     });
 
     // Calculate popular locations from filtered requests
     const locationCounts = {};
     filteredRequests.forEach(request => {
+      // Get location from the request (using multiple possible location fields)
       const startLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startLocation);
       const endLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endLocation);
       const secondaryLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.secondaryLocation);
       
-      [startLocation, endLocation, secondaryLocation].forEach(location => {
-        if (location && location.trim()) {
-          const cleanLocation = location.trim();
-          locationCounts[cleanLocation] = (locationCounts[cleanLocation] || 0) + 1;
-        }
-      });
+      // Use the most specific location available
+      const location = startLocation || endLocation || secondaryLocation || 'Unknown Location';
+      
+      if (location && location !== 'Unknown Location') {
+        locationCounts[location] = (locationCounts[location] || 0) + 1;
+      }
     });
-    
-    const popularLocations = Object.entries(locationCounts)
-      .map(([location, count]) => ({ location, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
 
-    // Build comprehensive report data
+    // Convert to sorted array for display
+    const popularLocations = Object.keys(locationCounts)
+      .map(location => ({
+        name: location,
+        count: locationCounts[location]
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10); // Top 10 locations
+
     const reportData = {
       summary: {
         totalRequests: totalRequests,
         completedRequests: completedRequests,
         activeRiders: activeRiders,
-        avgCompletionRate: riderPerformance.length > 0 ? 
-          Math.round(riderPerformance.reduce((sum, rider) => sum + rider.completionRate, 0) / riderPerformance.length) : 0
+        avgCompletionRate: riderPerformance.length > 0 ? Math.round(riderPerformance.reduce((sum, r) => sum + r.completionRate, 0) / riderPerformance.length) : 0
       },
       charts: {
+        requestVolume: {
+          total: totalRequests,
+          peakDay: 'N/A', // Would need more complex analysis
+          trend: totalRequests > 0 ? 'Active' : 'No Data'
+        },
         requestTypes: requestTypes,
-        riderPerformance: riderPerformance.slice(0, 10), // Top 10 riders
-        popularLocations: popularLocations
+        // Placeholder for monthly trends
+        monthlyTrends: {}
       },
       tables: {
-        riderHours: riderHours.sort((a, b) => b.hours - a.hours), // Sort by hours descending
-        recentRequests: filteredRequests.slice(0, 20).map(request => ({
-          id: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId),
-          requester: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requesterName),
-          type: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type),
-          status: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status),
-          eventDate: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate),
-          ridersAssigned: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned)
-        }))
-      },
-      // Backward compatibility
-      totalRequests: totalRequests,
-      completedRequests: completedRequests,
-      activeRiders: activeRiders,
-      requestTypes: requestTypes,
-      riderHours: riderHours,
-      riderPerformance: riderPerformance,
-      popularLocations: popularLocations
+        riderPerformance: riderPerformance.sort((a, b) => b.assignments - a.assignments),
+        riderHours: riderHours.sort((a, b) => b.escorts - a.escorts),
+        locations: popularLocations,
+        responseTime: {}
+      }
     };
-
-    debugLog('Report data generated successfully:', {
-      totalRequests: reportData.totalRequests,
-      completedRequests: reportData.completedRequests,
-      riderHoursCount: reportData.riderHours.length,
-      totalEscorts: reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0)
-    });
-
-    return reportData;
-
-  } catch (error) {
-    logError('Error in generateReportData', error);
     
-    // Return safe fallback data structure
-    return {
-      success: false,
-      error: error.message,
-      summary: {
-        totalRequests: 0,
-        completedRequests: 0,
-        activeRiders: 0,
-        avgCompletionRate: 0
-      },
-      charts: {
-        requestTypes: {},
-        riderPerformance: [],
-        popularLocations: []
-      },
-      tables: {
-        riderHours: [],
-        recentRequests: []
-      },
-      // Backward compatibility
-      totalRequests: 0,
-      completedRequests: 0,
-      activeRiders: 0,
-      requestTypes: {},
-      riderHours: [],
-      riderPerformance: [],
-      popularLocations: []
-    };
+    return reportData;
+    
+  } catch (error) {
+    logError('Error generating report data', error);
+    throw error;
   }
 }
 
@@ -3935,6 +2945,160 @@ function getRealisticEscortHours(assignment, columnMap) {
   
   // Default fallback
   return roundToQuarterHour(realisticEstimates['Other']);
+}
+
+/**
+ * Get realistic escort hours based on request type for reports
+ * @param {string} requestType - The type of request
+ * @return {number} Realistic hours estimate based on request type
+ */
+function getRealisticEscortHoursFromRequestType(requestType) {
+  // Realistic hour estimates based on actual escort experience
+  const realisticEstimates = {
+    'Funeral': 0.5,        // Short, focused escorts
+    'Wedding': 2.5,        // Moderate duration with setup/ceremony/departure
+    'VIP': 4.0,           // Longer, more complex routes
+    'Float Movement': 4.0, // Extended transport/logistics
+    'Other': 2.0          // General default
+  };
+  
+  const estimatedHours = realisticEstimates[requestType] || realisticEstimates['Other'];
+  return roundToQuarterHour(estimatedHours);
+}
+
+/**
+ * Debug function to analyze reports data accuracy
+ * Run this to troubleshoot reports showing incorrect data
+ * @param {string} startDate Optional start date (YYYY-MM-DD format)
+ * @param {string} endDate Optional end date (YYYY-MM-DD format)
+ * @return {Object} Detailed analysis of reports data
+ */
+function debugReportsAccuracy(startDate = null, endDate = null) {
+  try {
+    console.log('🔍 DEBUG: Analyzing Reports Data Accuracy...');
+    
+    // Set default date range to last 30 days if not provided
+    if (!startDate || !endDate) {
+      const today = new Date();
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      
+      startDate = thirtyDaysAgo.toISOString().split('T')[0];
+      endDate = today.toISOString().split('T')[0];
+    }
+    
+    console.log(`📅 Date Range: ${startDate} to ${endDate}`);
+    
+    const assignmentsData = getAssignmentsData();
+    const requestsData = getRequestsData();
+    const ridersData = getRidersData();
+    
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    console.log('📊 Total Data Available:');
+    console.log(`- Total Assignments: ${assignmentsData.data.length}`);
+    console.log(`- Total Requests: ${requestsData.data.length}`);
+    console.log(`- Total Riders: ${ridersData.data.length}`);
+    
+    // Analyze assignments in date range
+    let assignmentsInRange = 0;
+    let assignmentsByStatus = {};
+    let assignmentsByRider = {};
+    let hoursData = { withActual: 0, withEstimate: 0, withoutData: 0 };
+    
+    assignmentsData.data.forEach(assignment => {
+      const eventDate = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      const status = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const rider = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      
+      if (eventDate instanceof Date && eventDate >= start && eventDate <= end) {
+        assignmentsInRange++;
+        
+        // Track by status
+        const statusKey = status || 'Unknown';
+        assignmentsByStatus[statusKey] = (assignmentsByStatus[statusKey] || 0) + 1;
+        
+        // Track by rider
+        if (rider) {
+          assignmentsByRider[rider] = (assignmentsByRider[rider] || 0) + 1;
+        }
+        
+        // Check time data availability
+        const actualStart = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime);
+        const actualEnd = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime);
+        const actualDuration = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
+        
+        if (actualDuration && !isNaN(parseFloat(actualDuration))) {
+          hoursData.withActual++;
+        } else if (actualStart && actualEnd) {
+          hoursData.withActual++;
+        } else {
+          // Check if we can estimate
+          const requestId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
+          if (requestId) {
+            hoursData.withEstimate++;
+          } else {
+            hoursData.withoutData++;
+          }
+        }
+      }
+    });
+    
+    console.log(`\n📋 Assignments in Date Range: ${assignmentsInRange}`);
+    console.log('📊 Status Distribution:');
+    Object.keys(assignmentsByStatus).forEach(status => {
+      console.log(`  - ${status}: ${assignmentsByStatus[status]}`);
+    });
+    
+    console.log('\n🏍️ Top Riders (by assignment count):');
+    const topRiders = Object.keys(assignmentsByRider)
+      .map(rider => ({ rider, count: assignmentsByRider[rider] }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    topRiders.forEach(({ rider, count }) => {
+      console.log(`  - ${rider}: ${count} assignments`);
+    });
+    
+    console.log('\n⏱️ Hours Data Availability:');
+    console.log(`  - With Actual Times: ${hoursData.withActual}`);
+    console.log(`  - Can Estimate: ${hoursData.withEstimate}`);
+    console.log(`  - No Data: ${hoursData.withoutData}`);
+    
+    // Test the actual report generation
+    console.log('\n🧪 Testing Report Generation...');
+    const filters = { startDate, endDate };
+    const reportData = generateReportData(filters);
+    
+    console.log('📈 Report Results:');
+    console.log(`  - Total Requests in Reports: ${reportData.summary.totalRequests}`);
+    console.log(`  - Completed Requests: ${reportData.summary.completedRequests}`);
+    console.log(`  - Active Riders: ${reportData.summary.activeRiders}`);
+    console.log(`  - Riders with Hours: ${reportData.tables.riderHours.filter(r => r.hours > 0).length}`);
+    console.log(`  - Total Hours Calculated: ${reportData.tables.riderHours.reduce((sum, r) => sum + r.hours, 0)}`);
+    console.log(`  - Popular Locations: ${reportData.tables.locations.length}`);
+    
+    return {
+      success: true,
+      dateRange: { startDate, endDate },
+      dataAvailable: {
+        assignments: assignmentsData.data.length,
+        requests: requestsData.data.length,
+        riders: ridersData.data.length
+      },
+      assignmentsInRange,
+      statusDistribution: assignmentsByStatus,
+      hoursDataAvailability: hoursData,
+      reportResults: reportData.summary,
+      ridersWithHours: reportData.tables.riderHours.filter(r => r.hours > 0).length
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in debugReportsAccuracy:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
@@ -4049,234 +3213,121 @@ function setupActualCompletionTimeColumns() {
  */
 function generateRiderActivityReport(startDate, endDate) {
   try {
-    debugLog('🔧 === FIXED RIDER ACTIVITY REPORT ===');
-    
-    const requestsData = getRequestsData();
+    const assignmentsData = getAssignmentsData();
     const start = parseDateString(startDate);
     const end = parseDateString(endDate);
-    
     if (!start || !end) {
       throw new Error('Invalid date range');
     }
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
 
-    debugLog(`📅 Date range: ${start.toDateString()} to ${end.toDateString()}`);
-
     const riderMap = {};
 
-    // 🔧 FIXED: Better date filtering logic
-    const completedRequests = requestsData.data.filter(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+    assignmentsData.data.forEach(row => {
+      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      if (eventDate instanceof Date) {
+        if (eventDate < start || eventDate > end) return;
+      }
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      const rider = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      if (!rider) return;
+
+      // Only count assignments that have actually been worked
+      const statusLower = (status || '').toLowerCase().trim();
+      const eventDateObj = eventDate instanceof Date ? eventDate : new Date(eventDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       
-      // Must be completed
-      if (status !== 'Completed') {
-        return false;
+      const isCompleted = statusLower === 'completed';
+      const eventHasPassed = !isNaN(eventDateObj.getTime()) && eventDateObj < today;
+      const wasAssigned = ['assigned', 'confirmed', 'en route', 'in progress'].includes(statusLower);
+      
+      if (!(isCompleted || (eventHasPassed && wasAssigned))) return;
+
+      if (!riderMap[rider]) {
+        riderMap[rider] = { escorts: 0, hours: 0 };
+      }
+      riderMap[rider].escorts++;
+      
+      // Priority 1: Use actual completion data
+      const actualStart = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime);
+      const actualEnd = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime);
+      const actualDuration = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
+      
+      let hoursToAdd = 0;
+      
+      if (actualDuration && !isNaN(parseFloat(actualDuration))) {
+        hoursToAdd = roundToQuarterHour(parseFloat(actualDuration));
+      } else if (actualStart && actualEnd) {
+        const startTime = parseTimeString(actualStart);
+        const endTime = parseTimeString(actualEnd);
+        if (startTime && endTime && endTime > startTime) {
+          hoursToAdd = roundToQuarterHour((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
+        }
       }
       
-      // 🔧 IMPROVED: More flexible date filtering
-      let matchesDate = true;
-      if (requestDate instanceof Date && !isNaN(requestDate.getTime())) {
-        // If there's a valid date, check if it's in range
-        matchesDate = requestDate >= start && requestDate <= end;
-      } else {
-        // If no valid date, include it (assume it's recent)
-        debugLog(`⚠️ Including request with no/invalid date: ${getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId)}`);
-        matchesDate = true;
+      // If no actual data and event has passed, use realistic estimates
+      if (hoursToAdd === 0 && eventHasPassed) {
+        hoursToAdd = getRealisticEscortHours(row, assignmentsData.columnMap);
       }
-      
-      return matchesDate;
+
+      riderMap[rider].hours += hoursToAdd;
     });
 
-    debugLog(`📊 Found ${completedRequests.length} completed requests (including those without dates)`);
-
-    let totalRiderAssignments = 0;
+    // Process rider data with consolidation and filtering
+    const consolidatedRiders = {};
+    const filteredData = [];
     
-    completedRequests.forEach(request => {
-      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned) || '';
-      const requestId = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId);
+    Object.keys(riderMap).forEach(name => {
+      const escorts = riderMap[name].escorts;
+      const hours = riderMap[name].hours;
       
-      // Parse the riders assigned (could be comma-separated)
-      const assignedRidersList = String(ridersAssigned).split(',')
-        .map(name => name.trim())
-        .filter(name => name && name.length > 0);
-      
-      if (assignedRidersList.length > 0) {
-        debugLog(`📋 Request ${requestId}: ${assignedRidersList.length} riders - [${assignedRidersList.join(', ')}]`);
-        totalRiderAssignments += assignedRidersList.length;
-      }
-      
-      assignedRidersList.forEach(riderName => {
-        if (!riderName) return;
-        
-        if (!riderMap[riderName]) {
-          riderMap[riderName] = { escorts: 0, hours: 0 };
+      // Only include riders with completed requests
+      if (escorts > 0) {
+        // Determine display name and handle NOPD consolidation
+        let displayName = name;
+        if (name.toString().toLowerCase().includes('nopd rider')) {
+          displayName = 'NOPD';
         }
-        riderMap[riderName].escorts++;
         
-        // Add estimated hours
-        const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-        const hours = getEstimatedHoursForRequestType(requestType || 'Other');
-        riderMap[riderName].hours += hours;
+        // Check if we need to consolidate NOPD riders
+        if (displayName === 'NOPD') {
+          if (!consolidatedRiders[displayName]) {
+            consolidatedRiders[displayName] = {
+              name: displayName,
+              escorts: 0,
+              hours: 0
+            };
+          }
+          consolidatedRiders[displayName].escorts += escorts;
+          consolidatedRiders[displayName].hours += hours;
+        } else {
+          filteredData.push({
+            name: displayName,
+            escorts: escorts,
+            hours: Math.round(hours * 100) / 100
+          });
+        }
+      }
+    });
+    
+    // Add consolidated NOPD data if it exists
+    Object.values(consolidatedRiders).forEach(riderData => {
+      filteredData.push({
+        name: riderData.name,
+        escorts: riderData.escorts,
+        hours: Math.round(riderData.hours * 100) / 100
       });
     });
+    
+    const data = filteredData.sort((a, b) => b.escorts - a.escorts);
 
-    // Convert to array format
-    const riderHours = Object.keys(riderMap).map(riderName => ({
-      rider: riderName,
-      escorts: riderMap[riderName].escorts,
-      hours: Math.round(riderMap[riderName].hours * 4) / 4
-    }));
-
-    const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
-    debugLog(`✅ FIXED RESULT: ${riderHours.length} riders with ${totalEscorts} total escorts (${totalRiderAssignments} total assignments)`);
-
-    return {
-      success: true,
-      data: riderHours,
-      totalAssignments: totalRiderAssignments
-    };
-
+  return { success: true, data };
   } catch (error) {
-    console.error('❌ Fixed function failed:', error);
-    return {
-      success: false,
-      error: error.message,
-      data: []
-    };
-  }
-}
-
-function testColumnMappingFix() {
-  debugLog('🧪 === TESTING COLUMN MAPPING FIX ===');
-  
-  try {
-    // Get test date range
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    
-    const startDateStr = startDate.toISOString().split('T')[0];
-    const endDateStr = endDate.toISOString().split('T')[0];
-    
-    debugLog(`📅 Testing date range: ${startDateStr} to ${endDateStr}`);
-    
-    // Test with the corrected function
-    debugLog('\n🔧 Testing CORRECTED function...');
-    const result = generateRiderActivityReport(startDateStr, endDateStr);
-    
-    if (result.success) {
-      const totalEscorts = result.data.reduce((sum, rider) => sum + rider.escorts, 0);
-      debugLog(`✅ SUCCESS: Found ${totalEscorts} total escorts from ${result.data.length} riders`);
-      debugLog('📊 Rider breakdown:', result.data);
-      
-      if (totalEscorts > 50) {
-        debugLog('🎯 EXCELLENT: The fix found significantly more escorts!');
-        debugLog('');
-        debugLog('📝 NEXT STEPS:');
-        debugLog('1. Replace your generateRiderActivityReport function with the corrected version above');
-        debugLog('2. The key change is: CONFIG.columns.requests.eventDate instead of CONFIG.columns.requests.date');
-        debugLog('3. Test your reports page - numbers should now match!');
-      } else {
-        debugLog('⚠️ Still low numbers. May need additional investigation.');
-      }
-    } else {
-      debugLog('❌ Test failed:', result.error);
-    }
-    
-    return result;
-    
-  } catch (error) {
-    console.error('❌ Test error:', error);
+    logError('Error in generateRiderActivityReport', error);
     return { success: false, error: error.message };
   }
-}
-
-/**
- * QUICK COMPARISON: Old vs New column mapping
- */
-function compareColumnMappings() {
-  debugLog('🔍 === COLUMN MAPPING COMPARISON ===');
-  
-  try {
-    const requestsData = getRequestsData();
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-    
-    // Test with wrong column (date)
-    let countWithDate = 0;
-    requestsData.data.forEach(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.date);
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      
-      let matchesDate = true;
-      if (requestDate instanceof Date) {
-        matchesDate = requestDate >= startDate && requestDate <= endDate;
-      }
-      
-      if (matchesDate && status === 'Completed') {
-        countWithDate++;
-      }
-    });
-    
-    // Test with correct column (eventDate)
-    let countWithEventDate = 0;
-    requestsData.data.forEach(request => {
-      const requestDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      
-      let matchesDate = true;
-      if (requestDate instanceof Date) {
-        matchesDate = requestDate >= startDate && requestDate <= endDate;
-      }
-      
-      if (matchesDate && status === 'Completed') {
-        countWithEventDate++;
-      }
-    });
-    
-    debugLog('📊 COLUMN MAPPING COMPARISON:');
-    debugLog(`Using CONFIG.columns.requests.date: ${countWithDate} completed requests`);
-    debugLog(`Using CONFIG.columns.requests.eventDate: ${countWithEventDate} completed requests`);
-    debugLog('');
-    
-    if (countWithEventDate > countWithDate) {
-      debugLog('✅ CONFIRMED: eventDate column has more data than date column');
-      debugLog('🔧 FIX: Change CONFIG.columns.requests.date to CONFIG.columns.requests.eventDate');
-    } else if (countWithDate > countWithEventDate) {
-      debugLog('⚠️ WARNING: date column has more data than eventDate column');
-      debugLog('🔧 Your system might use the date column instead');
-    } else {
-      debugLog('🤔 Both columns have the same count. May need different investigation.');
-    }
-    
-    return {
-      dateColumn: countWithDate,
-      eventDateColumn: countWithEventDate,
-      recommendedColumn: countWithEventDate > countWithDate ? 'eventDate' : 'date'
-    };
-    
-  } catch (error) {
-    console.error('❌ Comparison failed:', error);
-    return { error: error.message };
-  }
-}
-
-/**
- * Helper function for hour estimates
- */
-function getEstimatedHoursForRequestType(requestType) {
-  const realisticEstimates = {
-    'Funeral': 0.5,        // Short, focused escorts
-    'Wedding': 2.5,        // Moderate duration with setup/ceremony/departure
-    'VIP': 4.0,           // Longer, more complex routes
-    'Float Movement': 4.0, // Extended transport/logistics
-    'Other': 2.0          // General default
-  };
-  
-  return realisticEstimates[requestType] || realisticEstimates['Other'];
 }
 
 /**

@@ -58,7 +58,7 @@ function getCurrentUserForAvailability() {
  */
 function getUserAvailabilityForCalendar(email) {
   try {
-    debugLog(`Getting availability for user: ${email}`);
+    console.log(`Getting availability for user: ${email}`);
     
     // Ensure availability sheet exists
     ensureAvailabilitySheet();
@@ -102,13 +102,13 @@ function getUserAvailabilityForCalendar(email) {
             riderId: getUserRiderId(email)
           };
           
-          debugLog(`Creating event for ${email} on ${date}:`, eventData);
+          console.log(`Creating event for ${email} on ${date}:`, eventData);
           events.push(eventData);
         }
       }
     }
 
-    debugLog(`Found ${events.length} availability events for ${email}`);
+    console.log(`Found ${events.length} availability events for ${email}`);
     return events;
 
   } catch (error) {
@@ -124,7 +124,7 @@ function getUserAvailabilityForCalendar(email) {
  */
 function getAllRidersAvailabilityForCalendar() {
   try {
-    debugLog('Getting all riders availability for admin view');
+    console.log('Getting all riders availability for admin view');
     
     // Get active riders
     const ridersData = getRidersData();
@@ -167,7 +167,7 @@ function getAllRidersAvailabilityForCalendar() {
       }
     }
 
-    debugLog(`Found ${riders.length} riders with ${events.length} total events`);
+    console.log(`Found ${riders.length} riders with ${events.length} total events`);
     
     return {
       riders: riders,
@@ -188,7 +188,7 @@ function getAllRidersAvailabilityForCalendar() {
  */
 function saveRiderAvailabilityData(data) {
   try {
-    debugLog('Saving rider availability:', data);
+    console.log('Saving rider availability:', data);
     
     // Validate required fields
     if (!data.date || !data.startTime || !data.endTime) {
@@ -227,16 +227,16 @@ function saveRiderAvailabilityData(data) {
         // Update existing row
         const sheetRowNumber = rowIndex + 2; // Account for header row
         sheet.getRange(sheetRowNumber, 1, 1, rowData.length).setValues([rowData]);
-        debugLog(`Updated availability row ${sheetRowNumber}`);
+        console.log(`Updated availability row ${sheetRowNumber}`);
       } else {
         // Add new row if ID is invalid
         sheet.appendRow(rowData);
-        debugLog('Added new availability row');
+        console.log('Added new availability row');
       }
     } else {
       // Add new row
       sheet.appendRow(rowData);
-      debugLog('Added new availability row');
+      console.log('Added new availability row');
     }
 
     // Clear cache
@@ -263,7 +263,7 @@ function saveRiderAvailabilityData(data) {
  */
 function saveAvailabilityEntry(availabilityData) {
   try {
-    debugLog('Saving availability entry:', availabilityData);
+    console.log('Saving availability entry:', availabilityData);
     
     // Validate input
     if (!availabilityData || !availabilityData.email || !availabilityData.date) {
@@ -305,7 +305,7 @@ function saveAvailabilityEntry(availabilityData) {
       sheet.getRange(existingRowIndex, 8).setValue(timestamp);                   // Updated
       sheet.getRange(existingRowIndex, 9).setValue(availabilityData.riderId || getUserRiderId(availabilityData.email)); // Rider ID
       
-      debugLog('SHEET UPDATED: Row ' + existingRowIndex + ' modified');
+      console.log('SHEET UPDATED: Row ' + existingRowIndex + ' modified');
       
     } else {
       // ADD NEW ROW - This is where we add to the sheet
@@ -322,7 +322,7 @@ function saveAvailabilityEntry(availabilityData) {
       ];
       
       sheet.appendRow(newRow);  // <-- THIS IS THE ACTUAL SHEET WRITE
-      debugLog('SHEET MODIFIED: New row added');
+      console.log('SHEET MODIFIED: New row added');
     }
     
     // Clear cache to force refresh
@@ -348,7 +348,7 @@ function saveAvailabilityEntry(availabilityData) {
  */
 function deleteAvailabilityEntry(email, date) {
   try {
-    debugLog(`Deleting from sheet: ${email} on ${date}`);
+    console.log(`Deleting from sheet: ${email} on ${date}`);
     
     // Ensure availability sheet exists
     ensureAvailabilitySheet();
@@ -374,7 +374,7 @@ function deleteAvailabilityEntry(email, date) {
       if (row[0] === email && row[1] === date) {
         // DELETE THE ROW - This is where we modify the sheet
         sheet.deleteRow(i + 1); // Convert to 1-based index for sheet operations
-        debugLog('SHEET MODIFIED: Row ' + (i + 1) + ' deleted');
+        console.log('SHEET MODIFIED: Row ' + (i + 1) + ' deleted');
         
         // Clear cache to force refresh
         dataCache.clear('sheet_' + CONFIG.sheets.availability);
@@ -401,7 +401,7 @@ function deleteAvailabilityEntry(email, date) {
  */
 function saveRecurringAvailability(data) {
   try {
-    debugLog('Saving recurring availability:', data);
+    console.log('Saving recurring availability:', data);
     
     if (!data.dayOfWeek || !data.startTime || !data.endTime || !data.untilDate) {
       return { success: false, error: 'Missing required fields for recurring availability' };
@@ -461,7 +461,7 @@ function saveRecurringAvailability(data) {
  */
 function deleteRiderAvailability(id) {
   try {
-    debugLog('Deleting availability:', id);
+    console.log('Deleting availability:', id);
     
     if (!id || !id.startsWith('avail_')) {
       return { success: false, error: 'Invalid availability ID' };
@@ -509,7 +509,7 @@ function deleteRiderAvailability(id) {
  */
 function checkRiderAvailabilityForAssignment(riderId, date, startTime, endTime) {
   try {
-    debugLog(`Checking availability for rider ${riderId} on ${date}`);
+    console.log(`Checking availability for rider ${riderId} on ${date}`);
     
     // Get rider email from ID
     const riderEmail = getRiderEmailFromId(riderId);
@@ -606,7 +606,7 @@ function checkRiderAvailabilityForAssignment(riderId, date, startTime, endTime) 
  */
 function getAvailableRidersForTimeSlot(date, startTime, endTime, ridersNeeded) {
   try {
-    debugLog(`Finding available riders for ${date} ${startTime}-${endTime}`);
+    console.log(`Finding available riders for ${date} ${startTime}-${endTime}`);
     
     const ridersData = getRidersData();
     const availableRiders = [];
@@ -635,7 +635,7 @@ function getAvailableRidersForTimeSlot(date, startTime, endTime, ridersNeeded) {
     // Sort by priority (full-time riders first, then by other factors)
     availableRiders.sort((a, b) => b.priority - a.priority);
 
-    debugLog(`Found ${availableRiders.length} available riders`);
+    console.log(`Found ${availableRiders.length} available riders`);
     return availableRiders.slice(0, ridersNeeded * 2); // Return extra for alternatives
 
   } catch (error) {

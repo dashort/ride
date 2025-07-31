@@ -20,11 +20,11 @@ function setupEmailResponsesSheet() {
  */
 function setupEmailResponseTracking() {
   try {
-    debugLog('🚀 Setting up email response tracking system...');
+    console.log('🚀 Setting up email response tracking system...');
     
     // 1. Create the Email_Responses sheet if it doesn't exist
     setupEmailResponsesSheet();
-    debugLog('✅ Email_Responses sheet created/verified');
+    console.log('✅ Email_Responses sheet created/verified');
     
     // 2. Delete any existing email processing triggers to avoid duplicates
     deleteEmailResponseTriggers();
@@ -35,13 +35,13 @@ function setupEmailResponseTracking() {
       .everyMinutes(5)
       .create();
     
-    debugLog('✅ Email response processing trigger created (every 5 minutes)');
-    debugLog('📧 Trigger ID:', trigger.getUniqueId());
+    console.log('✅ Email response processing trigger created (every 5 minutes)');
+    console.log('📧 Trigger ID:', trigger.getUniqueId());
     
     // 4. Test the system by running it once
-    debugLog('🧪 Testing email response processing...');
+    console.log('🧪 Testing email response processing...');
     processEmailResponses();
-    debugLog('✅ Email response tracking system setup complete!');
+    console.log('✅ Email response tracking system setup complete!');
     
     return {
       success: true,
@@ -71,11 +71,11 @@ function deleteEmailResponseTriggers() {
       if (trigger.getHandlerFunction() === 'processEmailResponses') {
         ScriptApp.deleteTrigger(trigger);
         deletedCount++;
-        debugLog('🗑️ Deleted existing trigger:', trigger.getUniqueId());
+        console.log('🗑️ Deleted existing trigger:', trigger.getUniqueId());
       }
     });
     
-    debugLog(`✅ Cleaned up ${deletedCount} existing email response triggers`);
+    console.log(`✅ Cleaned up ${deletedCount} existing email response triggers`);
     return deletedCount;
     
   } catch (error) {
@@ -126,7 +126,7 @@ function checkEmailResponseTrackingStatus() {
       }
     });
     
-    debugLog('📊 Email Response Tracking Status:', JSON.stringify(status, null, 2));
+    console.log('📊 Email Response Tracking Status:', JSON.stringify(status, null, 2));
     return status;
     
   } catch (error) {
@@ -142,13 +142,13 @@ function checkEmailResponseTrackingStatus() {
  */
 function processEmailResponsesManually() {
   try {
-    debugLog('🔧 Manually processing email responses...');
+    console.log('🔧 Manually processing email responses...');
     processEmailResponses();
-    debugLog('✅ Manual email response processing complete');
+    console.log('✅ Manual email response processing complete');
     
     // Show recent results
     const responses = getEmailResponses(10);
-    debugLog(`📊 Recent responses processed: ${responses.length}`);
+    console.log(`📊 Recent responses processed: ${responses.length}`);
     
     return {
       success: true,

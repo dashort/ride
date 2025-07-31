@@ -13,15 +13,14 @@
  *                             secondaryLocation (final location, required),
  *                             endLocation (second location, optional),
  *                             requestType, ridersNeeded, notes (optional).
- * @param {string} [submittedBy=Session.getActiveUser().getEmail()] The email of the user submitting the request.
  * @return {object} An object indicating success or failure, and including the new request ID or an error message.
  *                  { success: true, requestId: "R0001", message: "Request created successfully." }
  *                  { success: false, message: "Error details..." }
  */
-function createNewRequest(requestData, submittedBy = Session.getActiveUser().getEmail()) {
+function createNewRequest(requestData) {
   return trackPerformance('createNewRequest', () => {
     try {
-      debugLog(`Starting new request creation by ${submittedBy} with data:`, JSON.stringify(requestData).substring(0, 200) + "...");
+      debugLog('Starting new request creation with data:', JSON.stringify(requestData).substring(0, 200) + "...");
 
       const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
       if (!requestsSheet) {
@@ -70,16 +69,15 @@ function createNewRequest(requestData, submittedBy = Session.getActiveUser().get
         switch (header) {
             case CONFIG.columns.requests.id:                  value = newRequestId; break;
             case CONFIG.columns.requests.submissionTimestamp: value = new Date(); break;
-            case CONFIG.columns.requests.submittedBy:         value = submittedBy; break;
             case CONFIG.columns.requests.requesterName:       value = requestData.requesterName; break;
             case CONFIG.columns.requests.requesterContact:    value = requestData.requesterContact; break;
             case CONFIG.columns.requests.eventDate:
                 value = parseDateString(requestData.eventDate);
                 break;
-case CONFIG.columns.requests.date:
-    // FIX: Date column should get submission timestamp, not event date
-    value = new Date(); // Current date/time when request is submitted
-    break;
+            case CONFIG.columns.requests.date:
+                // Keep the legacy "Date" column in sync with Event Date if present
+                value = parseDateString(requestData.eventDate);
+                break;
             case CONFIG.columns.requests.startTime:           value = parseTimeString(requestData.startTime); break; // Ensure time object or formatted string
             case CONFIG.columns.requests.endTime:             value = requestData.endTime ? parseTimeString(requestData.endTime) : ''; break;
             case CONFIG.columns.requests.startLocation:       value = requestData.startLocation; break;
@@ -108,7 +106,7 @@ case CONFIG.columns.requests.date:
                 if (configKey && requestData.hasOwnProperty(configKey)) {
                      value = requestData[configKey];
                 } else {
-                    // debugLog(`No direct mapping for header "${header}" in createNewRequest. Will be blank.`);
+                    // console.log(`No direct mapping for header "${header}" in createNewRequest. Will be blank.`);
                 }
                 break;
         }
@@ -151,8 +149,8 @@ case CONFIG.columns.requests.date:
       // Single flush after all operations
       SpreadsheetApp.flush();
 
-      debugLog(`Request ${newRequestId} created successfully by ${submittedBy}.`);
-      logActivity(`New request ${newRequestId} created by ${submittedBy}. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
+      debugLog(`Request ${newRequestId} created successfully.`);
+      logActivity(`New request ${newRequestId} created. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
 
       // Optional: Trigger notifications or other actions
       if (typeof sendNewRequestNotification === 'function') { // From NotificationService.js
@@ -185,8 +183,8 @@ case CONFIG.columns.requests.date:
       };
 
     } catch (error) {
-      debugLog(`Error in createNewRequest by ${submittedBy}:`, error.message, error.stack);
-      logError(`Error in createNewRequest by ${submittedBy}. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
+      debugLog('Error in createNewRequest:', error.message, error.stack);
+      logError(`Error in createNewRequest. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
       return {
         success: false,
         message: `Failed to create request: ${error.message}`
@@ -460,7 +458,6 @@ function updateExistingRequest(requestData) {
       escortFee: CONFIG.columns.requests.escortFee,
       status: CONFIG.columns.requests.status,
       courtesy: CONFIG.columns.requests.courtesy,
-      specialRequirements: CONFIG.columns.requests.requirements,
       notes: CONFIG.columns.requests.notes
     };
 
@@ -624,7 +621,7 @@ function updateExistingRequest(requestData) {
  */
 function recordActualCompletionTimes(requestId) {
   try {
-    debugLog(`📋 Recording actual completion times for request ${requestId}...`);
+    console.log(`📋 Recording actual completion times for request ${requestId}...`);
     
     if (!requestId) {
       throw new Error('Request ID is required');
@@ -662,7 +659,7 @@ function recordActualCompletionTimes(requestId) {
       };
     }
     
-    debugLog(`Found ${relatedAssignments.length} assignments for request ${requestId}`);
+    console.log(`Found ${relatedAssignments.length} assignments for request ${requestId}`);
     
     // Get the original request data to calculate duration
     const requestsData = getRequestsData(false);
@@ -683,7 +680,7 @@ function recordActualCompletionTimes(requestId) {
     let actualDuration = calculateActualDuration(requestType, originalStartTime, originalEndTime);
     const actualDurationRounded = roundToQuarterHour(actualDuration);
 
-    debugLog(`Request type: ${requestType}, Calculated duration: ${actualDurationRounded} hours`);
+    console.log(`Request type: ${requestType}, Calculated duration: ${actualDurationRounded} hours`);
     
     // Update all related assignments
     const updateResults = [];
@@ -754,7 +751,7 @@ function recordActualCompletionTimes(requestId) {
           updatedFields: updates.length
         });
 
-        debugLog(`✅ Updated assignment for ${riderName}: ${roundedDuration} hours`);
+        console.log(`✅ Updated assignment for ${riderName}: ${roundedDuration} hours`);
         
       } catch (assignmentError) {
         console.error(`Error updating assignment at row ${assignmentInfo.rowIndex}:`, assignmentError);
@@ -827,7 +824,7 @@ function calculateActualDuration(requestType, originalStartTime, originalEndTime
         
         // Use calculated duration if it's reasonable (between 0.25 and 12 hours)
         if (calculatedDuration >= 0.25 && calculatedDuration <= 12) {
-          debugLog(`Using calculated duration from original times: ${calculatedDuration} hours`);
+          console.log(`Using calculated duration from original times: ${calculatedDuration} hours`);
           return roundToQuarterHour(calculatedDuration);
         }
       }
@@ -838,7 +835,7 @@ function calculateActualDuration(requestType, originalStartTime, originalEndTime
   
   // Fall back to type-based estimate
   const estimatedDuration = typeDurations[requestType] || typeDurations['Other'];
-  debugLog(`Using type-based duration estimate for ${requestType}: ${estimatedDuration} hours`);
+  console.log(`Using type-based duration estimate for ${requestType}: ${estimatedDuration} hours`);
   return roundToQuarterHour(estimatedDuration);
 }
 
@@ -851,7 +848,7 @@ function calculateActualDuration(requestType, originalStartTime, originalEndTime
  */
 function manuallyRecordCompletion(requestId, customDuration = null) {
   try {
-    debugLog(`🔧 Manually recording completion for request ${requestId}`);
+    console.log(`🔧 Manually recording completion for request ${requestId}`);
     
     if (!requestId) {
       throw new Error('Request ID is required');
@@ -870,7 +867,7 @@ function manuallyRecordCompletion(requestId, customDuration = null) {
     const currentStatus = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
     
     if (currentStatus && currentStatus.toLowerCase() !== 'completed') {
-      debugLog(`Updating request ${requestId} status to Completed`);
+      console.log(`Updating request ${requestId} status to Completed`);
       const updateResult = updateExistingRequest({
         requestId: requestId,
         status: 'Completed'
@@ -883,7 +880,7 @@ function manuallyRecordCompletion(requestId, customDuration = null) {
     
     // If custom duration is provided, temporarily override the calculation
     if (customDuration !== null) {
-      debugLog(`Using custom duration: ${customDuration} hours`);
+      console.log(`Using custom duration: ${customDuration} hours`);
       
       // Get all assignments for this request and update them with custom duration
       const assignmentsData = getAssignmentsData(false);
@@ -951,7 +948,7 @@ function manuallyRecordCompletion(requestId, customDuration = null) {
  */
 function testAutomaticCompletionRecording(testRequestId = null) {
   try {
-    debugLog('🧪 Testing automatic completion time recording...');
+    console.log('🧪 Testing automatic completion time recording...');
     
     let requestId = testRequestId;
     
@@ -972,7 +969,7 @@ function testAutomaticCompletionRecording(testRequestId = null) {
       }
       
       requestId = getColumnValue(testableRequests[0], requestsData.columnMap, CONFIG.columns.requests.id);
-      debugLog(`Using test request: ${requestId}`);
+      console.log(`Using test request: ${requestId}`);
     }
     
     // Check assignments before completion
@@ -982,7 +979,7 @@ function testAutomaticCompletionRecording(testRequestId = null) {
       return String(assignmentRequestId).trim() === String(requestId).trim();
     });
     
-    debugLog(`Found ${relatedAssignments.length} assignments for test request ${requestId}`);
+    console.log(`Found ${relatedAssignments.length} assignments for test request ${requestId}`);
     
     if (relatedAssignments.length === 0) {
       return {
@@ -993,7 +990,7 @@ function testAutomaticCompletionRecording(testRequestId = null) {
     }
     
     // Simulate marking the request as completed
-    debugLog(`Marking request ${requestId} as completed...`);
+    console.log(`Marking request ${requestId} as completed...`);
     const updateResult = updateExistingRequest({
       requestId: requestId,
       status: 'Completed'
@@ -1004,7 +1001,7 @@ function testAutomaticCompletionRecording(testRequestId = null) {
     }
     
     // Check if completion times were recorded
-    debugLog('Checking if completion times were recorded...');
+    console.log('Checking if completion times were recorded...');
     const updatedAssignmentsData = getAssignmentsData(false); // Fresh data
     const updatedAssignments = updatedAssignmentsData.data.filter(a => {
       const assignmentRequestId = getColumnValue(a, updatedAssignmentsData.columnMap, CONFIG.columns.assignments.requestId);
@@ -1042,7 +1039,7 @@ function testAutomaticCompletionRecording(testRequestId = null) {
       }
     };
     
-    debugLog('📋 Test Result:', testResult.message);
+    console.log('📋 Test Result:', testResult.message);
     return testResult;
     
   } catch (error) {
@@ -1145,7 +1142,7 @@ function deleteRequest(requestId) {
  */
 function setupGoogleAuthentication() {
   try {
-    debugLog('🛠️ Setting up Google Authentication...');
+    console.log('🛠️ Setting up Google Authentication...');
     
     // Setup Riders sheet
     setupRidersSheetForAuth();
@@ -1156,7 +1153,7 @@ function setupGoogleAuthentication() {
     // Create authentication log sheet
     setupAuthLogSheet();
     
-    debugLog('✅ Google Authentication setup complete!');
+    console.log('✅ Google Authentication setup complete!');
     return { success: true, message: 'Setup completed successfully' };
     
   } catch (error) {
@@ -1173,7 +1170,7 @@ function setupRidersSheetForAuth() {
   let ridersSheet = spreadsheet.getSheetByName('Riders');
   
   if (!ridersSheet) {
-    debugLog('Creating Riders sheet...');
+    console.log('Creating Riders sheet...');
     ridersSheet = spreadsheet.insertSheet('Riders');
     
     // Add basic headers if sheet is new
@@ -1202,7 +1199,7 @@ function setupRidersSheetForAuth() {
   newColumns.forEach(columnName => {
     if (!headers.includes(columnName)) {
       ridersSheet.getRange(1, nextColumn).setValue(columnName);
-      debugLog(`Added column: ${columnName}`);
+      console.log(`Added column: ${columnName}`);
       nextColumn++;
     }
   });
@@ -1301,7 +1298,7 @@ function mapExistingRidersToGoogle() {
         ridersSheet.getRange(i + 1, googleEmailCol + 1).setValue(email);
         ridersSheet.getRange(i + 1, authStatusCol + 1).setValue('Pending');
         mappedCount++;
-        debugLog(`Mapped rider ${data[i][headers.indexOf('Full Name')]} to ${email}`);
+        console.log(`Mapped rider ${data[i][headers.indexOf('Full Name')]} to ${email}`);
       }
     }
     
@@ -1606,20 +1603,20 @@ function testAuthentication() {
     try {
       userName = user.getName ? user.getName() : (user.name || '');
     } catch (e) {
-      debugLog('⚠️ getName() failed, trying alternatives...');
+      console.log('⚠️ getName() failed, trying alternatives...');
       userName = user.name || user.displayName || '';
     }
     
-    debugLog('Current user:', userName, email);
+    console.log('Current user:', userName, email);
     
     const rider = getRiderByGoogleEmail(email);
-    debugLog('Rider mapping:', rider);
+    console.log('Rider mapping:', rider);
     
     const admins = getAdminUsers();
-    debugLog('Admin users:', admins);
+    console.log('Admin users:', admins);
     
     const dispatchers = getDispatcherUsers();
-    debugLog('Dispatcher users:', dispatchers);
+    console.log('Dispatcher users:', dispatchers);
     
     return {
       user: { name: userName, email: email },
@@ -1652,7 +1649,7 @@ function ensureGoogleAuthSetup() {
     const missing = required.filter(c => headers.indexOf(c) === -1);
 
     if (missing.length > 0) {
-      debugLog('🔧 Missing auth columns detected:', missing.join(', '));
+      console.log('🔧 Missing auth columns detected:', missing.join(', '));
       setupRidersSheetForAuth();
       setupAuthLogSheet();
     }
@@ -1670,7 +1667,7 @@ function ensureGoogleAuthSetup() {
  */
 function createAuthMappingPage() {
   try {
-    debugLog('📋 Creating authentication mapping page...');
+    console.log('📋 Creating authentication mapping page...');
 
     // Ensure the Riders sheet has the necessary columns
     ensureGoogleAuthSetup();
@@ -1690,7 +1687,7 @@ function createAuthMappingPage() {
           authStatus: getColumnValue(row, colMap, 'Auth Status') || row.authStatus || row['Auth Status'] || 'Not Set'
         };
       }) : ridersDataObj;
-      debugLog(`Found ${riders ? riders.length : 0} riders`);
+      console.log(`Found ${riders ? riders.length : 0} riders`);
     } catch (error) {
       console.error('❌ Error getting riders data:', error);
       return createErrorMappingPage('Error loading riders data: ' + error.message);
@@ -1703,7 +1700,7 @@ function createAuthMappingPage() {
     }
     
     if (riders.length === 0) {
-      debugLog('⚠️ No riders found');
+      console.log('⚠️ No riders found');
       return createEmptyMappingPage();
     }
     
@@ -2286,7 +2283,7 @@ function createEmptyMappingPage() {
  */
 function mapRiderToGoogleAccount(riderId, googleEmail) {
   try {
-    debugLog(`🔗 Mapping rider ${riderId} to ${googleEmail}`);
+    console.log(`🔗 Mapping rider ${riderId} to ${googleEmail}`);
     
     const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
     if (!ridersSheet) {
@@ -2320,12 +2317,12 @@ function mapRiderToGoogleAccount(riderId, googleEmail) {
           ridersSheet.getRange(i + 1, authStatusCol + 1).setValue('Mapped');
         }
         
-        debugLog(`✅ Successfully mapped rider ${riderId}`);
+        console.log(`✅ Successfully mapped rider ${riderId}`);
         return { success: true, message: 'Rider mapped successfully' };
       }
     }
 
-    debugLog(`❌ Rider not found for ID "${riderId}"`);
+    console.log(`❌ Rider not found for ID "${riderId}"`);
     return { success: false, error: 'Rider not found' };
     
   } catch (error) {
@@ -2339,7 +2336,7 @@ function mapRiderToGoogleAccount(riderId, googleEmail) {
  */
 function autoMapExistingGmailUsers() {
   try {
-    debugLog('🚀 Auto-mapping Gmail users...');
+    console.log('🚀 Auto-mapping Gmail users...');
     
     const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
     if (!ridersSheet) {
@@ -2375,7 +2372,7 @@ function autoMapExistingGmailUsers() {
       }
     }
     
-    debugLog(`✅ Auto-mapped ${mappedCount} Gmail users`);
+    console.log(`✅ Auto-mapped ${mappedCount} Gmail users`);
     return { success: true, count: mappedCount };
     
   } catch (error) {
@@ -2389,7 +2386,7 @@ function autoMapExistingGmailUsers() {
  */
 function clearAllGoogleMappings() {
   try {
-    debugLog('🗑️ Clearing all Google mappings...');
+    console.log('🗑️ Clearing all Google mappings...');
     
     const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
     if (!ridersSheet) {
@@ -2415,7 +2412,7 @@ function clearAllGoogleMappings() {
       }
     }
     
-    debugLog('✅ All mappings cleared');
+    console.log('✅ All mappings cleared');
     return { success: true };
     
   } catch (error) {
@@ -2429,7 +2426,7 @@ function clearAllGoogleMappings() {
  */
 function exportRiderMappings() {
   try {
-    debugLog('📥 Exporting rider mappings...');
+    console.log('📥 Exporting rider mappings...');
     
     const ridersDataObj = getRidersData();
     let riders = [];

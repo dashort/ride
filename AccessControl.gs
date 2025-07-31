@@ -203,35 +203,35 @@ const RESOURCE_ACCESS = {
   }
 };
 function immediateSessionTest() {
-  debugLog('=== IMMEDIATE SESSION TEST ===');
+  console.log('=== IMMEDIATE SESSION TEST ===');
   
   // Test 1: Raw session
   try {
     const user = Session.getActiveUser();
     const email = user.getEmail();
-    debugLog('1. Raw Session.getActiveUser().getEmail():', email);
+    console.log('1. Raw Session.getActiveUser().getEmail():', email);
   } catch (e) {
-    debugLog('1. Raw session failed:', e.message);
+    console.log('1. Raw session failed:', e.message);
   }
   
   // Test 2: Cached data
   try {
     const cached = PropertiesService.getScriptProperties().getProperty('CACHED_USER_EMAIL');
-    debugLog('2. Cached email:', cached);
+    console.log('2. Cached email:', cached);
   } catch (e) {
-    debugLog('2. Cache check failed:', e.message);
+    console.log('2. Cache check failed:', e.message);
   }
   
   // Test 3: Admin list
   try {
     const admins = getAdminUsersSafe();
-    debugLog('3. Admin list:', admins);
+    console.log('3. Admin list:', admins);
   } catch (e) {
-    debugLog('3. Admin list failed:', e.message);
+    console.log('3. Admin list failed:', e.message);
   }
 }
 function getRoleBasedNavigation(currentPage, user, rider) {
-  debugLog('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
+  console.log('getRoleBasedNavigation: Called for page: ' + currentPage + ', User role: ' + (user ? user.role : 'unknown'));
   if (!user) {
     console.error('getRoleBasedNavigation: User object is null/undefined.');
     return '<nav class="navigation"><!-- User object missing --></nav>';
@@ -251,7 +251,7 @@ function getRoleBasedNavigation(currentPage, user, rider) {
   });
   navHtml += '</nav>';
 
-  debugLog('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
+  console.log('getRoleBasedNavigation: Returning HTML (first 100 chars): ' + navHtml.substring(0, 100));
   return navHtml;
 }
 
@@ -263,14 +263,14 @@ function getRoleBasedNavigation(currentPage, user, rider) {
  */
 function getEnhancedUserSession() {
   try {
-    debugLog('🔍 getEnhancedUserSession called from AccessControl.gs');
+    console.log('🔍 getEnhancedUserSession called from AccessControl.gs');
 
     // 1) Check custom session used by spreadsheet logins
     try {
       if (typeof getCustomSession === 'function') {
         const custom = getCustomSession();
         if (custom) {
-          debugLog('✅ Found custom session for ' + custom.email);
+          console.log('✅ Found custom session for ' + custom.email);
           traceAuthFunction('getEnhancedUserSession', custom.email, 'custom_session');
           return {
             email: String(custom.email || '').trim(),
@@ -283,7 +283,7 @@ function getEnhancedUserSession() {
         }
       }
     } catch (err) {
-      debugLog('⚠️ Error retrieving custom session: ' + err.message);
+      console.log('⚠️ Error retrieving custom session: ' + err.message);
     }
 
     let user = null;
@@ -293,7 +293,7 @@ function getEnhancedUserSession() {
     
     try {
       user = Session.getActiveUser();
-      debugLog('👤 Session user object:', typeof user);
+      console.log('👤 Session user object:', typeof user);
       
       if (user) {
         // Safe way to get email
@@ -301,7 +301,7 @@ function getEnhancedUserSession() {
           userEmail = user.getEmail ? user.getEmail() : (user.email || '');
           sessionSource = 'active_user_getEmail';
         } catch (e) {
-          debugLog('⚠️ getEmail() failed, trying alternatives...');
+          console.log('⚠️ getEmail() failed, trying alternatives...');
           userEmail = user.email || '';
           sessionSource = 'active_user_property';
         }
@@ -310,19 +310,19 @@ function getEnhancedUserSession() {
         try {
           userName = user.getName ? user.getName() : (user.name || '');
         } catch (e) {
-          debugLog('⚠️ getName() failed, trying alternatives...');
+          console.log('⚠️ getName() failed, trying alternatives...');
           userName = user.name || user.displayName || '';
         }
       }
     } catch (error) {
-      debugLog('⚠️ Session.getActiveUser() failed:', error.message);
+      console.log('⚠️ Session.getActiveUser() failed:', error.message);
       sessionSource = 'getActiveUser_failed';
     }
     
     // Method 2: Try Session.getEffectiveUser() as fallback
     if (!userEmail) {
       try {
-        debugLog('🔄 Trying Session.getEffectiveUser()...');
+        console.log('🔄 Trying Session.getEffectiveUser()...');
         const effectiveUser = Session.getEffectiveUser();
         if (effectiveUser) {
           userEmail = effectiveUser.getEmail ? effectiveUser.getEmail() : (effectiveUser.email || '');
@@ -330,7 +330,7 @@ function getEnhancedUserSession() {
           sessionSource = 'effective_user';
         }
       } catch (error) {
-        debugLog('⚠️ Session.getEffectiveUser() failed:', error.message);
+        console.log('⚠️ Session.getEffectiveUser() failed:', error.message);
         sessionSource = 'getEffectiveUser_failed';
       }
     }
@@ -338,7 +338,7 @@ function getEnhancedUserSession() {
     // Method 3: Try PropertiesService for cached user info
     if (!userEmail) {
       try {
-        debugLog('🔄 Trying cached user info...');
+        console.log('🔄 Trying cached user info...');
         const cachedEmail = PropertiesService.getScriptProperties().getProperty('CACHED_USER_EMAIL');
         const cachedName = PropertiesService.getScriptProperties().getProperty('CACHED_USER_NAME');
         if (cachedEmail) {
@@ -347,7 +347,7 @@ function getEnhancedUserSession() {
           sessionSource = 'cached_properties';
         }
       } catch (error) {
-        debugLog('⚠️ Cached user info failed:', error.message);
+        console.log('⚠️ Cached user info failed:', error.message);
         sessionSource = 'cache_failed';
       }
     }
@@ -365,7 +365,7 @@ function getEnhancedUserSession() {
       source: sessionSource
     };
     
-    debugLog(`✅ Enhanced user session: ${enhancedUser.email} (${enhancedUser.name})`);
+    console.log(`✅ Enhanced user session: ${enhancedUser.email} (${enhancedUser.name})`);
     
     // Cache successful user info (but don't cache jpsotraffic unless it's really the active user)
     if (enhancedUser.hasEmail && sessionSource.includes('active_user')) {
@@ -375,7 +375,7 @@ function getEnhancedUserSession() {
           'CACHED_USER_NAME': enhancedUser.name
         });
       } catch (e) {
-        debugLog('⚠️ Failed to cache user info');
+        console.log('⚠️ Failed to cache user info');
       }
     }
     
@@ -400,7 +400,7 @@ function getEnhancedUserSession() {
  * Run this function if users are stuck with jpsotraffic@gmail.com
  */
 function emergencyFixJpsotrafficIssue() {
-  debugLog('🚨 EMERGENCY FIX: Clearing jpsotraffic@gmail.com cache...');
+  console.log('🚨 EMERGENCY FIX: Clearing jpsotraffic@gmail.com cache...');
   
   try {
     // Clear all cached data
@@ -408,15 +408,15 @@ function emergencyFixJpsotrafficIssue() {
     properties.deleteProperty('CACHED_USER_EMAIL');
     properties.deleteProperty('CACHED_USER_NAME');
     
-    debugLog('✅ Cleared cached user data');
+    console.log('✅ Cleared cached user data');
     
     // Get fresh session
     const freshSession = getFreshUserSession();
-    debugLog('Fresh session:', freshSession);
+    console.log('Fresh session:', freshSession);
     
     // Test authentication with fresh session
     const authResult = authenticateAndAuthorizeUser();
-    debugLog('Auth result after cache clear:', authResult);
+    console.log('Auth result after cache clear:', authResult);
     
     return {
       success: true,
@@ -474,7 +474,7 @@ function forceAuthRefresh() {
  */
 function getAdminDashboardData() {
   try {
-    debugLog('📊 Getting admin dashboard data...');
+    console.log('📊 Getting admin dashboard data...');
     
     // Use safe functions that handle errors
     let requests = [];
@@ -491,14 +491,14 @@ function getAdminDashboardData() {
         }
       }
     } catch (e) {
-      debugLog('⚠️ Could not get requests data:', e.message);
+      console.log('⚠️ Could not get requests data:', e.message);
       requests = [];
     }
     
     try {
       riders = getRidersDataSafe() || [];
     } catch (e) {
-      debugLog('⚠️ Could not get riders data:', e.message);
+      console.log('⚠️ Could not get riders data:', e.message);
       riders = [];
     }
     
@@ -512,7 +512,7 @@ function getAdminDashboardData() {
         }
       }
     } catch (e) {
-      debugLog('⚠️ Could not get assignments data:', e.message);
+      console.log('⚠️ Could not get assignments data:', e.message);
       assignments = [];
     }
     
@@ -524,7 +524,7 @@ function getAdminDashboardData() {
     try {
       newRequests = requests.filter(r => String(r.status || r['Status']).trim() === 'New').length;
     } catch (e) {
-      debugLog('⚠️ Error calculating new requests:', e.message);
+      console.log('⚠️ Error calculating new requests:', e.message);
     }
     
     const today = new Date();
@@ -542,7 +542,7 @@ function getAdminDashboardData() {
         return false;
       }).length;
     } catch (e) {
-      debugLog('⚠️ Error calculating today requests:', e.message);
+      console.log('⚠️ Error calculating today requests:', e.message);
     }
 
     // Calculate escorts scheduled for today
@@ -552,7 +552,7 @@ function getAdminDashboardData() {
         return eventDate && new Date(eventDate).toDateString() === todayStr;
       }).length;
     } catch (e) {
-      debugLog('⚠️ Error calculating todays escorts:', e.message);
+      console.log('⚠️ Error calculating todays escorts:', e.message);
     }
     
     // Calculate unassigned escorts within the next 3 days
@@ -566,7 +566,7 @@ function getAdminDashboardData() {
           a.status !== 'Assigned';
       }).length;
     } catch (e) {
-      debugLog('⚠️ Error calculating unassigned escorts:', e.message);
+      console.log('⚠️ Error calculating unassigned escorts:', e.message);
     }
 
     // Calculate escorts within the next 3 days
@@ -579,7 +579,7 @@ function getAdminDashboardData() {
         return eventDate && eventDate >= now && eventDate <= threeDays;
       }).length;
     } catch (e) {
-      debugLog('⚠️ Error calculating 3 day escorts:', e.message);
+      console.log('⚠️ Error calculating 3 day escorts:', e.message);
     }
 
     // Calculate active riders with case-insensitive matching and fallback for missing status
@@ -593,7 +593,7 @@ function getAdminDashboardData() {
     try {
       pendingAssignments = assignments.filter(a => a.status === 'Pending').length;
     } catch (e) {
-      debugLog('⚠️ Error calculating pending assignments:', e.message);
+      console.log('⚠️ Error calculating pending assignments:', e.message);
     }
 
     // Calculate notifications pending (assigned riders not yet notified)
@@ -602,7 +602,7 @@ function getAdminDashboardData() {
       const toNotify = getAssignmentsNeedingNotification();
       pendingNotifications = Array.isArray(toNotify) ? toNotify.length : 0;
     } catch (e) {
-      debugLog('⚠️ Error calculating pending notifications:', e.message);
+      console.log('⚠️ Error calculating pending notifications:', e.message);
     }
     
     const result = {
@@ -621,7 +621,7 @@ function getAdminDashboardData() {
       newRequests: newRequests
     };
     
-    debugLog('✅ Admin dashboard data:', result);
+    console.log('✅ Admin dashboard data:', result);
     return result;
     
   } catch (error) {
@@ -663,7 +663,7 @@ function mapRowToGenericObject(row, columnMap) {
  */
 function getUserManagementData() {
   try {
-    debugLog('📊 Getting user management data...');
+    console.log('📊 Getting user management data...');
     
     const riders = getRidersDataSafe() || [];
     const admins = getAdminUsersSafe() || [];
@@ -798,7 +798,7 @@ function getRidersDataSafe() {
  */
 function authenticateAndAuthorizeUser() {
   try {
-    debugLog('🔐 authenticateAndAuthorizeUser called');
+    console.log('🔐 authenticateAndAuthorizeUser called');
     
     // Get user session
     const userSession = getEnhancedUserSession();
@@ -837,7 +837,7 @@ function authenticateAndAuthorizeUser() {
       traceAuthFunction('authenticateAndAuthorizeUser->role', userSession.email, userRole + '(custom)');
     } else {
       // Prefer dispatcher role if user appears in both lists
-      debugLog('🔍 Checking admin users:', adminUsers);
+      console.log('🔍 Checking admin users:', adminUsers);
       if (isDispatcher) {
         userRole = 'dispatcher';
         permissions = ['view_requests', 'create_requests', 'assign_riders', 'view_reports'];
@@ -898,39 +898,39 @@ function authenticateAndAuthorizeUser() {
 }
 function clearAuthTrace() {
   AUTH_TRACE = [];
-  debugLog('✅ Authentication trace cleared');
+  console.log('✅ Authentication trace cleared');
 }
 
 /**
  * Run a complete trace test
  
 function runCompleteAuthTrace() {
-  debugLog('🔍 === RUNNING COMPLETE AUTH TRACE ===');
+  console.log('🔍 === RUNNING COMPLETE AUTH TRACE ===');
   
   // Clear previous trace
   clearAuthTrace();
   
   // Test the main authentication flow
-  debugLog('1. Testing doGet authentication flow...');
+  console.log('1. Testing doGet authentication flow...');
   try {
     const mockEvent = { parameter: { page: 'dashboard' } };
     const result = doGet(mockEvent);
-    debugLog('✅ doGet completed');
+    console.log('✅ doGet completed');
   } catch (error) {
-    debugLog('❌ doGet failed:', error.message);
+    console.log('❌ doGet failed:', error.message);
   }
   
   // Test getCurrentUser directly
-  debugLog('\n2. Testing getCurrentUser directly...');
+  console.log('\n2. Testing getCurrentUser directly...');
   try {
     const currentUser = getCurrentUser();
-    debugLog('✅ getCurrentUser completed:', currentUser.email);
+    console.log('✅ getCurrentUser completed:', currentUser.email);
   } catch (error) {
-    debugLog('❌ getCurrentUser failed:', error.message);
+    console.log('❌ getCurrentUser failed:', error.message);
   }
   
   // Show the trace
-  debugLog('\n3. Authentication trace results:');
+  console.log('\n3. Authentication trace results:');
   viewAuthTrace();
   
   return AUTH_TRACE;
@@ -940,17 +940,17 @@ function runCompleteAuthTrace() {
  * Function to view the authentication trace
  */
 function viewAuthTrace() {
-  debugLog('🔍 === AUTHENTICATION TRACE ===');
+  console.log('🔍 === AUTHENTICATION TRACE ===');
   AUTH_TRACE.forEach((entry, index) => {
-    debugLog(`${index + 1}. ${entry.timestamp} | ${entry.function} -> ${entry.email} (${entry.source})`);
+    console.log(`${index + 1}. ${entry.timestamp} | ${entry.function} -> ${entry.email} (${entry.source})`);
   });
   
   // Show jpsotraffic entries specifically
   const jpsotrafficEntries = AUTH_TRACE.filter(entry => entry.email === 'jpsotraffic@gmail.com');
   if (jpsotrafficEntries.length > 0) {
-    debugLog('\n🚨 JPSOTRAFFIC@GMAIL.COM ENTRIES:');
+    console.log('\n🚨 JPSOTRAFFIC@GMAIL.COM ENTRIES:');
     jpsotrafficEntries.forEach((entry, index) => {
-      debugLog(`${index + 1}. ${entry.function} -> ${entry.source}`);
+      console.log(`${index + 1}. ${entry.function} -> ${entry.source}`);
     });
   }
   
@@ -986,7 +986,7 @@ function getRiderByGoogleEmailSafe(email) {
     }
     
     // Fallback: direct sheet access
-    debugLog('🔄 Using fallback rider lookup...');
+    console.log('🔄 Using fallback rider lookup...');
     return getRiderByGoogleEmailFallback(email);
     
   } catch (error) {
@@ -1002,7 +1002,7 @@ function getRiderByGoogleEmailFallback(email) {
   try {
     const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders); // Use CONFIG
     if (!ridersSheet) {
-      debugLog('⚠️ Riders sheet not found: ' + CONFIG.sheets.riders); // Log with CONFIG name
+      console.log('⚠️ Riders sheet not found: ' + CONFIG.sheets.riders); // Log with CONFIG name
       return null;
     }
     
@@ -1073,7 +1073,7 @@ function getAdminUsersFallback() {
       if (admins.length > 0) return admins;
     }
   } catch (error) {
-    debugLog('⚠️ Could not read Settings sheet');
+    console.log('⚠️ Could not read Settings sheet');
   }
   
   // Default admin emails - UPDATE THESE WITH YOUR ACTUAL ADMIN EMAILS!
@@ -1118,7 +1118,7 @@ function getDispatcherUsersFallback() {
       return dispatchers; // Return even if empty, fallback below will handle if no dispatchers found
     }
   } catch (error) {
-    debugLog('⚠️ Could not read Settings sheet for dispatchers');
+    console.log('⚠️ Could not read Settings sheet for dispatchers');
   }
   
   // Default dispatcher emails if sheet/range is empty or fails
@@ -1195,7 +1195,7 @@ function updateRiderLastLoginSafe(riderId) {
   try {
     if (!riderId) return;
     
-    debugLog(`📅 Updating last login for rider ${riderId}`);
+    console.log(`📅 Updating last login for rider ${riderId}`);
     
     const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Riders');
     if (!ridersSheet) return;
@@ -1230,7 +1230,7 @@ function updateRiderLastLoginSafe(riderId) {
       }
     }
     
-    debugLog(`✅ Updated last login for rider ${riderId}`);
+    console.log(`✅ Updated last login for rider ${riderId}`);
     
   } catch (error) {
     console.error('❌ Error updating last login:', error);
@@ -1340,14 +1340,14 @@ function createAccessDeniedPage(reason, user) {
  */
 function testAuthenticationSimple() {
   try {
-    debugLog('🧪 Testing simple authentication...');
+    console.log('🧪 Testing simple authentication...');
     
     const userSession = getEnhancedUserSession();
-    debugLog('1. User session:', userSession);
+    console.log('1. User session:', userSession);
     
     if (userSession.hasEmail) {
       const authResult = authenticateAndAuthorizeUser();
-      debugLog('2. Authorization result:', authResult);
+      console.log('2. Authorization result:', authResult);
       
       return {
         success: true,
@@ -1693,16 +1693,16 @@ function getPageFileNameSafe(pageName, userRole) {
 
 function addNavigationToContentSafe(content, navigationHtml) {
   try {
-    debugLog('addNavigationToContentSafe: Called. Navigation HTML length: ' + (navigationHtml ? navigationHtml.length : 'null')); // Added
-    debugLog('addNavigationToContentSafe: Placeholder found: ' + content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')); // Added
-    debugLog('addNavigationToContentSafe: Header end found: ' + content.includes('</header>')); // Added
+    console.log('addNavigationToContentSafe: Called. Navigation HTML length: ' + (navigationHtml ? navigationHtml.length : 'null')); // Added
+    console.log('addNavigationToContentSafe: Placeholder found: ' + content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')); // Added
+    console.log('addNavigationToContentSafe: Header end found: ' + content.includes('</header>')); // Added
     const originalContentLength = content.length; // Store original length
-    debugLog('addNavigationToContentSafe: Content length before: ' + originalContentLength); // Added
+    console.log('addNavigationToContentSafe: Content length before: ' + originalContentLength); // Added
 
     // Check if a more specific addNavigationToContent exists and is not this function itself
     if (typeof addNavigationToContent === 'function' && addNavigationToContent.toString() !== addNavigationToContentSafe.toString()) {
       content = addNavigationToContent(content, navigationHtml);
-      debugLog('addNavigationToContentSafe: Content length after (delegated to addNavigationToContent): ' + content.length); // Added
+      console.log('addNavigationToContentSafe: Content length after (delegated to addNavigationToContent): ' + content.length); // Added
       return content;
     }
     
@@ -1718,7 +1718,7 @@ function addNavigationToContentSafe(content, navigationHtml) {
     } else {
         content += navigationHtml;
     }
-    debugLog('addNavigationToContentSafe: Content length after (fallback injection): ' + content.length); // Added
+    console.log('addNavigationToContentSafe: Content length after (fallback injection): ' + content.length); // Added
     
     return content;
     
@@ -1745,7 +1745,7 @@ window.currentUser = {
   riderId: '${rider ? escapeJsString(rider.id) : ''}',
   isRider: ${rider ? 'true' : 'false'}
 };
-debugLog('👤 User context loaded via addUserDataInjectionSafe (appended).');
+console.log('👤 User context loaded via addUserDataInjectionSafe (appended).');
 </script>`;
 
     let content = htmlOutput.getContent();
@@ -1784,22 +1784,22 @@ function createErrorPageWithSignInSafe(error) {
  * Test function to debug user session issues
  */
 function debugUserSession() {
-  debugLog('🧪 Debugging user session...');
+  console.log('🧪 Debugging user session...');
   
   const session = getEnhancedUserSession();
-  debugLog('Enhanced session result:', session);
+  console.log('Enhanced session result:', session);
   
   try {
     const user = Session.getActiveUser();
-    debugLog('Raw user object type:', typeof user);
-    debugLog('Raw user object:', user);
+    console.log('Raw user object type:', typeof user);
+    console.log('Raw user object:', user);
     
     if (user) {
-      debugLog('Available methods:');
-      debugLog('- getEmail:', typeof user.getEmail);
-      debugLog('- getName:', typeof user.getName);
-      debugLog('- email property:', user.email);
-      debugLog('- name property:', user.name);
+      console.log('Available methods:');
+      console.log('- getEmail:', typeof user.getEmail);
+      console.log('- getName:', typeof user.getName);
+      console.log('- email property:', user.email);
+      console.log('- name property:', user.name);
     }
   } catch (error) {
     console.error('Error debugging session:', error);
@@ -1813,24 +1813,24 @@ function debugUserSession() {
 function hasPermission(user, resource, action) {
   try {
     if (!user || !user.role) {
-      debugLog('❌ No user or role provided');
+      console.log('❌ No user or role provided');
       return false;
     }
     
     const rolePermissions = PERMISSIONS_MATRIX[user.role];
     if (!rolePermissions) {
-      debugLog(`❌ Unknown role: ${user.role}`);
+      console.log(`❌ Unknown role: ${user.role}`);
       return false;
     }
     
     const resourcePermissions = rolePermissions[resource];
     if (!resourcePermissions) {
-      debugLog(`❌ No permissions defined for resource: ${resource}`);
+      console.log(`❌ No permissions defined for resource: ${resource}`);
       return false;
     }
     
     const hasAccess = resourcePermissions[action] === true;
-    debugLog(`🔒 Permission check: ${user.role} -> ${resource}.${action} = ${hasAccess}`);
+    console.log(`🔒 Permission check: ${user.role} -> ${resource}.${action} = ${hasAccess}`);
     
     return hasAccess;
     
@@ -2172,7 +2172,7 @@ function getUserNavigationMenu(user) {
  * Run this function to fix the jpdispatcher100@gmail.com login issue
  */
 function fixDispatcherAuthenticationIssue() {
-  debugLog('🔧 === FIXING DISPATCHER AUTHENTICATION ISSUE ===');
+  console.log('🔧 === FIXING DISPATCHER AUTHENTICATION ISSUE ===');
   
   const results = {
     settingsSheetCheck: false,
@@ -2184,13 +2184,13 @@ function fixDispatcherAuthenticationIssue() {
   
   try {
     // Step 1: Check Settings sheet structure
-    debugLog('\n1. 📄 Checking Settings sheet...');
+    console.log('\n1. 📄 Checking Settings sheet...');
     
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let settingsSheet = ss.getSheetByName('Settings');
     
     if (!settingsSheet) {
-      debugLog('❌ Settings sheet missing - creating it...');
+      console.log('❌ Settings sheet missing - creating it...');
       settingsSheet = ss.insertSheet('Settings');
       results.fixesApplied.push('Created Settings sheet');
     }
@@ -2201,7 +2201,7 @@ function fixDispatcherAuthenticationIssue() {
     const headerCheck = headers.every((header, index) => currentHeaders[index] === header);
     
     if (!headerCheck) {
-      debugLog('🔧 Fixing Settings sheet headers...');
+      console.log('🔧 Fixing Settings sheet headers...');
       settingsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       results.fixesApplied.push('Fixed Settings sheet headers');
     }
@@ -2209,15 +2209,15 @@ function fixDispatcherAuthenticationIssue() {
     results.settingsSheetCheck = true;
     
     // Step 2: Ensure dispatcher emails are in Column C
-    debugLog('\n2. 📧 Checking dispatcher emails in Column C...');
+    console.log('\n2. 📧 Checking dispatcher emails in Column C...');
     
     const dispatcherRange = settingsSheet.getRange('C2:C10').getValues();
     const currentDispatchers = dispatcherRange.flat().filter(email => email && email.trim());
     
-    debugLog('Found dispatcher emails:', currentDispatchers);
+    console.log('Found dispatcher emails:', currentDispatchers);
     
     if (!currentDispatchers.includes('jpdispatcher100@gmail.com')) {
-      debugLog('🔧 Adding jpdispatcher100@gmail.com to dispatcher list...');
+      console.log('🔧 Adding jpdispatcher100@gmail.com to dispatcher list...');
       
       // Add the dispatcher email to the first empty cell in C2:C10
       let added = false;
@@ -2238,28 +2238,28 @@ function fixDispatcherAuthenticationIssue() {
     }
     
     // Step 3: Test dispatcher email reading
-    debugLog('\n3. 🧪 Testing dispatcher email functions...');
+    console.log('\n3. 🧪 Testing dispatcher email functions...');
     
     try {
       const dispatchers1 = getDispatcherUsers();
-      debugLog('getDispatcherUsers() result:', dispatchers1);
+      console.log('getDispatcherUsers() result:', dispatchers1);
       
       const dispatchers2 = getDispatcherUsersSafe();
-      debugLog('getDispatcherUsersSafe() result:', dispatchers2);
+      console.log('getDispatcherUsersSafe() result:', dispatchers2);
       
       if (dispatchers1.includes('jpdispatcher100@gmail.com') || dispatchers2.includes('jpdispatcher100@gmail.com')) {
         results.dispatcherEmailsFound = true;
-        debugLog('✅ Dispatcher email found in function results');
+        console.log('✅ Dispatcher email found in function results');
       } else {
-        debugLog('❌ Dispatcher email still not found');
+        console.log('❌ Dispatcher email still not found');
       }
       
     } catch (error) {
-      debugLog('❌ Error testing dispatcher functions:', error.message);
+      console.log('❌ Error testing dispatcher functions:', error.message);
     }
     
     // Step 4: Test full authentication for dispatcher
-    debugLog('\n4. 🔐 Testing dispatcher authentication...');
+    console.log('\n4. 🔐 Testing dispatcher authentication...');
     
     try {
       // Simulate dispatcher login by temporarily setting session
@@ -2278,13 +2278,13 @@ function fixDispatcherAuthenticationIssue() {
       
       // Test authentication
       const authResult = authenticateAndAuthorizeUser();
-      debugLog('Test auth result:', JSON.stringify(authResult, null, 2));
+      console.log('Test auth result:', JSON.stringify(authResult, null, 2));
       
       if (authResult.success && authResult.user.role === 'dispatcher') {
         results.authenticationTest = true;
-        debugLog('✅ Dispatcher authentication test passed');
+        console.log('✅ Dispatcher authentication test passed');
       } else {
-        debugLog('❌ Dispatcher authentication test failed');
+        console.log('❌ Dispatcher authentication test failed');
       }
       
       // Restore original session
@@ -2295,25 +2295,25 @@ function fixDispatcherAuthenticationIssue() {
       }
       
     } catch (error) {
-      debugLog('❌ Error testing authentication:', error.message);
+      console.log('❌ Error testing authentication:', error.message);
     }
     
     // Step 5: Summary
-    debugLog('\n5. 📊 SUMMARY:');
-    debugLog('Settings sheet check:', results.settingsSheetCheck ? '✅ PASS' : '❌ FAIL');
-    debugLog('Dispatcher emails found:', results.dispatcherEmailsFound ? '✅ PASS' : '❌ FAIL');
-    debugLog('Authentication test:', results.authenticationTest ? '✅ PASS' : '❌ FAIL');
-    debugLog('Fixes applied:', results.fixesApplied.length > 0 ? results.fixesApplied : 'None needed');
+    console.log('\n5. 📊 SUMMARY:');
+    console.log('Settings sheet check:', results.settingsSheetCheck ? '✅ PASS' : '❌ FAIL');
+    console.log('Dispatcher emails found:', results.dispatcherEmailsFound ? '✅ PASS' : '❌ FAIL');
+    console.log('Authentication test:', results.authenticationTest ? '✅ PASS' : '❌ FAIL');
+    console.log('Fixes applied:', results.fixesApplied.length > 0 ? results.fixesApplied : 'None needed');
     
     const overallSuccess = results.settingsSheetCheck && results.dispatcherEmailsFound && results.authenticationTest;
     
-    debugLog('\n🎯 NEXT STEPS:');
+    console.log('\n🎯 NEXT STEPS:');
     if (overallSuccess) {
-      debugLog('✅ Dispatcher authentication should now work!');
-      debugLog('1. Try logging in with jpdispatcher100@gmail.com');
-      debugLog('2. If still having issues, run emergencyAdminAccess() for temporary access');
+      console.log('✅ Dispatcher authentication should now work!');
+      console.log('1. Try logging in with jpdispatcher100@gmail.com');
+      console.log('2. If still having issues, run emergencyAdminAccess() for temporary access');
     } else {
-      debugLog('❌ Some issues remain. Run diagnosePersistentAuthIssue() for more details');
+      console.log('❌ Some issues remain. Run diagnosePersistentAuthIssue() for more details');
     }
     
     return {
@@ -2337,22 +2337,22 @@ function fixDispatcherAuthenticationIssue() {
  * Quick test function for dispatcher authentication
  */
 function testDispatcherAuthentication() {
-  debugLog('🧪 === TESTING DISPATCHER AUTHENTICATION ===');
+  console.log('🧪 === TESTING DISPATCHER AUTHENTICATION ===');
   
   try {
     // Test 1: Check dispatcher email lists
-    debugLog('\n1. Testing dispatcher email functions:');
+    console.log('\n1. Testing dispatcher email functions:');
     const dispatchers = getDispatcherUsersSafe();
-    debugLog('Dispatcher emails:', dispatchers);
+    console.log('Dispatcher emails:', dispatchers);
     
     const hasJpdispatcher = dispatchers.includes('jpdispatcher100@gmail.com');
-    debugLog('jpdispatcher100@gmail.com in list:', hasJpdispatcher ? '✅ YES' : '❌ NO');
+    console.log('jpdispatcher100@gmail.com in list:', hasJpdispatcher ? '✅ YES' : '❌ NO');
     
     // Test 2: Manual authentication check
-    debugLog('\n2. Manual authentication check:');
+    console.log('\n2. Manual authentication check:');
     const userSession = { email: 'jpdispatcher100@gmail.com', hasEmail: true, source: 'test' };
     const isDispatcher = dispatchers.includes(userSession.email);
-    debugLog('Is dispatcher according to logic:', isDispatcher ? '✅ YES' : '❌ NO');
+    console.log('Is dispatcher according to logic:', isDispatcher ? '✅ YES' : '❌ NO');
     
     return {
       success: hasJpdispatcher && isDispatcher,

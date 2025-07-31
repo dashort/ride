@@ -7,19 +7,19 @@
  * Main fix function - run this to diagnose and fix assignment loading issues
  */
 function runAssignmentLoadingFix() {
-  debugLog('🔧 Starting comprehensive assignment loading fix...');
+  console.log('🔧 Starting comprehensive assignment loading fix...');
   
   try {
     // Step 1: Diagnose the current state
-    debugLog('\n=== STEP 1: DIAGNOSIS ===');
+    console.log('\n=== STEP 1: DIAGNOSIS ===');
     const diagnosis = diagnoseAssignmentLoadingIssue();
     
     if (diagnosis.hasIssues) {
-      debugLog('\n=== STEP 2: APPLYING FIXES ===');
+      console.log('\n=== STEP 2: APPLYING FIXES ===');
       const fixResult = applyAssignmentLoadingFixes(diagnosis);
       
       if (fixResult.success) {
-        debugLog('\n=== STEP 3: VERIFICATION ===');
+        console.log('\n=== STEP 3: VERIFICATION ===');
         const verification = verifyAssignmentLoadingFix();
         return {
           success: true,
@@ -37,7 +37,7 @@ function runAssignmentLoadingFix() {
         };
       }
     } else {
-      debugLog('✅ No issues found - assignments should be loading correctly');
+      console.log('✅ No issues found - assignments should be loading correctly');
       return {
         success: true,
         message: 'No issues detected with assignment loading',
@@ -59,7 +59,7 @@ function runAssignmentLoadingFix() {
  * Diagnoses the assignment loading issue
  */
 function diagnoseAssignmentLoadingIssue() {
-  debugLog('🔍 Diagnosing assignment loading issue...');
+  console.log('🔍 Diagnosing assignment loading issue...');
   
   const diagnosis = {
     timestamp: new Date().toISOString(),
@@ -78,11 +78,11 @@ function diagnoseAssignmentLoadingIssue() {
       diagnosis.hasIssues = true;
       diagnosis.issues.push('assignments_sheet_missing');
       diagnosis.details.availableSheets = spreadsheet.getSheets().map(s => s.getName());
-      debugLog('❌ Assignments sheet missing');
+      console.log('❌ Assignments sheet missing');
       return diagnosis;
     }
     
-    debugLog('✅ Assignments sheet exists');
+    console.log('✅ Assignments sheet exists');
     
     // Check 2: Does the sheet have data?
     const range = sheet.getDataRange();
@@ -95,7 +95,7 @@ function diagnoseAssignmentLoadingIssue() {
     if (values.length === 0) {
       diagnosis.hasIssues = true;
       diagnosis.issues.push('sheet_completely_empty');
-      debugLog('❌ Assignments sheet is completely empty');
+      console.log('❌ Assignments sheet is completely empty');
       return diagnosis;
     }
     
@@ -103,11 +103,11 @@ function diagnoseAssignmentLoadingIssue() {
       diagnosis.hasIssues = true;
       diagnosis.issues.push('sheet_has_headers_only');
       diagnosis.details.headers = values[0];
-      debugLog('❌ Assignments sheet has headers but no data');
+      console.log('❌ Assignments sheet has headers but no data');
       return diagnosis;
     }
     
-    debugLog(`✅ Sheet has ${values.length} rows (including headers)`);
+    console.log(`✅ Sheet has ${values.length} rows (including headers)`);
     
     // Check 3: Test getAssignmentsData function
     try {
@@ -121,9 +121,9 @@ function diagnoseAssignmentLoadingIssue() {
       if (!assignmentsData.data || assignmentsData.data.length === 0) {
         diagnosis.hasIssues = true;
         diagnosis.issues.push('getAssignmentsData_returns_empty');
-        debugLog('❌ getAssignmentsData returns empty data');
+        console.log('❌ getAssignmentsData returns empty data');
       } else {
-        debugLog(`✅ getAssignmentsData returns ${assignmentsData.data.length} rows`);
+        console.log(`✅ getAssignmentsData returns ${assignmentsData.data.length} rows`);
       }
     } catch (error) {
       diagnosis.hasIssues = true;
@@ -132,7 +132,7 @@ function diagnoseAssignmentLoadingIssue() {
         success: false,
         error: error.message
       };
-      debugLog('❌ getAssignmentsData failed:', error.message);
+      console.log('❌ getAssignmentsData failed:', error.message);
     }
     
     // Check 4: Test getAllAssignmentsForNotifications function
@@ -146,9 +146,9 @@ function diagnoseAssignmentLoadingIssue() {
       if (!notificationAssignments || notificationAssignments.length === 0) {
         diagnosis.hasIssues = true;
         diagnosis.issues.push('getAllAssignmentsForNotifications_returns_empty');
-        debugLog('❌ getAllAssignmentsForNotifications returns empty');
+        console.log('❌ getAllAssignmentsForNotifications returns empty');
       } else {
-        debugLog(`✅ getAllAssignmentsForNotifications returns ${notificationAssignments.length} assignments`);
+        console.log(`✅ getAllAssignmentsForNotifications returns ${notificationAssignments.length} assignments`);
       }
     } catch (error) {
       diagnosis.hasIssues = true;
@@ -157,7 +157,7 @@ function diagnoseAssignmentLoadingIssue() {
         success: false,
         error: error.message
       };
-      debugLog('❌ getAllAssignmentsForNotifications failed:', error.message);
+      console.log('❌ getAllAssignmentsForNotifications failed:', error.message);
     }
     
     // Check 5: Analyze data quality if we have data
@@ -168,7 +168,7 @@ function diagnoseAssignmentLoadingIssue() {
       if (qualityCheck.hasQualityIssues) {
         diagnosis.hasIssues = true;
         diagnosis.issues.push('data_quality_issues');
-        debugLog('❌ Data quality issues found');
+        console.log('❌ Data quality issues found');
       }
     }
     
@@ -238,7 +238,7 @@ function analyzeAssignmentDataQuality() {
       analysis.issues.push('no_valid_assignments');
     }
     
-    debugLog(`📊 Data quality: ${analysis.validAssignments}/${analysis.totalRows} assignments are valid`);
+    console.log(`📊 Data quality: ${analysis.validAssignments}/${analysis.totalRows} assignments are valid`);
     
     return analysis;
     
@@ -255,7 +255,7 @@ function analyzeAssignmentDataQuality() {
  * Applies fixes based on the diagnosis
  */
 function applyAssignmentLoadingFixes(diagnosis) {
-  debugLog('🔧 Applying fixes based on diagnosis...');
+  console.log('🔧 Applying fixes based on diagnosis...');
   
   const fixResult = {
     success: true,
@@ -266,14 +266,14 @@ function applyAssignmentLoadingFixes(diagnosis) {
   try {
     // Fix 1: Create assignments sheet if missing
     if (diagnosis.issues.includes('assignments_sheet_missing')) {
-      debugLog('🔧 Creating missing assignments sheet...');
+      console.log('🔧 Creating missing assignments sheet...');
       try {
         const sheet = getOrCreateSheet(
           CONFIG.sheets.assignments,
           Object.values(CONFIG.columns.assignments)
         );
         fixResult.appliedFixes.push('created_assignments_sheet');
-        debugLog('✅ Created assignments sheet');
+        console.log('✅ Created assignments sheet');
       } catch (error) {
         fixResult.errors.push('Failed to create assignments sheet: ' + error.message);
         console.error('❌ Failed to create assignments sheet:', error);
@@ -287,12 +287,12 @@ function applyAssignmentLoadingFixes(diagnosis) {
                            (diagnosis.details.dataQuality?.validAssignments === 0);
     
     if (needsSampleData) {
-      debugLog('🔧 Creating sample assignment data...');
+      console.log('🔧 Creating sample assignment data...');
       try {
         const sampleResult = createSampleAssignmentsForTesting();
         if (sampleResult.success) {
           fixResult.appliedFixes.push('created_sample_assignments');
-          debugLog(`✅ Created ${sampleResult.assignmentsAdded} sample assignments`);
+          console.log(`✅ Created ${sampleResult.assignmentsAdded} sample assignments`);
         } else {
           fixResult.errors.push('Failed to create sample assignments: ' + sampleResult.error);
         }
@@ -303,26 +303,26 @@ function applyAssignmentLoadingFixes(diagnosis) {
     }
     
     // Fix 3: Clear caches
-    debugLog('🔧 Clearing caches...');
+    console.log('🔧 Clearing caches...');
     try {
       if (typeof dataCache !== 'undefined' && dataCache.clear) {
         dataCache.clear('sheet_' + CONFIG.sheets.assignments);
         dataCache.clear('sheet_' + CONFIG.sheets.riders);
         fixResult.appliedFixes.push('cleared_caches');
-        debugLog('✅ Cleared data caches');
+        console.log('✅ Cleared data caches');
       }
     } catch (error) {
-      debugLog('⚠️ Could not clear caches (may not exist):', error.message);
+      console.log('⚠️ Could not clear caches (may not exist):', error.message);
     }
     
     // Fix 4: Force refresh sheet data
-    debugLog('🔧 Force refreshing sheet data...');
+    console.log('🔧 Force refreshing sheet data...');
     try {
       SpreadsheetApp.flush();
       fixResult.appliedFixes.push('flushed_spreadsheet');
-      debugLog('✅ Flushed spreadsheet');
+      console.log('✅ Flushed spreadsheet');
     } catch (error) {
-      debugLog('⚠️ Could not flush spreadsheet:', error.message);
+      console.log('⚠️ Could not flush spreadsheet:', error.message);
     }
     
     if (fixResult.errors.length > 0) {
@@ -343,7 +343,7 @@ function applyAssignmentLoadingFixes(diagnosis) {
  * Verifies that the fix worked
  */
 function verifyAssignmentLoadingFix() {
-  debugLog('✅ Verifying assignment loading fix...');
+  console.log('✅ Verifying assignment loading fix...');
   
   const verification = {
     success: false,
@@ -359,13 +359,13 @@ function verifyAssignmentLoadingFix() {
         success: true,
         rowCount: assignmentsData.data?.length || 0
       };
-      debugLog(`✅ getAssignmentsData: ${assignmentsData.data?.length || 0} rows`);
+      console.log(`✅ getAssignmentsData: ${assignmentsData.data?.length || 0} rows`);
     } catch (error) {
       verification.tests.getAssignmentsData = {
         success: false,
         error: error.message
       };
-      debugLog('❌ getAssignmentsData still failing:', error.message);
+      console.log('❌ getAssignmentsData still failing:', error.message);
     }
     
     // Test 2: getAllAssignmentsForNotifications
@@ -375,13 +375,13 @@ function verifyAssignmentLoadingFix() {
         success: true,
         assignmentCount: notificationAssignments?.length || 0
       };
-      debugLog(`✅ getAllAssignmentsForNotifications: ${notificationAssignments?.length || 0} assignments`);
+      console.log(`✅ getAllAssignmentsForNotifications: ${notificationAssignments?.length || 0} assignments`);
     } catch (error) {
       verification.tests.getAllAssignmentsForNotifications = {
         success: false,
         error: error.message
       };
-      debugLog('❌ getAllAssignmentsForNotifications still failing:', error.message);
+      console.log('❌ getAllAssignmentsForNotifications still failing:', error.message);
     }
     
     // Determine overall success
@@ -394,10 +394,10 @@ function verifyAssignmentLoadingFix() {
     
     if (verification.success) {
       verification.finalStatus = `Fix successful! ${verification.tests.getAllAssignmentsForNotifications.assignmentCount} assignments now loading correctly.`;
-      debugLog('🎉 Fix verification passed!');
+      console.log('🎉 Fix verification passed!');
     } else {
       verification.finalStatus = 'Fix verification failed - assignments still not loading properly.';
-      debugLog('❌ Fix verification failed');
+      console.log('❌ Fix verification failed');
     }
     
   } catch (error) {
@@ -413,16 +413,16 @@ function verifyAssignmentLoadingFix() {
  * Quick function to create sample assignments if needed
  */
 function createSampleAssignmentsQuickFix() {
-  debugLog('🚀 Quick fix: Creating sample assignments...');
+  console.log('🚀 Quick fix: Creating sample assignments...');
   
   try {
     const result = createSampleAssignmentsForTesting();
     if (result.success) {
-      debugLog(`✅ Quick fix successful: Created ${result.assignmentsAdded} assignments`);
+      console.log(`✅ Quick fix successful: Created ${result.assignmentsAdded} assignments`);
       
       // Test that they load properly
       const testLoad = getAllAssignmentsForNotifications();
-      debugLog(`🧪 Test load result: ${testLoad?.length || 0} assignments loaded`);
+      console.log(`🧪 Test load result: ${testLoad?.length || 0} assignments loaded`);
       
       return {
         success: true,
@@ -449,7 +449,7 @@ function createSampleAssignmentsQuickFix() {
  * Function to test assignment loading without making changes
  */
 function testAssignmentLoading() {
-  debugLog('🧪 Testing assignment loading (read-only)...');
+  console.log('🧪 Testing assignment loading (read-only)...');
   
   const testResult = {
     timestamp: new Date().toISOString(),
@@ -514,6 +514,6 @@ function testAssignmentLoading() {
     };
   }
   
-  debugLog('🧪 Test results:', testResult);
+  console.log('🧪 Test results:', testResult);
   return testResult;
 }

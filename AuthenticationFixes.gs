@@ -13,7 +13,7 @@
  * Run this function to diagnose and identify permission issues
  */
 function diagnosePersistentAuthIssue() {
-  debugLog('🔍 === COMPREHENSIVE AUTHENTICATION DIAGNOSIS ===');
+  console.log('🔍 === COMPREHENSIVE AUTHENTICATION DIAGNOSIS ===');
   
   const results = {
     step1_userSession: null,
@@ -27,7 +27,7 @@ function diagnosePersistentAuthIssue() {
   
   // Step 1: Check current user session
   try {
-    debugLog('1. Checking current user session...');
+    console.log('1. Checking current user session...');
     const user = Session.getActiveUser();
     const email = user.getEmail();
     
@@ -36,7 +36,7 @@ function diagnosePersistentAuthIssue() {
     try {
       name = user.getName ? user.getName() : (user.name || '');
     } catch (e) {
-      debugLog('⚠️ getName() failed, trying alternatives...');
+      console.log('⚠️ getName() failed, trying alternatives...');
       name = user.name || user.displayName || '';
     }
     
@@ -47,16 +47,16 @@ function diagnosePersistentAuthIssue() {
       hasEmail: !!email,
       hasName: !!name
     };
-    debugLog('✅ Session active:', email);
+    console.log('✅ Session active:', email);
   } catch (e) {
     results.step1_userSession = { success: false, error: e.message };
     results.issues.push('No active Google session');
-    debugLog('❌ Session error:', e.message);
+    console.log('❌ Session error:', e.message);
   }
   
   // Step 2: Test authentication function
   try {
-    debugLog('2. Testing authentication function...');
+    console.log('2. Testing authentication function...');
     const auth = authenticateAndAuthorizeUser();
     results.step2_authFunction = {
       success: auth.success,
@@ -67,20 +67,20 @@ function diagnosePersistentAuthIssue() {
     };
     
     if (auth.success) {
-      debugLog('✅ Authentication successful:', auth.user.email, 'role:', auth.user.role);
+      console.log('✅ Authentication successful:', auth.user.email, 'role:', auth.user.role);
     } else {
-      debugLog('❌ Authentication failed:', auth.error);
+      console.log('❌ Authentication failed:', auth.error);
       results.issues.push('Authentication function failed: ' + auth.error);
     }
   } catch (e) {
     results.step2_authFunction = { success: false, error: e.message };
     results.issues.push('Authentication function error: ' + e.message);
-    debugLog('❌ Auth function error:', e.message);
+    console.log('❌ Auth function error:', e.message);
   }
   
   // Step 3: Check admin users configuration
   try {
-    debugLog('3. Checking admin users configuration...');
+    console.log('3. Checking admin users configuration...');
     const admins = getAdminUsers();
     results.step3_adminUsers = {
       success: true,
@@ -93,16 +93,16 @@ function diagnosePersistentAuthIssue() {
       results.step3_adminUsers.includesCurrentUser = admins.includes(results.step1_userSession.email);
     }
     
-    debugLog('✅ Admin users found:', admins);
+    console.log('✅ Admin users found:', admins);
   } catch (e) {
     results.step3_adminUsers = { success: false, error: e.message };
     results.issues.push('Admin users check failed: ' + e.message);
-    debugLog('❌ Admin users error:', e.message);
+    console.log('❌ Admin users error:', e.message);
   }
   
   // Step 4: Test permission function directly
   try {
-    debugLog('4. Testing permission function...');
+    console.log('4. Testing permission function...');
     const testUser = { 
       role: 'admin', 
       email: results.step1_userSession?.email || 'test@example.com',
@@ -115,16 +115,16 @@ function diagnosePersistentAuthIssue() {
       hasPermission: hasPerms,
       functionExists: typeof hasPermission === 'function'
     };
-    debugLog('✅ Permission test result:', hasPerms);
+    console.log('✅ Permission test result:', hasPerms);
   } catch (e) {
     results.step4_permissionTest = { success: false, error: e.message };
     results.issues.push('Permission function error: ' + e.message);
-    debugLog('❌ Permission function error:', e.message);
+    console.log('❌ Permission function error:', e.message);
   }
   
   // Step 5: Check Settings sheet
   try {
-    debugLog('5. Checking Settings sheet...');
+    console.log('5. Checking Settings sheet...');
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const settingsSheet = ss.getSheetByName('Settings');
     
@@ -146,21 +146,21 @@ function diagnosePersistentAuthIssue() {
         currentUserInAdmin: adminEmails.includes(results.step1_userSession?.email),
         currentUserInDispatcher: dispatcherEmails.includes(results.step1_userSession?.email)
       };
-      debugLog('✅ Settings sheet data:', { adminEmails, dispatcherEmails });
+      console.log('✅ Settings sheet data:', { adminEmails, dispatcherEmails });
     } else {
       results.step5_settingsSheet = { success: false, sheetExists: false };
       results.issues.push('Settings sheet does not exist');
-      debugLog('❌ Settings sheet not found');
+      console.log('❌ Settings sheet not found');
     }
   } catch (e) {
     results.step5_settingsSheet = { success: false, error: e.message };
     results.issues.push('Settings sheet error: ' + e.message);
-    debugLog('❌ Settings sheet error:', e.message);
+    console.log('❌ Settings sheet error:', e.message);
   }
   
-  debugLog('🔍 === DIAGNOSIS COMPLETE ===');
-  debugLog('Issues found:', results.issues.length);
-  debugLog('Results:', results);
+  console.log('🔍 === DIAGNOSIS COMPLETE ===');
+  console.log('Issues found:', results.issues.length);
+  console.log('Results:', results);
   
   return results;
 }
@@ -170,14 +170,14 @@ function diagnosePersistentAuthIssue() {
  * Attempts to automatically resolve authentication issues
  */
 function fixAuthenticationIssues() {
-  debugLog('🔧 === ATTEMPTING AUTOMATIC FIXES ===');
+  console.log('🔧 === ATTEMPTING AUTOMATIC FIXES ===');
   
   const fixes = [];
   const errors = [];
   
   try {
     // Fix 1: Ensure Settings sheet exists and current user is admin
-    debugLog('Fix 1: Setting up Settings sheet...');
+    console.log('Fix 1: Setting up Settings sheet...');
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let settingsSheet = ss.getSheetByName('Settings');
     
@@ -214,7 +214,7 @@ function fixAuthenticationIssues() {
     }
     
     // Fix 2: Clear any stuck sessions
-    debugLog('Fix 2: Clearing cached sessions...');
+    console.log('Fix 2: Clearing cached sessions...');
     try {
       PropertiesService.getUserProperties().deleteProperty('CUSTOM_SESSION');
       PropertiesService.getScriptProperties().deleteProperty('CACHED_USER_EMAIL');
@@ -225,7 +225,7 @@ function fixAuthenticationIssues() {
     }
     
     // Fix 3: Ensure Users sheet exists for local authentication
-    debugLog('Fix 3: Setting up Users sheet...');
+    console.log('Fix 3: Setting up Users sheet...');
     let usersSheet = ss.getSheetByName('Users');
     
     if (!usersSheet) {
@@ -251,7 +251,7 @@ function fixAuthenticationIssues() {
       fixes.push('Created Users sheet with test admin account (admin@test.com / admin123)');
     }
     
-    debugLog('✅ Automatic fixes completed');
+    console.log('✅ Automatic fixes completed');
     return {
       success: true,
       fixes: fixes,
@@ -275,7 +275,7 @@ function fixAuthenticationIssues() {
  * Creates temporary admin access for 2 hours
  */
 function emergencyAdminAccess() {
-  debugLog('🚨 === EMERGENCY ADMIN ACCESS ===');
+  console.log('🚨 === EMERGENCY ADMIN ACCESS ===');
   
   try {
     const currentUserEmail = Session.getActiveUser().getEmail();
@@ -302,7 +302,7 @@ function emergencyAdminAccess() {
       JSON.stringify(emergencySession)
     );
     
-    debugLog('✅ Emergency admin access granted for 2 hours');
+    console.log('✅ Emergency admin access granted for 2 hours');
     return {
       success: true,
       message: 'Emergency admin access granted for 2 hours',
@@ -321,7 +321,7 @@ function emergencyAdminAccess() {
  * Tests the local email/password authentication system
  */
 function testLocalAuthentication() {
-  debugLog('🧪 === TESTING LOCAL AUTHENTICATION ===');
+  console.log('🧪 === TESTING LOCAL AUTHENTICATION ===');
   
   try {
     // Try to login with test credentials
@@ -359,7 +359,7 @@ function testLocalAuthentication() {
       }
     }
     
-    debugLog('✅ Local authentication test completed');
+    console.log('✅ Local authentication test completed');
     return {
       success: true,
       results: results,
@@ -389,7 +389,7 @@ function getCurrentUserEnhanced() {
       
       // Check if not expired
       if (emergencySession.expires > Date.now()) {
-        debugLog('🚨 Using emergency admin session');
+        console.log('🚨 Using emergency admin session');
         return { success: true, user: emergencySession };
       } else {
         // Clean up expired emergency session
@@ -411,7 +411,7 @@ function getCurrentUserEnhanced() {
  * Use this as a temporary workaround while fixing permissions
  */
 function bypassPermissionCheck() {
-  debugLog('⚠️ BYPASSING PERMISSION CHECK - FOR DEBUGGING ONLY');
+  console.log('⚠️ BYPASSING PERMISSION CHECK - FOR DEBUGGING ONLY');
   return true;
 }
 
@@ -420,7 +420,7 @@ function bypassPermissionCheck() {
  * Run this to set up everything from scratch
  */
 function runCompleteAuthSetup() {
-  debugLog('🎯 === COMPLETE AUTHENTICATION SETUP ===');
+  console.log('🎯 === COMPLETE AUTHENTICATION SETUP ===');
   
   try {
     const results = {
@@ -431,22 +431,22 @@ function runCompleteAuthSetup() {
     };
     
     // Step 1: Diagnose current state
-    debugLog('Step 1: Diagnosing current state...');
+    console.log('Step 1: Diagnosing current state...');
     results.diagnosis = diagnosePersistentAuthIssue();
     
     // Step 2: Apply fixes
-    debugLog('Step 2: Applying automatic fixes...');
+    console.log('Step 2: Applying automatic fixes...');
     results.fixes = fixAuthenticationIssues();
     
     // Step 3: Set up emergency access
-    debugLog('Step 3: Setting up emergency access...');
+    console.log('Step 3: Setting up emergency access...');
     results.emergency = emergencyAdminAccess();
     
     // Step 4: Test local authentication
-    debugLog('Step 4: Testing local authentication...');
+    console.log('Step 4: Testing local authentication...');
     results.localTest = testLocalAuthentication();
     
-    debugLog('✅ Complete setup finished');
+    console.log('✅ Complete setup finished');
     
     return {
       success: true,

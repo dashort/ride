@@ -12,12 +12,12 @@
 
 function getRiders() {
   try {
-    debugLog('📋 Fetching all riders with enhanced filtering...');
+    console.log('📋 Fetching all riders with enhanced filtering...');
     
     const sheetData = getSheetData(CONFIG.sheets.riders);
     
     if (!sheetData || !sheetData.data || sheetData.data.length === 0) {
-      debugLog('⚠️ No rider data found');
+      console.log('⚠️ No rider data found');
       return [];
     }
     
@@ -67,7 +67,7 @@ function getRiders() {
       }
     }).filter(rider => rider !== null); // Remove nulls
     
-    debugLog(`✅ Successfully fetched ${riders.length} valid riders`);
+    console.log(`✅ Successfully fetched ${riders.length} valid riders`);
     return riders;
     
   } catch (error) {
@@ -92,7 +92,7 @@ function getRiderDashboard(riderId) {
  */
 function getRiderDetails(riderId) {
   try {
-    debugLog(`🔍 getRiderDetails called with: "${riderId}" (type: ${typeof riderId})`);
+    console.log(`🔍 getRiderDetails called with: "${riderId}" (type: ${typeof riderId})`);
     
     if (!riderId) {
       console.warn('⚠️ No rider ID provided');
@@ -102,7 +102,7 @@ function getRiderDetails(riderId) {
     const sheetData = getSheetData(CONFIG.sheets.riders);
     
     if (!sheetData || !sheetData.data || sheetData.data.length === 0) {
-      debugLog('⚠️ No rider data found in sheet');
+      console.log('⚠️ No rider data found in sheet');
       return null;
     }
 
@@ -112,10 +112,10 @@ function getRiderDetails(riderId) {
     const nameColumn = CONFIG.columns.riders.name;
     const nameIndex = sheetData.columnMap[nameColumn];
     
-    debugLog(`📊 Search config:`);
-    debugLog(`   Looking for column: "${riderIdColumn}" at index: ${riderIdIndex}`);
-    debugLog(`   Name column: "${nameColumn}" at index: ${nameIndex}`);
-    debugLog(`   Total data rows: ${sheetData.data.length}`);
+    console.log(`📊 Search config:`);
+    console.log(`   Looking for column: "${riderIdColumn}" at index: ${riderIdIndex}`);
+    console.log(`   Name column: "${nameColumn}" at index: ${nameIndex}`);
+    console.log(`   Total data rows: ${sheetData.data.length}`);
     
     if (riderIdIndex === undefined) {
       throw new Error(`Column "${riderIdColumn}" not found in Riders sheet`);
@@ -131,7 +131,7 @@ function getRiderDetails(riderId) {
       const isMatch = String(rowRiderId).trim() === String(riderId).trim();
       
       if (index < 5 || isMatch) { // Log first 5 rows or any matches
-        debugLog(`   Row ${index + 2}: ID="${rowRiderId}" Name="${row[nameIndex] || 'N/A'}" Match=${isMatch}`);
+        console.log(`   Row ${index + 2}: ID="${rowRiderId}" Name="${row[nameIndex] || 'N/A'}" Match=${isMatch}`);
       }
       
       return isMatch;
@@ -164,20 +164,20 @@ function getRiderDetails(riderId) {
     }
 
     if (!targetRow) {
-      debugLog(`❌ Rider not found with ID: "${riderId}"`);
-      debugLog(`🔍 Available IDs in first 10 rows:`);
+      console.log(`❌ Rider not found with ID: "${riderId}"`);
+      console.log(`🔍 Available IDs in first 10 rows:`);
       
       sheetData.data.slice(0, 10).forEach((row, index) => {
         const id = row[riderIdIndex] || 'EMPTY';
         const name = row[nameIndex] || 'NO NAME';
-        debugLog(`   Row ${index + 2}: ID="${id}" Name="${name}"`);
+        console.log(`   Row ${index + 2}: ID="${id}" Name="${name}"`);
       });
       
       return null;
     }
 
     const rider = mapRowToRiderObject(targetRow, sheetData.columnMap, sheetData.headers);
-    debugLog(`✅ Found rider via ${matchMethod}: ${rider.name || 'Unknown'} (ID: ${rider.jpNumber})`);
+    console.log(`✅ Found rider via ${matchMethod}: ${rider.name || 'Unknown'} (ID: ${rider.jpNumber})`);
     
     return rider;
 
@@ -193,13 +193,13 @@ function getRiderDetails(riderId) {
  */
 function handleRiderOperation(action, data) {
   try {
-    debugLog(`🔧 handleRiderOperation: ${action}`, data);
+    console.log(`🔧 handleRiderOperation: ${action}`, data);
     
     switch (action) {
       case 'get':
         // Get rider details for editing
         const riderId = data.riderId || data['Rider ID'];
-        debugLog(`Getting rider details for: "${riderId}"`);
+        console.log(`Getting rider details for: "${riderId}"`);
         
         const rider = getRiderDetails(riderId);
         if (!rider) {
@@ -251,7 +251,7 @@ function handleRiderOperation(action, data) {
 
 function getTotalRiderCount() {
   try {
-    debugLog('📊 Getting total rider count with consistent logic...');
+    console.log('📊 Getting total rider count with consistent logic...');
     
     const ridersData = getRidersData();
     
@@ -269,7 +269,7 @@ function getTotalRiderCount() {
              (jpNumber && String(jpNumber).trim().length > 0);
     });
     
-    debugLog(`✅ Total valid riders: ${validRiders.length}`);
+    console.log(`✅ Total valid riders: ${validRiders.length}`);
     return validRiders.length;
     
   } catch (error) {
@@ -284,7 +284,7 @@ function getTotalRiderCount() {
  */
 function addRider(riderData) {
   try {
-    debugLog('➕ Adding new rider:', JSON.stringify(riderData, null, 2));
+    console.log('➕ Adding new rider:', JSON.stringify(riderData, null, 2));
     
     // Validate required fields
     const requiredFields = [
@@ -375,7 +375,7 @@ function addRider(riderData) {
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
     const successMessage = `Rider "${riderData[CONFIG.columns.riders.name]}" (ID: ${riderData[CONFIG.columns.riders.jpNumber]}) added successfully`;
-    debugLog(`✅ ${successMessage}`);
+    console.log(`✅ ${successMessage}`);
     logActivity(successMessage);
     
     return {
@@ -401,7 +401,7 @@ function addRider(riderData) {
  */
 function updateRider(riderData) {
   try {
-    debugLog('📝 Updating rider:', JSON.stringify(riderData, null, 2));
+    console.log('📝 Updating rider:', JSON.stringify(riderData, null, 2));
     
     const riderIdField = CONFIG.columns.riders.jpNumber;
   const riderId = riderData[riderIdField];
@@ -489,7 +489,7 @@ function updateRider(riderData) {
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
     const successMessage = `Rider "${riderData[CONFIG.columns.riders.name] || riderId}" updated successfully`;
-    debugLog(`✅ ${successMessage}`);
+    console.log(`✅ ${successMessage}`);
     logActivity(successMessage);
     
     return {
@@ -515,7 +515,7 @@ function updateRider(riderData) {
  */
 function deleteRider(riderId) {
   try {
-    debugLog(`🗑️ Deleting rider with ID: ${riderId}`);
+    console.log(`🗑️ Deleting rider with ID: ${riderId}`);
     
     if (!riderId) {
       throw new Error('Rider ID is required for deletion');
@@ -573,7 +573,7 @@ function deleteRider(riderId) {
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
     const successMessage = `Rider "${riderName}" (ID: ${riderId}) deleted successfully`;
-    debugLog(`✅ ${successMessage}`);
+    console.log(`✅ ${successMessage}`);
     logActivity(successMessage);
     
     return {
@@ -639,7 +639,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
  */
 function checkRiderActiveAssignments(riderId) {
   try {
-    debugLog(`🔍 Checking active assignments for rider ${riderId}`);
+    console.log(`🔍 Checking active assignments for rider ${riderId}`);
     
     // Get rider name first
     const rider = getRiderDetails(riderId);
@@ -669,9 +669,9 @@ function checkRiderActiveAssignments(riderId) {
     const hasActiveAssignments = activeAssignments.length > 0;
     
     if (hasActiveAssignments) {
-      debugLog(`⚠️ Rider ${riderName} has ${activeAssignments.length} active assignment(s)`);
+      console.log(`⚠️ Rider ${riderName} has ${activeAssignments.length} active assignment(s)`);
     } else {
-      debugLog(`✅ Rider ${riderName} has no active assignments`);
+      console.log(`✅ Rider ${riderName} has no active assignments`);
     }
     
     return hasActiveAssignments;
@@ -689,7 +689,7 @@ function checkRiderActiveAssignments(riderId) {
  */
 function diagnoseRiderCountDiscrepancy() {
   try {
-    debugLog('🔍 === RIDER COUNT DIAGNOSTIC STARTING ===');
+    console.log('🔍 === RIDER COUNT DIAGNOSTIC STARTING ===');
     
     // Get raw sheet data
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
@@ -703,10 +703,10 @@ function diagnoseRiderCountDiscrepancy() {
     const headers = allData[0];
     const allRows = allData.slice(1); // Remove header row
     
-    debugLog(`📊 Sheet Analysis:`);
-    debugLog(`   Total rows (including header): ${allData.length}`);
-    debugLog(`   Data rows (excluding header): ${allRows.length}`);
-    debugLog(`   Headers:`, headers);
+    console.log(`📊 Sheet Analysis:`);
+    console.log(`   Total rows (including header): ${allData.length}`);
+    console.log(`   Data rows (excluding header): ${allRows.length}`);
+    console.log(`   Headers:`, headers);
     
     // Analyze each row for content
     let totalRowsWithData = 0;
@@ -723,11 +723,11 @@ function diagnoseRiderCountDiscrepancy() {
     const phoneColumnIndex = headers.indexOf(CONFIG.columns.riders.phone);
     const statusColumnIndex = headers.indexOf(CONFIG.columns.riders.status);
     
-    debugLog(`🔍 Column Analysis:`);
-    debugLog(`   Name column (${CONFIG.columns.riders.name}) at index: ${nameColumnIndex}`);
-    debugLog(`   ID column (${CONFIG.columns.riders.jpNumber}) at index: ${idColumnIndex}`);
-    debugLog(`   Phone column (${CONFIG.columns.riders.phone}) at index: ${phoneColumnIndex}`);
-    debugLog(`   Status column (${CONFIG.columns.riders.status}) at index: ${statusColumnIndex}`);
+    console.log(`🔍 Column Analysis:`);
+    console.log(`   Name column (${CONFIG.columns.riders.name}) at index: ${nameColumnIndex}`);
+    console.log(`   ID column (${CONFIG.columns.riders.jpNumber}) at index: ${idColumnIndex}`);
+    console.log(`   Phone column (${CONFIG.columns.riders.phone}) at index: ${phoneColumnIndex}`);
+    console.log(`   Status column (${CONFIG.columns.riders.status}) at index: ${statusColumnIndex}`);
     
     // Detailed row analysis
     const rowAnalysis = [];
@@ -774,76 +774,76 @@ function diagnoseRiderCountDiscrepancy() {
         
         // Log first 5 and last 5 for debugging
         if (index < 5 || index >= allRows.length - 5) {
-          debugLog(`   Row ${rowNumber}: Name="${name}" ID="${riderId}" Status="${status}" HasData=${hasAnyData}`);
+          console.log(`   Row ${rowNumber}: Name="${name}" ID="${riderId}" Status="${status}" HasData=${hasAnyData}`);
         }
       } else {
         totalEmptyRows++;
       }
     });
     
-    debugLog(`📈 Count Summary:`);
-    debugLog(`   Rows with any data: ${totalRowsWithData}`);
-    debugLog(`   Empty rows: ${totalEmptyRows}`);
-    debugLog(`   Riders with names: ${ridersWithNames}`);
-    debugLog(`   Riders with IDs: ${ridersWithIds}`);
-    debugLog(`   Riders with phones: ${ridersWithPhones}`);
-    debugLog(`   Active riders: ${activeRiders}`);
-    debugLog(`   Inactive riders: ${inactiveRiders}`);
-    debugLog(`   Riders without status: ${ridersWithoutStatus}`);
+    console.log(`📈 Count Summary:`);
+    console.log(`   Rows with any data: ${totalRowsWithData}`);
+    console.log(`   Empty rows: ${totalEmptyRows}`);
+    console.log(`   Riders with names: ${ridersWithNames}`);
+    console.log(`   Riders with IDs: ${ridersWithIds}`);
+    console.log(`   Riders with phones: ${ridersWithPhones}`);
+    console.log(`   Active riders: ${activeRiders}`);
+    console.log(`   Inactive riders: ${inactiveRiders}`);
+    console.log(`   Riders without status: ${ridersWithoutStatus}`);
     
     // Test your existing functions
-    debugLog(`🧪 Testing Existing Functions:`);
+    console.log(`🧪 Testing Existing Functions:`);
     
     try {
       const ridersFromFunction = getRiders();
-      debugLog(`   getRiders() returned: ${ridersFromFunction.length} riders`);
+      console.log(`   getRiders() returned: ${ridersFromFunction.length} riders`);
     } catch (error) {
-      debugLog(`   getRiders() error: ${error.message}`);
+      console.log(`   getRiders() error: ${error.message}`);
     }
     
     try {
       const activeFromFunction = getActiveRidersManagement();
-      debugLog(`   getActiveRidersManagement() returned: ${activeFromFunction.length} riders`);
+      console.log(`   getActiveRidersManagement() returned: ${activeFromFunction.length} riders`);
     } catch (error) {
-      debugLog(`   getActiveRidersManagement() error: ${error.message}`);
+      console.log(`   getActiveRidersManagement() error: ${error.message}`);
     }
     
     try {
       const ridersData = getRidersData();
-      debugLog(`   getRidersData() returned: ${ridersData.data ? ridersData.data.length : 0} rows`);
+      console.log(`   getRidersData() returned: ${ridersData.data ? ridersData.data.length : 0} rows`);
     } catch (error) {
-      debugLog(`   getRidersData() error: ${error.message}`);
+      console.log(`   getRidersData() error: ${error.message}`);
     }
     
     // Check for the most likely issue: different counting criteria
-    debugLog(`🎯 Likely Issues Identified:`);
+    console.log(`🎯 Likely Issues Identified:`);
     
     if (totalRowsWithData !== ridersWithNames) {
-      debugLog(`   ⚠️ ISSUE: ${totalRowsWithData} rows have data, but only ${ridersWithNames} have names`);
-      debugLog(`   💡 SOLUTION: Empty name fields are being counted in total but filtered out in display`);
+      console.log(`   ⚠️ ISSUE: ${totalRowsWithData} rows have data, but only ${ridersWithNames} have names`);
+      console.log(`   💡 SOLUTION: Empty name fields are being counted in total but filtered out in display`);
     }
     
     if (totalRowsWithData !== ridersWithIds) {
-      debugLog(`   ⚠️ ISSUE: ${totalRowsWithData} rows have data, but only ${ridersWithIds} have IDs`);
-      debugLog(`   💡 SOLUTION: Empty ID fields are being counted in total but filtered out in display`);
+      console.log(`   ⚠️ ISSUE: ${totalRowsWithData} rows have data, but only ${ridersWithIds} have IDs`);
+      console.log(`   💡 SOLUTION: Empty ID fields are being counted in total but filtered out in display`);
     }
     
     if (ridersWithoutStatus > 0) {
-      debugLog(`   ⚠️ ISSUE: ${ridersWithoutStatus} riders have no status set`);
-      debugLog(`   💡 SOLUTION: Riders without status might be excluded from active counts`);
+      console.log(`   ⚠️ ISSUE: ${ridersWithoutStatus} riders have no status set`);
+      console.log(`   💡 SOLUTION: Riders without status might be excluded from active counts`);
     }
     
     // Identify the exact discrepancy pattern
     const discrepancy = totalRowsWithData - ridersWithNames;
     if (discrepancy > 0) {
-      debugLog(`\n🔍 Analyzing ${discrepancy} rows with data but no names:`);
+      console.log(`\n🔍 Analyzing ${discrepancy} rows with data but no names:`);
       
       rowAnalysis.filter(r => !r.hasName).slice(0, 10).forEach(row => {
-        debugLog(`   Row ${row.rowNumber}: ID="${row.riderId}" Phone="${row.phone}" Status="${row.status}"`);
+        console.log(`   Row ${row.rowNumber}: ID="${row.riderId}" Phone="${row.phone}" Status="${row.status}"`);
       });
     }
     
-    debugLog('\n🔍 === DIAGNOSTIC COMPLETE ===');
+    console.log('\n🔍 === DIAGNOSTIC COMPLETE ===');
     
     return {
       success: true,
@@ -881,7 +881,7 @@ function diagnoseRiderCountDiscrepancy() {
  */
 function cleanupRiderData() {
   try {
-    debugLog('🧹 Starting rider data cleanup...');
+    console.log('🧹 Starting rider data cleanup...');
     
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
     if (!sheet) {
@@ -911,7 +911,7 @@ function cleanupRiderData() {
       
       // Delete rows that have some data but no name AND no ID
       if (hasAnyData && !name && !riderId) {
-        debugLog(`🗑️ Deleting row ${rowNumber}: No name or ID`);
+        console.log(`🗑️ Deleting row ${rowNumber}: No name or ID`);
         sheet.deleteRow(rowNumber);
         rowsDeleted++;
         continue;
@@ -919,7 +919,7 @@ function cleanupRiderData() {
       
       // Set default status for riders with name but no status
       if (name && !status && statusColumnIndex >= 0) {
-        debugLog(`📝 Setting default status for row ${rowNumber}: ${name}`);
+        console.log(`📝 Setting default status for row ${rowNumber}: ${name}`);
         sheet.getRange(rowNumber, statusColumnIndex + 1).setValue('Active');
         rowsUpdated++;
       }
@@ -929,7 +929,7 @@ function cleanupRiderData() {
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
     
     const message = `Cleanup complete: ${rowsDeleted} rows deleted, ${rowsUpdated} rows updated`;
-    debugLog(`✅ ${message}`);
+    console.log(`✅ ${message}`);
     logActivity(`Rider data cleanup: ${message}`);
     
     SpreadsheetApp.getUi().alert('Cleanup Complete', message, SpreadsheetApp.getUi().ButtonSet.OK);
@@ -974,7 +974,7 @@ function getConsistentRiderCount() {
              (riderId && String(riderId).trim().length > 0);
     });
     
-    debugLog(`📊 Consistent rider count: ${validRiders.length}`);
+    console.log(`📊 Consistent rider count: ${validRiders.length}`);
     return validRiders.length;
     
   } catch (error) {
@@ -989,7 +989,7 @@ function getConsistentRiderCount() {
  */
 function getRidersByStatus(status) {
   try {
-    debugLog(`📋 Fetching riders with status: ${status}`);
+    console.log(`📋 Fetching riders with status: ${status}`);
     
     const allRiders = getRiders();
     
@@ -1001,7 +1001,7 @@ function getRidersByStatus(status) {
       return String(rider.status || '').toLowerCase() === String(status).toLowerCase();
     });
     
-    debugLog(`✅ Found ${filteredRiders.length} riders with status: ${status}`);
+    console.log(`✅ Found ${filteredRiders.length} riders with status: ${status}`);
     return filteredRiders;
     
   } catch (error) {
@@ -1028,7 +1028,7 @@ function getActiveRidersManagement() {
  */
 function updateRiderAssignmentStats(riderName, assignmentDate = new Date()) {
   try {
-    debugLog(`📊 Updating assignment stats for rider: ${riderName}`);
+    console.log(`📊 Updating assignment stats for rider: ${riderName}`);
     
     if (!riderName) {
       throw new Error('Rider name is required');
@@ -1057,7 +1057,7 @@ function updateRiderAssignmentStats(riderName, assignmentDate = new Date()) {
     const result = updateRider(updateData);
     
     if (result.success) {
-      debugLog(`✅ Updated assignment stats for ${riderName}: Total assignments now ${newTotal}`);
+      console.log(`✅ Updated assignment stats for ${riderName}: Total assignments now ${newTotal}`);
     }
     
     return result;
@@ -1080,7 +1080,7 @@ function updateRiderAssignmentStats(riderName, assignmentDate = new Date()) {
  */
 function validateRiderData(riderData, isUpdate = false) {
   try {
-    debugLog('🔍 Validating rider data:', riderData);
+    console.log('🔍 Validating rider data:', riderData);
     const errors = [];
     
     // Required fields for new riders
@@ -1129,14 +1129,14 @@ function validateRiderData(riderData, isUpdate = false) {
       ];
       
       const certification = String(riderData[CONFIG.columns.riders.certification]).trim();
-      debugLog(`🎯 Checking certification: "${certification}"`);
+      console.log(`🎯 Checking certification: "${certification}"`);
       
       if (!validCertifications.includes(certification)) {
         console.warn(`⚠️ Invalid certification: "${certification}"`);
-        debugLog('Valid options:', validCertifications);
+        console.log('Valid options:', validCertifications);
         errors.push(`Certification must be one of: ${validCertifications.slice(0, 5).join(', ')}`);
       } else {
-        debugLog(`✅ Certification "${certification}" is valid`);
+        console.log(`✅ Certification "${certification}" is valid`);
       }
     }
     
@@ -1157,9 +1157,9 @@ function validateRiderData(riderData, isUpdate = false) {
     }
     
     const isValid = errors.length === 0;
-    debugLog(`🎯 Validation result: ${isValid ? 'PASSED' : 'FAILED'}`);
+    console.log(`🎯 Validation result: ${isValid ? 'PASSED' : 'FAILED'}`);
     if (!isValid) {
-      debugLog('❌ Validation errors:', errors);
+      console.log('❌ Validation errors:', errors);
     }
     
     return {
@@ -1185,7 +1185,7 @@ function validateRiderData(riderData, isUpdate = false) {
  */
 function exportRidersToCSV(status = null) {
   try {
-    debugLog(`📊 Exporting riders to CSV${status ? ` (status: ${status})` : ''}`);
+    console.log(`📊 Exporting riders to CSV${status ? ` (status: ${status})` : ''}`);
     
     const riders = status ? getRidersByStatus(status) : getRiders();
     
@@ -1213,7 +1213,7 @@ function exportRidersToCSV(status = null) {
     
     const csvContent = csvRows.join('\n');
     
-    debugLog(`✅ Exported ${riders.length} riders to CSV`);
+    console.log(`✅ Exported ${riders.length} riders to CSV`);
     
     return {
       success: true,
@@ -1240,7 +1240,7 @@ function exportRidersToCSV(status = null) {
  */
 function bulkUpdateRiderStatus(riderIds, newStatus) {
   try {
-    debugLog(`📊 Bulk updating ${riderIds.length} riders to status: ${newStatus}`);
+    console.log(`📊 Bulk updating ${riderIds.length} riders to status: ${newStatus}`);
     
     if (!Array.isArray(riderIds) || riderIds.length === 0) {
       throw new Error('Rider IDs array is required');
@@ -1283,7 +1283,7 @@ function bulkUpdateRiderStatus(riderIds, newStatus) {
     });
     
     const message = `Bulk update completed: ${successCount} successful, ${failureCount} failed`;
-    debugLog(`✅ ${message}`);
+    console.log(`✅ ${message}`);
     logActivity(message);
     
     return {
@@ -1310,7 +1310,7 @@ function bulkUpdateRiderStatus(riderIds, newStatus) {
  */
 function testCertificationSave() {
   try {
-    debugLog('🧪 Testing certification save...');
+    console.log('🧪 Testing certification save...');
     
     const testData = {
       'Rider ID': 'TEST001',
@@ -1321,16 +1321,16 @@ function testCertificationSave() {
       'Certification': 'Not Certified'  // Test the problematic value
     };
     
-    debugLog('📤 Testing with data:', testData);
+    console.log('📤 Testing with data:', testData);
     
     // Test validation
     const validation = validateRiderData(testData, false);
-    debugLog('🔍 Validation result:', validation);
+    console.log('🔍 Validation result:', validation);
     
     if (validation.success) {
-      debugLog('✅ Validation passed for "Not Certified"');
+      console.log('✅ Validation passed for "Not Certified"');
     } else {
-      debugLog('❌ Validation failed:', validation.errors);
+      console.log('❌ Validation failed:', validation.errors);
     }
     
     return validation;
@@ -1346,7 +1346,7 @@ function testCertificationSave() {
  */
 function quickFixRidersIssue() {
   try {
-    debugLog('⚡ Applying quick fix for riders issue...');
+    console.log('⚡ Applying quick fix for riders issue...');
     
     const result = {
       success: false,
@@ -1424,7 +1424,7 @@ function quickFixRidersIssue() {
     
     result.success = activeRiders.length > 0;
     
-    debugLog('⚡ Quick fix result:', result);
+    console.log('⚡ Quick fix result:', result);
     return result;
     
   } catch (error) {

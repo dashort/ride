@@ -2,11 +2,11 @@
  * STEP 1: Diagnose what's causing the blank page
  */
 function diagnoseBlankPageIssue() {
-  debugLog('🔍 DIAGNOSING BLANK PAGE ISSUE...');
+  console.log('🔍 DIAGNOSING BLANK PAGE ISSUE...');
   
   try {
     // Test 1: Check if HTML files exist
-    debugLog('1. Testing HTML file access...');
+    console.log('1. Testing HTML file access...');
     const htmlFiles = ['index', 'admin-dashboard', 'requests', 'assignments', 'riders', 'notifications'];
     const fileResults = {};
     
@@ -14,24 +14,24 @@ function diagnoseBlankPageIssue() {
       try {
         const test = HtmlService.createHtmlOutputFromFile(fileName);
         fileResults[fileName] = 'EXISTS';
-        debugLog(`   ✅ ${fileName}.html - exists`);
+        console.log(`   ✅ ${fileName}.html - exists`);
       } catch (e) {
         fileResults[fileName] = 'MISSING';
-        debugLog(`   ❌ ${fileName}.html - missing:`, e.message);
+        console.log(`   ❌ ${fileName}.html - missing:`, e.message);
       }
     });
     
     // Test 2: Check authentication session
-    debugLog('2. Testing authentication session...');
+    console.log('2. Testing authentication session...');
     const session = getAuthenticatedSession();
-    debugLog('   Session valid:', session.isValid);
+    console.log('   Session valid:', session.isValid);
     if (session.isValid) {
-      debugLog('   User email:', session.user?.email);
-      debugLog('   User role:', session.user?.role);
+      console.log('   User email:', session.user?.email);
+      console.log('   User role:', session.user?.role);
     }
     
     // Test 3: Check page loading functions
-    debugLog('3. Testing page loading functions...');
+    console.log('3. Testing page loading functions...');
     const functionTests = {};
     
     const requiredFunctions = [
@@ -47,34 +47,34 @@ function diagnoseBlankPageIssue() {
       try {
         const func = eval(funcName);
         functionTests[funcName] = typeof func === 'function' ? 'EXISTS' : 'NOT_FUNCTION';
-        debugLog(`   ${functionTests[funcName] === 'EXISTS' ? '✅' : '❌'} ${funcName}`);
+        console.log(`   ${functionTests[funcName] === 'EXISTS' ? '✅' : '❌'} ${funcName}`);
       } catch (e) {
         functionTests[funcName] = 'MISSING';
-        debugLog(`   ❌ ${funcName} - missing`);
+        console.log(`   ❌ ${funcName} - missing`);
       }
     });
     
     // Test 4: Try to load dashboard data
-    debugLog('4. Testing dashboard data loading...');
+    console.log('4. Testing dashboard data loading...');
     let dashboardDataTest = 'NOT_TESTED';
     try {
       const dashboardData = getPageDataForDashboard();
       dashboardDataTest = dashboardData ? 'SUCCESS' : 'NO_DATA';
-      debugLog('   Dashboard data test:', dashboardDataTest);
+      console.log('   Dashboard data test:', dashboardDataTest);
     } catch (e) {
       dashboardDataTest = 'ERROR: ' + e.message;
-      debugLog('   Dashboard data error:', e.message);
+      console.log('   Dashboard data error:', e.message);
     }
     
     // Summary
     const missingFiles = Object.keys(fileResults).filter(k => fileResults[k] === 'MISSING');
     const missingFunctions = Object.keys(functionTests).filter(k => functionTests[k] !== 'EXISTS');
     
-    debugLog('\n📋 DIAGNOSIS SUMMARY:');
-    debugLog('Missing HTML files:', missingFiles.length > 0 ? missingFiles : 'None');
-    debugLog('Missing functions:', missingFunctions.length > 0 ? missingFunctions : 'None');
-    debugLog('Authentication:', session.isValid ? 'Working' : 'Broken');
-    debugLog('Dashboard data:', dashboardDataTest);
+    console.log('\n📋 DIAGNOSIS SUMMARY:');
+    console.log('Missing HTML files:', missingFiles.length > 0 ? missingFiles : 'None');
+    console.log('Missing functions:', missingFunctions.length > 0 ? missingFunctions : 'None');
+    console.log('Authentication:', session.isValid ? 'Working' : 'Broken');
+    console.log('Dashboard data:', dashboardDataTest);
     
     return {
       success: true,
@@ -104,7 +104,7 @@ function diagnoseBlankPageIssue() {
  * STEP 1: Check if HTML files exist and can be loaded
  */
 function diagnoseHtmlFileLoading() {
-  debugLog('🔍 DIAGNOSING HTML FILE LOADING...');
+  console.log('🔍 DIAGNOSING HTML FILE LOADING...');
   
   const results = {};
   const filesToTest = [
@@ -119,23 +119,23 @@ function diagnoseHtmlFileLoading() {
   ];
   
   filesToTest.forEach(fileName => {
-    debugLog(`\n--- Testing ${fileName}.html ---`);
+    console.log(`\n--- Testing ${fileName}.html ---`);
     
     try {
       // Test 1: Can we create HtmlOutput from file?
       const htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
-      debugLog(`✅ File loads: ${fileName}.html`);
+      console.log(`✅ File loads: ${fileName}.html`);
       
       // Test 2: Can we get content?
       const content = htmlOutput.getContent();
-      debugLog(`✅ Content accessible: ${content.length} characters`);
+      console.log(`✅ Content accessible: ${content.length} characters`);
       
       // Test 3: Does it have navigation placeholder?
       const hasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-      debugLog(`${hasPlaceholder ? '✅' : '⚠️'} Navigation placeholder: ${hasPlaceholder}`);
+      console.log(`${hasPlaceholder ? '✅' : '⚠️'} Navigation placeholder: ${hasPlaceholder}`);
       
       // Test 4: What's the first 200 characters?
-      debugLog(`📄 Content preview: ${content.substring(0, 200)}...`);
+      console.log(`📄 Content preview: ${content.substring(0, 200)}...`);
       
       results[fileName] = {
         success: true,
@@ -145,7 +145,7 @@ function diagnoseHtmlFileLoading() {
       };
       
     } catch (error) {
-      debugLog(`❌ Error loading ${fileName}.html: ${error.message}`);
+      console.log(`❌ Error loading ${fileName}.html: ${error.message}`);
       results[fileName] = {
         success: false,
         error: error.message
@@ -154,24 +154,24 @@ function diagnoseHtmlFileLoading() {
   });
   
   // Summary
-  debugLog('\n📋 SUMMARY:');
+  console.log('\n📋 SUMMARY:');
   const working = Object.keys(results).filter(f => results[f].success);
   const broken = Object.keys(results).filter(f => !results[f].success);
   
-  debugLog(`✅ Working files (${working.length}): ${working.join(', ')}`);
-  debugLog(`❌ Broken files (${broken.length}): ${broken.join(', ')}`);
+  console.log(`✅ Working files (${working.length}): ${working.join(', ')}`);
+  console.log(`❌ Broken files (${broken.length}): ${broken.join(', ')}`);
   
   // Specific admin-dashboard check
   if (results['admin-dashboard']) {
-    debugLog('\n🛡️ ADMIN DASHBOARD SPECIFIC:');
+    console.log('\n🛡️ ADMIN DASHBOARD SPECIFIC:');
     const adminResult = results['admin-dashboard'];
     if (adminResult.success) {
-      debugLog('✅ admin-dashboard.html loads successfully');
-      debugLog(`✅ Content length: ${adminResult.contentLength} chars`);
-      debugLog(`✅ Has placeholder: ${adminResult.hasPlaceholder}`);
+      console.log('✅ admin-dashboard.html loads successfully');
+      console.log(`✅ Content length: ${adminResult.contentLength} chars`);
+      console.log(`✅ Has placeholder: ${adminResult.hasPlaceholder}`);
     } else {
-      debugLog('❌ admin-dashboard.html failed to load');
-      debugLog(`❌ Error: ${adminResult.error}`);
+      console.log('❌ admin-dashboard.html failed to load');
+      console.log(`❌ Error: ${adminResult.error}`);
     }
   }
   
@@ -182,7 +182,7 @@ function diagnoseHtmlFileLoading() {
  * STEP 2: Test the exact file loading path your doGet uses
  */
 function testAdminDashboardLoading() {
-  debugLog('🧪 TESTING ADMIN DASHBOARD LOADING PATH...');
+  console.log('🧪 TESTING ADMIN DASHBOARD LOADING PATH...');
   
   try {
     // Simulate exactly what your doGet does for admin user
@@ -196,8 +196,8 @@ function testAdminDashboardLoading() {
     
     const pageName = 'dashboard';
     
-    debugLog(`👤 User: ${mockUser.name} (${mockUser.role})`);
-    debugLog(`📄 Page: ${pageName}`);
+    console.log(`👤 User: ${mockUser.name} (${mockUser.role})`);
+    console.log(`📄 Page: ${pageName}`);
     
     // Step 1: Determine file name (same logic as your loadAppPage)
     let fileName;
@@ -205,30 +205,30 @@ function testAdminDashboardLoading() {
       fileName = 'admin-dashboard';
     }
     
-    debugLog(`📂 File to load: ${fileName}.html`);
+    console.log(`📂 File to load: ${fileName}.html`);
     
     // Step 2: Try to load the file
-    debugLog('🔄 Attempting to load file...');
+    console.log('🔄 Attempting to load file...');
     const htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
-    debugLog('✅ File loaded successfully!');
+    console.log('✅ File loaded successfully!');
     
     // Step 3: Get content
     const content = htmlOutput.getContent();
-    debugLog(`✅ Content retrieved: ${content.length} characters`);
+    console.log(`✅ Content retrieved: ${content.length} characters`);
     
     // Step 4: Check for navigation placeholder
     const hasPlaceholder = content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->');
-    debugLog(`✅ Navigation placeholder: ${hasPlaceholder ? 'FOUND' : 'MISSING'}`);
+    console.log(`✅ Navigation placeholder: ${hasPlaceholder ? 'FOUND' : 'MISSING'}`);
     
     // Step 5: Try navigation injection (if we have the function)
     if (typeof injectNavigation === 'function') {
-      debugLog('🔗 Testing navigation injection...');
+      console.log('🔗 Testing navigation injection...');
       const injectedContent = injectNavigation(content, mockUser, null, pageName);
       const hasNavAfterInjection = injectedContent.includes('<nav class="navigation">');
-      debugLog(`✅ Navigation injection: ${hasNavAfterInjection ? 'SUCCESS' : 'FAILED'}`);
+      console.log(`✅ Navigation injection: ${hasNavAfterInjection ? 'SUCCESS' : 'FAILED'}`);
       
       if (hasNavAfterInjection) {
-        debugLog('🎉 FULL SUCCESS! admin-dashboard.html can load with navigation!');
+        console.log('🎉 FULL SUCCESS! admin-dashboard.html can load with navigation!');
         return {
           success: true,
           message: 'admin-dashboard.html loads and processes correctly',
@@ -239,7 +239,7 @@ function testAdminDashboardLoading() {
         };
       }
     } else {
-      debugLog('⚠️ injectNavigation function not available for testing');
+      console.log('⚠️ injectNavigation function not available for testing');
     }
     
     // If we get here, file loads but navigation might have issues
@@ -266,7 +266,7 @@ function testAdminDashboardLoading() {
  * STEP 3: Test your actual doGet function with admin user
  */
 function testDoGetWithAdminUser() {
-  debugLog('🧪 TESTING doGet WITH ADMIN USER...');
+  console.log('🧪 TESTING doGet WITH ADMIN USER...');
   
   try {
     // Create mock event for dashboard page
@@ -276,24 +276,24 @@ function testDoGetWithAdminUser() {
       }
     };
     
-    debugLog('📞 Calling doGet function...');
+    console.log('📞 Calling doGet function...');
     const result = doGet(mockEvent);
     
     if (!result) {
-      debugLog('❌ doGet returned null/undefined');
+      console.log('❌ doGet returned null/undefined');
       return { success: false, error: 'doGet returned null' };
     }
     
     if (typeof result.getContent !== 'function') {
-      debugLog('❌ doGet result is not HtmlOutput');
+      console.log('❌ doGet result is not HtmlOutput');
       return { success: false, error: 'Invalid return type from doGet' };
     }
     
-    debugLog('✅ doGet returned HtmlOutput');
+    console.log('✅ doGet returned HtmlOutput');
     
     // Get the content
     const content = result.getContent();
-    debugLog(`✅ Content retrieved: ${content.length} characters`);
+    console.log(`✅ Content retrieved: ${content.length} characters`);
     
     // Check what we got
     const isLoginPage = content.includes('login') || content.includes('Login');
@@ -301,15 +301,15 @@ function testDoGetWithAdminUser() {
     const isAdminDashboard = content.includes('Administrator Dashboard') || content.includes('admin-dashboard');
     const hasNavigation = content.includes('<nav class="navigation">');
     
-    debugLog(`📊 Content Analysis:`);
-    debugLog(`   Login page: ${isLoginPage ? '✅' : '❌'}`);
-    debugLog(`   Fallback page: ${isFallbackPage ? '✅' : '❌'}`);
-    debugLog(`   Admin dashboard: ${isAdminDashboard ? '✅' : '❌'}`);
-    debugLog(`   Has navigation: ${hasNavigation ? '✅' : '❌'}`);
+    console.log(`📊 Content Analysis:`);
+    console.log(`   Login page: ${isLoginPage ? '✅' : '❌'}`);
+    console.log(`   Fallback page: ${isFallbackPage ? '✅' : '❌'}`);
+    console.log(`   Admin dashboard: ${isAdminDashboard ? '✅' : '❌'}`);
+    console.log(`   Has navigation: ${hasNavigation ? '✅' : '❌'}`);
     
     // Show first part of content for debugging
-    debugLog(`📄 Content preview (first 300 chars):`);
-    debugLog(content.substring(0, 300));
+    console.log(`📄 Content preview (first 300 chars):`);
+    console.log(content.substring(0, 300));
     
     return {
       success: true,
@@ -334,15 +334,15 @@ function testDoGetWithAdminUser() {
  * STEP 4: Force load admin-dashboard.html and show it working
  */
 function forceLoadAdminDashboard() {
-  debugLog('🚀 FORCE LOADING ADMIN DASHBOARD...');
+  console.log('🚀 FORCE LOADING ADMIN DASHBOARD...');
   
   try {
     // Force load the file
-    debugLog('📂 Force loading admin-dashboard.html...');
+    console.log('📂 Force loading admin-dashboard.html...');
     const htmlOutput = HtmlService.createHtmlOutputFromFile('admin-dashboard');
     const content = htmlOutput.getContent();
     
-    debugLog(`✅ File loaded: ${content.length} characters`);
+    console.log(`✅ File loaded: ${content.length} characters`);
     
     // Create mock user
     const mockUser = {
@@ -356,11 +356,11 @@ function forceLoadAdminDashboard() {
     // Try to inject navigation if function exists
     let finalContent = content;
     if (typeof injectNavigation === 'function') {
-      debugLog('🔗 Injecting navigation...');
+      console.log('🔗 Injecting navigation...');
       finalContent = injectNavigation(content, mockUser, null, 'dashboard');
-      debugLog(`✅ Navigation injected, final length: ${finalContent.length}`);
+      console.log(`✅ Navigation injected, final length: ${finalContent.length}`);
     } else {
-      debugLog('⚠️ injectNavigation function not available');
+      console.log('⚠️ injectNavigation function not available');
       
       // Manual navigation injection as fallback
       if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
@@ -376,17 +376,17 @@ function forceLoadAdminDashboard() {
 </nav>`;
         
         finalContent = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', simpleNav);
-        debugLog('✅ Manual navigation injection completed');
+        console.log('✅ Manual navigation injection completed');
       }
     }
     
     // Update the HTML output
     htmlOutput.setContent(finalContent);
     
-    debugLog('🎉 SUCCESS! Admin dashboard loaded and enhanced!');
-    debugLog(`   Original content: ${content.length} chars`);
-    debugLog(`   Final content: ${finalContent.length} chars`);
-    debugLog(`   Has navigation: ${finalContent.includes('<nav class="navigation">')}`);
+    console.log('🎉 SUCCESS! Admin dashboard loaded and enhanced!');
+    console.log(`   Original content: ${content.length} chars`);
+    console.log(`   Final content: ${finalContent.length} chars`);
+    console.log(`   Has navigation: ${finalContent.includes('<nav class="navigation">')}`);
     
     return {
       success: true,
@@ -409,45 +409,45 @@ function forceLoadAdminDashboard() {
  * STEP 5: Complete diagnostic with recommendations
  */
 function completeHtmlDiagnostic() {
-  debugLog('🔍 === COMPLETE HTML DIAGNOSTIC ===');
+  console.log('🔍 === COMPLETE HTML DIAGNOSTIC ===');
   
   const results = {};
   
   // Test 1: Basic file loading
-  debugLog('\n1. Testing basic file loading...');
+  console.log('\n1. Testing basic file loading...');
   results.fileLoading = diagnoseHtmlFileLoading();
   
   // Test 2: Admin dashboard specific
-  debugLog('\n2. Testing admin dashboard loading...');
+  console.log('\n2. Testing admin dashboard loading...');
   results.adminDashboard = testAdminDashboardLoading();
   
   // Test 3: doGet function
-  debugLog('\n3. Testing doGet function...');
+  console.log('\n3. Testing doGet function...');
   results.doGetTest = testDoGetWithAdminUser();
   
   // Test 4: Force load
-  debugLog('\n4. Testing force load...');
+  console.log('\n4. Testing force load...');
   results.forceLoad = forceLoadAdminDashboard();
   
   // Analysis and recommendations
-  debugLog('\n📋 === DIAGNOSTIC SUMMARY ===');
+  console.log('\n📋 === DIAGNOSTIC SUMMARY ===');
   
   const adminDashboardWorks = results.fileLoading?.['admin-dashboard']?.success;
   const doGetShowsFallback = results.doGetTest?.isFallbackPage;
   
-  debugLog(`Admin dashboard file loads: ${adminDashboardWorks ? '✅ YES' : '❌ NO'}`);
-  debugLog(`doGet returns fallback: ${doGetShowsFallback ? '⚠️ YES' : '✅ NO'}`);
+  console.log(`Admin dashboard file loads: ${adminDashboardWorks ? '✅ YES' : '❌ NO'}`);
+  console.log(`doGet returns fallback: ${doGetShowsFallback ? '⚠️ YES' : '✅ NO'}`);
   
   if (adminDashboardWorks && doGetShowsFallback) {
-    debugLog('\n🔧 DIAGNOSIS: File exists but doGet is not loading it properly');
-    debugLog('SOLUTION: Check your loadAppPage or fixedLoadAppPageWithNavigation function');
-    debugLog('The file loads fine when called directly, so the issue is in the page loading logic');
+    console.log('\n🔧 DIAGNOSIS: File exists but doGet is not loading it properly');
+    console.log('SOLUTION: Check your loadAppPage or fixedLoadAppPageWithNavigation function');
+    console.log('The file loads fine when called directly, so the issue is in the page loading logic');
   } else if (!adminDashboardWorks) {
-    debugLog('\n🔧 DIAGNOSIS: admin-dashboard.html file has problems');
-    debugLog('SOLUTION: Check if the file exists and has correct content');
+    console.log('\n🔧 DIAGNOSIS: admin-dashboard.html file has problems');
+    console.log('SOLUTION: Check if the file exists and has correct content');
   } else {
-    debugLog('\n✅ DIAGNOSIS: Everything should be working');
-    debugLog('If you still see fallback, try clearing cache and redeploying');
+    console.log('\n✅ DIAGNOSIS: Everything should be working');
+    console.log('If you still see fallback, try clearing cache and redeploying');
   }
   
   return results;
@@ -460,7 +460,7 @@ function createFixedLoadAppPageFunction() {
   return `
 function fixedLoadAppPage(pageName, user, rider) {
   try {
-    debugLog(\`📄 FIXED: Loading page: \${pageName} for user: \${user.email} (\${user.role})\`);
+    console.log(\`📄 FIXED: Loading page: \${pageName} for user: \${user.email} (\${user.role})\`);
     
     // Determine file name
     let fileName = 'index';
@@ -468,7 +468,7 @@ function fixedLoadAppPage(pageName, user, rider) {
     if (pageName.toLowerCase() === 'dashboard') {
       if (user.role === 'admin') {
         fileName = 'admin-dashboard';
-        debugLog('🛡️ Loading admin dashboard for admin user');
+        console.log('🛡️ Loading admin dashboard for admin user');
       } else {
         fileName = 'index';
       }
@@ -476,17 +476,17 @@ function fixedLoadAppPage(pageName, user, rider) {
       fileName = pageName.toLowerCase();
     }
     
-    debugLog(\`📂 Loading file: \${fileName}.html\`);
+    console.log(\`📂 Loading file: \${fileName}.html\`);
     
     // Force load the HTML file
     const htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
     let content = htmlOutput.getContent();
     
-    debugLog(\`✅ File loaded: \${content.length} characters\`);
+    console.log(\`✅ File loaded: \${content.length} characters\`);
     
     // Inject navigation if placeholder exists
     if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
-      debugLog('🔗 Injecting navigation...');
+      console.log('🔗 Injecting navigation...');
       
       const simpleNav = \`
 <nav class="navigation">
@@ -509,7 +509,7 @@ function fixedLoadAppPage(pageName, user, rider) {
 </style>\`;
       
       content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', simpleNav);
-      debugLog('✅ Navigation injected successfully');
+      console.log('✅ Navigation injected successfully');
     }
     
     // Add user context
@@ -522,14 +522,14 @@ window.currentUser = {
     permissions: \${JSON.stringify(user.permissions || [])},
     timestamp: \${Date.now()}
 };
-debugLog('👤 User context loaded:', window.currentUser);
+console.log('👤 User context loaded:', window.currentUser);
 </script>\`;
     
     content = content.replace('</body>', userScript + '</body>');
     
     htmlOutput.setContent(content);
     
-    debugLog(\`🎉 Page loaded successfully: \${fileName}.html\`);
+    console.log(\`🎉 Page loaded successfully: \${fileName}.html\`);
     
     return htmlOutput.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     
@@ -549,7 +549,7 @@ debugLog('👤 User context loaded:', window.currentUser);
  * DIAGNOSTIC: Check what's actually being generated
  */
 function diagnoseScriptInjection() {
-  debugLog('🔍 DIAGNOSING SCRIPT INJECTION ISSUE...');
+  console.log('🔍 DIAGNOSING SCRIPT INJECTION ISSUE...');
   
   try {
     // Test user
@@ -562,56 +562,56 @@ function diagnoseScriptInjection() {
     };
     
     // Load admin dashboard
-    debugLog('📂 Loading admin-dashboard.html...');
+    console.log('📂 Loading admin-dashboard.html...');
     const htmlOutput = HtmlService.createHtmlOutputFromFile('admin-dashboard');
     let content = htmlOutput.getContent();
     
-    debugLog(`✅ Original content loaded: ${content.length} characters`);
+    console.log(`✅ Original content loaded: ${content.length} characters`);
     
     // Check for script tags in original
     const originalScriptCount = (content.match(/<script/g) || []).length;
     const originalScriptCloseCount = (content.match(/<\/script>/g) || []).length;
-    debugLog(`📊 Original script tags: ${originalScriptCount} open, ${originalScriptCloseCount} close`);
+    console.log(`📊 Original script tags: ${originalScriptCount} open, ${originalScriptCloseCount} close`);
     
     // Show end of original content
-    debugLog('📄 Last 500 chars of original:');
-    debugLog(content.slice(-500));
+    console.log('📄 Last 500 chars of original:');
+    console.log(content.slice(-500));
     
     // Test user script creation
-    debugLog('👤 Testing user script creation...');
+    console.log('👤 Testing user script creation...');
     const userScript = createUserContextScript(testUser, null);
-    debugLog(`✅ User script created: ${userScript.length} characters`);
-    debugLog('📄 User script preview:');
-    debugLog(userScript.substring(0, 200) + '...');
+    console.log(`✅ User script created: ${userScript.length} characters`);
+    console.log('📄 User script preview:');
+    console.log(userScript.substring(0, 200) + '...');
     
     // Test injection
-    debugLog('💉 Testing script injection...');
+    console.log('💉 Testing script injection...');
     let injectedContent = content;
     
     if (content.includes('</body>')) {
       injectedContent = content.replace('</body>', '\n' + userScript + '\n</body>');
-      debugLog('✅ Injected before </body>');
+      console.log('✅ Injected before </body>');
     } else {
       injectedContent += '\n' + userScript;
-      debugLog('✅ Appended to end');
+      console.log('✅ Appended to end');
     }
     
     // Check final script counts
     const finalScriptCount = (injectedContent.match(/<script/g) || []).length;
     const finalScriptCloseCount = (injectedContent.match(/<\/script>/g) || []).length;
-    debugLog(`📊 Final script tags: ${finalScriptCount} open, ${finalScriptCloseCount} close`);
+    console.log(`📊 Final script tags: ${finalScriptCount} open, ${finalScriptCloseCount} close`);
     
     // Show injection point
     const bodyIndex = injectedContent.indexOf('</body>');
     if (bodyIndex !== -1) {
       const aroundInjection = injectedContent.substring(bodyIndex - 200, bodyIndex + 300);
-      debugLog('📄 Content around injection point:');
-      debugLog(aroundInjection);
+      console.log('📄 Content around injection point:');
+      console.log(aroundInjection);
     }
     
     // Show final end
-    debugLog('📄 Last 500 chars of final content:');
-    debugLog(injectedContent.slice(-500));
+    console.log('📄 Last 500 chars of final content:');
+    console.log(injectedContent.slice(-500));
     
     return {
       success: true,
@@ -637,7 +637,7 @@ function diagnoseScriptInjection() {
  */
 function createSafeUserScript(user, rider) {
   try {
-    debugLog('👤 Creating SAFE user script...');
+    console.log('👤 Creating SAFE user script...');
     
     // Create minimal, safe user context
     const safeUserScript = `
@@ -661,12 +661,12 @@ function createSafeUserScript(user, rider) {
     
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', function() {
-        debugLog('👤 User context loaded:', window.currentUser);
+        console.log('👤 User context loaded:', window.currentUser);
     });
 })();
 </script>`;
 
-    debugLog('✅ Safe user script created');
+    console.log('✅ Safe user script created');
     return safeUserScript;
     
   } catch (error) {
@@ -686,7 +686,7 @@ window.logout = function() { window.location.href = '?action=logout'; };
  */
 function ultraSimpleLoadAppPage(pageName, user, rider) {
   try {
-    debugLog(`📄 ULTRA-SIMPLE: Loading ${pageName} for ${user.email}`);
+    console.log(`📄 ULTRA-SIMPLE: Loading ${pageName} for ${user.email}`);
     
     // Determine file
     let fileName = 'index';
@@ -696,13 +696,13 @@ function ultraSimpleLoadAppPage(pageName, user, rider) {
       fileName = pageName.toLowerCase();
     }
     
-    debugLog(`📂 Loading: ${fileName}.html`);
+    console.log(`📂 Loading: ${fileName}.html`);
     
     // Load file
     const htmlOutput = HtmlService.createHtmlOutputFromFile(fileName);
     let content = htmlOutput.getContent();
     
-    debugLog(`✅ Loaded: ${content.length} chars`);
+    console.log(`✅ Loaded: ${content.length} chars`);
     
     // MINIMAL navigation injection - only if placeholder exists
     if (content.includes('<!--NAVIGATION_MENU_PLACEHOLDER-->')) {
@@ -716,7 +716,7 @@ function ultraSimpleLoadAppPage(pageName, user, rider) {
 </nav>`;
       
       content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', simpleNav);
-      debugLog('✅ Navigation injected');
+      console.log('✅ Navigation injected');
     }
     
     // MINIMAL user script - NO complex injection
@@ -725,13 +725,13 @@ function ultraSimpleLoadAppPage(pageName, user, rider) {
     // SAFE injection - only before </body> if it exists
     if (content.includes('</body>')) {
       content = content.replace('</body>', userScript + '</body>');
-      debugLog('✅ User script injected safely');
+      console.log('✅ User script injected safely');
     }
     
     // Update and return
     htmlOutput.setContent(content);
     
-    debugLog(`🎉 SUCCESS: ${fileName}.html loaded safely`);
+    console.log(`🎉 SUCCESS: ${fileName}.html loaded safely`);
     
     return htmlOutput.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     
@@ -753,7 +753,7 @@ function ultraSimpleLoadAppPage(pageName, user, rider) {
     <p>Dashboard loading... (Minimal mode)</p>
     <script>
         window.currentUser = { role: 'admin' };
-        debugLog('Minimal page loaded');
+        console.log('Minimal page loaded');
     </script>
 </body>
 </html>`;
@@ -769,7 +769,7 @@ function ultraSimpleLoadAppPage(pageName, user, rider) {
  */
 function loadAdminDashboardWithoutScripts(pageName, user, rider) {
   try {
-    debugLog('📄 Loading admin dashboard WITHOUT script injection...');
+    console.log('📄 Loading admin dashboard WITHOUT script injection...');
     
     // Load the file as-is
     const htmlOutput = HtmlService.createHtmlOutputFromFile('admin-dashboard');
@@ -796,7 +796,7 @@ function loadAdminDashboardWithoutScripts(pageName, user, rider) {
     // Update content
     htmlOutput.setContent(content);
     
-    debugLog('✅ Admin dashboard loaded without script injection issues');
+    console.log('✅ Admin dashboard loaded without script injection issues');
     
     return htmlOutput.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
     
@@ -810,7 +810,7 @@ function loadAdminDashboardWithoutScripts(pageName, user, rider) {
  * TEST: Compare different loading methods
  */
 function testDifferentLoadingMethods() {
-  debugLog('🧪 TESTING DIFFERENT LOADING METHODS...');
+  console.log('🧪 TESTING DIFFERENT LOADING METHODS...');
   
   const testUser = {
     name: 'Jpsotraffic',
@@ -824,7 +824,7 @@ function testDifferentLoadingMethods() {
   
   // Test 1: Ultra-simple
   try {
-    debugLog('1. Testing ultra-simple loading...');
+    console.log('1. Testing ultra-simple loading...');
     const result1 = ultraSimpleLoadAppPage('dashboard', testUser, null);
     const content1 = result1.getContent();
     results.ultraSimple = {
@@ -834,15 +834,15 @@ function testDifferentLoadingMethods() {
       hasNavigation: content1.includes('nav'),
       scriptAtEnd: content1.slice(-200).includes('script')
     };
-    debugLog('✅ Ultra-simple loading worked');
+    console.log('✅ Ultra-simple loading worked');
   } catch (error) {
     results.ultraSimple = { success: false, error: error.message };
-    debugLog('❌ Ultra-simple loading failed:', error.message);
+    console.log('❌ Ultra-simple loading failed:', error.message);
   }
   
   // Test 2: No scripts
   try {
-    debugLog('2. Testing no-script loading...');
+    console.log('2. Testing no-script loading...');
     const result2 = loadAdminDashboardWithoutScripts('dashboard', testUser, null);
     const content2 = result2.getContent();
     results.noScript = {
@@ -851,23 +851,23 @@ function testDifferentLoadingMethods() {
       hasNavigation: content2.includes('nav'),
       originalScripts: content2.includes('loadAdminDashboardData')
     };
-    debugLog('✅ No-script loading worked');
+    console.log('✅ No-script loading worked');
   } catch (error) {
     results.noScript = { success: false, error: error.message };
-    debugLog('❌ No-script loading failed:', error.message);
+    console.log('❌ No-script loading failed:', error.message);
   }
   
   // Test 3: Diagnostic
   try {
-    debugLog('3. Running script injection diagnostic...');
+    console.log('3. Running script injection diagnostic...');
     results.diagnostic = diagnoseScriptInjection();
-    debugLog('✅ Diagnostic completed');
+    console.log('✅ Diagnostic completed');
   } catch (error) {
     results.diagnostic = { success: false, error: error.message };
-    debugLog('❌ Diagnostic failed:', error.message);
+    console.log('❌ Diagnostic failed:', error.message);
   }
   
-  debugLog('📋 TEST RESULTS:', results);
+  console.log('📋 TEST RESULTS:', results);
   
   return results;
 }
@@ -903,13 +903,13 @@ if (pageName === 'dashboard' && session.user.role === 'admin') {
  * DIAGNOSTIC: Check all data sources and count functions
  */
 function diagnoseDashboardStats() {
-  debugLog('🔍 === DASHBOARD STATS DIAGNOSTIC ===');
+  console.log('🔍 === DASHBOARD STATS DIAGNOSTIC ===');
   
   const results = {};
   
   try {
     // Test 1: Check getRequestsData function
-    debugLog('\n1. Testing getRequestsData...');
+    console.log('\n1. Testing getRequestsData...');
     try {
       const requestsData = getRequestsData();
       results.requestsData = {
@@ -921,14 +921,14 @@ function diagnoseDashboardStats() {
         columnMapKeys: requestsData && requestsData.columnMap ? Object.keys(requestsData.columnMap) : [],
         sampleRow: requestsData && requestsData.data && requestsData.data.length > 0 ? requestsData.data[0] : null
       };
-      debugLog(`✅ Requests data: ${results.requestsData.rowCount} rows`);
+      console.log(`✅ Requests data: ${results.requestsData.rowCount} rows`);
     } catch (error) {
       results.requestsData = { success: false, error: error.message };
-      debugLog('❌ getRequestsData failed:', error.message);
+      console.log('❌ getRequestsData failed:', error.message);
     }
     
     // Test 2: Check getAssignmentsData function
-    debugLog('\n2. Testing getAssignmentsData...');
+    console.log('\n2. Testing getAssignmentsData...');
     try {
       const assignmentsData = getAssignmentsData();
       results.assignmentsData = {
@@ -940,14 +940,14 @@ function diagnoseDashboardStats() {
         columnMapKeys: assignmentsData && assignmentsData.columnMap ? Object.keys(assignmentsData.columnMap) : [],
         sampleRow: assignmentsData && assignmentsData.data && assignmentsData.data.length > 0 ? assignmentsData.data[0] : null
       };
-      debugLog(`✅ Assignments data: ${results.assignmentsData.rowCount} rows`);
+      console.log(`✅ Assignments data: ${results.assignmentsData.rowCount} rows`);
     } catch (error) {
       results.assignmentsData = { success: false, error: error.message };
-      debugLog('❌ getAssignmentsData failed:', error.message);
+      console.log('❌ getAssignmentsData failed:', error.message);
     }
     
     // Test 3: Check getRiders function
-    debugLog('\n3. Testing getRiders...');
+    console.log('\n3. Testing getRiders...');
     try {
       const riders = getRiders();
       results.ridersData = {
@@ -957,14 +957,14 @@ function diagnoseDashboardStats() {
         count: riders ? riders.length : 0,
         sampleRider: riders && riders.length > 0 ? riders[0] : null
       };
-      debugLog(`✅ Riders data: ${results.ridersData.count} riders`);
+      console.log(`✅ Riders data: ${results.ridersData.count} riders`);
     } catch (error) {
       results.ridersData = { success: false, error: error.message };
-      debugLog('❌ getRiders failed:', error.message);
+      console.log('❌ getRiders failed:', error.message);
     }
     
     // Test 4: Test count functions individually
-    debugLog('\n4. Testing individual count functions...');
+    console.log('\n4. Testing individual count functions...');
     
     const countFunctions = [
       'getTotalRequestsCount',
@@ -983,19 +983,19 @@ function diagnoseDashboardStats() {
         if (typeof func === 'function') {
           const count = func();
           results.countFunctions[funcName] = { success: true, count: count };
-          debugLog(`✅ ${funcName}: ${count}`);
+          console.log(`✅ ${funcName}: ${count}`);
         } else {
           results.countFunctions[funcName] = { success: false, error: 'Not a function' };
-          debugLog(`❌ ${funcName}: Not a function`);
+          console.log(`❌ ${funcName}: Not a function`);
         }
       } catch (error) {
         results.countFunctions[funcName] = { success: false, error: error.message };
-        debugLog(`❌ ${funcName}: ${error.message}`);
+        console.log(`❌ ${funcName}: ${error.message}`);
       }
     });
     
     // Test 5: Check CONFIG object
-    debugLog('\n5. Testing CONFIG object...');
+    console.log('\n5. Testing CONFIG object...');
     try {
       results.config = {
         exists: typeof CONFIG !== 'undefined',
@@ -1005,33 +1005,33 @@ function diagnoseDashboardStats() {
         assignmentsSheet: CONFIG && CONFIG.sheets ? CONFIG.sheets.assignments : 'undefined',
         ridersSheet: CONFIG && CONFIG.sheets ? CONFIG.sheets.riders : 'undefined'
       };
-      debugLog(`✅ CONFIG exists: ${results.config.exists}`);
+      console.log(`✅ CONFIG exists: ${results.config.exists}`);
       if (CONFIG && CONFIG.sheets) {
-        debugLog(`   Requests sheet: ${CONFIG.sheets.requests}`);
-        debugLog(`   Assignments sheet: ${CONFIG.sheets.assignments}`);
-        debugLog(`   Riders sheet: ${CONFIG.sheets.riders}`);
+        console.log(`   Requests sheet: ${CONFIG.sheets.requests}`);
+        console.log(`   Assignments sheet: ${CONFIG.sheets.assignments}`);
+        console.log(`   Riders sheet: ${CONFIG.sheets.riders}`);
       }
     } catch (error) {
       results.config = { success: false, error: error.message };
-      debugLog('❌ CONFIG check failed:', error.message);
+      console.log('❌ CONFIG check failed:', error.message);
     }
     
     // Test 6: Test getDashboardStats function
-    debugLog('\n6. Testing getDashboardStats function...');
+    console.log('\n6. Testing getDashboardStats function...');
     try {
       const stats = getDashboardStats();
       results.dashboardStats = {
         success: true,
         stats: stats
       };
-      debugLog('✅ getDashboardStats result:', stats);
+      console.log('✅ getDashboardStats result:', stats);
     } catch (error) {
       results.dashboardStats = { success: false, error: error.message };
-      debugLog('❌ getDashboardStats failed:', error.message);
+      console.log('❌ getDashboardStats failed:', error.message);
     }
     
     // Test 7: Test getAdminDashboardData function
-    debugLog('\n7. Testing getAdminDashboardData function...');
+    console.log('\n7. Testing getAdminDashboardData function...');
     try {
       const adminData = getAdminDashboardData();
       results.adminDashboardData = {
@@ -1039,46 +1039,46 @@ function diagnoseDashboardStats() {
         stats: adminData.stats,
         error: adminData.error
       };
-      debugLog('✅ getAdminDashboardData result:', adminData);
+      console.log('✅ getAdminDashboardData result:', adminData);
     } catch (error) {
       results.adminDashboardData = { success: false, error: error.message };
-      debugLog('❌ getAdminDashboardData failed:', error.message);
+      console.log('❌ getAdminDashboardData failed:', error.message);
     }
     
     // Summary
-    debugLog('\n📋 === DIAGNOSTIC SUMMARY ===');
-    debugLog(`Requests data working: ${results.requestsData?.success ? '✅' : '❌'}`);
-    debugLog(`Assignments data working: ${results.assignmentsData?.success ? '✅' : '❌'}`);
-    debugLog(`Riders data working: ${results.ridersData?.success ? '✅' : '❌'}`);
-    debugLog(`Count functions working: ${Object.values(results.countFunctions || {}).filter(f => f.success).length}/${countFunctions.length}`);
-    debugLog(`CONFIG object working: ${results.config?.exists ? '✅' : '❌'}`);
+    console.log('\n📋 === DIAGNOSTIC SUMMARY ===');
+    console.log(`Requests data working: ${results.requestsData?.success ? '✅' : '❌'}`);
+    console.log(`Assignments data working: ${results.assignmentsData?.success ? '✅' : '❌'}`);
+    console.log(`Riders data working: ${results.ridersData?.success ? '✅' : '❌'}`);
+    console.log(`Count functions working: ${Object.values(results.countFunctions || {}).filter(f => f.success).length}/${countFunctions.length}`);
+    console.log(`CONFIG object working: ${results.config?.exists ? '✅' : '❌'}`);
     
     // Recommendations
-    debugLog('\n🔧 === RECOMMENDATIONS ===');
+    console.log('\n🔧 === RECOMMENDATIONS ===');
     
     if (!results.requestsData?.success) {
-      debugLog('🔧 ISSUE: getRequestsData not working');
-      debugLog('   SOLUTION: Check if Requests sheet exists and has data');
+      console.log('🔧 ISSUE: getRequestsData not working');
+      console.log('   SOLUTION: Check if Requests sheet exists and has data');
     } else if (results.requestsData?.rowCount === 0) {
-      debugLog('🔧 ISSUE: Requests sheet has no data');
-      debugLog('   SOLUTION: Add some request data to test with');
+      console.log('🔧 ISSUE: Requests sheet has no data');
+      console.log('   SOLUTION: Add some request data to test with');
     }
     
     if (!results.assignmentsData?.success) {
-      debugLog('🔧 ISSUE: getAssignmentsData not working'); 
-      debugLog('   SOLUTION: Check if Assignments sheet exists');
+      console.log('🔧 ISSUE: getAssignmentsData not working'); 
+      console.log('   SOLUTION: Check if Assignments sheet exists');
     }
     
     if (!results.ridersData?.success) {
-      debugLog('🔧 ISSUE: getRiders not working');
-      debugLog('   SOLUTION: Check if Riders sheet exists and has data');
+      console.log('🔧 ISSUE: getRiders not working');
+      console.log('   SOLUTION: Check if Riders sheet exists and has data');
     }
     
     const failedCounts = Object.keys(results.countFunctions || {}).filter(f => !results.countFunctions[f].success);
     if (failedCounts.length > 0) {
-      debugLog('🔧 ISSUE: Some count functions failed');
-      debugLog('   FAILED:', failedCounts.join(', '));
-      debugLog('   SOLUTION: These functions need to be implemented');
+      console.log('🔧 ISSUE: Some count functions failed');
+      console.log('   FAILED:', failedCounts.join(', '));
+      console.log('   SOLUTION: These functions need to be implemented');
     }
     
     return results;
@@ -1093,7 +1093,7 @@ function diagnoseDashboardStats() {
  * MANUAL COUNT: Count rows directly from sheets
  */
 function manualCountSheetRows() {
-  debugLog('🔢 MANUAL ROW COUNTING...');
+  console.log('🔢 MANUAL ROW COUNTING...');
   
   try {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -1124,14 +1124,14 @@ function manualCountSheetRows() {
             results[sheetName].sampleData = sampleData;
           }
           
-          debugLog(`✅ ${sheetName}: ${dataRows} data rows (${lastRow} total, ${lastCol} columns)`);
+          console.log(`✅ ${sheetName}: ${dataRows} data rows (${lastRow} total, ${lastCol} columns)`);
         } else {
           results[sheetName] = { exists: false };
-          debugLog(`❌ ${sheetName}: Sheet not found`);
+          console.log(`❌ ${sheetName}: Sheet not found`);
         }
       } catch (error) {
         results[sheetName] = { exists: false, error: error.message };
-        debugLog(`❌ ${sheetName}: Error - ${error.message}`);
+        console.log(`❌ ${sheetName}: Error - ${error.message}`);
       }
     });
     
@@ -1147,7 +1147,7 @@ function manualCountSheetRows() {
  * QUICK FIX: Working count functions that directly access sheets
  */
 function createWorkingCountFunctions() {
-  debugLog('🔧 Creating working count functions...');
+  console.log('🔧 Creating working count functions...');
   
   const functions = `
 // WORKING COUNT FUNCTIONS - Copy these into your Code.gs file
@@ -1159,7 +1159,7 @@ function workingGetTotalRequestsCount() {
     const lastRow = sheet.getLastRow();
     return lastRow > 1 ? lastRow - 1 : 0; // Subtract header row
   } catch (error) {
-    debugLog('Error counting requests:', error);
+    console.log('Error counting requests:', error);
     return 0;
   }
 }
@@ -1171,7 +1171,7 @@ function workingGetTotalAssignmentsCount() {
     const lastRow = sheet.getLastRow();
     return lastRow > 1 ? lastRow - 1 : 0; // Subtract header row
   } catch (error) {
-    debugLog('Error counting assignments:', error);
+    console.log('Error counting assignments:', error);
     return 0;
   }
 }
@@ -1210,7 +1210,7 @@ function workingGetActiveRidersCount() {
     
     return activeCount;
   } catch (error) {
-    debugLog('Error counting active riders:', error);
+    console.log('Error counting active riders:', error);
     return 0;
   }
 }
@@ -1229,10 +1229,10 @@ function workingGetDashboardStats() {
       unassignedEscorts: 0 // Alias for unassignedRequests
     };
     
-    debugLog('Working stats calculated:', stats);
+    console.log('Working stats calculated:', stats);
     return stats;
   } catch (error) {
-    debugLog('Error in working stats:', error);
+    console.log('Error in working stats:', error);
     return {
       totalRequests: 0,
       totalAssignments: 0,
@@ -1255,22 +1255,22 @@ function workingGetDashboardStats() {
  * TEST: Try the working count functions
  */
 function testWorkingCountFunctions() {
-  debugLog('🧪 Testing working count functions...');
+  console.log('🧪 Testing working count functions...');
   
   try {
     // Test manual counts
     const manualCounts = manualCountSheetRows();
-    debugLog('Manual counts:', manualCounts);
+    console.log('Manual counts:', manualCounts);
     
     // Test if we can create working functions
     const totalRequests = workingGetTotalRequestsCount();
     const totalAssignments = workingGetTotalAssignmentsCount();
     const activeRiders = workingGetActiveRidersCount();
     
-    debugLog('Working function results:');
-    debugLog(`Total Requests: ${totalRequests}`);
-    debugLog(`Total Assignments: ${totalAssignments}`);
-    debugLog(`Active Riders: ${activeRiders}`);
+    console.log('Working function results:');
+    console.log(`Total Requests: ${totalRequests}`);
+    console.log(`Total Assignments: ${totalAssignments}`);
+    console.log(`Active Riders: ${activeRiders}`);
     
     return {
       success: true,
@@ -1296,7 +1296,7 @@ function workingGetTotalRequestsCount() {
     const lastRow = sheet.getLastRow();
     return lastRow > 1 ? lastRow - 1 : 0;
   } catch (error) {
-    debugLog('Error counting requests:', error);
+    console.log('Error counting requests:', error);
     return 0;
   }
 }
@@ -1308,7 +1308,7 @@ function workingGetTotalAssignmentsCount() {
     const lastRow = sheet.getLastRow();
     return lastRow > 1 ? lastRow - 1 : 0;
   } catch (error) {
-    debugLog('Error counting assignments:', error);
+    console.log('Error counting assignments:', error);
     return 0;
   }
 }
@@ -1344,7 +1344,7 @@ function workingGetActiveRidersCount() {
     
     return activeCount;
   } catch (error) {
-    debugLog('Error counting active riders:', error);
+    console.log('Error counting active riders:', error);
     return 0;
   }
 }
@@ -1363,32 +1363,32 @@ function workingGetDashboardStats() {
       unassignedEscorts: 0
     };
     
-    debugLog('Working stats calculated:', stats);
+    console.log('Working stats calculated:', stats);
     return stats;
   } catch (error) {
-    debugLog('Error in working stats:', error);
+    console.log('Error in working stats:', error);
     return getDefaultStats();
   }
 }
 
 function testGetAdminDashboardData() {
-  debugLog('🧪 TESTING getAdminDashboardData...');
+  console.log('🧪 TESTING getAdminDashboardData...');
   
   try {
     const result = getAdminDashboardData();
     
-    debugLog('📊 getAdminDashboardData result:');
-    debugLog('Success:', result.success);
-    debugLog('Error:', result.error);
-    debugLog('Stats:', JSON.stringify(result.stats, null, 2));
+    console.log('📊 getAdminDashboardData result:');
+    console.log('Success:', result.success);
+    console.log('Error:', result.error);
+    console.log('Stats:', JSON.stringify(result.stats, null, 2));
     
     if (result.success && result.stats) {
-      debugLog('\n📈 Individual Stats:');
-      debugLog('Total Requests:', result.stats.totalRequests);
-      debugLog('Active Riders:', result.stats.activeRiders || result.stats.totalRiders);
-      debugLog('Total Assignments:', result.stats.totalAssignments);
-      debugLog('Unassigned Escorts:', result.stats.unassignedEscorts || result.stats.unassignedRequests);
-      debugLog('Escorts Today:', result.stats.escortsToday || result.stats.todayAssignments);
+      console.log('\n📈 Individual Stats:');
+      console.log('Total Requests:', result.stats.totalRequests);
+      console.log('Active Riders:', result.stats.activeRiders || result.stats.totalRiders);
+      console.log('Total Assignments:', result.stats.totalAssignments);
+      console.log('Unassigned Escorts:', result.stats.unassignedEscorts || result.stats.unassignedRequests);
+      console.log('Escorts Today:', result.stats.escortsToday || result.stats.todayAssignments);
     }
     
     return result;
@@ -1399,7 +1399,7 @@ function testGetAdminDashboardData() {
   }
 }
 function testIndividualCountFunctions() {
-  debugLog('🔍 TESTING INDIVIDUAL COUNT FUNCTIONS...');
+  console.log('🔍 TESTING INDIVIDUAL COUNT FUNCTIONS...');
   
   const functions = [
     'getTotalRequestsCount',
@@ -1414,12 +1414,12 @@ function testIndividualCountFunctions() {
   
   functions.forEach(funcName => {
     try {
-      debugLog(`\n--- Testing ${funcName} ---`);
+      console.log(`\n--- Testing ${funcName} ---`);
       const func = eval(funcName);
       
       if (typeof func === 'function') {
         const result = func();
-        debugLog(`Result: ${result} (type: ${typeof result})`);
+        console.log(`Result: ${result} (type: ${typeof result})`);
         results[funcName] = {
           success: true,
           result: result,
@@ -1428,14 +1428,14 @@ function testIndividualCountFunctions() {
           isNumber: typeof result === 'number'
         };
       } else {
-        debugLog(`❌ ${funcName} is not a function`);
+        console.log(`❌ ${funcName} is not a function`);
         results[funcName] = {
           success: false,
           error: 'Not a function'
         };
       }
     } catch (error) {
-      debugLog(`❌ ${funcName} error: ${error.message}`);
+      console.log(`❌ ${funcName} error: ${error.message}`);
       results[funcName] = {
         success: false,
         error: error.message
@@ -1443,14 +1443,14 @@ function testIndividualCountFunctions() {
     }
   });
   
-  debugLog('\n📋 SUMMARY:');
+  console.log('\n📋 SUMMARY:');
   Object.keys(results).forEach(funcName => {
     const result = results[funcName];
     if (result.success) {
       const status = result.isDefined ? '✅' : '❌';
-      debugLog(`${status} ${funcName}: ${result.result} (${result.type})`);
+      console.log(`${status} ${funcName}: ${result.result} (${result.type})`);
     } else {
-      debugLog(`❌ ${funcName}: ${result.error}`);
+      console.log(`❌ ${funcName}: ${result.error}`);
     }
   });
   
@@ -1458,21 +1458,21 @@ function testIndividualCountFunctions() {
 }
 
 function testBackendFunction() {
-  debugLog('🧪 TESTING BACKEND FUNCTION...');
+  console.log('🧪 TESTING BACKEND FUNCTION...');
   
   try {
     // Test the function directly
     const result = getAdminDashboardData();
     
-    debugLog('📊 Backend Function Result:');
-    debugLog('Success:', result.success);
-    debugLog('Error:', result.error);
-    debugLog('Stats object exists:', !!result.stats);
+    console.log('📊 Backend Function Result:');
+    console.log('Success:', result.success);
+    console.log('Error:', result.error);
+    console.log('Stats object exists:', !!result.stats);
     
     if (result.stats) {
-      debugLog('📈 Individual Stats:');
+      console.log('📈 Individual Stats:');
       Object.keys(result.stats).forEach(key => {
-        debugLog(`  ${key}: ${result.stats[key]} (${typeof result.stats[key]})`);
+        console.log(`  ${key}: ${result.stats[key]} (${typeof result.stats[key]})`);
       });
     }
     
@@ -1483,9 +1483,9 @@ function testBackendFunction() {
     );
     
     if (missingStats.length > 0) {
-      debugLog('❌ Missing stats:', missingStats);
+      console.log('❌ Missing stats:', missingStats);
     } else {
-      debugLog('✅ All required stats present');
+      console.log('✅ All required stats present');
     }
     
     return result;
