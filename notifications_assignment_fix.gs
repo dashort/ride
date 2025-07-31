@@ -7,19 +7,19 @@
  * Main function to diagnose and fix the assignments loading issue
  */
 function fixNotificationsAssignmentLoading() {
-  console.log('🔧 Starting comprehensive fix for notifications assignment loading...');
+  debugLog('🔧 Starting comprehensive fix for notifications assignment loading...');
   
   try {
     // Step 1: Debug current state
     const debugResult = debugAssignmentsSheetState();
-    console.log('🔍 Debug result:', debugResult);
+    debugLog('🔍 Debug result:', debugResult);
     
     if (!debugResult.success) {
-      console.log('❌ Found issues, attempting to fix...');
+      debugLog('❌ Found issues, attempting to fix...');
       
       // Step 2: Fix issues
       const fixResult = fixAssignmentsSheetIssues(debugResult);
-      console.log('🔧 Fix result:', fixResult);
+      debugLog('🔧 Fix result:', fixResult);
       
       if (!fixResult.success) {
         throw new Error('Failed to fix assignment sheet issues: ' + fixResult.error);
@@ -27,9 +27,9 @@ function fixNotificationsAssignmentLoading() {
     }
     
     // Step 3: Verify the fix worked
-    console.log('✅ Verifying fix...');
+    debugLog('✅ Verifying fix...');
     const verifyResult = verifyAssignmentLoading();
-    console.log('✅ Verification result:', verifyResult);
+    debugLog('✅ Verification result:', verifyResult);
     
     return {
       success: true,
@@ -52,7 +52,7 @@ function fixNotificationsAssignmentLoading() {
  * Debug the current state of assignments sheet and loading
  */
 function debugAssignmentsSheetState() {
-  console.log('🔍 Debugging assignments sheet state...');
+  debugLog('🔍 Debugging assignments sheet state...');
   
   try {
     const issues = [];
@@ -249,28 +249,28 @@ function analyzeAssignmentData(values, headers) {
  * Fix issues with assignments sheet
  */
 function fixAssignmentsSheetIssues(debugResult) {
-  console.log('🔧 Fixing assignments sheet issues...');
+  debugLog('🔧 Fixing assignments sheet issues...');
   
   try {
     const issues = debugResult.issues || [];
     
     // Fix 1: Create assignments sheet if missing
     if (issues.includes('assignments_sheet_missing')) {
-      console.log('🔧 Creating missing assignments sheet...');
+      debugLog('🔧 Creating missing assignments sheet...');
       const sheet = getOrCreateSheet(
         CONFIG.sheets.assignments,
         Object.values(CONFIG.columns.assignments)
       );
-      console.log('✅ Created assignments sheet');
+      debugLog('✅ Created assignments sheet');
     }
     
     // Fix 2: Add sample data if sheet is empty or has no data
     if (issues.includes('assignments_sheet_empty') || 
         issues.includes('assignments_sheet_no_data') || 
         issues.includes('getAllAssignmentsForNotifications_returns_empty')) {
-      console.log('🔧 Adding sample assignment data...');
+      debugLog('🔧 Adding sample assignment data...');
       const sampleResult = createSampleAssignmentsForTesting();
-      console.log('✅ Sample data result:', sampleResult);
+      debugLog('✅ Sample data result:', sampleResult);
       
       if (!sampleResult.success) {
         throw new Error('Failed to create sample assignments: ' + sampleResult.error);
@@ -278,15 +278,15 @@ function fixAssignmentsSheetIssues(debugResult) {
     }
     
     // Fix 3: Create riders sheet and sample riders if needed
-    console.log('🔧 Ensuring riders data exists...');
+    debugLog('🔧 Ensuring riders data exists...');
     createSampleRidersIfNeeded();
-    console.log('✅ Riders data verified');
+    debugLog('✅ Riders data verified');
     
     // Fix 4: Clear caches to ensure fresh data
-    console.log('🔧 Clearing data caches...');
+    debugLog('🔧 Clearing data caches...');
     dataCache.clear('sheet_' + CONFIG.sheets.assignments);
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
-    console.log('✅ Caches cleared');
+    debugLog('✅ Caches cleared');
     
     return {
       success: true,
@@ -306,20 +306,20 @@ function fixAssignmentsSheetIssues(debugResult) {
  * Verify that assignment loading is now working
  */
 function verifyAssignmentLoading() {
-  console.log('✅ Verifying assignment loading...');
+  debugLog('✅ Verifying assignment loading...');
   
   try {
     // Test getAssignmentsData
     const assignmentsData = getAssignmentsData(false);
-    console.log(`📊 getAssignmentsData returned ${assignmentsData.data?.length || 0} rows`);
+    debugLog(`📊 getAssignmentsData returned ${assignmentsData.data?.length || 0} rows`);
     
     // Test getAllAssignmentsForNotifications
     const notificationAssignments = getAllAssignmentsForNotifications(false);
-    console.log(`📊 getAllAssignmentsForNotifications returned ${notificationAssignments?.length || 0} assignments`);
+    debugLog(`📊 getAllAssignmentsForNotifications returned ${notificationAssignments?.length || 0} assignments`);
     
     // Test the full getPageDataForNotifications function
     const pageData = getPageDataForNotifications();
-    console.log(`📊 getPageDataForNotifications returned:`, {
+    debugLog(`📊 getPageDataForNotifications returned:`, {
       success: pageData.success,
       assignmentsCount: pageData.assignments?.length || 0,
       hasStats: !!pageData.stats,
@@ -350,7 +350,7 @@ function verifyAssignmentLoading() {
  * Quick function to run just the fix without detailed debugging
  */
 function quickFixAssignments() {
-  console.log('⚡ Running quick assignment fix...');
+  debugLog('⚡ Running quick assignment fix...');
   
   try {
     // Ensure sheets exist and have sample data
@@ -385,7 +385,7 @@ function quickFixAssignments() {
  * Quick fix function that automatically diagnoses and attempts to fix common issues
  */
 function quickFixNotificationsAssignmentLoading() {
-  console.log('🚀 Starting quick fix for notifications assignment loading...');
+  debugLog('🚀 Starting quick fix for notifications assignment loading...');
   
   try {
     const result = {
@@ -402,7 +402,7 @@ function quickFixNotificationsAssignmentLoading() {
     let sheet = spreadsheet.getSheetByName(assignmentsSheetName);
     
     if (!sheet) {
-      console.log('📋 Assignments sheet not found, creating it...');
+      debugLog('📋 Assignments sheet not found, creating it...');
       sheet = getOrCreateSheet(assignmentsSheetName, Object.values(CONFIG.columns.assignments));
       result.fixes.push('Created assignments sheet');
     }
@@ -412,7 +412,7 @@ function quickFixNotificationsAssignmentLoading() {
     const values = range.getValues();
     
     if (values.length <= 1) {
-      console.log('📋 No assignment data found, creating sample data...');
+      debugLog('📋 No assignment data found, creating sample data...');
       const sampleResult = createSampleAssignmentsForTesting();
       result.fixes.push('Created sample assignment data');
       result.assignmentsFound = sampleResult.created || 0;

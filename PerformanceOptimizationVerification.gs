@@ -8,7 +8,7 @@
  * Run this after implementing the performance fixes to verify they're working
  */
 function verifyPerformanceOptimizations() {
-  console.log('🚀 === PERFORMANCE OPTIMIZATION VERIFICATION ===\n');
+  debugLog('🚀 === PERFORMANCE OPTIMIZATION VERIFICATION ===\n');
   
   const results = {
     tests: [],
@@ -21,31 +21,31 @@ function verifyPerformanceOptimizations() {
   
   try {
     // Test 1: Verify conditional logging is working
-    console.log('📋 Test 1: Conditional Logging System');
+    debugLog('📋 Test 1: Conditional Logging System');
     const loggingTest = testConditionalLogging();
     results.tests.push(loggingTest);
     updateSummary(results.summary, loggingTest);
     
     // Test 2: Verify enhanced caching system
-    console.log('\n📋 Test 2: Enhanced Caching System');
+    debugLog('\n📋 Test 2: Enhanced Caching System');
     const cachingTest = testEnhancedCaching();
     results.tests.push(cachingTest);
     updateSummary(results.summary, cachingTest);
     
     // Test 3: Verify index-based lookups
-    console.log('\n📋 Test 3: Index-Based Lookups');
+    debugLog('\n📋 Test 3: Index-Based Lookups');
     const indexTest = testIndexedLookups();
     results.tests.push(indexTest);
     updateSummary(results.summary, indexTest);
     
     // Test 4: Verify fixed reports calculation
-    console.log('\n📋 Test 4: Fixed Reports Calculation');
+    debugLog('\n📋 Test 4: Fixed Reports Calculation');
     const reportsTest = testReportsCalculation();
     results.tests.push(reportsTest);
     updateSummary(results.summary, reportsTest);
     
     // Test 5: Performance tracking
-    console.log('\n📋 Test 5: Performance Tracking');
+    debugLog('\n📋 Test 5: Performance Tracking');
     const performanceTest = testPerformanceTracking();
     results.tests.push(performanceTest);
     updateSummary(results.summary, performanceTest);
@@ -62,23 +62,23 @@ function verifyPerformanceOptimizations() {
   }
   
   // Print final summary
-  console.log('\n🎯 === VERIFICATION SUMMARY ===');
-  console.log(`✅ Passed: ${results.summary.passed}`);
-  console.log(`❌ Failed: ${results.summary.failed}`);
-  console.log(`⚠️ Warnings: ${results.summary.warnings}`);
+  debugLog('\n🎯 === VERIFICATION SUMMARY ===');
+  debugLog(`✅ Passed: ${results.summary.passed}`);
+  debugLog(`❌ Failed: ${results.summary.failed}`);
+  debugLog(`⚠️ Warnings: ${results.summary.warnings}`);
   
   const overallStatus = results.summary.failed === 0 ? 'SUCCESS' : 'FAILED';
-  console.log(`\n🏆 Overall Status: ${overallStatus}`);
+  debugLog(`\n🏆 Overall Status: ${overallStatus}`);
   
   if (results.summary.failed === 0) {
-    console.log('\n🎉 All performance optimizations are working correctly!');
-    console.log('📈 Expected performance improvements:');
-    console.log('   • 60-80% faster sheet operations');
-    console.log('   • 90% faster data lookups');
-    console.log('   • 15-20% overall execution speed increase');
-    console.log('   • 50% reduction in API calls');
+    debugLog('\n🎉 All performance optimizations are working correctly!');
+    debugLog('📈 Expected performance improvements:');
+    debugLog('   • 60-80% faster sheet operations');
+    debugLog('   • 90% faster data lookups');
+    debugLog('   • 15-20% overall execution speed increase');
+    debugLog('   • 50% reduction in API calls');
   } else {
-    console.log('\n⚠️ Some optimizations need attention. Check the failed tests above.');
+    debugLog('\n⚠️ Some optimizations need attention. Check the failed tests above.');
   }
   
   return results;
@@ -362,10 +362,10 @@ function testPerformanceTracking() {
  * Helper function to update summary counts
  */
 function updateSummary(summary, testResult) {
-  console.log(`   ${testResult.status === 'PASSED' ? '✅' : testResult.status === 'WARNING' ? '⚠️' : '❌'} ${testResult.name}: ${testResult.message}`);
+  debugLog(`   ${testResult.status === 'PASSED' ? '✅' : testResult.status === 'WARNING' ? '⚠️' : '❌'} ${testResult.name}: ${testResult.message}`);
   
   if (testResult.details) {
-    console.log(`      Details: ${testResult.details}`);
+    debugLog(`      Details: ${testResult.details}`);
   }
   
   switch (testResult.status) {
@@ -387,8 +387,8 @@ function updateSummary(summary, testResult) {
 function enableDebugMode() {
   try {
     PropertiesService.getScriptProperties().setProperty('DEBUG_MODE', 'true');
-    console.log('✅ Debug mode enabled');
-    console.log('💡 Run verifyPerformanceOptimizations() to test all optimizations');
+    debugLog('✅ Debug mode enabled');
+    debugLog('💡 Run verifyPerformanceOptimizations() to test all optimizations');
     return { success: true, message: 'Debug mode enabled' };
   } catch (error) {
     console.error('❌ Failed to enable debug mode:', error);
@@ -402,7 +402,7 @@ function enableDebugMode() {
 function disableDebugMode() {
   try {
     PropertiesService.getScriptProperties().deleteProperty('DEBUG_MODE');
-    console.log('✅ Debug mode disabled (production mode)');
+    debugLog('✅ Debug mode disabled (production mode)');
     return { success: true, message: 'Debug mode disabled' };
   } catch (error) {
     console.error('❌ Failed to disable debug mode:', error);
@@ -435,12 +435,12 @@ function getOptimizationStatus() {
     else if (optimizationScore >= 50) status.optimizationLevel = 'Partially Optimized';
     else status.optimizationLevel = 'Needs Optimization';
     
-    console.log('📊 Performance Optimization Status:');
-    console.log(`   Debug Mode: ${status.debugMode ? 'Enabled' : 'Disabled'}`);
-    console.log(`   Performance Tracking: ${status.performanceTracking ? 'Enabled' : 'Disabled'}`);
-    console.log(`   Enhanced Caching: ${status.enhancedCaching ? 'Active' : 'Inactive'}`);
-    console.log(`   Cache Timeout: ${status.cacheTimeout / 1000 / 60} minutes`);
-    console.log(`   Optimization Level: ${status.optimizationLevel} (${optimizationScore}%)`);
+    debugLog('📊 Performance Optimization Status:');
+    debugLog(`   Debug Mode: ${status.debugMode ? 'Enabled' : 'Disabled'}`);
+    debugLog(`   Performance Tracking: ${status.performanceTracking ? 'Enabled' : 'Disabled'}`);
+    debugLog(`   Enhanced Caching: ${status.enhancedCaching ? 'Active' : 'Inactive'}`);
+    debugLog(`   Cache Timeout: ${status.cacheTimeout / 1000 / 60} minutes`);
+    debugLog(`   Optimization Level: ${status.optimizationLevel} (${optimizationScore}%)`);
     
     return status;
     

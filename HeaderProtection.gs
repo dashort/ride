@@ -8,7 +8,7 @@
  * Run this once to set up protection for all your sheets
  */
 function protectAllSheetHeadersFixed() {
-  console.log('🛡️ Setting up header protection for all critical sheets...');
+  debugLog('🛡️ Setting up header protection for all critical sheets...');
   
   const results = {
     protected: [],
@@ -50,13 +50,13 @@ function protectAllSheetHeadersFixed() {
     // Process each critical sheet
     criticalSheets.forEach(sheetConfig => {
       try {
-        console.log(`🔍 Processing ${sheetConfig.name} sheet...`);
+        debugLog(`🔍 Processing ${sheetConfig.name} sheet...`);
         
         let sheet = ss.getSheetByName(sheetConfig.name);
         
         // Create sheet if it doesn't exist
         if (!sheet) {
-          console.log(`📋 Creating missing ${sheetConfig.name} sheet...`);
+          debugLog(`📋 Creating missing ${sheetConfig.name} sheet...`);
           sheet = ss.insertSheet(sheetConfig.name);
           
           // Add headers
@@ -79,13 +79,13 @@ function protectAllSheetHeadersFixed() {
             headersCount: sheetConfig.headers.length,
             protections: protectionResult.protections
           });
-          console.log(`✅ ${sheetConfig.name} headers protected`);
+          debugLog(`✅ ${sheetConfig.name} headers protected`);
         } else {
           results.failed.push({
             sheet: sheetConfig.name,
             error: protectionResult.error
           });
-          console.log(`❌ Failed to protect ${sheetConfig.name}: ${protectionResult.error}`);
+          debugLog(`❌ Failed to protect ${sheetConfig.name}: ${protectionResult.error}`);
         }
         
       } catch (error) {
@@ -105,30 +105,30 @@ function protectAllSheetHeadersFixed() {
       timestamp: new Date().toISOString()
     };
     
-    console.log('\n📋 HEADER PROTECTION SUMMARY');
-    console.log('='.repeat(50));
-    console.log(`✅ Protected: ${results.protected.length} sheets`);
-    console.log(`❌ Failed: ${results.failed.length} sheets`);
+    debugLog('\n📋 HEADER PROTECTION SUMMARY');
+    debugLog('='.repeat(50));
+    debugLog(`✅ Protected: ${results.protected.length} sheets`);
+    debugLog(`❌ Failed: ${results.failed.length} sheets`);
     
     if (results.protected.length > 0) {
-      console.log('\n🛡️ Successfully Protected:');
+      debugLog('\n🛡️ Successfully Protected:');
       results.protected.forEach(p => {
-        console.log(`   ${p.sheet}: ${p.headersCount} headers`);
+        debugLog(`   ${p.sheet}: ${p.headersCount} headers`);
       });
     }
     
     if (results.failed.length > 0) {
-      console.log('\n❌ Failed to Protect:');
+      debugLog('\n❌ Failed to Protect:');
       results.failed.forEach(f => {
-        console.log(`   ${f.sheet}: ${f.error}`);
+        debugLog(`   ${f.sheet}: ${f.error}`);
       });
     }
     
     // Set up only the daily monitoring (not the problematic onEdit)
     setupDailyMonitoringOnly();
     
-    console.log('\n🎉 Header protection setup complete!');
-    console.log('💡 To add real-time monitoring, manually set up an onEdit trigger in the Apps Script IDE');
+    debugLog('\n🎉 Header protection setup complete!');
+    debugLog('💡 To add real-time monitoring, manually set up an onEdit trigger in the Apps Script IDE');
     
     return results;
     
@@ -145,7 +145,7 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
   const protections = [];
   
   try {
-    console.log(`🔒 Applying protection to ${sheet.getName()} headers...`);
+    debugLog(`🔒 Applying protection to ${sheet.getName()} headers...`);
     
     // 1. Remove any existing header row protections to start fresh
     const existingProtections = sheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
@@ -153,14 +153,14 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
       const range = protection.getRange();
       if (range.getRow() === 1) {
         protection.remove();
-        console.log(`   🗑️ Removed existing header protection`);
+        debugLog(`   🗑️ Removed existing header protection`);
       }
     });
     
     // 2. Clear any data validation from header row first
     const headerRange = sheet.getRange(1, 1, 1, Math.max(expectedHeaders.length, sheet.getLastColumn()));
     headerRange.clearDataValidations();
-    console.log(`   🚫 Cleared data validation from header row`);
+    debugLog(`   🚫 Cleared data validation from header row`);
     
     // 3. Set correct headers
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -173,7 +173,7 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
     });
     
     if (headersNeedFixing || sheet.getLastColumn() < expectedHeaders.length) {
-      console.log(`   🔧 Setting correct headers for ${sheet.getName()}...`);
+      debugLog(`   🔧 Setting correct headers for ${sheet.getName()}...`);
       
       const headerSetRange = sheet.getRange(1, 1, 1, expectedHeaders.length);
       headerSetRange.setValues([expectedHeaders]);
@@ -184,7 +184,7 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
                     .setFontColor('white')
                     .setHorizontalAlignment('center');
       
-      console.log(`   ✅ Headers set and formatted`);
+      debugLog(`   ✅ Headers set and formatted`);
     }
     
     // 4. Protect the header row with WARNING mode
@@ -198,9 +198,9 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
     try {
       const me = Session.getActiveUser();
       headerProtection.addEditor(me);
-      console.log(`   👤 Added ${me.getEmail()} as header editor`);
+      debugLog(`   👤 Added ${me.getEmail()} as header editor`);
     } catch (e) {
-      console.log(`   ⚠️ Could not add current user as editor: ${e.message}`);
+      debugLog(`   ⚠️ Could not add current user as editor: ${e.message}`);
     }
     
     protections.push({
@@ -215,7 +215,7 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
     // 6. Set up data validation for data rows (not headers)
     setupDataValidationForDataRowsOnlyFixed(sheet, expectedHeaders);
     
-    console.log(`   ✅ Protection applied to ${sheet.getName()}`);
+    debugLog(`   ✅ Protection applied to ${sheet.getName()}`);
     
     return {
       success: true,
@@ -237,7 +237,7 @@ function protectSheetHeadersFixed(sheet, expectedHeaders) {
  */
 function setupDailyMonitoringOnly() {
   try {
-    console.log('📊 Setting up daily header monitoring...');
+    debugLog('📊 Setting up daily header monitoring...');
     
     // Delete existing daily triggers to avoid duplicates
     const existingTriggers = ScriptApp.getProjectTriggers();
@@ -254,8 +254,8 @@ function setupDailyMonitoringOnly() {
       .atHour(6) // 6 AM daily
       .create();
     
-    console.log('✅ Daily validation trigger created (runs at 6 AM daily)');
-    console.log('💡 For real-time monitoring, manually add an onEdit trigger in Apps Script IDE');
+    debugLog('✅ Daily validation trigger created (runs at 6 AM daily)');
+    debugLog('💡 For real-time monitoring, manually add an onEdit trigger in Apps Script IDE');
     
   } catch (error) {
     console.error('❌ Failed to set up daily monitoring:', error);
@@ -269,7 +269,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
   const sheetName = sheet.getName();
   const lastRow = Math.max(sheet.getLastRow(), 20); // Prepare for future data
   
-  console.log(`   🎯 Setting up data validation for ${sheetName} data rows (2-${lastRow})...`);
+  debugLog(`   🎯 Setting up data validation for ${sheetName} data rows (2-${lastRow})...`);
   
   try {
     if (sheetName === 'Requests') {
@@ -283,7 +283,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
           .setHelpText('Select request status')
           .build();
         statusRange.setDataValidation(statusValidation);
-        console.log(`     ✅ Status validation applied to ${statusRange.getA1Notation()}`);
+        debugLog(`     ✅ Status validation applied to ${statusRange.getA1Notation()}`);
       }
       
       // Request Type validation
@@ -296,7 +296,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
           .setHelpText('Select request type')
           .build();
         typeRange.setDataValidation(typeValidation);
-        console.log(`     ✅ Request Type validation applied to ${typeRange.getA1Notation()}`);
+        debugLog(`     ✅ Request Type validation applied to ${typeRange.getA1Notation()}`);
       }
       
       // Courtesy validation
@@ -309,7 +309,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
           .setHelpText('Is this a courtesy request?')
           .build();
         courtesyRange.setDataValidation(courtesyValidation);
-        console.log(`     ✅ Courtesy validation applied to ${courtesyRange.getA1Notation()}`);
+        debugLog(`     ✅ Courtesy validation applied to ${courtesyRange.getA1Notation()}`);
       }
     }
     
@@ -324,7 +324,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
           .setHelpText('Select rider status')
           .build();
         statusRange.setDataValidation(statusValidation);
-        console.log(`     ✅ Rider Status validation applied to ${statusRange.getA1Notation()}`);
+        debugLog(`     ✅ Rider Status validation applied to ${statusRange.getA1Notation()}`);
       }
       
       // Certification validation
@@ -337,7 +337,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
           .setHelpText('Select certification level')
           .build();
         certRange.setDataValidation(certValidation);
-        console.log(`     ✅ Certification validation applied to ${certRange.getA1Notation()}`);
+        debugLog(`     ✅ Certification validation applied to ${certRange.getA1Notation()}`);
       }
     }
     
@@ -352,11 +352,11 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
           .setHelpText('Select assignment status')
           .build();
         statusRange.setDataValidation(statusValidation);
-        console.log(`     ✅ Assignment Status validation applied to ${statusRange.getA1Notation()}`);
+        debugLog(`     ✅ Assignment Status validation applied to ${statusRange.getA1Notation()}`);
       }
     }
     
-    console.log(`   ✅ Data validation applied to data rows only (headers protected)`);
+    debugLog(`   ✅ Data validation applied to data rows only (headers protected)`);
     
   } catch (error) {
     console.error(`   ❌ Data validation setup failed for ${sheetName}:`, error);
@@ -378,7 +378,7 @@ function backupHeadersFixed(sheetName, headers) {
     const props = PropertiesService.getScriptProperties();
     props.setProperty(`header_backup_${sheetName}`, JSON.stringify(backup));
     
-    console.log(`   💾 Headers backed up for ${sheetName}`);
+    debugLog(`   💾 Headers backed up for ${sheetName}`);
     
   } catch (error) {
     console.error(`   ❌ Backup failed for ${sheetName}:`, error);
@@ -389,7 +389,7 @@ function backupHeadersFixed(sheetName, headers) {
  * 🕒 Daily header validation (runs automatically)
  */
 function dailyHeaderValidation() {
-  console.log('🕒 Running daily header validation...');
+  debugLog('🕒 Running daily header validation...');
   
   try {
     const criticalSheets = [
@@ -405,7 +405,7 @@ function dailyHeaderValidation() {
       try {
         const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetConfig.name);
         if (!sheet) {
-          console.log(`⚠️ ${sheetConfig.name} sheet not found`);
+          debugLog(`⚠️ ${sheetConfig.name} sheet not found`);
           return;
         }
         
@@ -416,13 +416,13 @@ function dailyHeaderValidation() {
         sheetConfig.headers.forEach((expected, index) => {
           if (currentHeaders[index] !== expected) {
             issuesFound++;
-            console.log(`❌ ${sheetConfig.name} header issue: Column ${index + 1} has "${currentHeaders[index]}", expected "${expected}"`);
+            debugLog(`❌ ${sheetConfig.name} header issue: Column ${index + 1} has "${currentHeaders[index]}", expected "${expected}"`);
           }
         });
         
         // Fix headers if issues found
         if (issuesFound > 0) {
-          console.log(`🔧 Fixing ${issuesFound} headers in ${sheetConfig.name}...`);
+          debugLog(`🔧 Fixing ${issuesFound} headers in ${sheetConfig.name}...`);
           
           // Clear validation and set correct headers
           const headerRange = sheet.getRange(1, 1, 1, sheetConfig.headers.length);
@@ -436,7 +436,7 @@ function dailyHeaderValidation() {
                      .setHorizontalAlignment('center');
           
           totalFixes += issuesFound;
-          console.log(`✅ Fixed ${issuesFound} headers in ${sheetConfig.name}`);
+          debugLog(`✅ Fixed ${issuesFound} headers in ${sheetConfig.name}`);
         }
         
         totalIssues += issuesFound;
@@ -447,9 +447,9 @@ function dailyHeaderValidation() {
     });
     
     if (totalIssues === 0) {
-      console.log('✅ Daily header validation passed - all headers are intact');
+      debugLog('✅ Daily header validation passed - all headers are intact');
     } else {
-      console.log(`⚠️ Found and fixed ${totalFixes} header issues during daily check`);
+      debugLog(`⚠️ Found and fixed ${totalFixes} header issues during daily check`);
     }
     
   } catch (error) {
@@ -461,14 +461,14 @@ function dailyHeaderValidation() {
  * 🧪 Test header protection (FIXED)
  */
 function testHeaderProtectionFixed() {
-  console.log('🧪 Testing header protection...');
+  debugLog('🧪 Testing header protection...');
   
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const testSheet = ss.getSheetByName('Requests');
     
     if (!testSheet) {
-      console.log('❌ Requests sheet not found for testing');
+      debugLog('❌ Requests sheet not found for testing');
       return false;
     }
     
@@ -477,14 +477,14 @@ function testHeaderProtectionFixed() {
     const headerProtections = protections.filter(p => p.getRange().getRow() === 1);
     
     if (headerProtections.length > 0) {
-      console.log(`✅ Found ${headerProtections.length} header protection(s)`);
+      debugLog(`✅ Found ${headerProtections.length} header protection(s)`);
       headerProtections.forEach(p => {
-        console.log(`   Protected range: ${p.getRange().getA1Notation()}`);
-        console.log(`   Warning only: ${p.isWarningOnly()}`);
-        console.log(`   Description: ${p.getDescription()}`);
+        debugLog(`   Protected range: ${p.getRange().getA1Notation()}`);
+        debugLog(`   Warning only: ${p.isWarningOnly()}`);
+        debugLog(`   Description: ${p.getDescription()}`);
       });
     } else {
-      console.log('⚠️ No header protections found');
+      debugLog('⚠️ No header protections found');
     }
     
     // Check data validation
@@ -495,15 +495,15 @@ function testHeaderProtectionFixed() {
       const cell = testSheet.getRange(1, col);
       if (cell.getDataValidation()) {
         headerValidationFound = true;
-        console.log(`❌ Data validation found in header cell ${cell.getA1Notation()}`);
+        debugLog(`❌ Data validation found in header cell ${cell.getA1Notation()}`);
       }
     }
     
     if (!headerValidationFound) {
-      console.log('✅ No data validation found in header row (good!)');
+      debugLog('✅ No data validation found in header row (good!)');
     }
     
-    console.log('🧪 Protection test completed');
+    debugLog('🧪 Protection test completed');
     return true;
     
   } catch (error) {
@@ -516,7 +516,7 @@ function testHeaderProtectionFixed() {
  * 🔄 Manual trigger to validate and fix all headers immediately
  */
 function validateAndFixAllHeadersNow() {
-  console.log('🔄 Running immediate header validation and fix...');
+  debugLog('🔄 Running immediate header validation and fix...');
   dailyHeaderValidation();
-  console.log('✅ Manual validation completed');
+  debugLog('✅ Manual validation completed');
 }
