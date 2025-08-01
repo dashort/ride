@@ -2890,8 +2890,16 @@ function generateReportData(filters) {
         monthlyTrends: {}
       },
       tables: {
-        riderPerformance: riderPerformance.sort((a, b) => b.assignments - a.assignments),
-        riderHours: riderHours.sort((a, b) => b.escorts - a.escorts),
+        riderPerformance: riderPerformance.sort((a, b) => {
+          if (a.name === 'NOPD') return 1;
+          if (b.name === 'NOPD') return -1;
+          return b.assignments - a.assignments;
+        }),
+        riderHours: riderHours.sort((a, b) => {
+          if (a.name === 'NOPD') return 1;
+          if (b.name === 'NOPD') return -1;
+          return b.escorts - a.escorts;
+        }),
         locations: popularLocations,
         responseTime: {}
       }
@@ -3321,7 +3329,11 @@ function generateRiderActivityReport(startDate, endDate) {
       });
     });
     
-    const data = filteredData.sort((a, b) => b.escorts - a.escorts);
+    const data = filteredData.sort((a, b) => {
+      if (a.name === 'NOPD') return 1;
+      if (b.name === 'NOPD') return -1;
+      return b.escorts - a.escorts;
+    });
 
   return { success: true, data };
   } catch (error) {

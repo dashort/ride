@@ -90,3 +90,4 @@ This implementation adds support for NOPD (New Orleans Police Department) riders
 - Could add more organization types with different availability rules
 - Could add organization-specific rider assignment preferences
 - Could implement organization-based reporting and analytics
+- Reports list the consolidated NOPD entry last to keep focus on other riders
