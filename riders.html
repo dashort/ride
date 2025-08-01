@@ -735,9 +735,6 @@
 
         loadRidersData();
         setupEventListeners();
-        
-        // Add diagnostic button for debugging
-        addDiagnosticButton();
 
         // Fetch the web app URL when running inside Apps Script
         if (typeof google !== 'undefined' && google.script && google.script.run) {
@@ -758,193 +755,17 @@
  */
 
     function loadRidersData() {
-        console.log('🔄 loadRidersData() called');
         showLoading();
         
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            console.log('✅ Google Apps Script available, calling getPageDataForRiders...');
-            
-            // Add timeout protection
-            let timeoutId = setTimeout(() => {
-                console.error('⏰ Request timed out after 30 seconds');
-                handleRidersDataFailure({ message: "Request timed out. This may indicate a backend issue." });
-            }, 30000);
-            
             google.script.run
-                .withSuccessHandler(function(data) {
-                    clearTimeout(timeoutId);
-                    console.log('📥 Raw data received from backend:', data);
-                    
-                    // Additional validation
-                    if (!data) {
-                        console.error('❌ Received null/undefined data from backend');
-                        // Attempt fallbacks before showing an error
-                        tryFallbackDataLoading(new Error('No data received from server'));
-                        return;
-                    }
-                    
-                    handleRidersDataSuccess(data);
-                })
-                .withFailureHandler(function(error) {
-                    clearTimeout(timeoutId);
-                    console.error('📥 Error received from backend:', error);
-                    
-                    // Try alternative approaches
-                    console.log('🔄 Attempting fallback methods...');
-                    tryFallbackDataLoading(error);
-                })
+                .withSuccessHandler(handleRidersDataSuccess)
+                .withFailureHandler(handleRidersDataFailure)
                 .getPageDataForRiders();
         } else {
             console.log('⚠️ Google Apps Script not available');
             handleRidersDataFailure({ message: "Google Apps Script not available." });
         }
-    }
-
-    // Fallback data loading methods
-    function tryFallbackDataLoading(originalError) {
-        console.log('🚨 Trying fallback data loading methods...');
-        
-        // Fallback 1: Try test function
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            console.log('🔄 Fallback 1: Trying test function...');
-            
-            google.script.run
-                .withSuccessHandler(function(data) {
-                    if (data && data.success) {
-                        console.log('✅ Fallback 1 succeeded');
-                        handleRidersDataSuccess(data);
-                    } else {
-                        console.log('❌ Fallback 1 failed, trying fallback 2...');
-                        tryEmergencyData(originalError);
-                    }
-                })
-                .withFailureHandler(function(error) {
-                    console.error('❌ Fallback 1 failed:', error);
-                    tryEmergencyData(originalError);
-                })
-                .testRidersLoadingFix();
-        } else {
-            tryEmergencyData(originalError);
-        }
-    }
-
-    // Emergency fallback with sample data
-    function tryEmergencyData(originalError) {
-        console.log('🚨 Using emergency fallback data...');
-        
-        const emergencyData = {
-            success: true,
-            user: {
-                name: 'Emergency User',
-                email: 'emergency@nopd.com',
-                roles: ['admin']
-            },
-            riders: [],
-            stats: {
-                totalRiders: 0,
-                activeRiders: 0,
-                inactiveRiders: 0,
-                partTimeRiders: 0,
-                fullTimeRiders: 0
-            },
-            debug: {
-                method: 'emergency_fallback',
-                originalError: originalError.message || originalError
-            }
-        };
-        
-        console.log('⚠️ Showing emergency state with error message');
-        handleRidersDataSuccess(emergencyData);
-        
-        // Show error notification
-        showError(`Failed to load riders data: ${originalError.message || originalError}. Please check the backend configuration.`);
-    }
-
-    // DIAGNOSTIC FUNCTIONS - FOR DEBUGGING
-    function diagnoseFrontendIssue() {
-        console.log('\n🔍 === FRONTEND DIAGNOSTIC START ===');
-        
-        // Check Google Apps Script availability
-        console.log('1. Google Apps Script Check:');
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            console.log('✅ Google Apps Script is available');
-            
-            // Test backend connectivity
-            console.log('\n2. Testing backend connectivity...');
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    console.log('✅ Backend connectivity test passed');
-                    console.log('Backend test result:', result);
-                    
-                    // Run comprehensive fix
-                    console.log('\n3. Running comprehensive fix...');
-                    google.script.run
-                        .withSuccessHandler(function(fixResult) {
-                            console.log('🎉 Comprehensive fix completed:');
-                            console.log(fixResult);
-                            
-                            if (fixResult.success) {
-                                console.log('✅ All backend checks passed');
-                                console.log('🔄 Retrying rider data load...');
-                                loadRidersData();
-                            } else {
-                                console.log('❌ Backend issues found:');
-                                fixResult.steps.forEach(step => {
-                                    console.log(`${step.success ? '✅' : '❌'} ${step.name}: ${step.message || step.error}`);
-                                });
-                            }
-                        })
-                        .withFailureHandler(function(error) {
-                            console.error('❌ Comprehensive fix failed:', error);
-                        })
-                        .fixRidersLoadingIssue();
-                })
-                .withFailureHandler(function(error) {
-                    console.error('❌ Backend connectivity test failed:', error);
-                })
-                .quickRidersTest();
-        } else {
-            console.log('❌ Google Apps Script not available');
-            console.log('   - Check if page is running in Google Apps Script environment');
-            console.log('   - Check browser console for JavaScript errors');
-        }
-        
-        // Check page state
-        console.log('\n4. Page State Check:');
-        console.log(`   - app object exists: ${typeof app !== 'undefined'}`);
-        console.log(`   - app.riders: ${app && app.riders ? `Array(${app.riders.length})` : 'null/undefined'}`);
-        console.log(`   - app.user: ${app && app.user ? 'present' : 'null/undefined'}`);
-        
-        // Check DOM elements
-        console.log('\n5. DOM Elements Check:');
-        const elements = ['searchBox', 'statusFilter', 'ridersTable', 'totalRiders'];
-        elements.forEach(id => {
-            const element = document.getElementById(id);
-            console.log(`   - ${id}: ${element ? 'found' : 'missing'}`);
-        });
-        
-        console.log('\n🔍 === FRONTEND DIAGNOSTIC END ===\n');
-    }
-
-    // Add diagnostic button to page (for debugging)
-    function addDiagnosticButton() {
-        const button = document.createElement('button');
-        button.textContent = '🔍 Diagnose Issue';
-        button.style.cssText = `
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        `;
-        button.onclick = diagnoseFrontendIssue;
-        document.body.appendChild(button);
     }
 
     function handleRidersDataFailure(error) {
@@ -1448,87 +1269,42 @@ function saveRider() {
  * Update your handleRidersDataSuccess function in riders.html
  */
 function handleRidersDataSuccess(data) {
-  console.log('🎯 handleRidersDataSuccess called with data:', data);
   hideLoading();
   
-  // Enhanced validation and debugging
-  if (!data) {
-    console.error('❌ No data received from backend');
-    showError('No data received from server');
-    return;
-  }
-  
-  console.log('📊 Data validation:');
-  console.log(`  - data.success: ${data.success}`);
-  console.log(`  - data.riders: ${data.riders ? `Array(${data.riders.length})` : 'null/undefined'}`);
-  console.log(`  - data.user: ${data.user ? 'present' : 'null/undefined'}`);
-  console.log(`  - data.stats: ${data.stats ? 'present' : 'null/undefined'}`);
-  console.log(`  - data.error: ${data.error || 'none'}`);
-  
   if (data && data.success) {
-    console.log('✅ Data validation passed, processing riders...');
-    
-    // Store data in app state
+    console.log('✅ Riders data loaded:', data);
     app.user = data.user;
     app.riders = data.riders || [];
     app.filteredRiders = [...app.riders]; // Initialize filtered riders
     
-    console.log(`📋 Stored ${app.riders.length} riders in app state`);
-    
-    // Sample first few riders for debugging
-    if (app.riders.length > 0) {
-      console.log('🔍 Sample riders:');
-      app.riders.slice(0, 3).forEach((rider, i) => {
-        console.log(`  ${i + 1}. ${rider.name || 'No Name'} (${rider.jpNumber || 'No ID'}) - Status: ${rider.status || 'No Status'}`);
-      });
-    }
-    
-    // Update UI components
-    try {
-      console.log('🔄 Updating user info...');
-      updateUserInfo(data.user);
-      
-      console.log('📊 Updating stats...');
-      updateStats(data.stats);
-      
-      console.log('📋 Rendering riders table...');
-      renderRidersTable(app.filteredRiders);
-      
-      console.log('👁️ Showing table...');
-      showTable();
-      
-      console.log('📞 Fetching assignment counts...');
-      fetchAssignmentCountsForRiders(app.filteredRiders);
+    updateUserInfo(data.user);
+    updateStats(data.stats);
+    renderRidersTable(app.filteredRiders); // Use filtered riders
+    showTable();
+    fetchAssignmentCountsForRiders(app.filteredRiders);
 
-      console.log('🔧 Setting up event listeners...');
-      setupEventListeners();
+    // IMPORTANT: Setup search after data is loaded
+    setupEventListeners();
 
-      console.log('🔍 Applying initial filters...');
-      filterRiders();
+    // Ensure initial results are visible even if no filter is applied
+    // Using the same filtering logic as the dropdowns avoids cases where the
+    // table remains empty until a filter change triggers re-rendering.
+    filterRiders();
 
-      // Apply filter from URL if provided
-      const params = new URLSearchParams(window.location.search);
-      const statusParam = params.get('status');
-      if (statusParam) {
-        console.log(`🔗 Applying URL filter: ${statusParam}`);
-        const statusFilter = document.getElementById('statusFilter');
-        if (statusFilter) {
-          statusFilter.value = statusParam;
-          filterRiders();
-        }
+    // Apply filter from URL if provided
+    const params = new URLSearchParams(window.location.search);
+    const statusParam = params.get('status');
+    if (statusParam) {
+      const statusFilter = document.getElementById('statusFilter');
+      if (statusFilter) {
+        statusFilter.value = statusParam;
+        filterRiders();
       }
-      
-      console.log(`✅ Riders page setup complete with ${app.riders.length} riders`);
-      
-    } catch (uiError) {
-      console.error('❌ Error during UI setup:', uiError);
-      showError('Error setting up riders page: ' + uiError.message);
     }
     
+    console.log(`🔍 Search ready with ${app.riders.length} riders`);
   } else {
-    console.error('❌ Backend returned unsuccessful response');
-    console.error('   - data.success:', data.success);
-    console.error('   - data.error:', data.error);
+    console.error('❌ Failed to load riders data:', data ? data.error : 'No data');
     showError('Failed to load riders: ' + (data ? data.error : 'Unknown error'));
   }
 }

@@ -13,14 +13,15 @@
  *                             secondaryLocation (final location, required),
  *                             endLocation (second location, optional),
  *                             requestType, ridersNeeded, notes (optional).
+ * @param {string} [submittedBy=Session.getActiveUser().getEmail()] The email of the user submitting the request.
  * @return {object} An object indicating success or failure, and including the new request ID or an error message.
  *                  { success: true, requestId: "R0001", message: "Request created successfully." }
  *                  { success: false, message: "Error details..." }
  */
-function createNewRequest(requestData) {
+function createNewRequest(requestData, submittedBy = Session.getActiveUser().getEmail()) {
   return trackPerformance('createNewRequest', () => {
     try {
-      debugLog('Starting new request creation with data:', JSON.stringify(requestData).substring(0, 200) + "...");
+      debugLog(`Starting new request creation by ${submittedBy} with data:`, JSON.stringify(requestData).substring(0, 200) + "...");
 
       const requestsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
       if (!requestsSheet) {
@@ -69,15 +70,16 @@ function createNewRequest(requestData) {
         switch (header) {
             case CONFIG.columns.requests.id:                  value = newRequestId; break;
             case CONFIG.columns.requests.submissionTimestamp: value = new Date(); break;
+            case CONFIG.columns.requests.submittedBy:         value = submittedBy; break;
             case CONFIG.columns.requests.requesterName:       value = requestData.requesterName; break;
             case CONFIG.columns.requests.requesterContact:    value = requestData.requesterContact; break;
             case CONFIG.columns.requests.eventDate:
                 value = parseDateString(requestData.eventDate);
                 break;
-            case CONFIG.columns.requests.date:
-                // Keep the legacy "Date" column in sync with Event Date if present
-                value = parseDateString(requestData.eventDate);
-                break;
+case CONFIG.columns.requests.date:
+    // FIX: Date column should get submission timestamp, not event date
+    value = new Date(); // Current date/time when request is submitted
+    break;
             case CONFIG.columns.requests.startTime:           value = parseTimeString(requestData.startTime); break; // Ensure time object or formatted string
             case CONFIG.columns.requests.endTime:             value = requestData.endTime ? parseTimeString(requestData.endTime) : ''; break;
             case CONFIG.columns.requests.startLocation:       value = requestData.startLocation; break;
@@ -149,8 +151,8 @@ function createNewRequest(requestData) {
       // Single flush after all operations
       SpreadsheetApp.flush();
 
-      debugLog(`Request ${newRequestId} created successfully.`);
-      logActivity(`New request ${newRequestId} created. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
+      debugLog(`Request ${newRequestId} created successfully by ${submittedBy}.`);
+      logActivity(`New request ${newRequestId} created by ${submittedBy}. Data: ${JSON.stringify(requestData).substring(0,100)}...`); // From Logger.js (CoreUtils.gs)
 
       // Optional: Trigger notifications or other actions
       if (typeof sendNewRequestNotification === 'function') { // From NotificationService.js
@@ -183,8 +185,8 @@ function createNewRequest(requestData) {
       };
 
     } catch (error) {
-      debugLog('Error in createNewRequest:', error.message, error.stack);
-      logError(`Error in createNewRequest. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
+      debugLog(`Error in createNewRequest by ${submittedBy}:`, error.message, error.stack);
+      logError(`Error in createNewRequest by ${submittedBy}. Data: ${JSON.stringify(requestData || {}).substring(0,100)}...`, error); // From Logger.js (CoreUtils.gs)
       return {
         success: false,
         message: `Failed to create request: ${error.message}`
@@ -458,6 +460,7 @@ function updateExistingRequest(requestData) {
       escortFee: CONFIG.columns.requests.escortFee,
       status: CONFIG.columns.requests.status,
       courtesy: CONFIG.columns.requests.courtesy,
+      specialRequirements: CONFIG.columns.requests.requirements,
       notes: CONFIG.columns.requests.notes
     };
 

@@ -215,25 +215,6 @@
             transition: transform 0.1s ease;
         }
 
-        /* Calendar Day Cell Styling for Availability */
-        .fc-day.day-available {
-            background-color: #d4edda !important;
-            border-color: #27ae60 !important;
-        }
-
-        .fc-day.day-unavailable {
-            background-color: #f8d7da !important;
-            border-color: #e74c3c !important;
-        }
-
-        .fc-day.day-available:hover {
-            background-color: #c3e6cb !important;
-        }
-
-        .fc-day.day-unavailable:hover {
-            background-color: #f1b0b7 !important;
-        }
-
         /* Voice Input Interface */
         .voice-interface {
             position: fixed;
@@ -596,7 +577,6 @@
         let speechRecognition;
         let isVoiceActive = false;
         let fabMenuOpen = false;
-        let availabilityByDate = {}; // Store availability status by date for day cell coloring
         let gestureHints = [
             "👆 Swipe days to update",
             "🎤 Long press for voice",
@@ -780,12 +760,10 @@
             google.script.run
                 .withSuccessHandler(function(events) {
                     console.log('Raw events from backend:', events);
-                    
-                    // Clear existing events and availability tracking
-                    calendar.removeAllEvents();
-                    availabilityByDate = {};
-                    
                     if (events && events.length > 0) {
+                        // Clear existing events
+                        calendar.removeAllEvents();
+                        
                         // Add events to calendar with proper styling
                         events.forEach((event, index) => {
                             const statusColors = {
@@ -805,28 +783,7 @@
                             
                             console.log(`Adding event ${index + 1}:`, eventWithColors);
                             calendar.addEvent(eventWithColors);
-                            
-                            // Track availability by date for day cell coloring
-                            const eventStart = new Date(event.start);
-                            const eventEnd = new Date(event.end || event.start);
-                            
-                            // Handle multi-day events or single day events
-                            let currentDate = new Date(eventStart);
-                            while (currentDate <= eventEnd) {
-                                const dateStr = currentDate.toISOString().split('T')[0];
-                                
-                                // If multiple events on same day, prioritize available over unavailable
-                                if (!availabilityByDate[dateStr] || 
-                                    (availabilityByDate[dateStr] === 'unavailable' && event.status === 'available')) {
-                                    availabilityByDate[dateStr] = event.status;
-                                }
-                                
-                                currentDate.setDate(currentDate.getDate() + 1);
-                            }
                         });
-                        
-                        // Refresh calendar to apply day cell styling
-                        calendar.render();
                         
                         console.log('✅ Loaded', events.length, 'availability events');
                         showNotification(`📅 Loaded ${events.length} availability entries`, 'success');
@@ -839,11 +796,6 @@
                     console.error('Error loading availability data:', error);
                 })
                 .getUserAvailabilityForCalendar(currentUser.email);
-        }
-
-        // Get availability status for a specific date
-        function getDayAvailabilityStatus(dateStr) {
-            return availabilityByDate[dateStr] || null;
         }
 
         function setupGestureHints() {
@@ -940,18 +892,6 @@
                 dayCellDidMount: function(info) {
                     // Add gesture support to each day cell
                     setupDayGestures(info.el, info.date);
-                },
-                
-                dayCellClassNames: function(info) {
-                    const dateStr = info.date.toISOString().split('T')[0];
-                    const dayStatus = getDayAvailabilityStatus(dateStr);
-                    
-                    if (dayStatus === 'available') {
-                        return ['day-available'];
-                    } else if (dayStatus === 'unavailable') {
-                        return ['day-unavailable'];
-                    }
-                    return [];
                 }
             });
 

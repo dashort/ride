@@ -21,10 +21,11 @@ const CONFIG = {
 // Production Performance Configuration
   performance: {
     enableDebugLogging: false,  // Disabled for production - major performance boost
-    enablePerformanceTracking: false,  // Disabled for production
+    enablePerformanceTracking: true,
     batchSize: 100, // Keep this - good for batch operations
     maxCacheAge: 30 * 60 * 1000, // Keep this - 30 minutes is good
-    enableSmartCaching: true  // Keep this - helps performance
+    enableSmartCaching: true,  // Keep this - helps performance
+    slowOperationThreshold: 1000
   },
   
   // Add system settings if not already present
@@ -80,6 +81,7 @@ const CONFIG = {
       secondaryLocation: 'Dropoff',
       ridersNeeded: 'Riders Needed',
       escortFee: 'Escort Fee',
+      requirements: 'Special Requirements',
       status: 'Status',
       notes: 'Notes',
       ridersAssigned: 'Riders Assigned',
