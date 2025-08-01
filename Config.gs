@@ -218,9 +218,147 @@ function trackPerformance(operation, fn) {
   
   return result;
 }
+class DataCache {
+  constructor() {
+    this.cache = new Map();
+    this.indexes = new Map();
+    this.cacheTimeout = 30 * 60 * 1000; // 30 minutes
+    this.hitCount = 0;
+    this.missCount = 0;
+  }
+
+  set(key, value, customTimeout = null) {
+    this.cache.set(key, {
+      data: value,
+      timestamp: Date.now(),
+      timeout: customTimeout || this.cacheTimeout
+    });
+    
+    // Auto-create indexes for common data types
+    if (key === 'requests_data' && value.data) {
+      this.createRequestIndex(value.data, value.columnMap);
+    }
+    if (key === 'riders_data' && value.data) {
+      this.createRiderIndex(value.data, value.columnMap);
+    }
+  }
+
+  get(key) {
+    const cached = this.cache.get(key);
+    if (!cached) {
+      this.missCount++;
+      return null;
+    }
+    
+    if (Date.now() - cached.timestamp > cached.timeout) {
+      this.cache.delete(key);
+      this.missCount++;
+      return null;
+    }
+    
+    this.hitCount++;
+    return cached.data;
+  }
+
+  // Create O(1) lookup index for requests
+  createRequestIndex(data, columnMap) {
+    const index = new Map();
+    const idColumn = columnMap[CONFIG.columns.requests.id];
+    const statusColumn = columnMap[CONFIG.columns.requests.status];
+    
+    data.forEach((row, i) => {
+      const id = row[idColumn];
+      const status = row[statusColumn];
+      if (id) {
+        index.set(String(id).toLowerCase(), { row, index: i, status });
+      }
+    });
+    
+    this.indexes.set('requests_by_id', index);
+    debugLog(`Created request index with ${index.size} entries`);
+  }
+
+  // Create O(1) lookup index for riders
+  createRiderIndex(data, columnMap) {
+    const index = new Map();
+    const nameColumn = columnMap[CONFIG.columns.riders.name];
+    const jpColumn = columnMap[CONFIG.columns.riders.jpNumber];
+    const emailColumn = columnMap[CONFIG.columns.riders.email];
+    
+    data.forEach((row, i) => {
+      const name = row[nameColumn];
+      const jpNumber = row[jpColumn];
+      const email = row[emailColumn];
+      
+      if (name) index.set(String(name).toLowerCase(), { row, index: i });
+      if (jpNumber) index.set(String(jpNumber).toLowerCase(), { row, index: i });
+      if (email) index.set(String(email).toLowerCase(), { row, index: i });
+    });
+    
+    this.indexes.set('riders_by_identifier', index);
+    debugLog(`Created rider index with ${index.size} entries`);
+  }
+
+  // Fast O(1) lookups
+  findRequestById(requestId) {
+    const index = this.indexes.get('requests_by_id');
+    return index ? index.get(String(requestId).toLowerCase()) : null;
+  }
+
+  findRiderByIdentifier(identifier) {
+    const index = this.indexes.get('riders_by_identifier');
+    return index ? index.get(String(identifier).toLowerCase()) : null;
+  }
+
+  // Smart cache invalidation
+  invalidateRequests() {
+    this.cache.delete('requests_data');
+    this.cache.delete('filtered_requests');
+    this.indexes.delete('requests_by_id');
+    debugLog('Invalidated requests cache');
+  }
+
+  invalidateRiders() {
+    this.cache.delete('riders_data');
+    this.cache.delete('active_riders');
+    this.indexes.delete('riders_by_identifier');
+    debugLog('Invalidated riders cache');
+  }
+
+  // Performance statistics
+  getStats() {
+    const total = this.hitCount + this.missCount;
+    const hitRate = total > 0 ? ((this.hitCount / total) * 100).toFixed(1) : 0;
+    return {
+      hitRate: `${hitRate}%`,
+      hits: this.hitCount,
+      misses: this.missCount,
+      cacheSize: this.cache.size,
+      indexCount: this.indexes.size
+    };
+  }
+
+  clear(key = null) {
+    if (key) {
+      this.cache.delete(key);
+      // Clear related indexes
+      for (const [indexKey] of this.indexes) {
+        if (indexKey.includes(key.replace('_data', ''))) {
+          this.indexes.delete(indexKey);
+        }
+      }
+    } else {
+      this.cache.clear();
+      this.indexes.clear();
+      this.hitCount = 0;
+      this.missCount = 0;
+    }
+  }
+}
+
 
 // --- DATA CACHE ---
-class DataCache {
+class DataCache2 {
   /**
    * @description Constructs a DataCache instance.
    */
