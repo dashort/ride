@@ -649,19 +649,99 @@ function getAvailableRidersForTimeSlot(date, startTime, endTime, ridersNeeded) {
 
 /**
  * Ensures the availability sheet exists with proper headers
+ * FIXED VERSION - Prevents duplicate column creation
  */
 function ensureAvailabilitySheet() {
   const sheetName = CONFIG.sheets.availability;
-  const headers = Object.values(CONFIG.columns.availability);
-
-  const sheet = getOrCreateSheet(sheetName, headers);
-
-  // If sheet already existed, ensure it has all headers
-  const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  if (currentHeaders.length < headers.length) {
-    sheet.insertColumnsAfter(currentHeaders.length, headers.length - currentHeaders.length);
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  const expectedHeaders = Object.values(CONFIG.columns.availability);
+  
+  console.log(`🔍 Safely ensuring ${sheetName} sheet with proper headers...`);
+  
+  let sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+  
+  if (!sheet) {
+    // Create new sheet with headers
+    sheet = SpreadsheetApp.getActiveSpreadsheet().insertSheet(sheetName);
+    sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+    
+    // Format and protect headers
+    const headerRange = sheet.getRange(1, 1, 1, expectedHeaders.length);
+    headerRange.setFontWeight('bold')
+              .setBackground('#f3f3f3')
+              .setBorder(true, true, true, true, false, false);
+    sheet.setFrozenRows(1);
+    
+    console.log(`✅ Created ${sheetName} with ${expectedHeaders.length} headers`);
+    return sheet;
   }
+  
+  // Validate existing sheet headers
+  const lastColumn = sheet.getLastColumn();
+  if (lastColumn === 0) {
+    // Empty sheet - add headers
+    sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+    console.log(`✅ Added headers to empty ${sheetName} sheet`);
+    return sheet;
+  }
+  
+  const currentHeaders = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+  
+  // Check for duplicates first and fix if found
+  const seenHeaders = new Set();
+  const hasDuplicates = currentHeaders.some(header => {
+    const normalized = String(header).trim().toLowerCase();
+    if (seenHeaders.has(normalized)) {
+      return true;
+    }
+    seenHeaders.add(normalized);
+    return false;
+  });
+  
+  if (hasDuplicates) {
+    console.log(`⚠️ Found duplicate headers in ${sheetName}, fixing...`);
+    // Remove duplicates by keeping only first occurrence
+    const uniqueHeaders = [];
+    const seen = new Set();
+    currentHeaders.forEach(header => {
+      const normalized = String(header).trim().toLowerCase();
+      if (!seen.has(normalized) && header.trim() !== '') {
+        seen.add(normalized);
+        uniqueHeaders.push(header);
+      }
+    });
+    
+    // Backup data before fixing
+    const allData = sheet.getDataRange().getValues();
+    const dataRows = allData.slice(1);
+    
+    // Clear and rewrite with unique headers
+    sheet.clear();
+    sheet.getRange(1, 1, 1, uniqueHeaders.length).setValues([uniqueHeaders]);
+    
+    // Restore data (truncated to unique header count)
+    if (dataRows.length > 0) {
+      const cleanData = dataRows.map(row => row.slice(0, uniqueHeaders.length));
+      sheet.getRange(2, 1, cleanData.length, uniqueHeaders.length).setValues(cleanData);
+    }
+  }
+  
+  // Check if we have all expected headers (without creating duplicates)
+  const finalHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const missingHeaders = expectedHeaders.filter(header => 
+    !finalHeaders.some(current => 
+      String(current).trim().toLowerCase() === String(header).trim().toLowerCase()
+    )
+  );
+  
+  if (missingHeaders.length > 0) {
+    console.log(`📝 Adding ${missingHeaders.length} missing headers to ${sheetName}`);
+    
+    // Only add truly missing headers to the end
+    const newHeaders = [...finalHeaders, ...missingHeaders];
+    sheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
+  }
+  
+  return sheet;
 }
 
 /**

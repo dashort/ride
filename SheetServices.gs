@@ -34,6 +34,7 @@ function getSheet(sheetName) {
 /**
  * Gets a sheet by name, or creates it if it doesn't exist.
  * If created, optionally adds headers to the first row.
+ * ENHANCED VERSION - Prevents duplicate column creation and validates headers
  * @param {string} sheetName The name of the sheet.
  * @param {Array<string>} [headers=[]] An array of strings to set as headers if the sheet is created.
  * @return {GoogleAppsScript.Spreadsheet.Sheet} The existing or newly created sheet object.
@@ -43,15 +44,77 @@ function getOrCreateSheet(sheetName, headers = []) {
   let sheet = ss.getSheetByName(sheetName);
 
   if (!sheet) {
+    // Create new sheet
     sheet = ss.insertSheet(sheetName);
     if (headers.length > 0) {
       sheet.getRange(1, 1, 1, headers.length)
         .setValues([headers])
         .setFontWeight('bold')
-          .setBackground('#f3f3f3');
+        .setBackground('#f3f3f3');
       sheet.setFrozenRows(1);
+      
+      // Protect headers to prevent accidental editing
+      try {
+        const headerRange = sheet.getRange(1, 1, 1, headers.length);
+        const protection = headerRange.protect();
+        protection.setDescription(`Protected headers for ${sheetName}`);
+        protection.setWarningOnly(true);
+      } catch (error) {
+        console.warn(`⚠️ Could not protect headers for ${sheetName}:`, error.message);
+      }
     }
-    logActivity(`Created sheet: ${sheetName}`); // Assumes logActivity is defined
+    logActivity(`Created sheet: ${sheetName}`);
+  } else if (headers.length > 0) {
+    // Validate existing sheet headers to prevent duplicates
+    const lastColumn = sheet.getLastColumn();
+    if (lastColumn > 0) {
+      const currentHeaders = sheet.getRange(1, 1, 1, lastColumn).getValues()[0];
+      
+      // Check for duplicates
+      const seenHeaders = new Set();
+      const hasDuplicates = currentHeaders.some(header => {
+        const normalized = String(header).trim().toLowerCase();
+        if (seenHeaders.has(normalized)) {
+          return true;
+        }
+        seenHeaders.add(normalized);
+        return false;
+      });
+      
+      if (hasDuplicates) {
+        console.warn(`⚠️ Found duplicate headers in existing ${sheetName}, fixing...`);
+        
+        // Remove duplicates by keeping only first occurrence
+        const uniqueHeaders = [];
+        const seen = new Set();
+        currentHeaders.forEach(header => {
+          const normalized = String(header).trim().toLowerCase();
+          if (!seen.has(normalized) && header.trim() !== '') {
+            seen.add(normalized);
+            uniqueHeaders.push(header);
+          }
+        });
+        
+        // Backup and restore data
+        const allData = sheet.getDataRange().getValues();
+        const dataRows = allData.slice(1);
+        
+        sheet.clear();
+        sheet.getRange(1, 1, 1, uniqueHeaders.length).setValues([uniqueHeaders]);
+        
+        // Format headers
+        const headerRange = sheet.getRange(1, 1, 1, uniqueHeaders.length);
+        headerRange.setFontWeight('bold').setBackground('#f3f3f3');
+        sheet.setFrozenRows(1);
+        
+        if (dataRows.length > 0) {
+          const cleanData = dataRows.map(row => row.slice(0, uniqueHeaders.length));
+          sheet.getRange(2, 1, cleanData.length, uniqueHeaders.length).setValues(cleanData);
+        }
+        
+        logActivity(`Fixed duplicate headers in: ${sheetName}`);
+      }
+    }
   }
 
   return sheet;
