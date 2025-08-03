@@ -3790,7 +3790,7 @@ function generateReportData(filters) {
       
       if (escorts > 0) {
         riderHours.push({
-          rider: riderName,
+          name: riderName,
           escorts: escorts,
           hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
         });
@@ -3813,7 +3813,7 @@ function generateReportData(filters) {
     });
     
     const popularLocations = Object.entries(locationCounts)
-      .map(([location, count]) => ({ location, count }))
+      .map(([location, count]) => ({ name: location, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
@@ -3833,6 +3833,7 @@ function generateReportData(filters) {
       },
       tables: {
         riderHours: riderHours.sort((a, b) => b.hours - a.hours), // Sort by hours descending
+        locations: popularLocations,
         recentRequests: filteredRequests.slice(0, 20).map(request => ({
           id: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId),
           requester: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requesterName),
