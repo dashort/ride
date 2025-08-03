@@ -4165,15 +4165,6 @@ function getPageDataForReports(filters) {
   try {
     debugLog('🔄 Loading reports page data...', filters);
 
-    // Ensure filters is a usable object with default values
-    const safeFilters = {
-      startDate: '',
-      endDate: '',
-      requestType: '',
-      status: '',
-      ...(typeof filters === 'object' && filters !== null ? filters : {})
-    };
-
     // Create a default user without authentication
     const defaultUser = {
       name: 'System User',
@@ -4183,21 +4174,21 @@ function getPageDataForReports(filters) {
     };
 
     // Generate report data directly without authentication checks
-    const reportData = generateReportData(safeFilters);
-
-    return {
-      success: true,
-      user: defaultUser,
-      reportData: reportData
+    const reportData = generateReportData(filters);
+    
+    return { 
+      success: true, 
+      user: defaultUser, 
+      reportData: reportData 
     };
-
+    
   } catch (error) {
     console.error('Error in getPageDataForReports:', error);
-    return {
-      success: false,
-      error: error.message,
-      user: { name: 'System User' },
-      reportData: null
+    return { 
+      success: false, 
+      error: error.message, 
+      user: { name: 'System User' }, 
+      reportData: null 
     };
   }
 }
