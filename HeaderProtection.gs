@@ -24,10 +24,10 @@ function protectAllSheetHeadersFixed() {
       {
         name: 'Requests',
         headers: [
-          'Request ID', 'Date', 'Requester Name', 'Requester Contact',
+          'Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact',
           'Event Date', 'Start Time', 'End Time', 'Start', 'Dropoff',
           'Second', 'Request Type', 'Riders Needed', 'Escort Fee',
-          'Status', 'Special Requirements', 'Notes', 'Courtesy', 'Riders Assigned', 'Last Updated'
+          'Status', 'Notes', 'Riders Assigned', 'Last Updated'
         ]
       },
       {
@@ -298,19 +298,7 @@ function setupDataValidationForDataRowsOnlyFixed(sheet, headers) {
         typeRange.setDataValidation(typeValidation);
         console.log(`     ✅ Request Type validation applied to ${typeRange.getA1Notation()}`);
       }
-      
-      // Courtesy validation
-      const courtesyColIndex = headers.indexOf('Courtesy');
-      if (courtesyColIndex >= 0 && lastRow > 1) {
-        const courtesyRange = sheet.getRange(2, courtesyColIndex + 1, lastRow - 1, 1);
-        const courtesyValidation = SpreadsheetApp.newDataValidation()
-          .requireValueInList(['Yes', 'No'])
-          .setAllowInvalid(false)
-          .setHelpText('Is this a courtesy request?')
-          .build();
-        courtesyRange.setDataValidation(courtesyValidation);
-        console.log(`     ✅ Courtesy validation applied to ${courtesyRange.getA1Notation()}`);
-      }
+    
     }
     
     if (sheetName === 'Riders') {
@@ -393,7 +381,7 @@ function dailyHeaderValidation() {
   
   try {
     const criticalSheets = [
-      { name: 'Requests', headers: ['Request ID', 'Date', 'Requester Name', 'Requester Contact', 'Event Date', 'Start Time', 'End Time', 'Pickup', 'Dropoff', 'Second', 'Request Type', 'Riders Needed', 'Escort Fee', 'Status', 'Notes',  'Riders Assigned', 'Last Updated'] },
+      { name: 'Requests', headers: ['Request ID', 'Date', 'Submitted By', 'Requester Name', 'Requester Contact', 'Event Date', 'Start Time', 'End Time', 'Pickup', 'Dropoff', 'Second', 'Request Type', 'Riders Needed', 'Escort Fee', 'Status', 'Notes', 'Riders Assigned', 'Last Updated'] },
       { name: 'Riders', headers: ['Rider ID', 'Full Name', 'Phone Number', 'Email', 'Status', 'Certification', 'Total Assignments', 'Last Assignment Date'] },
       { name: 'Assignments', headers: ['Assignment ID', 'Request ID', 'Event Date', 'Start Time', 'End Time', 'Start', 'Dropoff', 'Rider Name', 'JP Number', 'Status', 'Created Date', 'Notified', 'SMS Sent', 'Email Sent', 'Notes'] }
     ];
