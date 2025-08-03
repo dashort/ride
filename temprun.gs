@@ -7,7 +7,408 @@
  * Comprehensive Riders Loading Diagnostic and Fix Tool
  * This script diagnoses and fixes the "error loading riders, no data received from server" issue
  */
+/**
+ * 🗑️ Remove all email response processing triggers that are causing duplicates
+ * Run this function in Google Apps Script to stop the automated email processing
+ */
+/**
+ * 🎯 Remove ONLY the dailyHeaderValidation trigger
+ * This will keep your onEdit trigger and other triggers intact
+ */
+function removeDailyHeaderValidationTrigger() {
+  try {
+    console.log('🔍 Searching for dailyHeaderValidation trigger...');
+    
+    const triggers = ScriptApp.getProjectTriggers();
+    let deletedCount = 0;
+    let foundTrigger = null;
+    
+    // Find and remove only the dailyHeaderValidation trigger
+    triggers.forEach(trigger => {
+      const handlerFunction = trigger.getHandlerFunction();
+      
+      if (handlerFunction === 'dailyHeaderValidation') {
+        foundTrigger = {
+          id: trigger.getUniqueId(),
+          function: handlerFunction,
+          type: trigger.getTriggerSource().toString(),
+          source: trigger.getTriggerSource() === ScriptApp.TriggerSource.CLOCK ? 'Time-based' : 'Other'
+        };
+        
+        ScriptApp.deleteTrigger(trigger);
+        deletedCount++;
+        console.log(`🗑️ Deleted dailyHeaderValidation trigger: ${trigger.getUniqueId()}`);
+      }
+    });
+    
+    if (deletedCount > 0) {
+      console.log(`✅ Successfully removed ${deletedCount} dailyHeaderValidation trigger(s)`);
+      console.log('📋 Removed trigger details:', foundTrigger);
+      console.log('🎉 Daily header validation automation has been stopped!');
+      console.log('✅ Your onEdit and other triggers remain intact');
+    } else {
+      console.log('ℹ️ No dailyHeaderValidation trigger was found');
+      console.log('💡 The trigger may have already been removed or named differently');
+    }
+    
+    return {
+      success: true,
+      deletedCount: deletedCount,
+      trigger: foundTrigger
+    };
+    
+  } catch (error) {
+    console.error('❌ Error removing dailyHeaderValidation trigger:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
 
+/**
+ * 🔍 Show only the current trigger status (safe to run anytime)
+ * This helps you verify what triggers are active
+ */
+function showCurrentTriggerStatus() {
+  try {
+    console.log('🔍 Current trigger status:');
+    console.log('=' .repeat(50));
+    
+    const triggers = ScriptApp.getProjectTriggers();
+    
+    if (triggers.length === 0) {
+      console.log('✅ No triggers are currently active');
+      return { triggerCount: 0, triggers: [] };
+    }
+    
+    console.log(`📊 Found ${triggers.length} active trigger(s):`);
+    
+    let dailyHeaderTriggers = 0;
+    let onEditTriggers = 0;
+    let otherTriggers = 0;
+    
+    const triggerInfo = triggers.map(trigger => {
+      const info = {
+        id: trigger.getUniqueId(),
+        function: trigger.getHandlerFunction(),
+        source: trigger.getTriggerSource().toString(),
+        type: 'Unknown'
+      };
+      
+      // Categorize triggers
+      if (trigger.getTriggerSource() === ScriptApp.TriggerSource.CLOCK) {
+        info.type = 'Time-based';
+      } else if (trigger.getTriggerSource() === ScriptApp.TriggerSource.SPREADSHEETS) {
+        info.type = 'Spreadsheet event (onEdit/onChange)';
+        onEditTriggers++;
+      }
+      
+      // Count specific triggers
+      if (info.function === 'dailyHeaderValidation') {
+        dailyHeaderTriggers++;
+        console.log(`   ⚠️ ${info.function} (${info.type}) - ID: ${info.id} [TARGET FOR REMOVAL]`);
+      } else if (info.function === 'onEdit') {
+        console.log(`   ✅ ${info.function} (${info.type}) - ID: ${info.id} [KEEPING THIS]`);
+      } else {
+        otherTriggers++;
+        console.log(`   📌 ${info.function} (${info.type}) - ID: ${info.id}`);
+      }
+      
+      return info;
+    });
+    
+    console.log('\n📊 Summary:');
+    console.log(`   • Daily header validation triggers: ${dailyHeaderTriggers} ${dailyHeaderTriggers > 0 ? '← Will be removed' : ''}`);
+    console.log(`   • OnEdit triggers: ${onEditTriggers} ${onEditTriggers > 0 ? '← Will be kept' : ''}`);
+    console.log(`   • Other triggers: ${otherTriggers}`);
+    
+    return {
+      triggerCount: triggers.length,
+      triggers: triggerInfo,
+      dailyHeaderTriggers: dailyHeaderTriggers,
+      onEditTriggers: onEditTriggers,
+      otherTriggers: otherTriggers
+    };
+    
+  } catch (error) {
+    console.error('❌ Error checking trigger status:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * 🎯 Complete solution: Check status, remove daily trigger, verify result
+ * This is the main function to run - it does everything safely
+ */
+function removeOnlyDailyHeaderTrigger() {
+  try {
+    console.log('🎯 Starting targeted removal of dailyHeaderValidation trigger...');
+    console.log('=' .repeat(60));
+    
+    // Step 1: Show current status
+    console.log('\n1️⃣ BEFORE - Current trigger status:');
+    const beforeStatus = showCurrentTriggerStatus();
+    
+    if (beforeStatus.dailyHeaderTriggers === 0) {
+      console.log('\n✅ No dailyHeaderValidation triggers found - nothing to remove!');
+      return { success: true, message: 'No dailyHeaderValidation triggers found' };
+    }
+    
+    // Step 2: Remove the daily header trigger
+    console.log('\n2️⃣ REMOVING - dailyHeaderValidation trigger...');
+    const removalResult = removeDailyHeaderValidationTrigger();
+    
+    if (!removalResult.success) {
+      console.log('\n❌ Failed to remove trigger:', removalResult.error);
+      return removalResult;
+    }
+    
+    // Step 3: Verify the result
+    console.log('\n3️⃣ AFTER - Verifying trigger status:');
+    const afterStatus = showCurrentTriggerStatus();
+    
+    // Step 4: Summary
+    console.log('\n🎉 COMPLETE - Summary:');
+    console.log('=' .repeat(40));
+    console.log(`✅ Removed ${removalResult.deletedCount} dailyHeaderValidation trigger(s)`);
+    console.log(`✅ Kept ${afterStatus.onEditTriggers} onEdit trigger(s) intact`);
+    console.log(`✅ Other triggers remain unchanged: ${afterStatus.otherTriggers}`);
+    console.log('\n💡 Your header duplication issues should now be resolved!');
+    
+    return {
+      success: true,
+      message: 'Daily header validation trigger removed successfully',
+      removed: removalResult.deletedCount,
+      onEditTriggersKept: afterStatus.onEditTriggers,
+      otherTriggersKept: afterStatus.otherTriggers
+    };
+    
+  } catch (error) {
+    console.error('❌ Error in complete removal process:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+function removeAllEmailProcessingTriggers() {
+  try {
+    console.log('🔍 Searching for email processing triggers...');
+    
+    const triggers = ScriptApp.getProjectTriggers();
+    let deletedCount = 0;
+    let triggerDetails = [];
+    
+    triggers.forEach(trigger => {
+      const handlerFunction = trigger.getHandlerFunction();
+      
+      // Remove email response processing triggers
+      if (handlerFunction === 'processEmailResponses') {
+        triggerDetails.push({
+          id: trigger.getUniqueId(),
+          function: handlerFunction,
+          type: trigger.getTriggerSource().toString()
+        });
+        
+        ScriptApp.deleteTrigger(trigger);
+        deletedCount++;
+        console.log(`🗑️ Deleted email processing trigger: ${trigger.getUniqueId()}`);
+      }
+    });
+    
+    console.log(`✅ Successfully deleted ${deletedCount} email processing triggers`);
+    
+    if (deletedCount > 0) {
+      console.log('📋 Deleted triggers details:', triggerDetails);
+      console.log('🎉 Email processing automation has been stopped!');
+      console.log('⚠️ Note: Emails will no longer be processed automatically');
+    } else {
+      console.log('ℹ️ No email processing triggers were found');
+    }
+    
+    return {
+      success: true,
+      deletedCount: deletedCount,
+      triggers: triggerDetails
+    };
+    
+  } catch (error) {
+    console.error('❌ Error removing email processing triggers:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * 🧹 Remove ALL automated triggers (nuclear option)
+ * Use this if you want to stop ALL automated processes
+ */
+function removeAllAutomatedTriggers() {
+  try {
+    console.log('🚨 REMOVING ALL AUTOMATED TRIGGERS - This will stop all automation!');
+    
+    const triggers = ScriptApp.getProjectTriggers();
+    let deletedCount = 0;
+    let triggerDetails = [];
+    
+    triggers.forEach(trigger => {
+      const handlerFunction = trigger.getHandlerFunction();
+      
+      triggerDetails.push({
+        id: trigger.getUniqueId(),
+        function: handlerFunction,
+        type: trigger.getTriggerSource().toString()
+      });
+      
+      ScriptApp.deleteTrigger(trigger);
+      deletedCount++;
+      console.log(`🗑️ Deleted trigger: ${handlerFunction} (${trigger.getUniqueId()})`);
+    });
+    
+    console.log(`✅ Successfully deleted ${deletedCount} triggers`);
+    console.log('📋 Deleted triggers:', triggerDetails);
+    console.log('🛑 ALL AUTOMATION HAS BEEN STOPPED!');
+    
+    return {
+      success: true,
+      deletedCount: deletedCount,
+      triggers: triggerDetails
+    };
+    
+  } catch (error) {
+    console.error('❌ Error removing all triggers:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * 🔍 Check what triggers are currently running
+ * Use this to see what processes are active before removing them
+ */
+function checkCurrentTriggers() {
+  try {
+    console.log('🔍 Checking current triggers...');
+    
+    const triggers = ScriptApp.getProjectTriggers();
+    
+    if (triggers.length === 0) {
+      console.log('✅ No triggers are currently running');
+      return { triggerCount: 0, triggers: [] };
+    }
+    
+    console.log(`📊 Found ${triggers.length} active triggers:`);
+    
+    const triggerInfo = triggers.map(trigger => {
+      const info = {
+        id: trigger.getUniqueId(),
+        function: trigger.getHandlerFunction(),
+        source: trigger.getTriggerSource().toString(),
+        type: 'Unknown'
+      };
+      
+      // Determine trigger type
+      if (trigger.getTriggerSource() === ScriptApp.TriggerSource.CLOCK) {
+        info.type = 'Time-based';
+      } else if (trigger.getTriggerSource() === ScriptApp.TriggerSource.SPREADSHEETS) {
+        info.type = 'Spreadsheet event';
+      }
+      
+      console.log(`   📌 ${info.function} (${info.type}) - ID: ${info.id}`);
+      
+      return info;
+    });
+    
+    // Identify problematic triggers
+    const emailTriggers = triggerInfo.filter(t => t.function === 'processEmailResponses');
+    const headerTriggers = triggerInfo.filter(t => t.function.includes('header') || t.function.includes('Header'));
+    
+    if (emailTriggers.length > 0) {
+      console.log('⚠️ Found email processing triggers (likely causing duplicates):', emailTriggers.length);
+    }
+    
+    if (headerTriggers.length > 0) {
+      console.log('⚠️ Found header-related triggers:', headerTriggers.length);
+    }
+    
+    return {
+      triggerCount: triggers.length,
+      triggers: triggerInfo,
+      emailTriggers: emailTriggers,
+      headerTriggers: headerTriggers
+    };
+    
+  } catch (error) {
+    console.error('❌ Error checking triggers:', error);
+    return { error: error.message };
+  }
+}
+
+/**
+ * 🎯 Smart trigger removal - only removes problematic ones
+ * This removes triggers that are likely causing header duplication issues
+ */
+function removeProblematicTriggers() {
+  try {
+    console.log('🎯 Removing only problematic triggers that cause duplicates...');
+    
+    const triggers = ScriptApp.getProjectTriggers();
+    let deletedCount = 0;
+    let triggerDetails = [];
+    
+    // Functions that commonly cause header duplication issues
+    const problematicFunctions = [
+      'processEmailResponses',
+      'fixRequestsHeaderOrder',
+      'dailyHeaderValidation',
+      'setupEmailResponsesSheet',
+      'executeBackgroundAssignmentProcessing'
+    ];
+    
+    triggers.forEach(trigger => {
+      const handlerFunction = trigger.getHandlerFunction();
+      
+      if (problematicFunctions.includes(handlerFunction)) {
+        triggerDetails.push({
+          id: trigger.getUniqueId(),
+          function: handlerFunction,
+          type: trigger.getTriggerSource().toString(),
+          reason: 'Causes header duplication'
+        });
+        
+        ScriptApp.deleteTrigger(trigger);
+        deletedCount++;
+        console.log(`🗑️ Removed problematic trigger: ${handlerFunction}`);
+      }
+    });
+    
+    console.log(`✅ Removed ${deletedCount} problematic triggers`);
+    
+    if (deletedCount > 0) {
+      console.log('🎉 Header duplication issues should now be resolved!');
+    } else {
+      console.log('ℹ️ No problematic triggers found');
+    }
+    
+    return {
+      success: true,
+      deletedCount: deletedCount,
+      triggers: triggerDetails
+    };
+    
+  } catch (error) {
+    console.error('❌ Error removing problematic triggers:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
 function diagnoseAndFixRidersLoading() {
   console.log('🩺 COMPREHENSIVE RIDERS LOADING DIAGNOSTIC & FIX');
   console.log('=================================================');
