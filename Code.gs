@@ -398,32 +398,51 @@ function generateRealTableData(requestsData, ridersData, filters) {
       });
     }
     
-    // Generate rider hours data
+    // Generate rider hours data using rider names
     const riderStats = {};
-    const riderColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.riderId) ?
-                       requestsData.columnMap[CONFIG.columns.requests.riderId] :
-                       requestsData.columnMap['Rider'] || 
+
+    // Build a lookup map from rider ID to rider name
+    const riderNameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
+    const riderIdIdx = ridersData.columnMap[CONFIG.columns.riders.jpNumber];
+    const idToName = {};
+    riders.forEach(row => {
+      const id = riderIdIdx !== undefined ? String(row[riderIdIdx] || '').trim() : '';
+      const name = riderNameIdx !== undefined ? String(row[riderNameIdx] || '').trim() : '';
+      if (id && name) {
+        idToName[id] = name;
+      }
+    });
+
+    const riderColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.ridersAssigned) ?
+                       requestsData.columnMap[CONFIG.columns.requests.ridersAssigned] :
+                       requestsData.columnMap['Riders Assigned'] ||
+                       requestsData.columnMap['Rider'] ||
                        requestsData.columnMap['Assigned Rider'] ||
-                       requestsData.columnMap['Rider ID'] ||
-                       requestsData.columnMap['Riders Assigned'];
-    
+                       requestsData.columnMap['Rider ID'];
+
     if (riderColIdx !== undefined) {
       filteredRequests.forEach(row => {
-        const riderId = String(row[riderColIdx] || '').trim();
-        if (riderId) {
-          if (!riderStats[riderId]) {
-            riderStats[riderId] = { escorts: 0, hours: 0 };
+        const ridersValue = String(row[riderColIdx] || '').trim();
+        if (!ridersValue) return;
+
+        // Split comma-separated riders and normalize names
+        ridersValue.split(',').map(r => r.trim()).filter(r => r).forEach(entry => {
+          const riderName = idToName[entry] || entry;
+          if (!riderName || riderName.toLowerCase().startsWith('unknown')) return;
+
+          if (!riderStats[riderName]) {
+            riderStats[riderName] = { escorts: 0, hours: 0 };
           }
-          riderStats[riderId].escorts += 1;
-          riderStats[riderId].hours += 1; // Simplified: 1 hour per escort
-        }
+          riderStats[riderName].escorts += 1;
+          riderStats[riderName].hours += 1; // Simplified: 1 hour per escort
+        });
       });
-      
+
       // Convert to array format
-      Object.keys(riderStats).forEach(riderId => {
-        const stats = riderStats[riderId];
+      Object.keys(riderStats).forEach(name => {
+        const stats = riderStats[name];
         tables.riderHours.push({
-          name: riderId,
+          riderName: name,
           escorts: stats.escorts,
           hours: stats.hours
         });
