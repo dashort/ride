@@ -4484,7 +4484,7 @@ function generateReportData(filters) {
       
       if (escorts > 0) {
         riderHours.push({
-          rider: riderName,
+          riderName: riderName,
           escorts: escorts,
           hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
         });
