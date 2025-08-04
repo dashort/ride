@@ -237,6 +237,11 @@
             background: rgba(52, 152, 219, 0.05);
         }
 
+        .rider-activity-table th,
+        .rider-activity-table td {
+            width: 33.33%;
+        }
+
         .metric-value {
             font-size: 2rem;
             font-weight: bold;
@@ -928,16 +933,26 @@ function updateTablesSafe(tables) {
     try {
         var riderTable = document.getElementById('riderHoursTable');
         if (riderTable && tables.riderHours && Array.isArray(tables.riderHours)) {
-            var tableHtml = '<table class="report-table"><thead><tr><th>Rider</th><th>Hours</th><th>Escorts</th></tr></thead><tbody>';
-            
-            tables.riderHours.forEach(function(rider) {
+            var data = tables.riderHours.slice();
+            var nopd = null;
+            data = data.filter(function(r) {
+                var name = r.name || r.riderName || '';
+                if (/nopd/i.test(name)) { nopd = r; return false; }
+                return true;
+            });
+            data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
+            if (nopd) data.push(nopd);
+
+            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>';
+
+            data.forEach(function(rider) {
                 tableHtml += '<tr>';
-                tableHtml += '<td>' + (rider.riderName || rider.rider || 'Unknown') + '</td>';
-                tableHtml += '<td>' + (rider.hours || 0) + '</td>';
+                tableHtml += '<td>' + escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown') + '</td>';
                 tableHtml += '<td>' + (rider.escorts || 0) + '</td>';
+                tableHtml += '<td>' + (rider.hours || 0) + '</td>';
                 tableHtml += '</tr>';
             });
-            
+
             tableHtml += '</tbody></table>';
             riderTable.innerHTML = tableHtml;
             console.log('✅ Updated rider hours table');
@@ -1020,20 +1035,36 @@ function updateTablesSafe(tables) {
         function updateTables(tables) {
 
             if (tables.riderHours) {
+                var data = tables.riderHours.slice();
+                var nopdEscorts = 0, nopdHours = 0;
+                data = data.filter(function(r) {
+                    var name = r.name || r.riderName || '';
+                    if (/nopd/i.test(name)) {
+                        nopdEscorts += r.escorts || 0;
+                        nopdHours += r.hours || 0;
+                        return false;
+                    }
+                    return true;
+                });
+                data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
+                if (nopdEscorts || nopdHours) {
+                    data.push({ name: 'NOPD Rider', escorts: nopdEscorts, hours: nopdHours });
+                }
+
                 var hoursRows = '';
-                for (var i = 0; i < tables.riderHours.length; i++) {
-                    var r = tables.riderHours[i];
+                for (var i = 0; i < data.length; i++) {
+                    var r = data[i];
                     var escorts = (r.escorts !== undefined) ? r.escorts : 0;
                     var hours = (r.hours !== undefined) ? r.hours : 0;
-                    hoursRows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
+                    hoursRows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
                 }
-                if (tables.riderHours.length === 0) {
+                if (data.length === 0) {
                     hoursRows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
                 }
-                var hoursTable = '<table class="stats-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
+                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             } else {
-                document.getElementById('riderHoursTable').innerHTML = 
+                document.getElementById('riderHoursTable').innerHTML =
                     '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
             }
 
@@ -1135,15 +1166,25 @@ function displayRiderActivityReport(result) {
                 return;
             }
 
+            var data = (result.data || []).slice();
+            var nopd = null;
+            data = data.filter(function(r) {
+                var name = r.name || r.riderName || '';
+                if (/nopd/i.test(name)) { nopd = r; return false; }
+                return true;
+            });
+            data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
+            if (nopd) data.push(nopd);
+
             var rows = '';
-            for (var i = 0; i < result.data.length; i++) {
-                var r = result.data[i];
-                rows += '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' + escapeHtml(r.hours) + '</td></tr>';
+            for (var i = 0; i < data.length; i++) {
+                var r = data[i];
+                rows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' + escapeHtml(r.hours) + '</td></tr>';
             }
 
             var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
-                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;}' +
-                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;}th{background:#f4f4f4;}</style>' +
+                '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;table-layout:fixed;}' +
+                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;width:33%;}th{background:#f4f4f4;}</style>' +
                 '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
                 '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
 
