@@ -420,10 +420,44 @@ function generateRealTableData(requestsData, ridersData, filters) {
                        requestsData.columnMap['Assigned Rider'] ||
                        requestsData.columnMap['Rider ID'];
 
+    // Column indexes for time and type
+    const startTimeIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.startTime) ?
+                        requestsData.columnMap[CONFIG.columns.requests.startTime] :
+                        requestsData.columnMap['Start Time'] ||
+                        requestsData.columnMap['Start'] ||
+                        requestsData.columnMap['StartTime'];
+    const endTimeIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.endTime) ?
+                      requestsData.columnMap[CONFIG.columns.requests.endTime] :
+                      requestsData.columnMap['End Time'] ||
+                      requestsData.columnMap['End'] ||
+                      requestsData.columnMap['EndTime'];
+    const typeIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.type) ?
+                   requestsData.columnMap[CONFIG.columns.requests.type] :
+                   requestsData.columnMap['Type'] ||
+                   requestsData.columnMap['Request Type'] ||
+                   requestsData.columnMap['Service Type'];
+
     if (riderColIdx !== undefined) {
       filteredRequests.forEach(row => {
         const ridersValue = String(row[riderColIdx] || '').trim();
         if (!ridersValue) return;
+
+        // Determine hours for this request
+        const startVal = startTimeIdx !== undefined ? row[startTimeIdx] : null;
+        const endVal = endTimeIdx !== undefined ? row[endTimeIdx] : null;
+        const typeVal = typeIdx !== undefined ? row[typeIdx] : 'Other';
+
+        let hoursToAdd = 0;
+        if (startVal && endVal) {
+          const start = startVal instanceof Date ? startVal : new Date(startVal);
+          const end = endVal instanceof Date ? endVal : new Date(endVal);
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            hoursToAdd = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
+          }
+        }
+        if (hoursToAdd <= 0) {
+          hoursToAdd = getEstimatedHoursForRequestType(String(typeVal) || 'Other');
+        }
 
         // Split comma-separated riders and normalize names
         ridersValue.split(',').map(r => r.trim()).filter(r => r).forEach(entry => {
@@ -434,7 +468,7 @@ function generateRealTableData(requestsData, ridersData, filters) {
             riderStats[riderName] = { escorts: 0, hours: 0 };
           }
           riderStats[riderName].escorts += 1;
-          riderStats[riderName].hours += 1; // Simplified: 1 hour per escort
+          riderStats[riderName].hours += hoursToAdd;
         });
       });
 
@@ -444,7 +478,7 @@ function generateRealTableData(requestsData, ridersData, filters) {
         tables.riderHours.push({
           riderName: name,
           escorts: stats.escorts,
-          hours: stats.hours
+          hours: Math.round(stats.hours * 4) / 4
         });
       });
     }
