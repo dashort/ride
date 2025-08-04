@@ -751,6 +751,28 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('💡 You can run testDataReceiving() from console to test manually');
 });
 
+function updateUserInfoSafely(user) {
+    try {
+        const safeUser = user || {};
+        const safeUpdate = (id, value) => {
+            try {
+                const element = document.getElementById(id);
+                if (element && element.textContent !== undefined) {
+                    element.textContent = value;
+                    console.log(`✅ Updated ${id}: ${value}`);
+                }
+            } catch (e) {
+                console.log(`❌ Error updating ${id}:`, e.message);
+            }
+        };
+
+        safeUpdate('userName', safeUser.name || 'User');
+        safeUpdate('userRole', (safeUser.roles || ['user']).join(', '));
+        safeUpdate('userAvatar', (safeUser.name || 'U').charAt(0).toUpperCase());
+    } catch (error) {
+        console.log('Error in updateUserInfoSafely:', error);
+    }
+}
 
 // Call this when page loads
 document.addEventListener('DOMContentLoaded', function() {
