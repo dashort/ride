@@ -748,7 +748,7 @@ function recordActualCompletionTimes(requestId) {
         
         const roundedDuration = roundToQuarterHour(actualDuration);
         updateResults.push({
-          rider: riderName,
+          riderName: riderName,
           success: true,
           duration: roundedDuration,
           updatedFields: updates.length
