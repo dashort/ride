@@ -264,13 +264,19 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
     }).length;
 
     const activeSet = new Set();
+    let completedEscorts = 0;
 
     filteredRequests.forEach(row => {
       const status = statusColIdx !== undefined ? row[statusColIdx] : '';
       if (isCompletedStatus(status)) {
         completedRequests++;
         const ridersVal = ridersAssignedIdx !== undefined ? row[ridersAssignedIdx] : '';
-        String(ridersVal || '').split(',').map(r => r.trim()).filter(r => r).forEach(rider => {
+        const ridersList = String(ridersVal || '')
+          .split(',')
+          .map(r => r.trim())
+          .filter(r => r);
+        completedEscorts += ridersList.length;
+        ridersList.forEach(rider => {
           if (isNopdRider(rider)) {
             nopdEscortRiders++;
           } else {
@@ -286,12 +292,12 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
     console.error('❌ Error calculating summary stats:', error);
   }
 
-  console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${activeRiders} active riders, ${nopdEscortRiders} NOPD escorts`);
+  console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${completedEscorts} escorts, ${activeRiders} active riders, ${nopdEscortRiders} NOPD escorts`);
 
   return {
     totalRequests: totalRequests,
     completedRequests: completedRequests,
-    completedEscorts: completedRequests,
+    completedEscorts: completedEscorts,
     activeRiders: activeRiders,
     nopdEscortRiders: nopdEscortRiders
   };
@@ -4551,7 +4557,7 @@ function generateReportData(filters) {
     const reportData = {
       summary: {
         totalRequests: totalRequests,
-        completedEscorts: completedRequests,
+        completedEscorts: totalRiderActivity,
         activeRiders: activeRiders,
         nopdEscortRiders: nopdEscortRiders,
         avgCompletionRate: riderPerformance.length > 0 ?
@@ -4575,7 +4581,7 @@ function generateReportData(filters) {
       // Backward compatibility
       totalRequests: totalRequests,
       completedRequests: completedRequests,
-      completedEscorts: completedRequests,
+      completedEscorts: totalRiderActivity,
       activeRiders: activeRiders,
       nopdEscortRiders: nopdEscortRiders,
       requestTypes: requestTypes,
@@ -5120,7 +5126,8 @@ function generateExecutiveSummary(startDate, endDate) {
     end.setHours(23, 59, 59, 999);
 
     const requestsData = getRequestsData();
-    let completed = 0;
+    let completedRequests = 0;
+    let completedEscorts = 0;
     let totalHours = 0;
     const typeMap = {};
 
@@ -5141,7 +5148,14 @@ function generateExecutiveSummary(startDate, endDate) {
       const statusLower = (status || '').toLowerCase().trim();
       
       if (statusLower === 'completed') {
-        completed++;
+        completedRequests++;
+
+        const ridersAssigned = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+        const ridersList = String(ridersAssigned || '')
+          .split(',')
+          .map(r => r.trim())
+          .filter(r => r);
+        completedEscorts += ridersList.length;
         
         // For executive summary, we need to aggregate from actual assignment hours
         // since requests don't track actual completion times
@@ -5196,9 +5210,10 @@ function generateExecutiveSummary(startDate, endDate) {
       data: {
         start: formatDateForDisplay(start),
         end: formatDateForDisplay(end),
-        completedEscorts: completed,
+        completedEscorts: completedEscorts,
         totalHours: totalHours,
-        requestTypes: typeMap
+        requestTypes: typeMap,
+        completedRequests: completedRequests
       }
     };
   } catch (error) {
