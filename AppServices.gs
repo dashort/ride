@@ -4246,7 +4246,13 @@ function getPageDataForReports(filters) {
     const result = {
       success: true,  // ← This was missing!
       user: user,
-      reportData: formattedReportData
+      reportData: formattedReportData,
+      timestamp: new Date().toISOString(),
+      debugInfo: {
+        authWorked: user.name !== 'System User',
+        dataGenerated: !!reportData && reportData?.success !== false,
+        fallbackUsed: !reportData || reportData?.success === false
+      }
     };
 
     console.log('🎯 Returning result with success:', result.success);
@@ -4259,14 +4265,16 @@ function getPageDataForReports(filters) {
     return {
       success: true,  // ← Still return success to prevent page crash
       error: error.message,
-      user: { name: 'Error User', roles: ['admin'] },
+      user: { name: 'Error User', email: 'error@system.com', roles: ['admin'] },
       reportData: {
         summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
-        charts: {},
-        tables: { riderHours: [], locations: [] },
+        charts: { requestVolume: { total: 0 }, requestTypes: {} },
+        tables: { riderHours: [], locations: [], recentRequests: [] },
         period: 'Error State',
+        generatedAt: new Date().toISOString(),
         dataSource: 'error'
-      }
+      },
+      timestamp: new Date().toISOString()
     };
   }
 }
