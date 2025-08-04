@@ -135,57 +135,375 @@ function debugReportsIssue() {
   }
 }
 function getPageDataForReports(filters) {
-  console.log('🔄 getPageDataForReports called');
+  console.log('🔄 getPageDataForReports called with filters:', filters);
   
-  // Don't use try-catch initially - let's see if that's causing issues
-  const result = {
-    success: true,
-    user: {
-      name: 'Working User',
-      email: 'working@example.com',
+  try {
+    // Get user information from authentication system
+    const user = getCurrentUser() || {
+      name: 'System User',
+      email: 'user@system.com',
       roles: ['admin'],
       permissions: ['view_reports']
-    },
-    reportData: {
-      summary: {
-        totalRequests: 25,
-        completedRequests: 18,
-        activeRiders: 7
+    };
+    
+    // Get actual data from sheets
+    console.log('📊 Fetching actual data from sheets...');
+    const requestsData = getRequestsData(false); // Don't use cache for fresh data
+    const ridersData = getRidersData(false);     // Don't use cache for fresh data
+    
+    console.log(`✅ Retrieved ${requestsData.data.length} requests and ${ridersData.data.length} riders`);
+    
+    // Calculate real summary statistics
+    const summary = calculateRealSummaryStats(requestsData, ridersData, filters);
+    
+    // Generate real chart data
+    const charts = generateRealChartData(requestsData, filters);
+    
+    // Generate real table data
+    const tables = generateRealTableData(requestsData, ridersData, filters);
+    
+    const result = {
+      success: true,
+      user: user,
+      reportData: {
+        summary: summary,
+        charts: charts,
+        tables: tables,
+        period: formatReportPeriod(filters),
+        generatedAt: new Date().toISOString(),
+        dataSource: 'actual_sheets_data'
       },
-      charts: {
-        requestVolume: {
-          total: 25,
-          peakDay: 'Monday',
-          trend: 'stable'
-        },
-        requestTypes: {
-          'Transport': 15,
-          'Escort': 8,
-          'Other': 2
-        }
+      timestamp: new Date().toString(),
+      message: 'Real data loaded successfully'
+    };
+    
+    console.log('✅ Returning real data result');
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in getPageDataForReports:', error);
+    
+    // Fallback to basic structure with error info
+    return {
+      success: false,
+      error: error.message,
+      user: {
+        name: 'System User',
+        email: 'user@system.com',
+        roles: ['admin'],
+        permissions: ['view_reports']
       },
-      tables: {
-        riderHours: [
-          { riderName: 'Working Rider 1', hours: 12, escorts: 6 },
-          { riderName: 'Working Rider 2', hours: 8, escorts: 4 },
-          { riderName: 'Working Rider 3', hours: 15, escorts: 7 }
-        ],
-        recentRequests: [
-          { date: '2025-01-27', type: 'Transport', status: 'Completed', rider: 'Working Rider 1' },
-          { date: '2025-01-26', type: 'Escort', status: 'In Progress', rider: 'Working Rider 2' }
-        ]
+      reportData: {
+        summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
+        charts: {},
+        tables: {},
+        period: 'Error Loading Data',
+        generatedAt: new Date().toISOString(),
+        dataSource: 'error_fallback'
       },
-      period: 'Current Period',
-      generatedAt: new Date().toISOString(),
-      dataSource: 'fixed_function'
-    },
-    timestamp: new Date().toString(),
-    message: 'Fixed function working'
+      timestamp: new Date().toString(),
+      message: 'Error loading data: ' + error.message
+    };
+  }
+}
+
+/**
+ * Calculate real summary statistics from actual data
+ */
+function calculateRealSummaryStats(requestsData, ridersData, filters) {
+  console.log('📊 Calculating real summary stats...');
+  
+  let totalRequests = 0;
+  let completedRequests = 0;
+  let activeRiders = 0;
+  
+  try {
+    // Ensure CONFIG is available
+    if (typeof CONFIG === 'undefined') {
+      console.error('❌ CONFIG object not available, using fallback column detection');
+    }
+    
+    // Filter requests based on date range if provided
+    let filteredRequests = requestsData.data || [];
+    
+    if (filters && filters.startDate && filters.endDate) {
+      const startDate = new Date(filters.startDate);
+      const endDate = new Date(filters.endDate);
+      
+      filteredRequests = filteredRequests.filter(row => {
+        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ? 
+                          requestsData.columnMap[CONFIG.columns.requests.date] : 
+                          requestsData.columnMap['Date'] || 
+                          requestsData.columnMap['Request Date'] || 
+                          requestsData.columnMap['Event Date'] || 0;
+        const requestDate = new Date(row[dateColIdx]);
+        return requestDate >= startDate && requestDate <= endDate;
+      });
+    }
+    
+    totalRequests = filteredRequests.length;
+    
+    // Count completed requests
+    const statusColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.status) ?
+                        requestsData.columnMap[CONFIG.columns.requests.status] :
+                        requestsData.columnMap['Status'] || 
+                        requestsData.columnMap['Request Status'] ||
+                        requestsData.columnMap['Service Status'];
+    
+    if (statusColIdx !== undefined) {
+      completedRequests = filteredRequests.filter(row => {
+        const status = String(row[statusColIdx] || '').toLowerCase();
+        return status.includes('completed') || status.includes('done') || status.includes('finished');
+      }).length;
+    }
+    
+    // Count active riders
+    const riders = ridersData.data || [];
+    const statusColIdxRiders = (typeof CONFIG !== 'undefined' && CONFIG.columns?.riders?.status) ?
+                              ridersData.columnMap[CONFIG.columns.riders.status] :
+                              ridersData.columnMap['Status'] || 
+                              ridersData.columnMap['Rider Status'] ||
+                              ridersData.columnMap['Active Status'];
+    
+    if (statusColIdxRiders !== undefined) {
+      activeRiders = riders.filter(row => {
+        const status = String(row[statusColIdxRiders] || '').toLowerCase();
+        return status.includes('active') || status.includes('available');
+      }).length;
+    } else {
+      // If no status column, count riders with names as active
+      const nameColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.riders?.name) ?
+                        ridersData.columnMap[CONFIG.columns.riders.name] :
+                        ridersData.columnMap['Name'] || 
+                        ridersData.columnMap['Rider Name'] ||
+                        ridersData.columnMap['Full Name'] || 0;
+      activeRiders = riders.filter(row => {
+        const name = String(row[nameColIdx] || '').trim();
+        return name.length > 0;
+      }).length;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error calculating summary stats:', error);
+  }
+  
+  console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${activeRiders} active riders`);
+  
+  return {
+    totalRequests: totalRequests,
+    completedRequests: completedRequests,
+    activeRiders: activeRiders
+  };
+}
+
+/**
+ * Generate real chart data from actual requests
+ */
+function generateRealChartData(requestsData, filters) {
+  console.log('📈 Generating real chart data...');
+  
+  const charts = {
+    requestVolume: { total: 0, peakDay: 'N/A', trend: 'stable' },
+    requestTypes: {}
   };
   
-  console.log('✅ Returning fixed result');
-  return result;
+  try {
+    const requests = requestsData.data || [];
+    let filteredRequests = requests;
+    
+    // Filter by date range if provided
+    if (filters && filters.startDate && filters.endDate) {
+      const startDate = new Date(filters.startDate);
+      const endDate = new Date(filters.endDate);
+      
+      filteredRequests = requests.filter(row => {
+        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
+                          requestsData.columnMap[CONFIG.columns.requests.date] :
+                          requestsData.columnMap['Date'] || 
+                          requestsData.columnMap['Request Date'] ||
+                          requestsData.columnMap['Event Date'] || 0;
+        const requestDate = new Date(row[dateColIdx]);
+        return requestDate >= startDate && requestDate <= endDate;
+      });
+    }
+    
+    charts.requestVolume.total = filteredRequests.length;
+    
+    // Analyze request types
+    const typeColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.type) ?
+                      requestsData.columnMap[CONFIG.columns.requests.type] :
+                      requestsData.columnMap['Type'] || 
+                      requestsData.columnMap['Request Type'] || 
+                      requestsData.columnMap['Service Type'] ||
+                      requestsData.columnMap['Event Type'];
+    
+    if (typeColIdx !== undefined) {
+      const typeCounts = {};
+      filteredRequests.forEach(row => {
+        const type = String(row[typeColIdx] || 'Other').trim();
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+      });
+      charts.requestTypes = typeCounts;
+    }
+    
+    // Calculate peak day (simplified)
+    if (filteredRequests.length > 0) {
+      const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
+                        requestsData.columnMap[CONFIG.columns.requests.date] :
+                        requestsData.columnMap['Date'] ||
+                        requestsData.columnMap['Request Date'] ||
+                        requestsData.columnMap['Event Date'] || 0;
+      const dayOfWeek = new Date(filteredRequests[0][dateColIdx]).toLocaleDateString('en-US', { weekday: 'long' });
+      charts.requestVolume.peakDay = dayOfWeek;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error generating chart data:', error);
+  }
+  
+  console.log('📈 Chart data generated:', charts);
+  return charts;
 }
+
+/**
+ * Generate real table data from actual requests and riders
+ */
+function generateRealTableData(requestsData, ridersData, filters) {
+  console.log('📋 Generating real table data...');
+  
+  const tables = {
+    riderHours: [],
+    recentRequests: [],
+    locations: []
+  };
+  
+  try {
+    const requests = requestsData.data || [];
+    const riders = ridersData.data || [];
+    
+    // Filter requests by date range if provided
+    let filteredRequests = requests;
+    if (filters && filters.startDate && filters.endDate) {
+      const startDate = new Date(filters.startDate);
+      const endDate = new Date(filters.endDate);
+      
+      filteredRequests = requests.filter(row => {
+        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
+                          requestsData.columnMap[CONFIG.columns.requests.date] :
+                          requestsData.columnMap['Date'] ||
+                          requestsData.columnMap['Request Date'] ||
+                          requestsData.columnMap['Event Date'] || 0;
+        const requestDate = new Date(row[dateColIdx]);
+        return requestDate >= startDate && requestDate <= endDate;
+      });
+    }
+    
+    // Generate rider hours data
+    const riderStats = {};
+    const riderColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.riderId) ?
+                       requestsData.columnMap[CONFIG.columns.requests.riderId] :
+                       requestsData.columnMap['Rider'] || 
+                       requestsData.columnMap['Assigned Rider'] ||
+                       requestsData.columnMap['Rider ID'] ||
+                       requestsData.columnMap['Riders Assigned'];
+    
+    if (riderColIdx !== undefined) {
+      filteredRequests.forEach(row => {
+        const riderId = String(row[riderColIdx] || '').trim();
+        if (riderId) {
+          if (!riderStats[riderId]) {
+            riderStats[riderId] = { escorts: 0, hours: 0 };
+          }
+          riderStats[riderId].escorts += 1;
+          riderStats[riderId].hours += 1; // Simplified: 1 hour per escort
+        }
+      });
+      
+      // Convert to array format
+      Object.keys(riderStats).forEach(riderId => {
+        const stats = riderStats[riderId];
+        tables.riderHours.push({
+          name: riderId,
+          escorts: stats.escorts,
+          hours: stats.hours
+        });
+      });
+    }
+    
+    // Generate recent requests (last 10)
+    const recentCount = Math.min(10, filteredRequests.length);
+    for (let i = 0; i < recentCount; i++) {
+      const row = filteredRequests[i];
+      const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
+                        requestsData.columnMap[CONFIG.columns.requests.date] :
+                        requestsData.columnMap['Date'] ||
+                        requestsData.columnMap['Request Date'] ||
+                        requestsData.columnMap['Event Date'] || 0;
+      const typeColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.type) ?
+                        requestsData.columnMap[CONFIG.columns.requests.type] :
+                        requestsData.columnMap['Type'] ||
+                        requestsData.columnMap['Request Type'] ||
+                        requestsData.columnMap['Service Type'] || 1;
+      const statusColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.status) ?
+                          requestsData.columnMap[CONFIG.columns.requests.status] :
+                          requestsData.columnMap['Status'] ||
+                          requestsData.columnMap['Request Status'] || 2;
+      const riderColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.riderId) ?
+                         requestsData.columnMap[CONFIG.columns.requests.riderId] :
+                         requestsData.columnMap['Rider'] ||
+                         requestsData.columnMap['Assigned Rider'] ||
+                         requestsData.columnMap['Rider ID'] || 3;
+      
+      tables.recentRequests.push({
+        date: new Date(row[dateColIdx]).toLocaleDateString(),
+        type: String(row[typeColIdx] || 'N/A'),
+        status: String(row[statusColIdx] || 'N/A'),
+        rider: String(row[riderColIdx] || 'Unassigned')
+      });
+    }
+    
+    // Generate location hotspots (simplified)
+    const locationColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.pickup) ?
+                          requestsData.columnMap[CONFIG.columns.requests.pickup] :
+                          requestsData.columnMap['Pickup Location'] || 
+                          requestsData.columnMap['Location'] ||
+                          requestsData.columnMap['Pickup'] ||
+                          requestsData.columnMap['Start Location'];
+    
+    if (locationColIdx !== undefined) {
+      const locationCounts = {};
+      filteredRequests.forEach(row => {
+        const location = String(row[locationColIdx] || 'Unknown').trim();
+        locationCounts[location] = (locationCounts[location] || 0) + 1;
+      });
+      
+      // Convert to array and sort by count
+      tables.locations = Object.keys(locationCounts)
+        .map(location => ({ name: location, count: locationCounts[location] }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10); // Top 10 locations
+    }
+    
+  } catch (error) {
+    console.error('❌ Error generating table data:', error);
+  }
+  
+  console.log('📋 Table data generated');
+  return tables;
+}
+
+/**
+ * Format the report period based on filters
+ */
+function formatReportPeriod(filters) {
+  if (filters && filters.startDate && filters.endDate) {
+    const startDate = new Date(filters.startDate).toLocaleDateString();
+    const endDate = new Date(filters.endDate).toLocaleDateString();
+    return `${startDate} - ${endDate}`;
+  }
+  return 'All Time';
+}
+
 /**
  * Debug version of getPageDataForReports to identify why the original returns null
  * Add this function to your Code.gs file
