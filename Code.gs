@@ -824,7 +824,7 @@ function testDataRetrieval() {
       hasColumnMap: !!requestsData?.columnMap,
       sampleColumns: requestsData?.columnMap ? Object.keys(requestsData.columnMap).slice(0, 5) : []
     });
-    
+
     console.log('\n👥 Testing getRidersData...');
     const ridersData = getRidersData();
     console.log('Riders data:', {
@@ -1060,11 +1060,15 @@ function testCorrectedRiderCalculation() {
     console.log('📊 Data loaded - riders:', ridersData.data.length, 'filtered requests:', filteredRequests.length);
     
     // Test the CORRECTED rider calculation
-    const riderHours = [];
+    let riderHours = [];
+    let nopdEscorts = 0;
+    let nopdHours = 0;
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName || !riderName.trim()) return;
-      
+
+      const organization = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.organization);
+
       let totalHours = 0;
       let escorts = 0;
       
@@ -4502,13 +4506,41 @@ function generateReportData(filters) {
       });
       
       if (escorts > 0) {
-        riderHours.push({
-          riderName: riderName,
-          escorts: escorts,
-          hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
-        });
+        if (organization === 'NOPD') {
+          nopdEscorts += escorts;
+          nopdHours += totalHours;
+        } else {
+          riderHours.push({
+            name: riderName,
+            riderName: riderName,
+            escorts: escorts,
+            hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
+          });
+        }
       }
     });
+
+    if (nopdEscorts > 0 || nopdHours > 0) {
+      riderHours.push({
+        name: 'NOPD Rider',
+        riderName: 'NOPD Rider',
+        escorts: nopdEscorts,
+        hours: Math.round(nopdHours * 4) / 4
+      });
+    }
+
+    let nopdEntry = null;
+    riderHours = riderHours.filter(r => {
+      if (r.name === 'NOPD Rider') {
+        nopdEntry = r;
+        return false;
+      }
+      return true;
+    });
+    riderHours.sort((a, b) => (b.escorts || 0) - (a.escorts || 0));
+    if (nopdEntry) {
+      riderHours.push(nopdEntry);
+    }
 
     // Calculate popular locations from filtered requests
     const locationCounts = {};
@@ -4545,7 +4577,7 @@ function generateReportData(filters) {
         popularLocations: popularLocations
       },
       tables: {
-        riderHours: riderHours.sort((a, b) => b.hours - a.hours), // Sort by hours descending
+        riderHours: riderHours,
         recentRequests: filteredRequests.slice(0, 20).map(request => ({
           id: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requestId),
           requester: getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.requesterName),
@@ -4765,6 +4797,17 @@ function generateRiderActivityReport(startDate, endDate) {
     console.log('🔧 === FIXED RIDER ACTIVITY REPORT ===');
     
     const requestsData = getRequestsData();
+    const ridersData = getRidersData();
+    const riderOrgMap = {};
+    if (ridersData && ridersData.data) {
+      ridersData.data.forEach(r => {
+        const name = getColumnValue(r, ridersData.columnMap, CONFIG.columns.riders.name);
+        const org = getColumnValue(r, ridersData.columnMap, CONFIG.columns.riders.organization);
+        if (name) {
+          riderOrgMap[name.toLowerCase()] = org;
+        }
+      });
+    }
     const start = parseDateString(startDate);
     const end = parseDateString(endDate);
     
@@ -4835,12 +4878,34 @@ function generateRiderActivityReport(startDate, endDate) {
       });
     });
 
-    // Convert to array format
-    const riderHours = Object.keys(riderMap).map(riderName => ({
-      riderName: riderName,
-      escorts: riderMap[riderName].escorts,
-      hours: Math.round(riderMap[riderName].hours * 4) / 4
-    }));
+    // Convert to array format and combine NOPD riders
+    let nopd = { escorts: 0, hours: 0 };
+    let riderHours = Object.keys(riderMap).map(riderName => {
+      const escorts = riderMap[riderName].escorts;
+      const hours = Math.round(riderMap[riderName].hours * 4) / 4;
+      const org = riderOrgMap[riderName.toLowerCase()];
+      if (org === 'NOPD') {
+        nopd.escorts += escorts;
+        nopd.hours += hours;
+        return null;
+      }
+      return { name: riderName, riderName: riderName, escorts: escorts, hours: hours };
+    }).filter(Boolean);
+
+    if (nopd.escorts > 0 || nopd.hours > 0) {
+      riderHours.push({ name: 'NOPD Rider', riderName: 'NOPD Rider', escorts: nopd.escorts, hours: nopd.hours });
+    }
+
+    let nopdEntry = null;
+    riderHours = riderHours.filter(r => {
+      if (r.name === 'NOPD Rider') {
+        nopdEntry = r;
+        return false;
+      }
+      return true;
+    });
+    riderHours.sort((a, b) => (b.escorts || 0) - (a.escorts || 0));
+    if (nopdEntry) riderHours.push(nopdEntry);
 
     const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
     console.log(`✅ FIXED RESULT: ${riderHours.length} riders with ${totalEscorts} total escorts (${totalRiderAssignments} total assignments)`);
