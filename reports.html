@@ -184,9 +184,6 @@
             grid-column: 2;
         }
 
-        .location-card {
-            grid-column: 1 / -1;
-        }
 
         .report-card {
             background: rgba(255, 255, 255, 0.95);
@@ -367,8 +364,7 @@
                 grid-template-columns: 1fr;
             }
 
-            .rider-activity-card,
-            .location-card {
+            .rider-activity-card {
                 grid-column: 1;
             }
 
@@ -522,18 +518,6 @@
                 </div>
             </div>
 
-            <!-- Location Hotspots -->
-            <div class="report-card location-card">
-                <h3 class="report-title">📍 Popular Locations</h3>
-                <div id="locationHotspots">
-                    <div class="loading">Loading location data...</div>
-                </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportTable('locations')">
-                        📥 Export Data
-                    </button>
-                </div>
-            </div>
         </div>
 
         <!-- Comprehensive Export Section -->
@@ -1097,18 +1081,6 @@ function updateTablesSafe(tables) {
             }
 
 
-            if (tables.locations && tables.locations.length > 0) {
-                var locRows = '';
-                for (var i = 0; i < tables.locations.length; i++) {
-                    var loc = tables.locations[i];
-                    locRows += '<tr><td>' + escapeHtml(loc.name) + '</td><td>' + loc.count + '</td></tr>';
-                }
-                var locationsTable = '<table class="stats-table"><thead><tr><th>Location</th><th>Count</th></tr></thead><tbody>' + locRows + '</tbody></table>';
-                document.getElementById('locationHotspots').innerHTML = locationsTable;
-            } else {
-                document.getElementById('locationHotspots').innerHTML = 
-                    '<div class="loading" style="color: #7f8c8d;">No location data available for the selected period</div>';
-            }
         }
 
         function formatDateForInput(date) {
