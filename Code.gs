@@ -194,7 +194,7 @@ function getPageDataForReports(filters) {
         permissions: ['view_reports']
       },
       reportData: {
-        summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
+        summary: { totalRequests: 0, completedRequests: 0, completedEscorts: 0, activeRiders: 0, nopdEscortRiders: 0 },
         charts: {},
         tables: {},
         period: 'Error Loading Data',
@@ -212,10 +212,11 @@ function getPageDataForReports(filters) {
  */
 function calculateRealSummaryStats(requestsData, ridersData, filters) {
   console.log('📊 Calculating real summary stats...');
-  
+
   let totalRequests = 0;
   let completedRequests = 0;
   let activeRiders = 0;
+  let nopdEscortRiders = 0;
   
   try {
     // Ensure CONFIG is available
@@ -242,57 +243,53 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
     }
     
     totalRequests = filteredRequests.length;
-    
-    // Count completed requests
+
     const statusColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.status) ?
                         requestsData.columnMap[CONFIG.columns.requests.status] :
-                        requestsData.columnMap['Status'] || 
+                        requestsData.columnMap['Status'] ||
                         requestsData.columnMap['Request Status'] ||
                         requestsData.columnMap['Service Status'];
-    
-    if (statusColIdx !== undefined) {
-      completedRequests = filteredRequests.filter(row => {
-        const status = String(row[statusColIdx] || '').toLowerCase();
-        return status.includes('completed') || status.includes('done') || status.includes('finished');
-      }).length;
-    }
-    
-    // Count active riders
-    const riders = ridersData.data || [];
-    const statusColIdxRiders = (typeof CONFIG !== 'undefined' && CONFIG.columns?.riders?.status) ?
-                              ridersData.columnMap[CONFIG.columns.riders.status] :
-                              ridersData.columnMap['Status'] || 
-                              ridersData.columnMap['Rider Status'] ||
-                              ridersData.columnMap['Active Status'];
-    
-    if (statusColIdxRiders !== undefined) {
-      activeRiders = riders.filter(row => {
-        const status = String(row[statusColIdxRiders] || '').toLowerCase();
-        return status.includes('active') || status.includes('available');
-      }).length;
-    } else {
-      // If no status column, count riders with names as active
-      const nameColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.riders?.name) ?
-                        ridersData.columnMap[CONFIG.columns.riders.name] :
-                        ridersData.columnMap['Name'] || 
-                        ridersData.columnMap['Rider Name'] ||
-                        ridersData.columnMap['Full Name'] || 0;
-      activeRiders = riders.filter(row => {
-        const name = String(row[nameColIdx] || '').trim();
-        return name.length > 0;
-      }).length;
-    }
-    
+    const ridersAssignedIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.ridersAssigned) ?
+                        requestsData.columnMap[CONFIG.columns.requests.ridersAssigned] :
+                        requestsData.columnMap['Riders Assigned'] ||
+                        requestsData.columnMap['Rider'] ||
+                        requestsData.columnMap['Assigned Rider'] ||
+                        requestsData.columnMap['Rider ID'];
+
+    const activeSet = new Set();
+
+    const isCompletedStatus = status => String(status || '').toLowerCase().trim() === 'completed';
+    const isNopdRider = name => /^nopd rider( 2)?$/i.test(String(name || '').trim());
+
+    filteredRequests.forEach(row => {
+      const status = statusColIdx !== undefined ? row[statusColIdx] : '';
+      if (isCompletedStatus(status)) {
+        completedRequests++;
+        const ridersVal = ridersAssignedIdx !== undefined ? row[ridersAssignedIdx] : '';
+        String(ridersVal || '').split(',').map(r => r.trim()).filter(r => r).forEach(rider => {
+          if (isNopdRider(rider)) {
+            nopdEscortRiders++;
+          } else {
+            activeSet.add(rider);
+          }
+        });
+      }
+    });
+
+    activeRiders = activeSet.size;
+
   } catch (error) {
     console.error('❌ Error calculating summary stats:', error);
   }
-  
-  console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${activeRiders} active riders`);
-  
+
+  console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${activeRiders} active riders, ${nopdEscortRiders} NOPD escorts`);
+
   return {
     totalRequests: totalRequests,
     completedRequests: completedRequests,
-    activeRiders: activeRiders
+    completedEscorts: completedRequests,
+    activeRiders: activeRiders,
+    nopdEscortRiders: nopdEscortRiders
   };
 }
 
@@ -373,20 +370,19 @@ function generateRealTableData(requestsData, ridersData, filters) {
   
   const tables = {
     riderHours: [],
-    recentRequests: [],
-    locations: []
+    recentRequests: []
   };
   
   try {
     const requests = requestsData.data || [];
     const riders = ridersData.data || [];
-    
+
     // Filter requests by date range if provided
     let filteredRequests = requests;
     if (filters && filters.startDate && filters.endDate) {
       const startDate = new Date(filters.startDate);
       const endDate = new Date(filters.endDate);
-      
+
       filteredRequests = requests.filter(row => {
         const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
                           requestsData.columnMap[CONFIG.columns.requests.date] :
@@ -396,6 +392,16 @@ function generateRealTableData(requestsData, ridersData, filters) {
         const requestDate = new Date(row[dateColIdx]);
         return requestDate >= startDate && requestDate <= endDate;
       });
+    }
+
+    const statusColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.status) ?
+                          requestsData.columnMap[CONFIG.columns.requests.status] :
+                          requestsData.columnMap['Status'] ||
+                          requestsData.columnMap['Request Status'] ||
+                          requestsData.columnMap['Service Status'];
+    const isCompletedStatus = status => String(status || '').toLowerCase().trim() === 'completed';
+    if (statusColIdx !== undefined) {
+      filteredRequests = filteredRequests.filter(row => isCompletedStatus(row[statusColIdx]));
     }
     
     // Generate rider hours data using rider names
@@ -513,28 +519,6 @@ function generateRealTableData(requestsData, ridersData, filters) {
         status: String(row[statusColIdx] || 'N/A'),
         rider: String(row[riderColIdx] || 'Unassigned')
       });
-    }
-    
-    // Generate location hotspots (simplified)
-    const locationColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.pickup) ?
-                          requestsData.columnMap[CONFIG.columns.requests.pickup] :
-                          requestsData.columnMap['Pickup Location'] || 
-                          requestsData.columnMap['Location'] ||
-                          requestsData.columnMap['Pickup'] ||
-                          requestsData.columnMap['Start Location'];
-    
-    if (locationColIdx !== undefined) {
-      const locationCounts = {};
-      filteredRequests.forEach(row => {
-        const location = String(row[locationColIdx] || 'Unknown').trim();
-        locationCounts[location] = (locationCounts[location] || 0) + 1;
-      });
-      
-      // Convert to array and sort by count
-      tables.locations = Object.keys(locationCounts)
-        .map(location => ({ name: location, count: locationCounts[location] }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10); // Top 10 locations
     }
     
   } catch (error) {
@@ -954,8 +938,7 @@ function generateReportDataMinimal(filters) {
       },
       charts: {
         requestTypes: {},
-        riderPerformance: [],
-        popularLocations: []
+        riderPerformance: []
       },
       tables: {
         riderHours: [],
@@ -4392,10 +4375,14 @@ function getDispatchNotifications() {
 function generateReportData(filters) {
   try {
     debugLog('Generating report data with filters:', filters);
-    
+
     const requestsData = getRequestsData();
     const assignmentsData = getAssignmentsData();
     const ridersData = getRidersData();
+
+    function isCompletedStatus(status) {
+      return String(status || '').toLowerCase().trim() === 'completed';
+    }
     
     // Filter data based on date range
     const startDate = parseDateString(filters.startDate) || new Date(1970, 0, 1);
@@ -4428,9 +4415,10 @@ function generateReportData(filters) {
     
     // Calculate summary statistics
     const totalRequests = filteredRequests.length;
-    const completedRequests = filteredRequests.filter(request =>
-      getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-    ).length;
+    const completedRequests = filteredRequests.filter(request => {
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      return isCompletedStatus(status);
+    }).length;
     
     // Calculate request types distribution
     const requestTypes = {};
@@ -4460,9 +4448,10 @@ function generateReportData(filters) {
       });
       
       if (riderRequests.length > 0) {
-        const completed = riderRequests.filter(request =>
-          getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-        ).length;
+        const completed = riderRequests.filter(request => {
+          const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+          return isCompletedStatus(status);
+        }).length;
         
         riderPerformance.push({
           name: riderName,
@@ -4485,7 +4474,7 @@ function generateReportData(filters) {
         const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
         const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
 
-        if (status !== 'Completed') return;
+        if (!isCompletedStatus(status)) return;
 
         if (ridersAssigned) {
           const assignedRidersList = String(ridersAssigned).split(',')
@@ -4541,7 +4530,7 @@ function generateReportData(filters) {
 
     let nopdEscortRiders = 0;
     let riderHours = riderHoursRaw.filter(r => {
-      const name = r.name || r.riderName || '';
+      const name = (r.name || r.riderName || '').trim();
       if (/^nopd rider( 2)?$/i.test(name)) {
         nopdEscortRiders += r.escorts || 0;
         return false;
@@ -4553,26 +4542,6 @@ function generateReportData(filters) {
     const activeRiders = riderHours.length;
     // Total rider activity (includes NOPD riders) for cross-checking
     const totalRiderActivity = nopdEscortRiders + riderHours.reduce((sum, r) => sum + (r.escorts || 0), 0);
-
-    // Calculate popular locations from filtered requests
-    const locationCounts = {};
-    filteredRequests.forEach(request => {
-      const startLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startLocation);
-      const endLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endLocation);
-      const secondaryLocation = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.secondaryLocation);
-      
-      [startLocation, endLocation, secondaryLocation].forEach(location => {
-        if (location && location.trim()) {
-          const cleanLocation = location.trim();
-          locationCounts[cleanLocation] = (locationCounts[cleanLocation] || 0) + 1;
-        }
-      });
-    });
-    
-    const popularLocations = Object.entries(locationCounts)
-      .map(([location, count]) => ({ location, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
 
     // Build comprehensive report data
     const reportData = {
@@ -4586,8 +4555,7 @@ function generateReportData(filters) {
       },
       charts: {
         requestTypes: requestTypes,
-        riderPerformance: riderPerformance.slice(0, 10), // Top 10 riders
-        popularLocations: popularLocations
+        riderPerformance: riderPerformance.slice(0, 10) // Top 10 riders
       },
       tables: {
         riderHours: riderHours,
@@ -4609,7 +4577,6 @@ function generateReportData(filters) {
       requestTypes: requestTypes,
       riderHours: riderHours,
       riderPerformance: riderPerformance,
-      popularLocations: popularLocations,
       riderActivityTotal: totalRiderActivity
     };
 
@@ -4638,11 +4605,10 @@ function generateReportData(filters) {
           nopdEscortRiders: 0,
           avgCompletionRate: 0
         },
-        charts: {
-          requestTypes: {},
-          riderPerformance: [],
-          popularLocations: []
-        },
+      charts: {
+        requestTypes: {},
+        riderPerformance: []
+      },
         tables: {
           riderHours: [],
           recentRequests: []
@@ -4655,8 +4621,7 @@ function generateReportData(filters) {
         nopdEscortRiders: 0,
         requestTypes: {},
         riderHours: [],
-        riderPerformance: [],
-        popularLocations: []
+        riderPerformance: []
       };
   }
 }
