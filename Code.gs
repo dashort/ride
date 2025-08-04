@@ -5119,7 +5119,7 @@ function exportRiderActivityCSV(startDate, endDate) {
     const csvRows = [headers.join(',')];
     report.data.forEach(r => {
       const requests = r.requests !== undefined ? r.requests : r.escorts;
-      const avg = r.hours > 0 ? Math.round((requests / r.hours) * 4) / 4 : 0;
+      const avg = requests > 0 ? Math.round((r.hours / requests) * 4) / 4 : 0;
       const row = [
         `"${String(r.name).replace(/"/g, '""')}"`,
         requests,
