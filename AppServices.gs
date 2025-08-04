@@ -4205,7 +4205,7 @@ function getPageDataForReports(filters) {
     // If no report data, create simple fallback
     if (!reportData || reportData?.success === false) {
       console.log('🔄 Creating fallback report data...');
-      reportData = createBasicReportData(filters);
+      reportData = createFallbackReportData(filters);
     }
 
     console.log('✅ Final report data:', {
@@ -4214,11 +4214,39 @@ function getPageDataForReports(filters) {
       riderCount: reportData?.riderHours?.length
     });
 
+    // Normalize structure for frontend consumption
+    const formattedReportData = {
+      summary: {
+        totalRequests: reportData?.totalRequests || 0,
+        completedRequests: reportData?.completedRequests || 0,
+        activeRiders: reportData?.riderHours?.length || 0
+      },
+      charts: {
+        requestVolume: {
+          total: reportData?.totalRequests || 0,
+          peakDay: null,
+          trend: null
+        },
+        requestTypes: {}
+      },
+      tables: {
+        riderHours: (reportData?.riderHours || []).map(r => ({
+          name: r.riderName || r.name || 'Unknown Rider',
+          escorts: r.escorts || 0,
+          hours: r.hours || 0
+        })),
+        locations: []
+      },
+      period: reportData?.period || (filters?.startDate && filters?.endDate ? `${filters.startDate} to ${filters.endDate}` : 'All Time'),
+      generatedAt: reportData?.generatedAt || new Date().toISOString(),
+      dataSource: reportData?.dataSource || 'generated'
+    };
+
     // THIS IS THE KEY FIX - always return success: true
     const result = {
       success: true,  // ← This was missing!
       user: user,
-      reportData: reportData
+      reportData: formattedReportData
     };
 
     console.log('🎯 Returning result with success:', result.success);
@@ -4226,16 +4254,16 @@ function getPageDataForReports(filters) {
 
   } catch (error) {
     console.error('❌ getPageDataForReports error:', error);
-    
+
     // Even on error, return success: true with fallback data
     return {
       success: true,  // ← Still return success to prevent page crash
       error: error.message,
       user: { name: 'Error User', roles: ['admin'] },
       reportData: {
-        totalRequests: 0,
-        completedRequests: 0,
-        riderHours: [],
+        summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
+        charts: {},
+        tables: { riderHours: [], locations: [] },
         period: 'Error State',
         dataSource: 'error'
       }
