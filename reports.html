@@ -169,9 +169,23 @@
 
         .reports-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: 1fr 2fr;
             gap: 2rem;
             margin-bottom: 2rem;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .rider-activity-card {
+            grid-column: 2;
+        }
+
+        .location-card {
+            grid-column: 1 / -1;
         }
 
         .report-card {
@@ -239,7 +253,16 @@
 
         .rider-activity-table th,
         .rider-activity-table td {
-            width: 33.33%;
+            width: 25%;
+        }
+
+        .rider-activity-table th:nth-child(2),
+        .rider-activity-table td:nth-child(2),
+        .rider-activity-table th:nth-child(3),
+        .rider-activity-table td:nth-child(3),
+        .rider-activity-table th:nth-child(4),
+        .rider-activity-table td:nth-child(4) {
+            text-align: center;
         }
 
         .metric-value {
@@ -342,6 +365,11 @@
 
             .reports-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .rider-activity-card,
+            .location-card {
+                grid-column: 1;
             }
 
             .date-controls {
@@ -447,37 +475,38 @@
 
         <!-- Charts and Reports Grid -->
         <div class="reports-grid">
-            <!-- Request Volume Chart -->
-            <div class="report-card">
-                <h3 class="report-title">📈 Request Volume Over Time</h3>
-                <div class="chart-container">
-                    <div class="chart-placeholder" id="requestVolumeChart">
+            <div class="left-column">
+                <!-- Request Volume Chart -->
+                <div class="report-card">
+                    <h3 class="report-title">📈 Request Volume Over Time</h3>
+                    <div class="chart-container">
+                        <div class="chart-placeholder" id="requestVolumeChart">
+                        </div>
+                    </div>
+                    <div class="export-section">
+                        <button class="btn btn-success" onclick="exportChart('requestVolume')">
+                            📥 Export Chart
+                        </button>
                     </div>
                 </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportChart('requestVolume')">
-                        📥 Export Chart
-                    </button>
-                </div>
-            </div>
 
-            <!-- Request Types Distribution -->
-            <div class="report-card">
-                <h3 class="report-title">🥧 Request Types Distribution</h3>
-                <div class="chart-container">
-                    <div class="chart-placeholder" id="requestTypesChart">
+                <!-- Request Types Distribution -->
+                <div class="report-card">
+                    <h3 class="report-title">🥧 Request Types Distribution</h3>
+                    <div class="chart-container">
+                        <div class="chart-placeholder" id="requestTypesChart">
+                        </div>
+                    </div>
+                    <div class="export-section">
+                        <button class="btn btn-success" onclick="exportChart('requestTypes')">
+                            📥 Export Chart
+                        </button>
                     </div>
                 </div>
-                <div class="export-section">
-                    <button class="btn btn-success" onclick="exportChart('requestTypes')">
-                        📥 Export Chart
-                    </button>
-                </div>
             </div>
-
 
             <!-- Rider Activity -->
-            <div class="report-card">
+            <div class="report-card rider-activity-card">
                 <h3 class="report-title">⏰ Rider Activity</h3>
                 <div id="riderHoursTable">
                     <div class="loading">Loading hours...</div>
@@ -490,7 +519,7 @@
             </div>
 
             <!-- Location Hotspots -->
-            <div class="report-card">
+            <div class="report-card location-card">
                 <h3 class="report-title">📍 Popular Locations</h3>
                 <div id="locationHotspots">
                     <div class="loading">Loading location data...</div>
@@ -943,13 +972,17 @@ function updateTablesSafe(tables) {
             data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
             if (nopd) data.push(nopd);
 
-            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>';
+            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th><th>Average</th></tr></thead><tbody>';
 
             data.forEach(function(rider) {
                 tableHtml += '<tr>';
+                var escorts = rider.escorts || 0;
+                var hours = rider.hours || 0;
+                var avg = hours > 0 ? Math.round((escorts / hours) * 4) / 4 : 0;
                 tableHtml += '<td>' + escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown') + '</td>';
-                tableHtml += '<td>' + (rider.escorts || 0) + '</td>';
-                tableHtml += '<td>' + (rider.hours || 0) + '</td>';
+                tableHtml += '<td>' + escorts + '</td>';
+                tableHtml += '<td>' + hours + '</td>';
+                tableHtml += '<td>' + avg.toFixed(2) + '</td>';
                 tableHtml += '</tr>';
             });
 
@@ -1056,12 +1089,13 @@ function updateTablesSafe(tables) {
                     var r = data[i];
                     var escorts = (r.escorts !== undefined) ? r.escorts : 0;
                     var hours = (r.hours !== undefined) ? r.hours : 0;
-                    hoursRows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escorts + '</td><td>' + hours + '</td></tr>';
+                    var avg = hours > 0 ? Math.round((escorts / hours) * 4) / 4 : 0;
+                    hoursRows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escorts + '</td><td>' + hours + '</td><td>' + avg.toFixed(2) + '</td></tr>';
                 }
                 if (data.length === 0) {
-                    hoursRows = '<tr><td colspan="3" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
+                    hoursRows = '<tr><td colspan="4" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
                 }
-                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
+                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th><th>Average</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             } else {
                 document.getElementById('riderHoursTable').innerHTML =
@@ -1179,14 +1213,17 @@ function displayRiderActivityReport(result) {
             var rows = '';
             for (var i = 0; i < data.length; i++) {
                 var r = data[i];
-                rows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escapeHtml(r.escorts) + '</td><td>' + escapeHtml(r.hours) + '</td></tr>';
+                var escorts = r.escorts || 0;
+                var hours = r.hours || 0;
+                var avg = hours > 0 ? Math.round((escorts / hours) * 4) / 4 : 0;
+                rows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escapeHtml(escorts) + '</td><td>' + escapeHtml(hours) + '</td><td>' + avg.toFixed(2) + '</td></tr>';
             }
 
             var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
                 '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;table-layout:fixed;}' +
-                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;width:33%;}th{background:#f4f4f4;}</style>' +
+                'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;width:25%;}th{background:#f4f4f4;}th:nth-child(2),th:nth-child(3),th:nth-child(4),td:nth-child(2),td:nth-child(3),td:nth-child(4){text-align:center;}</style>' +
                 '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
-                '<th>Total Hours</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
+                '<th>Total Hours</th><th>Average</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
 
             var reportWindow = window.open('', '_blank');
             if (reportWindow) {
