@@ -4551,7 +4551,8 @@ function generateReportData(filters) {
     riderHours.sort((a, b) => (b.escorts || 0) - (a.escorts || 0));
 
     const activeRiders = riderHours.length;
-    const totalEscorts = nopdEscortRiders + riderHours.reduce((sum, r) => sum + (r.escorts || 0), 0);
+    // Total rider activity (includes NOPD riders) for cross-checking
+    const totalRiderActivity = nopdEscortRiders + riderHours.reduce((sum, r) => sum + (r.escorts || 0), 0);
 
     // Calculate popular locations from filtered requests
     const locationCounts = {};
@@ -4577,7 +4578,7 @@ function generateReportData(filters) {
     const reportData = {
       summary: {
         totalRequests: totalRequests,
-        completedEscorts: totalEscorts,
+        completedEscorts: completedRequests,
         activeRiders: activeRiders,
         nopdEscortRiders: nopdEscortRiders,
         avgCompletionRate: riderPerformance.length > 0 ?
@@ -4602,13 +4603,14 @@ function generateReportData(filters) {
       // Backward compatibility
       totalRequests: totalRequests,
       completedRequests: completedRequests,
-      completedEscorts: totalEscorts,
+      completedEscorts: completedRequests,
       activeRiders: activeRiders,
       nopdEscortRiders: nopdEscortRiders,
       requestTypes: requestTypes,
       riderHours: riderHours,
       riderPerformance: riderPerformance,
-      popularLocations: popularLocations
+      popularLocations: popularLocations,
+      riderActivityTotal: totalRiderActivity
     };
 
     debugLog('Report data generated successfully:', {
@@ -4616,7 +4618,8 @@ function generateReportData(filters) {
       completedRequests: reportData.completedRequests,
       completedEscorts: reportData.completedEscorts,
       nopdEscortRiders: reportData.nopdEscortRiders,
-      riderHoursCount: reportData.riderHours.length
+      riderHoursCount: reportData.riderHours.length,
+      riderActivityTotal: totalRiderActivity
     });
 
     return reportData;
