@@ -664,108 +664,60 @@
 function handlePageDataSuccess(data) {
     hideLoading();
 
-    // DETAILED LOGGING - Let's see exactly what we're getting
-    console.log('🔍 === DIAGNOSTIC SUCCESS HANDLER ===');
-    console.log('1️⃣ Raw data received:', data);
-    console.log('2️⃣ Data type:', typeof data);
-    console.log('3️⃣ Data is null/undefined:', data == null);
-    console.log('4️⃣ Data is object:', typeof data === 'object');
+    // Simple console logging only
+    console.log('✅ handlePageDataSuccess received data:', data);
     
     if (data) {
-        console.log('5️⃣ Data keys:', Object.keys(data));
-        console.log('6️⃣ Has success property:', 'success' in data);
-        console.log('7️⃣ Success value:', data.success);
-        console.log('8️⃣ Success type:', typeof data.success);
-        console.log('9️⃣ Success === true:', data.success === true);
-        console.log('🔟 Has user:', !!data.user);
-        console.log('1️⃣1️⃣ Has reportData:', !!data.reportData);
-        
-        if (data.reportData) {
-            console.log('1️⃣2️⃣ ReportData keys:', Object.keys(data.reportData));
-            console.log('1️⃣3️⃣ ReportData summary:', data.reportData.summary);
-        }
+        console.log('Data type:', typeof data);
+        console.log('Has success:', !!data.success);
+        console.log('Has user:', !!data.user);
+        console.log('Has reportData:', !!data.reportData);
     }
-    
-    // Show the data on screen so we can see it
-    var debugDiv = document.createElement('div');
-    debugDiv.style.cssText = 'position: fixed; top: 60px; right: 10px; width: 400px; max-height: 500px; overflow: auto; background: white; border: 2px solid blue; padding: 10px; z-index: 1001; font-family: monospace; font-size: 12px;';
-    debugDiv.innerHTML = `
-        <h4>🔍 Data Received:</h4>
-        <p><strong>Type:</strong> ${typeof data}</p>
-        <p><strong>Success:</strong> ${data ? data.success : 'N/A'}</p>
-        <p><strong>Has User:</strong> ${data ? !!data.user : 'N/A'}</p>
-        <p><strong>Has ReportData:</strong> ${data ? !!data.reportData : 'N/A'}</p>
-        <button onclick="this.parentElement.remove()">Close</button>
-        <br><br>
-        <strong>Full Data:</strong>
-        <pre style="background: #f0f0f0; padding: 5px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
-    `;
-    document.body.appendChild(debugDiv);
 
-    // Try EVERY possible way to handle the data
+    // Try to process the data
     var handled = false;
     
     // Path 1: Perfect match
     if (data && data.success === true && data.user && data.reportData) {
-        console.log('✅ PATH 1: Perfect match - processing');
+        console.log('✅ Processing data - perfect match');
         try {
             updateUserInfoSafely(data.user);
             handleReportData(data.reportData);
             handled = true;
         } catch (e) {
-            console.log('❌ PATH 1 failed during processing:', e.message);
+            console.log('❌ Processing failed:', e.message);
         }
     }
     
-    // Path 2: Has data but success might be string or other truthy value
+    // Path 2: Has data but success might be truthy value
     if (!handled && data && data.success && data.user && data.reportData) {
-        console.log('✅ PATH 2: Truthy success - processing');
+        console.log('✅ Processing data - truthy success');
         try {
             updateUserInfoSafely(data.user);
             handleReportData(data.reportData);
             handled = true;
         } catch (e) {
-            console.log('❌ PATH 2 failed during processing:', e.message);
+            console.log('❌ Processing failed:', e.message);
         }
     }
     
     // Path 3: Has required data regardless of success flag
     if (!handled && data && data.user && data.reportData) {
-        console.log('✅ PATH 3: Has required data - processing');
+        console.log('✅ Processing data - has required data');
         try {
             updateUserInfoSafely(data.user);
             handleReportData(data.reportData);
             handled = true;
         } catch (e) {
-            console.log('❌ PATH 3 failed during processing:', e.message);
-        }
-    }
-    
-    // Path 4: Extract what we can from any object
-    if (!handled && data && typeof data === 'object') {
-        console.log('✅ PATH 4: Extracting what we can');
-        try {
-            var userData = data.user || { name: 'Extracted User', roles: ['admin'] };
-            var reportData = data.reportData || {
-                summary: { totalRequests: 1, completedRequests: 1, activeRiders: 1 },
-                charts: {},
-                tables: {}
-            };
-            
-            updateUserInfoSafely(userData);
-            handleReportData(reportData);
-            handled = true;
-        } catch (e) {
-            console.log('❌ PATH 4 failed during processing:', e.message);
+            console.log('❌ Processing failed:', e.message);
         }
     }
     
     if (!handled) {
-        console.log('❌ ALL PATHS FAILED - showing error');
-        console.error('Failed to load reports data:', data ? data.error : 'No data');
-        handlePageDataFailure(data || { message: 'All processing paths failed.' });
+        console.log('❌ All processing paths failed');
+        handlePageDataFailure(data || { message: 'Could not process data.' });
     } else {
-        console.log('✅ SUCCESS - data was processed');
+        console.log('✅ Data processed successfully');
     }
 }
 
