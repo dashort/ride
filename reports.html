@@ -678,41 +678,42 @@
         }
 
         function handlePageDataFailure(error) {
-            hideLoading();
-            console.error('Error loading reports data:', error && error.message ? error.message : error);
+               hideLoading();
+    console.error('Error loading reports data:', error);
 
-            var fallbackUser = (error && error.user) ? error.user : {
-                name: 'System User',
-                email: 'user@system.com',
-                roles: ['admin'],
-                permissions: ['view_reports']
-            };
+    // Set a basic user
+    var fallbackUser = {
+        name: 'System User',
+        email: 'user@system.com',
+        roles: ['admin'],
+        permissions: ['view_reports']
+    };
+    updateUserInfoSafely(fallbackUser);
 
-            updateUserInfoSafely(fallbackUser);
-            setFallbackReportData();
-        }
+    // Create simple fallback data
+    var fallbackData = {
+        totalRequests: 10,
+        completedRequests: 7,
+        riderHours: [
+            { riderName: 'Sample Rider 1', hours: 12, escorts: 6 },
+            { riderName: 'Sample Rider 2', hours: 8, escorts: 4 }
+        ],
+        period: 'Sample Data',
+        dataSource: 'fallback'
+    };
 
-        function updateUserInfoSafely(user) {
-            try {
-                var safeUpdate = function(id, value, property) {
-                    property = property || 'textContent';
-                    try {
-                        var element = document.getElementById(id);
-                        if (element && element[property] !== undefined) {
-                            element[property] = value;
-                        }
-                    } catch (e) {
-                        console.log('Error updating ' + id + ':', e.message);
-                    }
-                };
+    // Use your existing handleReportData function
+    if (typeof handleReportData === 'function') {
+        handleReportData(fallbackData);
+    } else {
+        console.log('handleReportData function not found');
+    }
 
-                safeUpdate('userName', user.name || 'User');
-                safeUpdate('userRole', (user.roles || ['user']).join(', '));
-                safeUpdate('userAvatar', (user.name || 'U').charAt(0).toUpperCase());
-            } catch (error) {
-                console.log('Error in updateUserInfoSafely:', error);
-            }
-        }
+    // Show a simple message
+    setTimeout(function() {
+        alert('Reports data failed to load. Showing sample data for demonstration.');
+    }, 500);
+}
 
         function handleReportData(data) {
             hideLoading();

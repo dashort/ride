@@ -1,3 +1,43 @@
+function testFix() {
+  return testReportsFixWorking();
+}
+function debugCurrentBackend() {
+  console.log('🔍 Testing current backend...');
+  
+  const testFilters = {
+    startDate: '2024-01-01',
+    endDate: '2025-12-31',
+    requestType: 'All',
+    status: 'All'
+  };
+  
+  try {
+    const result = getPageDataForReports(testFilters);
+    console.log('📊 Current backend returns:', {
+      exists: !!result,
+      type: typeof result,
+      hasSuccess: 'success' in result,
+      successValue: result?.success,
+      keys: result ? Object.keys(result) : null,
+      hasUser: !!result?.user,
+      hasReportData: !!result?.reportData
+    });
+    return result;
+  } catch (error) {
+    console.log('❌ Backend error:', error.message);
+    return { error: error.message };
+  }
+}
+function testFix() {
+  const result = getPageDataForReports({
+    startDate: '2024-01-01',
+    endDate: '2025-12-31',
+    requestType: 'All',
+    status: 'All'
+  });
+  console.log('Test result:', result);
+  return result;
+}
 /**
  * WEB APP DEPLOYMENT AND PERMISSIONS FIX
  * Diagnose and fix Google Apps Script availability issues
