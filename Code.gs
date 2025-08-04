@@ -1082,7 +1082,7 @@ function testCorrectedRiderCalculation() {
       
       if (escorts > 0) {
         riderHours.push({
-          rider: riderName,
+          riderName: riderName,
           escorts: escorts,
           hours: Math.round(totalHours * 4) / 4
         });
@@ -1095,7 +1095,7 @@ function testCorrectedRiderCalculation() {
     console.log(`📊 Results: ${riderHours.length} riders with ${totalEscorts} total escorts`);
     console.log('👥 Rider breakdown:');
     riderHours.forEach(rider => {
-      console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+      console.log(`  ${rider.riderName}: ${rider.escorts} escorts, ${rider.hours} hours`);
     });
     
     console.log('\n📝 TO FIX THE ERROR:');
@@ -1388,7 +1388,7 @@ function diagnoseGenerateReportData() {
       
       console.log('\n👥 Rider breakdown:');
       reportData.riderHours.forEach(rider => {
-        console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+        console.log(`  ${rider.riderName}: ${rider.escorts} escorts, ${rider.hours} hours`);
       });
     }
     
@@ -1501,7 +1501,7 @@ function testFixedGenerateReportData() {
       
       if (escorts > 0) {
         riderHours.push({
-          rider: riderName,
+          riderName: riderName,
           escorts: escorts,
           hours: Math.round(totalHours * 4) / 4
         });
@@ -1525,7 +1525,7 @@ function testFixedGenerateReportData() {
     
     console.log('\n👥 Fixed rider breakdown:');
     riderHours.forEach(rider => {
-      console.log(`  ${rider.rider}: ${rider.escorts} escorts, ${rider.hours} hours`);
+      console.log(`  ${rider.riderName}: ${rider.escorts} escorts, ${rider.hours} hours`);
     });
     
     return {
@@ -4203,7 +4203,7 @@ function generateNotificationReport() {
       }
       
       byRequest[requestId].push({
-        rider: riderName,
+        riderName: riderName,
         notified: notified instanceof Date,
         sms: smsSent instanceof Date,
         email: emailSent instanceof Date
@@ -4224,7 +4224,7 @@ function generateNotificationReport() {
         if (rider.sms) status.push('📱');
         if (rider.email) status.push('📧');
         if (rider.notified) status.push('✅');
-        report += `  ${rider.rider}: ${status.join(' ') || '❌'}\n`;
+        report += `  ${rider.riderName}: ${status.join(' ') || '❌'}\n`;
       });
     });
     
@@ -4818,7 +4818,7 @@ function generateRiderActivityReport(startDate, endDate) {
 
     // Convert to array format
     const riderHours = Object.keys(riderMap).map(riderName => ({
-      rider: riderName,
+      riderName: riderName,
       escorts: riderMap[riderName].escorts,
       hours: Math.round(riderMap[riderName].hours * 4) / 4
     }));
