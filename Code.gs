@@ -947,8 +947,9 @@ function generateReportDataMinimal(filters) {
       riderHours: [],
       summary: {
         totalRequests: 0,
-        completedRequests: 0,
+        completedEscorts: 0,
         activeRiders: 0,
+        nopdEscortRiders: 0,
         avgCompletionRate: 0
       },
       charts: {
@@ -4425,14 +4426,10 @@ function generateReportData(filters) {
       return matchesDate && matchesType && matchesStatus;
     });
     
-    // Calculate summary statistics - only count completed requests
-    const completedRequests = filteredRequests.filter(request => 
+    // Calculate summary statistics
+    const totalRequests = filteredRequests.length;
+    const completedRequests = filteredRequests.filter(request =>
       getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status) === 'Completed'
-    ).length;
-    const totalRequests = completedRequests;
-    
-    const activeRiders = ridersData.data.filter(rider =>
-      getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.status) === 'Active'
     ).length;
     
     // Calculate request types distribution
@@ -4475,45 +4472,39 @@ function generateReportData(filters) {
       }
     });
 
-    // 🔧 FIXED: Calculate rider hours from REQUESTS data instead of assignments
-    const riderHours = [];
+    // Calculate rider hours and escorts from requests data
+    const riderHoursRaw = [];
     ridersData.data.forEach(rider => {
       const riderName = getColumnValue(rider, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!riderName || !riderName.trim()) return;
-      
+
       let totalHours = 0;
       let escorts = 0;
-      
-      // 🔧 FIXED: Use filteredRequests (from requests data) instead of assignmentsData
+
       filteredRequests.forEach(request => {
         const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
         const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-        
-        // Only count completed requests
+
         if (status !== 'Completed') return;
-        
-        // Check if this rider is assigned to this request
+
         if (ridersAssigned) {
           const assignedRidersList = String(ridersAssigned).split(',')
             .map(name => name.trim())
             .filter(name => name && name.length > 0);
-          
-          // Check if current rider is in the assigned list (case-insensitive)
-          const isAssigned = assignedRidersList.some(assignedName => 
+
+          const isAssigned = assignedRidersList.some(assignedName =>
             assignedName.toLowerCase() === riderName.toLowerCase()
           );
-          
+
           if (isAssigned) {
             escorts++;
-            
-            // Calculate hours from request times or use estimates
+
             const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
             const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
             const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-            
+
             let hoursToAdd = 0;
-            
-            // Try to calculate from actual times
+
             if (startTime && endTime) {
               const start = startTime instanceof Date ? startTime : new Date(startTime);
               const end = endTime instanceof Date ? endTime : new Date(endTime);
@@ -4521,8 +4512,7 @@ function generateReportData(filters) {
                 hoursToAdd = Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60));
               }
             }
-            
-            // Fallback to estimates if no valid time calculation
+
             if (hoursToAdd <= 0) {
               const estimates = {
                 'Funeral': 0.5,
@@ -4533,48 +4523,35 @@ function generateReportData(filters) {
               };
               hoursToAdd = estimates[requestType] || estimates['Other'];
             }
-            
+
             totalHours += hoursToAdd;
           }
         }
       });
-      
+
       if (escorts > 0) {
-        if (organization === 'NOPD') {
-          nopdEscorts += escorts;
-          nopdHours += totalHours;
-        } else {
-          riderHours.push({
-            name: riderName,
-            riderName: riderName,
-            escorts: escorts,
-            hours: Math.round(totalHours * 4) / 4 // Round to quarter hours
-          });
-        }
+        riderHoursRaw.push({
+          name: riderName,
+          riderName: riderName,
+          escorts: escorts,
+          hours: Math.round(totalHours * 4) / 4
+        });
       }
     });
 
-    if (nopdEscorts > 0 || nopdHours > 0) {
-      riderHours.push({
-        name: 'NOPD Rider',
-        riderName: 'NOPD Rider',
-        escorts: nopdEscorts,
-        hours: Math.round(nopdHours * 4) / 4
-      });
-    }
-
-    let nopdEntry = null;
-    riderHours = riderHours.filter(r => {
-      if (r.name === 'NOPD Rider') {
-        nopdEntry = r;
+    let nopdEscortRiders = 0;
+    let riderHours = riderHoursRaw.filter(r => {
+      const name = r.name || r.riderName || '';
+      if (/^nopd rider( 2)?$/i.test(name)) {
+        nopdEscortRiders += r.escorts || 0;
         return false;
       }
       return true;
     });
     riderHours.sort((a, b) => (b.escorts || 0) - (a.escorts || 0));
-    if (nopdEntry) {
-      riderHours.push(nopdEntry);
-    }
+
+    const activeRiders = riderHours.length;
+    const totalEscorts = nopdEscortRiders + riderHours.reduce((sum, r) => sum + (r.escorts || 0), 0);
 
     // Calculate popular locations from filtered requests
     const locationCounts = {};
@@ -4600,9 +4577,10 @@ function generateReportData(filters) {
     const reportData = {
       summary: {
         totalRequests: totalRequests,
-        completedRequests: completedRequests,
+        completedEscorts: totalEscorts,
         activeRiders: activeRiders,
-        avgCompletionRate: riderPerformance.length > 0 ? 
+        nopdEscortRiders: nopdEscortRiders,
+        avgCompletionRate: riderPerformance.length > 0 ?
           Math.round(riderPerformance.reduce((sum, rider) => sum + rider.completionRate, 0) / riderPerformance.length) : 0
       },
       charts: {
@@ -4624,7 +4602,9 @@ function generateReportData(filters) {
       // Backward compatibility
       totalRequests: totalRequests,
       completedRequests: completedRequests,
+      completedEscorts: totalEscorts,
       activeRiders: activeRiders,
+      nopdEscortRiders: nopdEscortRiders,
       requestTypes: requestTypes,
       riderHours: riderHours,
       riderPerformance: riderPerformance,
@@ -4634,8 +4614,9 @@ function generateReportData(filters) {
     debugLog('Report data generated successfully:', {
       totalRequests: reportData.totalRequests,
       completedRequests: reportData.completedRequests,
-      riderHoursCount: reportData.riderHours.length,
-      totalEscorts: reportData.riderHours.reduce((sum, rider) => sum + rider.escorts, 0)
+      completedEscorts: reportData.completedEscorts,
+      nopdEscortRiders: reportData.nopdEscortRiders,
+      riderHoursCount: reportData.riderHours.length
     });
 
     return reportData;
@@ -4644,33 +4625,36 @@ function generateReportData(filters) {
     logError('Error in generateReportData', error);
     
     // Return safe fallback data structure
-    return {
-      success: false,
-      error: error.message,
-      summary: {
+      return {
+        success: false,
+        error: error.message,
+        summary: {
+          totalRequests: 0,
+          completedEscorts: 0,
+          activeRiders: 0,
+          nopdEscortRiders: 0,
+          avgCompletionRate: 0
+        },
+        charts: {
+          requestTypes: {},
+          riderPerformance: [],
+          popularLocations: []
+        },
+        tables: {
+          riderHours: [],
+          recentRequests: []
+        },
+        // Backward compatibility
         totalRequests: 0,
         completedRequests: 0,
+        completedEscorts: 0,
         activeRiders: 0,
-        avgCompletionRate: 0
-      },
-      charts: {
+        nopdEscortRiders: 0,
         requestTypes: {},
+        riderHours: [],
         riderPerformance: [],
         popularLocations: []
-      },
-      tables: {
-        riderHours: [],
-        recentRequests: []
-      },
-      // Backward compatibility
-      totalRequests: 0,
-      completedRequests: 0,
-      activeRiders: 0,
-      requestTypes: {},
-      riderHours: [],
-      riderPerformance: [],
-      popularLocations: []
-    };
+      };
   }
 }
 

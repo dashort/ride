@@ -461,15 +461,19 @@
         <div class="summary-grid" id="summaryStats">
             <div class="summary-card">
                 <div class="metric-value" id="totalRequests">-</div>
-                <div class="metric-label">Total Requests</div>
+                <div class="metric-label">Total Escort Requests</div>
             </div>
             <div class="summary-card success">
-                <div class="metric-value" id="completedRequests">-</div>
-                <div class="metric-label">Completed</div>
+                <div class="metric-value" id="completedEscorts">-</div>
+                <div class="metric-label">Completed Escorts <span class="sub-label">(per resource)</span></div>
             </div>
             <div class="summary-card warning">
                 <div class="metric-value" id="activeRiders">-</div>
-                <div class="metric-label">Active Riders</div>
+                <div class="metric-label">Active Riders for this period</div>
+            </div>
+            <div class="summary-card">
+                <div class="metric-value" id="nopdEscortRiders">-</div>
+                <div class="metric-label">NOPD Escort Riders</div>
             </div>
         </div>
 
@@ -892,8 +896,9 @@ function updateSummaryStatsSafe(summary) {
     // Safely update each stat
     var stats = [
         { id: 'totalRequests', value: summary.totalRequests || 0 },
-        { id: 'completedRequests', value: summary.completedRequests || 0 },
-        { id: 'activeRiders', value: summary.activeRiders || 0 }
+        { id: 'completedEscorts', value: summary.completedEscorts || 0 },
+        { id: 'activeRiders', value: summary.activeRiders || 0 },
+        { id: 'nopdEscortRiders', value: summary.nopdEscortRiders || 0 }
     ];
     
     stats.forEach(function(stat) {
@@ -963,14 +968,11 @@ function updateTablesSafe(tables) {
         var riderTable = document.getElementById('riderHoursTable');
         if (riderTable && tables.riderHours && Array.isArray(tables.riderHours)) {
             var data = tables.riderHours.slice();
-            var nopd = null;
             data = data.filter(function(r) {
                 var name = r.name || r.riderName || '';
-                if (/nopd/i.test(name)) { nopd = r; return false; }
-                return true;
+                return !/nopd/i.test(name);
             });
-            data.sort(function(a, b) { return ( (b.requests || b.escorts || 0) - (a.requests || a.escorts || 0) ); });
-            if (nopd) data.push(nopd);
+            data.sort(function(a, b) { return ((b.requests || b.escorts || 0) - (a.requests || a.escorts || 0)); });
 
             var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>';
 
@@ -1024,8 +1026,9 @@ function updateTablesSafe(tables) {
 
         function updateSummaryStats(summary) {
             document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
-            document.getElementById('completedRequests').textContent = summary.completedRequests || 0;
+            document.getElementById('completedEscorts').textContent = summary.completedEscorts || 0;
             document.getElementById('activeRiders').textContent = summary.activeRiders || 0;
+            document.getElementById('nopdEscortRiders').textContent = summary.nopdEscortRiders || 0;
         }
 
         function updateCharts(charts) {
@@ -1069,20 +1072,11 @@ function updateTablesSafe(tables) {
 
             if (tables.riderHours) {
                 var data = tables.riderHours.slice();
-                var nopdRequests = 0, nopdHours = 0;
                 data = data.filter(function(r) {
                     var name = r.name || r.riderName || '';
-                    if (/nopd/i.test(name)) {
-                        nopdRequests += (r.requests || r.escorts || 0);
-                        nopdHours += r.hours || 0;
-                        return false;
-                    }
-                    return true;
+                    return !/nopd/i.test(name);
                 });
-                data.sort(function(a, b) { return ( (b.requests || b.escorts || 0) - (a.requests || a.escorts || 0) ); });
-                if (nopdRequests || nopdHours) {
-                    data.push({ name: 'NOPD Rider', requests: nopdRequests, hours: nopdHours });
-                }
+                data.sort(function(a, b) { return ((b.requests || b.escorts || 0) - (a.requests || a.escorts || 0)); });
 
                 var hoursRows = '';
                 for (var i = 0; i < data.length; i++) {
@@ -1132,7 +1126,7 @@ function updateTablesSafe(tables) {
             hideLoading();
             console.log('Using fallback data for reports');
             var data = {
-                summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
+                summary: { totalRequests: 0, completedEscorts: 0, activeRiders: 0, nopdEscortRiders: 0 },
                 charts: {},
                 tables: {}
             };
