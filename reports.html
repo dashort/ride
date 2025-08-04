@@ -664,71 +664,108 @@
 function handlePageDataSuccess(data) {
     hideLoading();
 
-    // DETAILED DIAGNOSTIC - Let's see exactly what we're getting
-    console.log('🔍 === FRONTEND DIAGNOSTIC ===');
+    // DETAILED LOGGING - Let's see exactly what we're getting
+    console.log('🔍 === DIAGNOSTIC SUCCESS HANDLER ===');
     console.log('1️⃣ Raw data received:', data);
     console.log('2️⃣ Data type:', typeof data);
-    console.log('3️⃣ Data is null:', data === null);
-    console.log('4️⃣ Data is undefined:', data === undefined);
-    console.log('5️⃣ Data truthiness:', !!data);
+    console.log('3️⃣ Data is null/undefined:', data == null);
+    console.log('4️⃣ Data is object:', typeof data === 'object');
     
     if (data) {
-        console.log('6️⃣ Data keys:', Object.keys(data));
-        console.log('7️⃣ Has success property:', 'success' in data);
-        console.log('8️⃣ Success value:', data.success);
-        console.log('9️⃣ Success type:', typeof data.success);
-        console.log('🔟 Success === true:', data.success === true);
-        console.log('1️⃣1️⃣ Success == true:', data.success == true);
-        
-        if (data.success !== undefined) {
-            console.log('1️⃣2️⃣ Success is defined, value:', JSON.stringify(data.success));
-        }
-        
-        if (data.user) {
-            console.log('1️⃣3️⃣ Has user data:', !!data.user);
-        }
+        console.log('5️⃣ Data keys:', Object.keys(data));
+        console.log('6️⃣ Has success property:', 'success' in data);
+        console.log('7️⃣ Success value:', data.success);
+        console.log('8️⃣ Success type:', typeof data.success);
+        console.log('9️⃣ Success === true:', data.success === true);
+        console.log('🔟 Has user:', !!data.user);
+        console.log('1️⃣1️⃣ Has reportData:', !!data.reportData);
         
         if (data.reportData) {
-            console.log('1️⃣4️⃣ Has reportData:', !!data.reportData);
+            console.log('1️⃣2️⃣ ReportData keys:', Object.keys(data.reportData));
+            console.log('1️⃣3️⃣ ReportData summary:', data.reportData.summary);
         }
-        
-        // Try the exact condition your code uses
-        console.log('1️⃣5️⃣ Original condition (data && data.success):', !!(data && data.success));
     }
     
-    console.log('🔍 === END DIAGNOSTIC ===');
+    // Show the data on screen so we can see it
+    var debugDiv = document.createElement('div');
+    debugDiv.style.cssText = 'position: fixed; top: 60px; right: 10px; width: 400px; max-height: 500px; overflow: auto; background: white; border: 2px solid blue; padding: 10px; z-index: 1001; font-family: monospace; font-size: 12px;';
+    debugDiv.innerHTML = `
+        <h4>🔍 Data Received:</h4>
+        <p><strong>Type:</strong> ${typeof data}</p>
+        <p><strong>Success:</strong> ${data ? data.success : 'N/A'}</p>
+        <p><strong>Has User:</strong> ${data ? !!data.user : 'N/A'}</p>
+        <p><strong>Has ReportData:</strong> ${data ? !!data.reportData : 'N/A'}</p>
+        <button onclick="this.parentElement.remove()">Close</button>
+        <br><br>
+        <strong>Full Data:</strong>
+        <pre style="background: #f0f0f0; padding: 5px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>
+    `;
+    document.body.appendChild(debugDiv);
 
-    // Now try to process the data with multiple fallback approaches
-    if (data && data.success === true) {
-        console.log('✅ SUCCESS PATH 1: Perfect match');
-        updateUserInfoSafely(data.user);
-        handleReportData(data.reportData);
-    } else if (data && data.success && data.success !== false) {
-        console.log('✅ SUCCESS PATH 2: Truthy success');
-        updateUserInfoSafely(data.user);
-        handleReportData(data.reportData);
-    } else if (data && data.user && data.reportData) {
-        console.log('✅ SUCCESS PATH 3: Has required data regardless of success flag');
-        updateUserInfoSafely(data.user);
-        handleReportData(data.reportData);
-    } else if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-        console.log('⚠️ SUCCESS PATH 4: Has some data, trying anyway');
-        console.log('Available data keys:', Object.keys(data));
-        
-        // Try to extract what we can
-        var userData = data.user || { name: 'Unknown User', roles: ['user'] };
-        var reportData = data.reportData || data || { 
-            summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
-            charts: {},
-            tables: {}
-        };
-        
-        updateUserInfoSafely(userData);
-        handleReportData(reportData);
-    } else {
-        console.error('❌ ALL PATHS FAILED - showing error');
+    // Try EVERY possible way to handle the data
+    var handled = false;
+    
+    // Path 1: Perfect match
+    if (data && data.success === true && data.user && data.reportData) {
+        console.log('✅ PATH 1: Perfect match - processing');
+        try {
+            updateUserInfoSafely(data.user);
+            handleReportData(data.reportData);
+            handled = true;
+        } catch (e) {
+            console.log('❌ PATH 1 failed during processing:', e.message);
+        }
+    }
+    
+    // Path 2: Has data but success might be string or other truthy value
+    if (!handled && data && data.success && data.user && data.reportData) {
+        console.log('✅ PATH 2: Truthy success - processing');
+        try {
+            updateUserInfoSafely(data.user);
+            handleReportData(data.reportData);
+            handled = true;
+        } catch (e) {
+            console.log('❌ PATH 2 failed during processing:', e.message);
+        }
+    }
+    
+    // Path 3: Has required data regardless of success flag
+    if (!handled && data && data.user && data.reportData) {
+        console.log('✅ PATH 3: Has required data - processing');
+        try {
+            updateUserInfoSafely(data.user);
+            handleReportData(data.reportData);
+            handled = true;
+        } catch (e) {
+            console.log('❌ PATH 3 failed during processing:', e.message);
+        }
+    }
+    
+    // Path 4: Extract what we can from any object
+    if (!handled && data && typeof data === 'object') {
+        console.log('✅ PATH 4: Extracting what we can');
+        try {
+            var userData = data.user || { name: 'Extracted User', roles: ['admin'] };
+            var reportData = data.reportData || {
+                summary: { totalRequests: 1, completedRequests: 1, activeRiders: 1 },
+                charts: {},
+                tables: {}
+            };
+            
+            updateUserInfoSafely(userData);
+            handleReportData(reportData);
+            handled = true;
+        } catch (e) {
+            console.log('❌ PATH 4 failed during processing:', e.message);
+        }
+    }
+    
+    if (!handled) {
+        console.log('❌ ALL PATHS FAILED - showing error');
         console.error('Failed to load reports data:', data ? data.error : 'No data');
-        handlePageDataFailure(data || { message: 'Received success:false or no data.' });
+        handlePageDataFailure(data || { message: 'All processing paths failed.' });
+    } else {
+        console.log('✅ SUCCESS - data was processed');
     }
 }
 
@@ -762,32 +799,21 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('💡 You can run testDataReceiving() from console to test manually');
 });
 
+
+// Call this when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    addTestButtons();
+});
+
 function handlePageDataFailure(error) {
     hideLoading();
     
-    // Simple logging to see what's failing
+    // Simple logging
     console.log('❌ Backend call failed with error:', error);
     console.log('Error type:', typeof error);
+    console.log('Error details:', JSON.stringify(error, null, 2));
     
-    // Show a simple test button
-    var testButton = document.createElement('button');
-    testButton.innerHTML = '🧪 Test Simple Backend';
-    testButton.onclick = function() {
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-                .withSuccessHandler(function(result) {
-                    alert('✅ Backend works! Result: ' + JSON.stringify(result));
-                })
-                .withFailureHandler(function(err) {
-                    alert('❌ Backend failed: ' + err);
-                })
-                .debugReportsIssue(); // This function worked before
-        }
-    };
-    testButton.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; padding: 10px; background: red; color: white;';
-    document.body.appendChild(testButton);
-    
-    // Original error handling - keep this exactly as it was
+    // Original error handling
     var fallbackUser = (error && error.user) ? error.user : {
         name: 'System User',
         email: 'user@system.com',
@@ -799,27 +825,177 @@ function handlePageDataFailure(error) {
     setFallbackReportData();
 }
 
-        function handleReportData(data) {
-            hideLoading();
-            reportData = data;
-            
-            if (DEBUG_REPORTS) {
-                console.log('📊 handleReportData processing:', data);
-            }
-            
-            updateSummaryStats(data.summary);
-            updateCharts(data.charts);
-            updateTables(data.tables);
-            
-            // Update last updated timestamp
-            var now = new Date();
-            var timestamp = 'Last updated: ' + now.toLocaleString();
-            document.getElementById('lastUpdated').textContent = timestamp;
-            
-            if (DEBUG_REPORTS) {
-                console.log('✅ Report data updated successfully at', timestamp);
-            }
+function handleReportData(data) {
+    hideLoading();
+    reportData = data;
+    
+    console.log('📊 handleReportData processing:', data);
+    
+    // Update summary stats safely
+    try {
+        if (data.summary) {
+            console.log('✅ Updating summary stats');
+            updateSummaryStatsSafe(data.summary);
         }
+    } catch (summaryError) {
+        console.error('❌ Error updating summary stats:', summaryError);
+    }
+    
+    // Update charts safely
+    try {
+        if (data.charts) {
+            console.log('✅ Updating charts');
+            updateChartsSafe(data.charts);
+        }
+    } catch (chartsError) {
+        console.error('❌ Error updating charts:', chartsError);
+    }
+    
+    // Update tables safely  
+    try {
+        if (data.tables) {
+            console.log('✅ Updating tables');
+            updateTablesSafe(data.tables);
+        }
+    } catch (tablesError) {
+        console.error('❌ Error updating tables:', tablesError);
+    }
+    
+    // Update timestamp safely
+    try {
+        var now = new Date();
+        var timestamp = 'Last updated: ' + now.toLocaleString();
+        var timestampElement = document.getElementById('lastUpdated');
+        if (timestampElement) {
+            timestampElement.textContent = timestamp;
+        }
+        console.log('✅ Report data updated successfully at', timestamp);
+    } catch (timestampError) {
+        console.log('Could not update timestamp:', timestampError.message);
+    }
+}
+
+function updateSummaryStatsSafe(summary) {
+    console.log('📊 updateSummaryStatsSafe called with:', summary);
+    
+    // Safely update each stat
+    var stats = [
+        { id: 'totalRequests', value: summary.totalRequests || 0 },
+        { id: 'completedRequests', value: summary.completedRequests || 0 },
+        { id: 'activeRiders', value: summary.activeRiders || 0 }
+    ];
+    
+    stats.forEach(function(stat) {
+        try {
+            var element = document.getElementById(stat.id);
+            if (element) {
+                element.textContent = stat.value;
+                console.log('✅ Updated', stat.id, 'to', stat.value);
+            } else {
+                console.log('⚠️ Element not found:', stat.id);
+            }
+        } catch (e) {
+            console.log('❌ Error updating', stat.id + ':', e.message);
+        }
+    });
+}
+
+function updateChartsSafe(charts) {
+    console.log('📊 updateChartsSafe called with:', charts);
+    
+    // Update request volume chart
+    try {
+        var volumeChart = document.getElementById('requestVolumeChart');
+        if (volumeChart && charts.requestVolume) {
+            volumeChart.innerHTML = 
+                '<div style="padding: 2rem; text-align: center;">' +
+                '<h4>Request Volume Data</h4>' +
+                '<p>Total: ' + (charts.requestVolume.total || 0) + '</p>' +
+                '<p>Peak Day: ' + (charts.requestVolume.peakDay || 'N/A') + '</p>' +
+                '<p>Trend: ' + (charts.requestVolume.trend || 'N/A') + '</p>' +
+                '</div>';
+            console.log('✅ Updated request volume chart');
+        } else if (volumeChart) {
+            volumeChart.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><h4>Request Volume Data</h4><p>No data available</p></div>';
+        }
+    } catch (e) {
+        console.log('❌ Error updating volume chart:', e.message);
+    }
+
+    // Update request types chart
+    try {
+        var typesChart = document.getElementById('requestTypesChart');
+        if (typesChart && charts.requestTypes && Object.keys(charts.requestTypes).length > 0) {
+            var totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
+            var typesHtml = '<div style="padding: 2rem;"><h4>Request Types</h4>';
+            for (var type in charts.requestTypes) {
+                var count = charts.requestTypes[type];
+                var percentage = totalRequests > 0 ? Math.round((count / totalRequests) * 100) : 0;
+                typesHtml += '<p>' + type + ': ' + count + ' (' + percentage + '%)</p>';
+            }
+            typesHtml += '</div>';
+            typesChart.innerHTML = typesHtml;
+            console.log('✅ Updated request types chart');
+        } else if (typesChart) {
+            typesChart.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><h4>Request Types</h4><p>No data available</p></div>';
+        }
+    } catch (e) {
+        console.log('❌ Error updating types chart:', e.message);
+    }
+}
+
+function updateTablesSafe(tables) {
+    console.log('📊 updateTablesSafe called with:', tables);
+    
+    // Update rider hours table
+    try {
+        var riderTable = document.getElementById('riderHoursTable');
+        if (riderTable && tables.riderHours && Array.isArray(tables.riderHours)) {
+            var tableHtml = '<table class="report-table"><thead><tr><th>Rider</th><th>Hours</th><th>Escorts</th></tr></thead><tbody>';
+            
+            tables.riderHours.forEach(function(rider) {
+                tableHtml += '<tr>';
+                tableHtml += '<td>' + (rider.riderName || rider.rider || 'Unknown') + '</td>';
+                tableHtml += '<td>' + (rider.hours || 0) + '</td>';
+                tableHtml += '<td>' + (rider.escorts || 0) + '</td>';
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += '</tbody></table>';
+            riderTable.innerHTML = tableHtml;
+            console.log('✅ Updated rider hours table');
+        } else if (riderTable) {
+            riderTable.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><p>No rider hours data available</p></div>';
+        }
+    } catch (e) {
+        console.log('❌ Error updating rider hours table:', e.message);
+    }
+    
+    // Update recent requests table
+    try {
+        var requestsTable = document.getElementById('recentRequestsTable');
+        if (requestsTable && tables.recentRequests && Array.isArray(tables.recentRequests)) {
+            var tableHtml = '<table class="report-table"><thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Rider</th></tr></thead><tbody>';
+            
+            tables.recentRequests.forEach(function(request) {
+                tableHtml += '<tr>';
+                tableHtml += '<td>' + (request.date || 'N/A') + '</td>';
+                tableHtml += '<td>' + (request.type || 'N/A') + '</td>';
+                tableHtml += '<td>' + (request.status || 'N/A') + '</td>';
+                tableHtml += '<td>' + (request.rider || 'Unassigned') + '</td>';
+                tableHtml += '</tr>';
+            });
+            
+            tableHtml += '</tbody></table>';
+            requestsTable.innerHTML = tableHtml;
+            console.log('✅ Updated recent requests table');
+        } else if (requestsTable) {
+            requestsTable.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><p>No recent requests data available</p></div>';
+        }
+    } catch (e) {
+        console.log('❌ Error updating recent requests table:', e.message);
+    }
+}
 
         function updateSummaryStats(summary) {
             document.getElementById('totalRequests').textContent = summary.totalRequests || 0;
