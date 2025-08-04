@@ -308,7 +308,7 @@ function testReportsConnection() {
     reportData: {
       totalRequests: 42,
       completedRequests: 38,
-      riderHours: [{ rider: 'Test Rider', escorts: 5, hours: 10 }]
+      riderHours: [{ riderName: 'Test Rider', escorts: 5, hours: 10 }]
     }
   };
 }
@@ -330,7 +330,7 @@ function testReportsConnection() {
       totalRequests: 42,
       completedRequests: 38,
       riderHours: [
-        { rider: 'Test Rider', escorts: 5, hours: 10 }
+        { riderName: 'Test Rider', escorts: 5, hours: 10 }
       ]
     }
   };
