@@ -226,23 +226,21 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
     
     // Filter requests based on date range if provided
     let filteredRequests = requestsData.data || [];
-    
+
     if (filters && filters.startDate && filters.endDate) {
       const startDate = new Date(filters.startDate);
       const endDate = new Date(filters.endDate);
-      
+
       filteredRequests = filteredRequests.filter(row => {
-        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ? 
-                          requestsData.columnMap[CONFIG.columns.requests.date] : 
-                          requestsData.columnMap['Date'] || 
-                          requestsData.columnMap['Request Date'] || 
+        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
+                          requestsData.columnMap[CONFIG.columns.requests.date] :
+                          requestsData.columnMap['Date'] ||
+                          requestsData.columnMap['Request Date'] ||
                           requestsData.columnMap['Event Date'] || 0;
         const requestDate = new Date(row[dateColIdx]);
         return requestDate >= startDate && requestDate <= endDate;
       });
     }
-    
-    totalRequests = filteredRequests.length;
 
     const statusColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.status) ?
                         requestsData.columnMap[CONFIG.columns.requests.status] :
@@ -256,10 +254,16 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
                         requestsData.columnMap['Assigned Rider'] ||
                         requestsData.columnMap['Rider ID'];
 
-    const activeSet = new Set();
-
     const isCompletedStatus = status => String(status || '').toLowerCase().trim() === 'completed';
     const isNopdRider = name => /^nopd rider( 2)?$/i.test(String(name || '').trim());
+
+    // Only count requests that were completed in this period
+    totalRequests = filteredRequests.filter(row => {
+      const status = statusColIdx !== undefined ? row[statusColIdx] : '';
+      return isCompletedStatus(status);
+    }).length;
+
+    const activeSet = new Set();
 
     filteredRequests.forEach(row => {
       const status = statusColIdx !== undefined ? row[statusColIdx] : '';
@@ -4414,11 +4418,11 @@ function generateReportData(filters) {
     });
     
     // Calculate summary statistics
-    const totalRequests = filteredRequests.length;
     const completedRequests = filteredRequests.filter(request => {
       const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
       return isCompletedStatus(status);
     }).length;
+    const totalRequests = completedRequests; // Only count completed requests for the total
     
     // Calculate request types distribution
     const requestTypes = {};
