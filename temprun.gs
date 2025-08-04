@@ -1,3 +1,175 @@
+// ========================================
+// STEP-BY-STEP DEBUG AND FIX
+// ========================================
+
+// STEP 1: Add this simple test function to your Apps Script Code.gs
+// This will help us see exactly what's happening
+
+function debugReportsIssue() {
+  console.log('🔍 === DEBUGGING REPORTS ISSUE ===');
+  
+  // Test 1: Check if getPageDataForReports exists
+  console.log('1️⃣ Checking if getPageDataForReports exists...');
+  if (typeof getPageDataForReports === 'function') {
+    console.log('✅ getPageDataForReports function exists');
+  } else {
+    console.log('❌ getPageDataForReports function NOT found!');
+    return { error: 'Function not found' };
+  }
+  
+  // Test 2: Call the function with test data
+  console.log('2️⃣ Calling getPageDataForReports...');
+  const testFilters = {
+    startDate: '2024-01-01',
+    endDate: '2025-12-31',
+    requestType: 'All', 
+    status: 'All'
+  };
+  
+  let result;
+  try {
+    result = getPageDataForReports(testFilters);
+    console.log('3️⃣ Function returned:', result);
+    console.log('4️⃣ Result analysis:');
+    console.log('   - Type:', typeof result);
+    console.log('   - Is null/undefined:', result == null);
+    console.log('   - Has success property:', result && 'success' in result);
+    console.log('   - Success value:', result && result.success);
+    console.log('   - Has user:', result && !!result.user);
+    console.log('   - Has reportData:', result && !!result.reportData);
+    console.log('   - All keys:', result ? Object.keys(result) : 'none');
+    
+  } catch (error) {
+    console.log('❌ Function threw error:', error.message);
+    return { error: error.message, stack: error.stack };
+  }
+  
+  return {
+    testComplete: true,
+    result: result,
+    analysis: {
+      hasSuccess: result && 'success' in result,
+      successValue: result && result.success,
+      resultType: typeof result
+    }
+  };
+}
+
+// STEP 2: Add this GUARANTEED working version of getPageDataForReports
+// This version will ALWAYS return success: true
+
+function getPageDataForReportsFixed(filters) {
+  console.log('🔧 === FIXED VERSION OF getPageDataForReports ===');
+  console.log('Called with filters:', filters);
+  
+  // ALWAYS return this exact structure, no matter what
+  const result = {
+    success: true,
+    user: {
+      name: 'Test User',
+      email: 'test@example.com',
+      roles: ['admin'],
+      permissions: ['view_reports']
+    },
+    reportData: {
+      totalRequests: 25,
+      completedRequests: 18,
+      riderHours: [
+        { riderName: 'Test Rider 1', hours: 12, escorts: 6 },
+        { riderName: 'Test Rider 2', hours: 8, escorts: 4 },
+        { riderName: 'Test Rider 3', hours: 15, escorts: 7 }
+      ],
+      period: filters && filters.startDate && filters.endDate ? 
+        `${filters.startDate} to ${filters.endDate}` : 'Test Period',
+      generatedAt: new Date().toISOString(),
+      dataSource: 'fixed_test'
+    }
+  };
+  
+  console.log('🎯 Returning guaranteed result:', result);
+  console.log('   Success property exists:', 'success' in result);
+  console.log('   Success value:', result.success);
+  
+  return result;
+}
+
+// STEP 3: Test the fixed version
+function testFixedVersion() {
+  console.log('🧪 Testing fixed version...');
+  
+  const result = getPageDataForReportsFixed({
+    startDate: '2024-01-01',
+    endDate: '2025-12-31',
+    requestType: 'All',
+    status: 'All'
+  });
+  
+  console.log('Fixed version result:', result);
+  
+  // Simulate what your HTML does
+  if (result && result.success) {
+    console.log('✅ HTML would accept this result');
+    return { htmlWouldAccept: true, result: result };
+  } else {
+    console.log('❌ HTML would reject this result');
+    return { htmlWouldAccept: false, result: result };
+  }
+}
+
+// STEP 4: Create a simple HTML test you can add to your reports page
+// Add this to your reports.html in a <script> tag for testing
+
+/*
+// ADD THIS TO YOUR REPORTS.HTML FOR TESTING:
+
+function testBackendDirectly() {
+    console.log('🧪 Testing backend directly from HTML...');
+    
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        // Test the debug function first
+        console.log('1️⃣ Testing debug function...');
+        google.script.run
+            .withSuccessHandler(function(result) {
+                console.log('✅ Debug result:', result);
+                
+                // Now test the fixed function
+                console.log('2️⃣ Testing fixed function...');
+                google.script.run
+                    .withSuccessHandler(function(fixedResult) {
+                        console.log('✅ Fixed function result:', fixedResult);
+                        console.log('Has success?', fixedResult && fixedResult.success);
+                        
+                        // Try to process it like the normal flow
+                        if (fixedResult && fixedResult.success) {
+                            console.log('🎉 This should work! Processing...');
+                            updateUserInfoSafely(fixedResult.user);
+                            handleReportData(fixedResult.reportData);
+                        } else {
+                            console.log('❌ Still not working');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        console.log('❌ Fixed function failed:', error);
+                    })
+                    .getPageDataForReportsFixed({
+                        startDate: '2024-01-01',
+                        endDate: '2025-12-31',
+                        requestType: 'All',
+                        status: 'All'
+                    });
+            })
+            .withFailureHandler(function(error) {
+                console.log('❌ Debug function failed:', error);
+            })
+            .debugReportsIssue();
+    } else {
+        console.log('❌ Google Apps Script not available');
+    }
+}
+
+// Call this function from browser console: testBackendDirectly()
+*/
+
 function testFix() {
   return testReportsFixWorking();
 }

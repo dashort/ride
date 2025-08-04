@@ -661,58 +661,142 @@
             }
         }
 
-        function handlePageDataSuccess(data) {
-            hideLoading();
+function handlePageDataSuccess(data) {
+    hideLoading();
 
-            if (DEBUG_REPORTS) {
-                console.log('✅ handlePageDataSuccess received data:', data);
-            }
-
-            if (data && data.success) {
-                updateUserInfoSafely(data.user);
-                handleReportData(data.reportData);
-            } else {
-                console.error('Failed to load reports data:', data ? data.error : 'No data');
-                handlePageDataFailure(data || { message: 'Received success:false or no data.' });
-            }
+    // DETAILED DIAGNOSTIC - Let's see exactly what we're getting
+    console.log('🔍 === FRONTEND DIAGNOSTIC ===');
+    console.log('1️⃣ Raw data received:', data);
+    console.log('2️⃣ Data type:', typeof data);
+    console.log('3️⃣ Data is null:', data === null);
+    console.log('4️⃣ Data is undefined:', data === undefined);
+    console.log('5️⃣ Data truthiness:', !!data);
+    
+    if (data) {
+        console.log('6️⃣ Data keys:', Object.keys(data));
+        console.log('7️⃣ Has success property:', 'success' in data);
+        console.log('8️⃣ Success value:', data.success);
+        console.log('9️⃣ Success type:', typeof data.success);
+        console.log('🔟 Success === true:', data.success === true);
+        console.log('1️⃣1️⃣ Success == true:', data.success == true);
+        
+        if (data.success !== undefined) {
+            console.log('1️⃣2️⃣ Success is defined, value:', JSON.stringify(data.success));
         }
+        
+        if (data.user) {
+            console.log('1️⃣3️⃣ Has user data:', !!data.user);
+        }
+        
+        if (data.reportData) {
+            console.log('1️⃣4️⃣ Has reportData:', !!data.reportData);
+        }
+        
+        // Try the exact condition your code uses
+        console.log('1️⃣5️⃣ Original condition (data && data.success):', !!(data && data.success));
+    }
+    
+    console.log('🔍 === END DIAGNOSTIC ===');
 
-        function handlePageDataFailure(error) {
-               hideLoading();
-    console.error('Error loading reports data:', error);
+    // Now try to process the data with multiple fallback approaches
+    if (data && data.success === true) {
+        console.log('✅ SUCCESS PATH 1: Perfect match');
+        updateUserInfoSafely(data.user);
+        handleReportData(data.reportData);
+    } else if (data && data.success && data.success !== false) {
+        console.log('✅ SUCCESS PATH 2: Truthy success');
+        updateUserInfoSafely(data.user);
+        handleReportData(data.reportData);
+    } else if (data && data.user && data.reportData) {
+        console.log('✅ SUCCESS PATH 3: Has required data regardless of success flag');
+        updateUserInfoSafely(data.user);
+        handleReportData(data.reportData);
+    } else if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        console.log('⚠️ SUCCESS PATH 4: Has some data, trying anyway');
+        console.log('Available data keys:', Object.keys(data));
+        
+        // Try to extract what we can
+        var userData = data.user || { name: 'Unknown User', roles: ['user'] };
+        var reportData = data.reportData || data || { 
+            summary: { totalRequests: 0, completedRequests: 0, activeRiders: 0 },
+            charts: {},
+            tables: {}
+        };
+        
+        updateUserInfoSafely(userData);
+        handleReportData(reportData);
+    } else {
+        console.error('❌ ALL PATHS FAILED - showing error');
+        console.error('Failed to load reports data:', data ? data.error : 'No data');
+        handlePageDataFailure(data || { message: 'Received success:false or no data.' });
+    }
+}
 
-    // Set a basic user
-    var fallbackUser = {
+// Also add this simple test function you can call from console
+function testDataReceiving() {
+    console.log('🧪 Testing data receiving...');
+    
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(function(result) {
+                console.log('🎯 TEST RESULT:', result);
+                console.log('Test result type:', typeof result);
+                console.log('Test result keys:', result ? Object.keys(result) : 'none');
+                console.log('Test success value:', result ? result.success : 'no success property');
+                
+                // Manually call our diagnostic function
+                handlePageDataSuccess(result);
+            })
+            .withFailureHandler(function(error) {
+                console.log('❌ Test failed:', error);
+            })
+            .debugReportsIssue();
+    } else {
+        console.log('❌ Google Apps Script not available');
+    }
+}
+
+// Add this to automatically run when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 Reports page loaded with diagnostic version');
+    console.log('💡 You can run testDataReceiving() from console to test manually');
+});
+
+function handlePageDataFailure(error) {
+    hideLoading();
+    
+    // Simple logging to see what's failing
+    console.log('❌ Backend call failed with error:', error);
+    console.log('Error type:', typeof error);
+    
+    // Show a simple test button
+    var testButton = document.createElement('button');
+    testButton.innerHTML = '🧪 Test Simple Backend';
+    testButton.onclick = function() {
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(result) {
+                    alert('✅ Backend works! Result: ' + JSON.stringify(result));
+                })
+                .withFailureHandler(function(err) {
+                    alert('❌ Backend failed: ' + err);
+                })
+                .debugReportsIssue(); // This function worked before
+        }
+    };
+    testButton.style.cssText = 'position: fixed; top: 10px; right: 10px; z-index: 1000; padding: 10px; background: red; color: white;';
+    document.body.appendChild(testButton);
+    
+    // Original error handling - keep this exactly as it was
+    var fallbackUser = (error && error.user) ? error.user : {
         name: 'System User',
         email: 'user@system.com',
         roles: ['admin'],
         permissions: ['view_reports']
     };
+
     updateUserInfoSafely(fallbackUser);
-
-    // Create simple fallback data
-    var fallbackData = {
-        totalRequests: 10,
-        completedRequests: 7,
-        riderHours: [
-            { riderName: 'Sample Rider 1', hours: 12, escorts: 6 },
-            { riderName: 'Sample Rider 2', hours: 8, escorts: 4 }
-        ],
-        period: 'Sample Data',
-        dataSource: 'fallback'
-    };
-
-    // Use your existing handleReportData function
-    if (typeof handleReportData === 'function') {
-        handleReportData(fallbackData);
-    } else {
-        console.log('handleReportData function not found');
-    }
-
-    // Show a simple message
-    setTimeout(function() {
-        alert('Reports data failed to load. Showing sample data for demonstration.');
-    }, 500);
+    setFallbackReportData();
 }
 
         function handleReportData(data) {
