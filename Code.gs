@@ -3640,9 +3640,8 @@ function getDispatchNotifications() {
 function generateReportData(filters) {
   try {
     debugLog('Generating report data with filters:', filters);
-    
+
     const requestsData = getRequestsData();
-    const assignmentsData = getAssignmentsData();
     const ridersData = getRidersData();
     
     // Filter data based on date range
@@ -4357,53 +4356,30 @@ function generateExecutiveSummary(startDate, endDate) {
       
       // Only count requests that have been completed
       const statusLower = (status || '').toLowerCase().trim();
-      
+
       if (statusLower === 'completed') {
         completed++;
-        
-        // For executive summary, we need to aggregate from actual assignment hours
-        // since requests don't track actual completion times
-        const requestId = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.id);
+
+        // Calculate hours from request times or use estimates
+        const startTime = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.startTime);
+        const endTime = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.endTime);
         let requestHours = 0;
-        
-        // Get all assignments for this request and sum their actual hours
-        try {
-          const assignmentsData = getAssignmentsData();
-          assignmentsData.data.forEach(assignment => {
-            const assignmentRequestId = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.requestId);
-            if (assignmentRequestId === requestId) {
-              const actualDuration = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
-              if (actualDuration && !isNaN(parseFloat(actualDuration))) {
-                requestHours += roundToQuarterHour(parseFloat(actualDuration));
-              } else {
-                // Use realistic estimate for this assignment
-                const requestType = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type);
-                const realisticEstimates = {
-                  'Funeral': 0.5,
-                  'Wedding': 2.5,
-                  'VIP': 4.0,
-                  'Float Movement': 4.0,
-                  'Other': 2.0
-                };
-                requestHours += roundToQuarterHour(realisticEstimates[requestType] || realisticEstimates['Other']);
-              }
-            }
-          });
-        } catch (error) {
-          console.warn('Error calculating request hours from assignments:', error);
-          // Fallback to request type estimate
-          const requestType = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type);
-          const realisticEstimates = {
-            'Funeral': 0.5,
-            'Wedding': 2.5,
-            'VIP': 4.0,
-            'Float Movement': 4.0,
-            'Other': 2.0
-          };
-          requestHours = roundToQuarterHour(realisticEstimates[requestType] || realisticEstimates['Other']);
+
+        if (startTime && endTime) {
+          const start = startTime instanceof Date ? startTime : new Date(startTime);
+          const end = endTime instanceof Date ? endTime : new Date(endTime);
+          if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+            requestHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+          }
         }
-        
-        totalHours += requestHours;
+
+        // Fallback to estimated hours when actual times are missing or invalid
+        if (requestHours <= 0) {
+          const requestType = getColumnValue(row, requestsData.columnMap, CONFIG.columns.requests.type);
+          requestHours = getEstimatedHoursForRequestType(requestType || 'Other');
+        }
+
+        totalHours += roundToQuarterHour(requestHours);
       }
     });
 
