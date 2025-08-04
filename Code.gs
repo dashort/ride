@@ -4901,9 +4901,10 @@ function generateRiderActivityReport(startDate, endDate) {
         if (!riderName) return;
         
         if (!riderMap[riderName]) {
-          riderMap[riderName] = { escorts: 0, hours: 0 };
+          riderMap[riderName] = { escorts: 0, hours: 0, requests: new Set() };
         }
         riderMap[riderName].escorts++;
+        riderMap[riderName].requests.add(requestId);
         
         // Add estimated hours
         const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
@@ -4913,32 +4914,42 @@ function generateRiderActivityReport(startDate, endDate) {
     });
 
     // Convert to array format and combine NOPD riders
-    let nopd = { escorts: 0, hours: 0 };
+    let nopd = { escorts: 0, hours: 0, requests: new Set() };
     let riderHours = Object.keys(riderMap).map(riderName => {
-      const escorts = riderMap[riderName].escorts;
-      const hours = Math.round(riderMap[riderName].hours * 4) / 4;
+      const riderEntry = riderMap[riderName];
+      const escorts = riderEntry.escorts;
+      const hours = Math.round(riderEntry.hours * 4) / 4;
+      const requests = riderEntry.requests.size;
       const org = riderOrgMap[riderName.toLowerCase()];
-      if (org === 'NOPD') {
+      const isNopd = org === 'NOPD' || /nopd/i.test(riderName);
+      if (isNopd) {
         nopd.escorts += escorts;
         nopd.hours += hours;
+        riderEntry.requests.forEach(id => nopd.requests.add(id));
         return null;
       }
-      return { name: riderName, riderName: riderName, escorts: escorts, hours: hours };
+      return { name: riderName, riderName: riderName, escorts: escorts, hours: hours, requests: requests };
     }).filter(Boolean);
 
     if (nopd.escorts > 0 || nopd.hours > 0) {
-      riderHours.push({ name: 'NOPD Rider', riderName: 'NOPD Rider', escorts: nopd.escorts, hours: nopd.hours });
+      riderHours.push({
+        name: 'NOPD Rider',
+        riderName: 'NOPD Rider',
+        escorts: nopd.escorts,
+        hours: Math.round(nopd.hours * 4) / 4,
+        requests: nopd.requests.size
+      });
     }
 
     let nopdEntry = null;
     riderHours = riderHours.filter(r => {
-      if (r.name === 'NOPD Rider') {
+      if (/nopd/i.test(r.name || '')) {
         nopdEntry = r;
         return false;
       }
       return true;
     });
-    riderHours.sort((a, b) => (b.escorts || 0) - (a.escorts || 0));
+    riderHours.sort((a, b) => (b.requests || 0) - (a.requests || 0));
     if (nopdEntry) riderHours.push(nopdEntry);
 
     const totalEscorts = riderHours.reduce((sum, rider) => sum + rider.escorts, 0);
@@ -5104,13 +5115,16 @@ function exportRiderActivityCSV(startDate, endDate) {
       throw new Error(report.error || 'Failed to generate rider activity');
     }
 
-    const headers = ['Rider', 'Escorts', 'Hours'];
+    const headers = ['Rider', 'Requests', 'Hours', 'Average'];
     const csvRows = [headers.join(',')];
     report.data.forEach(r => {
+      const requests = r.requests !== undefined ? r.requests : r.escorts;
+      const avg = r.hours > 0 ? Math.round((requests / r.hours) * 4) / 4 : 0;
       const row = [
         `"${String(r.name).replace(/"/g, '""')}"`,
-        r.escorts,
-        r.hours
+        requests,
+        r.hours,
+        avg
       ];
       csvRows.push(row.join(','));
     });

@@ -969,18 +969,18 @@ function updateTablesSafe(tables) {
                 if (/nopd/i.test(name)) { nopd = r; return false; }
                 return true;
             });
-            data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
+            data.sort(function(a, b) { return ( (b.requests || b.escorts || 0) - (a.requests || a.escorts || 0) ); });
             if (nopd) data.push(nopd);
 
-            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th><th>Average</th></tr></thead><tbody>';
+            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>';
 
             data.forEach(function(rider) {
                 tableHtml += '<tr>';
-                var escorts = rider.escorts || 0;
+                var requests = (rider.requests !== undefined) ? rider.requests : (rider.escorts || 0);
                 var hours = rider.hours || 0;
-                var avg = hours > 0 ? Math.round((escorts / hours) * 4) / 4 : 0;
+                var avg = hours > 0 ? Math.round((requests / hours) * 4) / 4 : 0;
                 tableHtml += '<td>' + escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown') + '</td>';
-                tableHtml += '<td>' + escorts + '</td>';
+                tableHtml += '<td>' + requests + '</td>';
                 tableHtml += '<td>' + hours + '</td>';
                 tableHtml += '<td>' + avg.toFixed(2) + '</td>';
                 tableHtml += '</tr>';
@@ -1069,33 +1069,33 @@ function updateTablesSafe(tables) {
 
             if (tables.riderHours) {
                 var data = tables.riderHours.slice();
-                var nopdEscorts = 0, nopdHours = 0;
+                var nopdRequests = 0, nopdHours = 0;
                 data = data.filter(function(r) {
                     var name = r.name || r.riderName || '';
                     if (/nopd/i.test(name)) {
-                        nopdEscorts += r.escorts || 0;
+                        nopdRequests += (r.requests || r.escorts || 0);
                         nopdHours += r.hours || 0;
                         return false;
                     }
                     return true;
                 });
-                data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
-                if (nopdEscorts || nopdHours) {
-                    data.push({ name: 'NOPD Rider', escorts: nopdEscorts, hours: nopdHours });
+                data.sort(function(a, b) { return ( (b.requests || b.escorts || 0) - (a.requests || a.escorts || 0) ); });
+                if (nopdRequests || nopdHours) {
+                    data.push({ name: 'NOPD Rider', requests: nopdRequests, hours: nopdHours });
                 }
 
                 var hoursRows = '';
                 for (var i = 0; i < data.length; i++) {
                     var r = data[i];
-                    var escorts = (r.escorts !== undefined) ? r.escorts : 0;
+                    var requests = (r.requests !== undefined) ? r.requests : (r.escorts !== undefined ? r.escorts : 0);
                     var hours = (r.hours !== undefined) ? r.hours : 0;
-                    var avg = hours > 0 ? Math.round((escorts / hours) * 4) / 4 : 0;
-                    hoursRows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escorts + '</td><td>' + hours + '</td><td>' + avg.toFixed(2) + '</td></tr>';
+                    var avg = hours > 0 ? Math.round((requests / hours) * 4) / 4 : 0;
+                    hoursRows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + requests + '</td><td>' + hours + '</td><td>' + avg.toFixed(2) + '</td></tr>';
                 }
                 if (data.length === 0) {
                     hoursRows = '<tr><td colspan="4" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
                 }
-                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Escorts</th><th>Hours</th><th>Average</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
+                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
             } else {
                 document.getElementById('riderHoursTable').innerHTML =
@@ -1207,22 +1207,22 @@ function displayRiderActivityReport(result) {
                 if (/nopd/i.test(name)) { nopd = r; return false; }
                 return true;
             });
-            data.sort(function(a, b) { return (b.escorts || 0) - (a.escorts || 0); });
+            data.sort(function(a, b) { return ((b.requests || b.escorts || 0) - (a.requests || a.escorts || 0)); });
             if (nopd) data.push(nopd);
 
             var rows = '';
             for (var i = 0; i < data.length; i++) {
                 var r = data[i];
-                var escorts = r.escorts || 0;
+                var requests = (r.requests !== undefined) ? r.requests : (r.escorts || 0);
                 var hours = r.hours || 0;
-                var avg = hours > 0 ? Math.round((escorts / hours) * 4) / 4 : 0;
-                rows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escapeHtml(escorts) + '</td><td>' + escapeHtml(hours) + '</td><td>' + avg.toFixed(2) + '</td></tr>';
+                var avg = hours > 0 ? Math.round((requests / hours) * 4) / 4 : 0;
+                rows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + escapeHtml(requests) + '</td><td>' + escapeHtml(hours) + '</td><td>' + avg.toFixed(2) + '</td></tr>';
             }
 
             var html = '<!DOCTYPE html><html><head><title>Rider Activity Report</title>' +
                 '<style>body{font-family:Arial,sans-serif;padding:1rem;}table{border-collapse:collapse;width:100%;table-layout:fixed;}' +
                 'th,td{border:1px solid #ccc;padding:.5rem;text-align:left;width:25%;}th{background:#f4f4f4;}th:nth-child(2),th:nth-child(3),th:nth-child(4),td:nth-child(2),td:nth-child(3),td:nth-child(4){text-align:center;}</style>' +
-                '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Escorts</th>' +
+                '</head><body><h2>Rider Activity Report</h2><table><thead><tr><th>Rider</th><th>Requests</th>' +
                 '<th>Total Hours</th><th>Average</th></tr></thead><tbody>' + rows + '</tbody></table></body></html>';
 
             var reportWindow = window.open('', '_blank');
