@@ -739,7 +739,10 @@ function testDataReceiving() {
             .withFailureHandler(function(error) {
                 console.log('❌ Test failed:', error);
             })
-            .debugReportsIssue();
+            .getPageDataForReports({
+                startDate: '2024-01-01',
+                endDate: new Date().toISOString().split('T')[0]
+            });
     } else {
         console.log('❌ Google Apps Script not available');
     }
