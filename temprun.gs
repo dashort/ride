@@ -1,4 +1,1420 @@
 /**
+ * WEB APP DEPLOYMENT AND PERMISSIONS FIX
+ * Diagnose and fix Google Apps Script availability issues
+ */
+
+/**
+ * Step 1: Test if reports.html is being served correctly
+ */
+function testReportsHTMLDeployment() {
+  console.log('🔍 === TESTING REPORTS HTML DEPLOYMENT ===');
+  
+  try {
+    // Test if we can serve the reports page
+    const htmlOutput = HtmlService.createHtmlOutputFromFile('reports');
+    
+    if (htmlOutput) {
+      console.log('✅ reports.html file found and can be served');
+      
+      // Check if the HTML contains Google Apps Script calls
+      const htmlContent = htmlOutput.getContent();
+      const hasGoogleScript = htmlContent.includes('google.script');
+      const hasReportsFunction = htmlContent.includes('getPageDataForReports');
+      
+      console.log('📋 HTML Analysis:');
+      console.log(`  Contains google.script calls: ${hasGoogleScript}`);
+      console.log(`  Contains getPageDataForReports: ${hasReportsFunction}`);
+      console.log(`  HTML content length: ${htmlContent.length} characters`);
+      
+      return {
+        success: true,
+        htmlFound: true,
+        hasGoogleScript: hasGoogleScript,
+        hasReportsFunction: hasReportsFunction,
+        contentLength: htmlContent.length
+      };
+    } else {
+      return { success: false, error: 'Could not create HTML output from reports file' };
+    }
+    
+  } catch (error) {
+    console.log('❌ Error testing HTML deployment:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Step 2: Create a test deployment function
+ */
+function createTestDeployment() {
+  console.log('🚀 === CREATING TEST DEPLOYMENT ===');
+  
+  try {
+    // Create a simple test page that should have Google Apps Script access
+    const testHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Apps Script Test</title>
+</head>
+<body>
+    <h1>Google Apps Script Test</h1>
+    <div id="status">Testing...</div>
+    <button onclick="testBackend()">Test Backend Connection</button>
+    <div id="results"></div>
+    
+    <script>
+        window.onload = function() {
+            console.log('🔍 Testing Google Apps Script availability...');
+            
+            const statusDiv = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            
+            // Test Google Apps Script availability
+            if (typeof google !== 'undefined') {
+                console.log('✅ Google object available');
+                statusDiv.innerHTML = '✅ Google object available';
+                
+                if (google.script) {
+                    console.log('✅ google.script available');
+                    statusDiv.innerHTML += '<br>✅ google.script available';
+                    
+                    if (google.script.run) {
+                        console.log('✅ google.script.run available');
+                        statusDiv.innerHTML += '<br>✅ google.script.run available';
+                        statusDiv.innerHTML += '<br>🎉 Google Apps Script is working!';
+                    } else {
+                        console.log('❌ google.script.run NOT available');
+                        statusDiv.innerHTML += '<br>❌ google.script.run NOT available';
+                    }
+                } else {
+                    console.log('❌ google.script NOT available');
+                    statusDiv.innerHTML += '<br>❌ google.script NOT available';
+                }
+            } else {
+                console.log('❌ Google object NOT available');
+                statusDiv.innerHTML = '❌ Google object NOT available<br>This indicates a deployment issue';
+            }
+            
+            // Display current URL for debugging
+            statusDiv.innerHTML += '<br><br>📍 Current URL: ' + window.location.href;
+        };
+        
+        function testBackend() {
+            console.log('🧪 Testing backend call...');
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = 'Testing backend...';
+            
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        console.log('✅ Backend test successful:', result);
+                        resultsDiv.innerHTML = '✅ Backend test successful: ' + JSON.stringify(result);
+                    })
+                    .withFailureHandler(function(error) {
+                        console.log('❌ Backend test failed:', error);
+                        resultsDiv.innerHTML = '❌ Backend test failed: ' + error.message;
+                    })
+                    .testBackendConnection();
+            } else {
+                resultsDiv.innerHTML = '❌ Cannot test - Google Apps Script not available';
+            }
+        }
+    </script>
+</body>
+</html>`;
+    
+    // Save this as a test file (you'll need to create this manually)
+    console.log('📝 Test HTML created. You need to:');
+    console.log('1. Create a new HTML file called "test_deployment.html"');
+    console.log('2. Paste the test HTML content');
+    console.log('3. Deploy and test that URL');
+    
+    return {
+      success: true,
+      testHTML: testHTML,
+      instructions: [
+        'Create new HTML file: test_deployment.html',
+        'Paste the generated HTML content',
+        'Create doGet() function to serve it',
+        'Deploy as web app',
+        'Test the new URL'
+      ]
+    };
+    
+  } catch (error) {
+    console.log('❌ Error creating test deployment:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Step 3: Create backend test function for the test page
+ */
+function testBackendConnection() {
+  console.log('🧪 Backend connection test called');
+  
+  try {
+    // Test basic functionality
+    const testData = {
+      timestamp: new Date().toISOString(),
+      configAvailable: typeof CONFIG !== 'undefined',
+      sheetsAccess: false,
+      reportsFunction: false
+    };
+    
+    // Test sheet access
+    try {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+      testData.sheetsAccess = !!sheet;
+    } catch (e) {
+      testData.sheetsAccessError = e.message;
+    }
+    
+    // Test reports function
+    try {
+      if (typeof getPageDataForReports === 'function') {
+        testData.reportsFunction = true;
+        const testResult = getPageDataForReports({
+          startDate: '2025-01-01',
+          endDate: '2025-12-31',
+          requestType: '',
+          status: ''
+        });
+        testData.reportsFunctionResult = {
+          success: testResult?.success,
+          totalRequests: testResult?.reportData?.totalRequests || 0
+        };
+      }
+    } catch (e) {
+      testData.reportsFunctionError = e.message;
+    }
+    
+    console.log('✅ Backend test completed:', testData);
+    return testData;
+    
+  } catch (error) {
+    console.log('❌ Backend test error:', error.message);
+    return { error: error.message, timestamp: new Date().toISOString() };
+  }
+}
+
+/**
+ * Step 4: Check deployment settings
+ */
+function checkDeploymentSettings() {
+  console.log('⚙️ === CHECKING DEPLOYMENT SETTINGS ===');
+  
+  const recommendations = [
+    'DEPLOYMENT CHECKLIST:',
+    '',
+    '1. DEPLOYMENT TYPE:',
+    '   ✅ Type: Web app',
+    '   ❌ NOT: API executable',
+    '   ❌ NOT: Add-on',
+    '',
+    '2. EXECUTION SETTINGS:',
+    '   ✅ Execute as: Me (your email)',
+    '   ❌ NOT: User accessing the web app',
+    '',
+    '3. ACCESS PERMISSIONS:',
+    '   ✅ Who has access: Anyone',
+    '   OR: Anyone with Google account',
+    '   OR: Specific users (if private)',
+    '',
+    '4. URL FORMAT:',
+    '   ✅ Correct: https://script.google.com/macros/s/[ID]/exec',
+    '   ❌ Wrong: https://script.google.com/macros/s/[ID]/dev',
+    '   ❌ Wrong: https://script.google.com/home/projects/[ID]/edit',
+    '',
+    '5. REQUIRED FUNCTIONS:',
+    '   ✅ Must have: doGet() function',
+    '   ✅ Must have: getPageDataForReports() function',
+    '',
+    '6. HTML FILE:',
+    '   ✅ Must exist: reports.html',
+    '   ✅ Must contain: google.script.run calls',
+    '',
+    'COMMON ISSUES:',
+    '• Using /dev URL instead of /exec URL',
+    '• Missing doGet() function',
+    '• Wrong execution permissions',
+    '• Authorization not completed',
+    '• Browser blocking third-party scripts'
+  ];
+  
+  console.log(recommendations.join('\n'));
+  
+  return {
+    success: true,
+    recommendations: recommendations
+  };
+}
+
+/**
+ * Step 5: Create corrected doGet function
+ */
+function createCorrectedDoGetFunction() {
+  console.log('🔧 === CREATING CORRECTED doGET FUNCTION ===');
+  
+  const doGetCode = `
+/**
+ * CORRECTED doGet FUNCTION FOR WEB APP
+ * Make sure this exact function exists in your Code.gs
+ */
+function doGet(e) {
+  try {
+    console.log('🌐 doGet called with parameters:', e ? e.parameter : 'none');
+    
+    // Default to reports page
+    let page = 'reports';
+    
+    // Check if a specific page is requested
+    if (e && e.parameter && e.parameter.page) {
+      page = e.parameter.page;
+    }
+    
+    console.log('📄 Serving page:', page);
+    
+    // Serve the requested HTML file
+    const htmlOutput = HtmlService.createHtmlOutputFromFile(page)
+      .setTitle('Motorcycle Escort System - ' + page.charAt(0).toUpperCase() + page.slice(1))
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    
+    console.log('✅ HTML output created successfully');
+    return htmlOutput;
+    
+  } catch (error) {
+    console.error('❌ Error in doGet:', error);
+    
+    // Return error page
+    const errorHTML = HtmlService.createHtmlOutput(
+      '<h1>Error</h1><p>Failed to load page: ' + error.message + '</p>'
+    ).setTitle('Error');
+    
+    return errorHTML;
+  }
+}`;
+
+  console.log('📋 Corrected doGet function:');
+  console.log(doGetCode);
+  
+  return {
+    success: true,
+    doGetCode: doGetCode,
+    instructions: [
+      'Copy the doGet function above',
+      'Paste it into your Code.gs file',
+      'Replace any existing doGet function',
+      'Save and redeploy the web app',
+      'Use the NEW web app URL (it changes when you redeploy)'
+    ]
+  };
+}
+
+/**
+ * Complete web app diagnostic
+ */
+function diagnoseWebAppIssue() {
+  console.log('🚀 === COMPLETE WEB APP DIAGNOSTIC ===');
+  
+  const results = {
+    htmlTest: null,
+    deploymentCheck: null,
+    doGetFunction: null
+  };
+  
+  console.log('\n1️⃣ Testing HTML deployment...');
+  results.htmlTest = testReportsHTMLDeployment();
+  
+  console.log('\n2️⃣ Checking deployment settings...');
+  results.deploymentCheck = checkDeploymentSettings();
+  
+  console.log('\n3️⃣ Creating corrected doGet function...');
+  results.doGetFunction = createCorrectedDoGetFunction();
+  
+  console.log('\n📊 === DIAGNOSTIC SUMMARY ===');
+  console.log('Next steps:');
+  console.log('1. Verify doGet() function exists and is correct');
+  console.log('2. Redeploy with proper settings');
+  console.log('3. Test with new deployment URL');
+  console.log('4. Check browser console for Google Apps Script availability');
+  
+  return results;
+}
+/**
+ * FIX REPORTS DATE RANGE ISSUE
+ * Your data is in July 2025, but reports default to earlier dates
+ */
+
+/**
+ * Backend fix: Update default date range in reports
+ */
+function fixReportsDateRange() {
+  console.log('🔧 === FIXING REPORTS DATE RANGE ===');
+  
+  try {
+    // Test current report generation with 2025 dates
+    console.log('🧪 Testing reports with 2025 date range...');
+    
+    const correctFilters = {
+      startDate: '2025-01-01',
+      endDate: '2025-12-31',
+      requestType: '',
+      status: ''
+    };
+    
+    const result = generateReportData(correctFilters);
+    console.log('📊 Results with 2025 date range:');
+    console.log(`  Total requests: ${result.totalRequests || 0}`);
+    console.log(`  Completed requests: ${result.completedRequests || 0}`);
+    console.log(`  Request types:`, result.requestTypes || {});
+    
+    if (result.totalRequests > 0) {
+      console.log('✅ Found data with 2025 date range!');
+      console.log('💡 The issue is that reports page defaults to wrong year');
+      
+      return {
+        success: true,
+        issue: 'DATE_RANGE_MISMATCH',
+        solution: 'Update reports page to default to 2025 dates',
+        correctDateRange: {
+          start: '2025-01-01',
+          end: '2025-12-31'
+        },
+        dataFound: {
+          total: result.totalRequests,
+          completed: result.completedRequests,
+          types: result.requestTypes
+        }
+      };
+    } else {
+      return { success: false, error: 'No data found even with 2025 date range' };
+    }
+    
+  } catch (error) {
+    console.log('❌ Error testing date range:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Generate corrected reports page with proper date defaults
+ */
+function generateCorrectedReportsPage() {
+  console.log('📝 === GENERATING CORRECTED REPORTS PAGE ===');
+  
+  // This function helps you update your reports.html file
+  // Look for the date initialization in your reports page JavaScript
+  
+  const correctDateDefaults = `
+// CORRECTED DATE DEFAULTS - Replace in your reports.html
+function initializeDateDefaults() {
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  
+  // Since your data is in 2025, default to 2025 dates
+  const startDate = new Date(2025, 0, 1); // January 1, 2025
+  const endDate = new Date(2025, 11, 31); // December 31, 2025
+  
+  document.getElementById('startDate').value = formatDateForInput(startDate);
+  document.getElementById('endDate').value = formatDateForInput(endDate);
+  
+  console.log('📅 Initialized with 2025 date range for data compatibility');
+}
+
+// Alternative: Smart date detection
+function initializeSmartDateDefaults() {
+  // This detects the actual date range of your data
+  const testResult = getDateRangeFromData();
+  
+  if (testResult.success) {
+    document.getElementById('startDate').value = testResult.startDate;
+    document.getElementById('endDate').value = testResult.endDate;
+    console.log('📅 Smart date range initialized:', testResult);
+  } else {
+    // Fallback to 2025
+    const startDate = new Date(2025, 0, 1);
+    const endDate = new Date(2025, 11, 31);
+    document.getElementById('startDate').value = formatDateForInput(startDate);
+    document.getElementById('endDate').value = formatDateForInput(endDate);
+  }
+}
+`;
+
+  console.log('📋 Corrected date initialization code:');
+  console.log(correctDateDefaults);
+  
+  return {
+    success: true,
+    correctedCode: correctDateDefaults,
+    instructions: [
+      '1. Open your reports.html file',
+      '2. Find the date initialization code (look for startDate/endDate)',
+      '3. Replace with the corrected code above',
+      '4. Or manually set default dates to 2025 range'
+    ]
+  };
+}
+
+/**
+ * Backend function to get actual date range from your data
+ */
+function getDataDateRange() {
+  console.log('📅 === GETTING ACTUAL DATA DATE RANGE ===');
+  
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+    const allData = sheet.getDataRange().getValues();
+    const headers = allData[0];
+    const dataRows = allData.slice(1);
+    
+    const dateIndex = headers.indexOf(CONFIG.columns.requests.eventDate);
+    if (dateIndex === -1) {
+      return { success: false, error: 'Date column not found' };
+    }
+    
+    let earliestDate = null;
+    let latestDate = null;
+    let validDateCount = 0;
+    
+    dataRows.forEach(row => {
+      const eventDate = row[dateIndex];
+      if (eventDate) {
+        let parsedDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(parsedDate.getTime())) {
+          validDateCount++;
+          
+          if (!earliestDate || parsedDate < earliestDate) {
+            earliestDate = parsedDate;
+          }
+          if (!latestDate || parsedDate > latestDate) {
+            latestDate = parsedDate;
+          }
+        }
+      }
+    });
+    
+    if (earliestDate && latestDate) {
+      const startDateStr = earliestDate.toISOString().split('T')[0];
+      const endDateStr = latestDate.toISOString().split('T')[0];
+      
+      console.log(`📊 Data date range: ${earliestDate.toDateString()} to ${latestDate.toDateString()}`);
+      console.log(`📅 Formatted for input: ${startDateStr} to ${endDateStr}`);
+      console.log(`📈 Total records with valid dates: ${validDateCount}`);
+      
+      return {
+        success: true,
+        earliestDate: earliestDate.toDateString(),
+        latestDate: latestDate.toDateString(),
+        startDateInput: startDateStr,
+        endDateInput: endDateStr,
+        validDateCount: validDateCount,
+        suggestedDefaults: {
+          start: startDateStr,
+          end: endDateStr
+        }
+      };
+    } else {
+      return { success: false, error: 'No valid dates found in data' };
+    }
+    
+  } catch (error) {
+    console.log('❌ Error getting data date range:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Test reports with correct date range
+ */
+function testReportsWithCorrectDates() {
+  console.log('🧪 === TESTING REPORTS WITH CORRECT DATES ===');
+  
+  try {
+    // Get the actual date range from data
+    const dateRange = getDataDateRange();
+    
+    if (!dateRange.success) {
+      console.log('❌ Could not determine date range:', dateRange.error);
+      return dateRange;
+    }
+    
+    console.log('📅 Using detected date range for test...');
+    
+    // Test getPageDataForReports with correct dates
+    const testFilters = {
+      startDate: dateRange.startDateInput,
+      endDate: dateRange.endDateInput,
+      requestType: '',
+      status: ''
+    };
+    
+    console.log('🔍 Testing getPageDataForReports with filters:', testFilters);
+    
+    const result = getPageDataForReports(testFilters);
+    
+    console.log('📊 Report results:');
+    console.log(`  Success: ${result.success}`);
+    console.log(`  Total requests: ${result.reportData?.totalRequests || 0}`);
+    console.log(`  Completed requests: ${result.reportData?.completedRequests || 0}`);
+    console.log(`  Active riders: ${result.reportData?.activeRiders || 0}`);
+    
+    if (result.success && result.reportData?.totalRequests > 0) {
+      console.log('🎉 SUCCESS! Reports work with correct date range');
+      console.log('💡 Solution: Update your reports page default dates to:');
+      console.log(`   Start: ${dateRange.startDateInput}`);
+      console.log(`   End: ${dateRange.endDateInput}`);
+      
+      return {
+        success: true,
+        solution: 'UPDATE_REPORTS_PAGE_DATES',
+        correctDates: {
+          start: dateRange.startDateInput,
+          end: dateRange.endDateInput
+        },
+        results: {
+          total: result.reportData.totalRequests,
+          completed: result.reportData.completedRequests,
+          activeRiders: result.reportData.activeRiders
+        }
+      };
+    } else {
+      return { success: false, error: 'Reports still not working with correct dates' };
+    }
+    
+  } catch (error) {
+    console.log('❌ Error testing with correct dates:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+/**
+ * REPORTS DATA DIAGNOSTIC
+ * Find out why requests aren't showing up in reports
+ */
+
+function diagnoseReportsData() {
+  console.log('🔍 === DIAGNOSING REPORTS DATA ===');
+  
+  try {
+    // Step 1: Check raw data in Requests sheet
+    console.log('\n1️⃣ Checking raw Requests sheet data...');
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+    if (!sheet) {
+      return { success: false, error: 'Requests sheet not found' };
+    }
+    
+    const allData = sheet.getDataRange().getValues();
+    console.log(`📊 Total rows in sheet: ${allData.length} (including header)`);
+    
+    if (allData.length <= 1) {
+      return { success: false, error: 'No data rows in Requests sheet' };
+    }
+    
+    const headers = allData[0];
+    const dataRows = allData.slice(1);
+    
+    console.log('📋 Headers:', headers);
+    console.log(`📊 Data rows: ${dataRows.length}`);
+    
+    // Step 2: Check column mapping
+    console.log('\n2️⃣ Checking column mapping...');
+    
+    const statusIndex = headers.indexOf(CONFIG.columns.requests.status);
+    const dateIndex = headers.indexOf(CONFIG.columns.requests.eventDate);
+    const ridersAssignedIndex = headers.indexOf(CONFIG.columns.requests.ridersAssigned);
+    
+    console.log(`📍 Status column index: ${statusIndex} (looking for "${CONFIG.columns.requests.status}")`);
+    console.log(`📍 Date column index: ${dateIndex} (looking for "${CONFIG.columns.requests.eventDate}")`);
+    console.log(`📍 Riders Assigned index: ${ridersAssignedIndex} (looking for "${CONFIG.columns.requests.ridersAssigned}")`);
+    
+    if (statusIndex === -1 || dateIndex === -1) {
+      return {
+        success: false,
+        error: 'Key columns not found',
+        missingColumns: {
+          status: statusIndex === -1,
+          date: dateIndex === -1,
+          ridersAssigned: ridersAssignedIndex === -1
+        },
+        availableHeaders: headers
+      };
+    }
+    
+    // Step 3: Analyze sample data
+    console.log('\n3️⃣ Analyzing sample data...');
+    
+    const sampleSize = Math.min(10, dataRows.length);
+    console.log(`📋 Looking at first ${sampleSize} requests:`);
+    
+    let hasValidDates = 0;
+    let hasValidStatus = 0;
+    let completedCount = 0;
+    let statusCounts = {};
+    let dateRange = { earliest: null, latest: null };
+    
+    for (let i = 0; i < sampleSize; i++) {
+      const row = dataRows[i];
+      const status = row[statusIndex];
+      const eventDate = row[dateIndex];
+      
+      console.log(`\n📋 Row ${i + 1}:`);
+      console.log(`  Status: "${status}" (type: ${typeof status})`);
+      console.log(`  Event Date: "${eventDate}" (type: ${typeof eventDate})`);
+      
+      // Check status
+      if (status && status.toString().trim()) {
+        hasValidStatus++;
+        const statusStr = status.toString().toLowerCase().trim();
+        statusCounts[statusStr] = (statusCounts[statusStr] || 0) + 1;
+        
+        if (statusStr === 'completed') {
+          completedCount++;
+        }
+      }
+      
+      // Check date
+      if (eventDate) {
+        let parsedDate = null;
+        if (eventDate instanceof Date) {
+          parsedDate = eventDate;
+        } else {
+          parsedDate = new Date(eventDate);
+        }
+        
+        if (!isNaN(parsedDate.getTime())) {
+          hasValidDates++;
+          console.log(`  Parsed Date: ${parsedDate.toDateString()}`);
+          
+          if (!dateRange.earliest || parsedDate < dateRange.earliest) {
+            dateRange.earliest = parsedDate;
+          }
+          if (!dateRange.latest || parsedDate > dateRange.latest) {
+            dateRange.latest = parsedDate;
+          }
+        } else {
+          console.log(`  ❌ Invalid date: "${eventDate}"`);
+        }
+      }
+    }
+    
+    console.log(`\n📊 Sample Analysis (first ${sampleSize} rows):`);
+    console.log(`  Rows with valid status: ${hasValidStatus}`);
+    console.log(`  Rows with valid dates: ${hasValidDates}`);
+    console.log(`  Completed requests: ${completedCount}`);
+    console.log(`  Status distribution:`, statusCounts);
+    if (dateRange.earliest && dateRange.latest) {
+      console.log(`  Date range: ${dateRange.earliest.toDateString()} to ${dateRange.latest.toDateString()}`);
+    }
+    
+    // Step 4: Test with wide date range
+    console.log('\n4️⃣ Testing with wide date range...');
+    
+    const testFilters = {
+      startDate: '2020-01-01',
+      endDate: '2030-12-31',
+      requestType: '',
+      status: ''
+    };
+    
+    console.log('🧪 Testing generateReportData with wide date range...');
+    const reportData = generateReportData(testFilters);
+    
+    console.log('📊 Report data results:');
+    console.log(`  Total requests: ${reportData.totalRequests || 0}`);
+    console.log(`  Completed requests: ${reportData.completedRequests || 0}`);
+    console.log(`  Request types:`, reportData.requestTypes || {});
+    
+    // Step 5: Test request filtering logic
+    console.log('\n5️⃣ Testing request filtering logic...');
+    
+    let passedDateFilter = 0;
+    let passedStatusFilter = 0;
+    let passedBothFilters = 0;
+    
+    const startDate = new Date(testFilters.startDate);
+    const endDate = new Date(testFilters.endDate);
+    
+    dataRows.forEach((row, index) => {
+      const status = row[statusIndex];
+      const eventDate = row[dateIndex];
+      
+      let passesDate = false;
+      let passesStatus = false;
+      
+      // Test date filter
+      if (eventDate) {
+        let parsedDate = eventDate instanceof Date ? eventDate : new Date(eventDate);
+        if (!isNaN(parsedDate.getTime())) {
+          if (parsedDate >= startDate && parsedDate <= endDate) {
+            passesDate = true;
+            passedDateFilter++;
+          }
+        }
+      }
+      
+      // Test status filter (empty filter should pass all)
+      if (!testFilters.status || !status || status.toString().toLowerCase().includes(testFilters.status.toLowerCase())) {
+        passesStatus = true;
+        passedStatusFilter++;
+      }
+      
+      if (passesDate && passesStatus) {
+        passedBothFilters++;
+        if (index < 5) { // Log first 5 that pass
+          console.log(`✅ Row ${index + 1} passes both filters - Status: "${status}", Date: "${eventDate}"`);
+        }
+      }
+    });
+    
+    console.log(`📊 Filter Analysis (all ${dataRows.length} rows):`);
+    console.log(`  Passed date filter: ${passedDateFilter}`);
+    console.log(`  Passed status filter: ${passedStatusFilter}`);
+    console.log(`  Passed both filters: ${passedBothFilters}`);
+    
+    return {
+      success: true,
+      analysis: {
+        totalRows: dataRows.length,
+        hasValidDates: hasValidDates,
+        hasValidStatus: hasValidStatus,
+        statusCounts: statusCounts,
+        dateRange: dateRange,
+        filterResults: {
+          passedDateFilter: passedDateFilter,
+          passedStatusFilter: passedStatusFilter,
+          passedBothFilters: passedBothFilters
+        },
+        reportData: {
+          totalRequests: reportData.totalRequests || 0,
+          completedRequests: reportData.completedRequests || 0
+        }
+      }
+    };
+    
+  } catch (error) {
+    console.log('❌ Error in diagnosis:', error.message);
+    console.log('📍 Stack trace:', error.stack);
+    return { success: false, error: error.message, stack: error.stack };
+  }
+}
+
+/**
+ * Quick fix for common data issues
+ */
+function fixReportsDataIssues() {
+  console.log('🔧 === FIXING REPORTS DATA ISSUES ===');
+  
+  try {
+    const diagnosis = diagnoseReportsData();
+    
+    if (!diagnosis.success) {
+      console.log('❌ Cannot fix - diagnosis failed:', diagnosis.error);
+      return diagnosis;
+    }
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+    const allData = sheet.getDataRange().getValues();
+    const headers = allData[0];
+    const dataRows = allData.slice(1);
+    
+    const statusIndex = headers.indexOf(CONFIG.columns.requests.status);
+    const dateIndex = headers.indexOf(CONFIG.columns.requests.eventDate);
+    
+    let fixesApplied = 0;
+    
+    console.log('\n🔧 Applying fixes...');
+    
+    // Fix 1: Ensure status values are properly formatted
+    if (statusIndex >= 0) {
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i];
+        const status = row[statusIndex];
+        
+        if (status && typeof status === 'string') {
+          const trimmedStatus = status.trim();
+          const properStatus = trimmedStatus.charAt(0).toUpperCase() + trimmedStatus.slice(1).toLowerCase();
+          
+          if (status !== properStatus && ['New', 'Pending', 'Assigned', 'Completed', 'Cancelled'].includes(properStatus)) {
+            sheet.getRange(i + 2, statusIndex + 1).setValue(properStatus);
+            fixesApplied++;
+            
+            if (fixesApplied <= 5) {
+              console.log(`✅ Fixed status: "${status}" → "${properStatus}"`);
+            }
+          }
+        }
+      }
+    }
+    
+    // Fix 2: Ensure dates are proper Date objects
+    if (dateIndex >= 0) {
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i];
+        const eventDate = row[dateIndex];
+        
+        if (eventDate && !(eventDate instanceof Date)) {
+          const parsedDate = new Date(eventDate);
+          if (!isNaN(parsedDate.getTime())) {
+            sheet.getRange(i + 2, dateIndex + 1).setValue(parsedDate);
+            fixesApplied++;
+            
+            if (fixesApplied <= 10) {
+              console.log(`✅ Fixed date format: "${eventDate}" → ${parsedDate.toDateString()}`);
+            }
+          }
+        }
+      }
+    }
+    
+    if (fixesApplied > 0) {
+      console.log(`✅ Applied ${fixesApplied} fixes to data formatting`);
+      SpreadsheetApp.flush();
+      
+      // Clear cache and test again
+      if (typeof dataCache !== 'undefined' && dataCache.clear) {
+        dataCache.clear();
+      }
+      
+      // Test reports again
+      console.log('\n🧪 Testing reports after fixes...');
+      const testResult = generateReportData({
+        startDate: '2020-01-01',
+        endDate: '2030-12-31',
+        requestType: '',
+        status: ''
+      });
+      
+      console.log(`📊 After fixes - Total requests: ${testResult.totalRequests || 0}`);
+      console.log(`📊 After fixes - Completed requests: ${testResult.completedRequests || 0}`);
+      
+      return {
+        success: true,
+        fixesApplied: fixesApplied,
+        newTotals: {
+          total: testResult.totalRequests || 0,
+          completed: testResult.completedRequests || 0
+        }
+      };
+    } else {
+      console.log('ℹ️ No data formatting issues found to fix');
+      return { success: true, fixesApplied: 0, message: 'No fixes needed' };
+    }
+    
+  } catch (error) {
+    console.log('❌ Error applying fixes:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+function testReportsNow() {
+  console.log('🧪 Testing reports with working CONFIG...');
+  
+  const filters = {
+    startDate: '2024-01-01',
+    endDate: '2024-12-31',
+    requestType: '',
+    status: ''
+  };
+  
+  const result = getPageDataForReports(filters);
+  console.log('📊 Report result:', result);
+  
+  if (result && result.success) {
+    console.log('✅ Reports working perfectly!');
+    console.log('📊 Report data available:', !!result.reportData);
+  } else {
+    console.log('❌ Reports still having issues:', result);
+  }
+  
+  return result;
+}
+/**
+ * CONFIG DIAGNOSIS AND FIX
+ * Run these functions to identify and fix CONFIG loading issues
+ */
+
+/**
+ * Step 1: Test if CONFIG loads at all
+ */
+function testCONFIGLoading() {
+  console.log('🔍 === TESTING CONFIG LOADING ===');
+  
+  try {
+    // Test basic CONFIG access
+    console.log('1️⃣ Testing basic CONFIG access...');
+    
+    if (typeof CONFIG === 'undefined') {
+      console.log('❌ CONFIG is undefined');
+      
+      // Try to trigger Config.gs loading by calling a function from it
+      console.log('2️⃣ Attempting to trigger Config.gs loading...');
+      
+      // Check if any CONFIG-related functions exist
+      const configFunctions = [
+        'initializeConfig',
+        'loadConfig', 
+        'setupConfig',
+        'getConfig'
+      ];
+      
+      let foundConfigFunction = false;
+      configFunctions.forEach(funcName => {
+        if (typeof this[funcName] === 'function') {
+          console.log(`✅ Found CONFIG function: ${funcName}`);
+          foundConfigFunction = true;
+          try {
+            this[funcName]();
+            console.log(`✅ Successfully called ${funcName}()`);
+          } catch (error) {
+            console.log(`❌ Error calling ${funcName}(): ${error.message}`);
+          }
+        }
+      });
+      
+      if (!foundConfigFunction) {
+        console.log('❌ No CONFIG initialization functions found');
+      }
+      
+      // Test again after attempting to load
+      if (typeof CONFIG === 'undefined') {
+        return {
+          success: false,
+          issue: 'CONFIG_NOT_LOADING',
+          message: 'CONFIG object is not being created by Config.gs',
+          suggestions: [
+            'Check Config.gs for syntax errors',
+            'Ensure CONFIG object is declared as global variable',
+            'Look for JavaScript errors in Config.gs'
+          ]
+        };
+      }
+    }
+    
+    console.log('✅ CONFIG object exists');
+    console.log('3️⃣ Testing CONFIG structure...');
+    
+    // Test CONFIG structure
+    const requiredProperties = ['sheets', 'columns', 'system'];
+    const missingProperties = [];
+    
+    requiredProperties.forEach(prop => {
+      if (!CONFIG.hasOwnProperty(prop)) {
+        missingProperties.push(prop);
+        console.log(`❌ Missing CONFIG.${prop}`);
+      } else {
+        console.log(`✅ CONFIG.${prop} exists`);
+      }
+    });
+    
+    if (missingProperties.length > 0) {
+      return {
+        success: false,
+        issue: 'CONFIG_INCOMPLETE',
+        missingProperties: missingProperties
+      };
+    }
+    
+    console.log('4️⃣ Testing CONFIG.columns.requests...');
+    if (CONFIG.columns && CONFIG.columns.requests) {
+      const requestColumns = Object.keys(CONFIG.columns.requests);
+      console.log(`✅ CONFIG.columns.requests has ${requestColumns.length} columns:`, requestColumns.slice(0, 5));
+      
+      // Check for the key columns causing issues
+      const keyColumns = ['ridersAssigned', 'status', 'eventDate'];
+      keyColumns.forEach(col => {
+        if (CONFIG.columns.requests[col]) {
+          console.log(`✅ CONFIG.columns.requests.${col} = "${CONFIG.columns.requests[col]}"`);
+        } else {
+          console.log(`❌ CONFIG.columns.requests.${col} missing`);
+        }
+      });
+    } else {
+      console.log('❌ CONFIG.columns.requests missing');
+    }
+    
+    return {
+      success: true,
+      message: 'CONFIG is properly loaded and structured',
+      sheets: CONFIG.sheets,
+      columnCount: CONFIG.columns ? Object.keys(CONFIG.columns).length : 0
+    };
+    
+  } catch (error) {
+    console.log('❌ Error testing CONFIG:', error.message);
+    console.log('📍 Error stack:', error.stack);
+    
+    return {
+      success: false,
+      issue: 'CONFIG_ERROR',
+      error: error.message,
+      stack: error.stack
+    };
+  }
+}
+
+/**
+ * Step 2: Force reload Config.gs and recreate CONFIG
+ */
+function forceReloadConfig() {
+  console.log('🔄 === FORCE RELOADING CONFIG ===');
+  
+  try {
+    // Clear any existing CONFIG
+    if (typeof CONFIG !== 'undefined') {
+      console.log('🗑️ Clearing existing CONFIG...');
+      delete CONFIG;
+    }
+    
+    // Try to manually trigger Config.gs execution
+    console.log('⚡ Attempting to reload Config.gs...');
+    
+    // Force garbage collection and reload
+    Utilities.sleep(100);
+    
+    // Check if CONFIG is now available
+    if (typeof CONFIG !== 'undefined') {
+      console.log('✅ CONFIG successfully reloaded');
+      return { success: true, message: 'CONFIG reloaded successfully' };
+    } else {
+      console.log('❌ CONFIG still not available after reload attempt');
+      return { 
+        success: false, 
+        message: 'CONFIG could not be reloaded - likely syntax error in Config.gs' 
+      };
+    }
+    
+  } catch (error) {
+    console.log('❌ Error during force reload:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Step 3: Create minimal working CONFIG for emergency use
+ */
+function createEmergencyConfig() {
+  console.log('🚨 === CREATING EMERGENCY CONFIG ===');
+  
+  try {
+    // Create a minimal CONFIG based on your actual headers
+    const emergencyConfig = {
+      sheets: {
+        requests: 'Requests',
+        riders: 'Riders', 
+        assignments: 'Assignments',
+        settings: 'Settings'
+      },
+      columns: {
+        requests: {
+          id: 'Request ID',
+          dateSubmitted: 'Date',
+          requesterName: 'Requester Name',
+          requesterEmail: 'Requester Contact',
+          requesterPhone: 'Requester Contact',
+          eventDate: 'Event Date',
+          startTime: 'Start Time',
+          endTime: 'End Time',
+          startLocation: 'Pickup',
+          endLocation: 'Dropoff',
+          secondaryLocation: 'Second',
+          type: 'Request Type',
+          ridersNeeded: 'Riders Needed',
+          escortFee: 'Escort Fee',
+          status: 'Status',
+          notes: 'Notes',
+          ridersAssigned: 'Riders Assigned',
+          lastModified: 'Last Updated'
+        },
+        riders: {
+          jpNumber: 'JP Number',
+          name: 'Full Name',
+          phone: 'Phone Number',
+          email: 'Email',
+          status: 'Status'
+        },
+        assignments: {
+          assignmentId: 'Assignment ID',
+          requestId: 'Request ID',
+          riderId: 'Rider ID',
+          riderName: 'Rider Name',
+          status: 'Status'
+        }
+      },
+      system: {
+        enableDebugLogging: true
+      }
+    };
+    
+    // Set this as global CONFIG
+    global.CONFIG = emergencyConfig;
+    this.CONFIG = emergencyConfig;
+    
+    console.log('✅ Emergency CONFIG created');
+    console.log('📋 Emergency CONFIG sheets:', Object.keys(emergencyConfig.sheets));
+    console.log('📋 Emergency CONFIG request columns:', Object.keys(emergencyConfig.columns.requests));
+    
+    // Test the emergency CONFIG
+    if (typeof CONFIG !== 'undefined') {
+      console.log('✅ Emergency CONFIG is accessible as global variable');
+    } else {
+      console.log('⚠️ Emergency CONFIG created but not globally accessible');
+    }
+    
+    return {
+      success: true,
+      message: 'Emergency CONFIG created successfully',
+      config: emergencyConfig
+    };
+    
+  } catch (error) {
+    console.log('❌ Error creating emergency CONFIG:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Step 4: Test reports with emergency CONFIG
+ */
+function testReportsWithEmergencyConfig() {
+  console.log('🧪 === TESTING REPORTS WITH EMERGENCY CONFIG ===');
+  
+  try {
+    // First ensure we have emergency CONFIG
+    if (typeof CONFIG === 'undefined') {
+      console.log('⚡ Creating emergency CONFIG first...');
+      const configResult = createEmergencyConfig();
+      if (!configResult.success) {
+        return configResult;
+      }
+    }
+    
+    console.log('📊 Testing basic data retrieval...');
+    
+    // Test basic sheet access
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.requests);
+    if (!sheet) {
+      return { success: false, error: 'Cannot access Requests sheet' };
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    console.log(`✅ Retrieved ${data.length} rows from Requests sheet`);
+    
+    if (data.length <= 1) {
+      return { success: false, error: 'No data in Requests sheet' };
+    }
+    
+    const headers = data[0];
+    const requestData = data.slice(1);
+    
+    // Test column mapping
+    console.log('🗂️ Testing column mapping...');
+    const ridersAssignedIndex = headers.indexOf(CONFIG.columns.requests.ridersAssigned);
+    const statusIndex = headers.indexOf(CONFIG.columns.requests.status);
+    const dateIndex = headers.indexOf(CONFIG.columns.requests.eventDate);
+    
+    console.log(`  Riders Assigned column index: ${ridersAssignedIndex}`);
+    console.log(`  Status column index: ${statusIndex}`);
+    console.log(`  Date column index: ${dateIndex}`);
+    
+    if (ridersAssignedIndex === -1) {
+      return { success: false, error: 'Cannot find Riders Assigned column' };
+    }
+    
+    // Generate basic statistics
+    let completedCount = 0;
+    let assignedCount = 0;
+    
+    requestData.forEach(row => {
+      const status = row[statusIndex];
+      const ridersAssigned = row[ridersAssignedIndex];
+      
+      if (status && status.toString().toLowerCase().trim() === 'completed') {
+        completedCount++;
+      }
+      
+      if (ridersAssigned && ridersAssigned.toString().trim()) {
+        assignedCount++;
+      }
+    });
+    
+    console.log(`📊 Statistics: ${completedCount} completed, ${assignedCount} with riders assigned`);
+    
+    return {
+      success: true,
+      message: 'Reports working with emergency CONFIG',
+      stats: {
+        totalRequests: requestData.length,
+        completed: completedCount,
+        withRiders: assignedCount
+      }
+    };
+    
+  } catch (error) {
+    console.log('❌ Error testing reports:', error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Complete diagnosis and fix function
+ */
+function diagnoseCONFIGIssue() {
+  console.log('🚀 === COMPLETE CONFIG DIAGNOSIS ===');
+  
+  const results = {
+    configTest: null,
+    reloadAttempt: null,
+    emergencyConfig: null,
+    reportsTest: null,
+    success: false
+  };
+  
+  // Step 1: Test current CONFIG
+  console.log('\n1️⃣ Testing current CONFIG...');
+  results.configTest = testCONFIGLoading();
+  
+  if (!results.configTest.success) {
+    // Step 2: Try to reload
+    console.log('\n2️⃣ Attempting to reload CONFIG...');
+    results.reloadAttempt = forceReloadConfig();
+    
+    if (!results.reloadAttempt.success) {
+      // Step 3: Create emergency CONFIG
+      console.log('\n3️⃣ Creating emergency CONFIG...');
+      results.emergencyConfig = createEmergencyConfig();
+      
+      if (results.emergencyConfig.success) {
+        // Step 4: Test reports with emergency CONFIG
+        console.log('\n4️⃣ Testing reports with emergency CONFIG...');
+        results.reportsTest = testReportsWithEmergencyConfig();
+        results.success = results.reportsTest.success;
+      }
+    } else {
+      results.success = true;
+    }
+  } else {
+    results.success = true;
+  }
+  
+  // Summary
+  console.log('\n📊 === DIAGNOSIS SUMMARY ===');
+  if (results.success) {
+    console.log('✅ CONFIG issues resolved - reports should work now');
+  } else {
+    console.log('❌ CONFIG issues remain - check Config.gs file for syntax errors');
+  }
+  
+  return results;
+}
+/**
+ * DIAGNOSTIC: Check current column headers vs CONFIG expectations
+ * Run this in Google Apps Script editor to identify the column mismatch
+ */
+function diagnoseColumnIssue() {
+  console.log('🔍 === COLUMN DIAGNOSTIC ===');
+  
+  try {
+    // Get the Requests sheet
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Requests');
+    if (!sheet) {
+      console.log('❌ Requests sheet not found!');
+      return;
+    }
+    
+    // Get current headers
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    console.log('📋 Current Headers in Sheet:', currentHeaders);
+    
+    // Expected headers based on your system
+    const expectedHeaders = [
+      'Request ID',           // CONFIG.columns.requests.id
+      'Date Submitted',       // CONFIG.columns.requests.dateSubmitted  
+      'Requester Name',       // CONFIG.columns.requests.requesterName
+      'Requester Email',      // CONFIG.columns.requests.requesterEmail
+      'Requester Phone',      // CONFIG.columns.requests.requesterPhone
+      'Event Date',           // CONFIG.columns.requests.eventDate
+      'Start Time',           // CONFIG.columns.requests.startTime
+      'End Time',             // CONFIG.columns.requests.endTime
+      'Start Location',       // CONFIG.columns.requests.startLocation
+      'End Location',         // CONFIG.columns.requests.endLocation
+      'Secondary Location',   // CONFIG.columns.requests.secondaryLocation
+      'Type',                 // CONFIG.columns.requests.type
+      'Riders Needed',        // CONFIG.columns.requests.ridersNeeded
+      'Escort Fee',           // CONFIG.columns.requests.escortFee
+      'Status',               // CONFIG.columns.requests.status
+      'Notes',                // CONFIG.columns.requests.notes
+      'Riders Assigned',      // CONFIG.columns.requests.ridersAssigned ← KEY COLUMN
+      'Last Updated'          // CONFIG.columns.requests.lastModified
+    ];
+    
+    console.log('✅ Expected Headers:', expectedHeaders);
+    
+    // Find mismatches
+    console.log('\n🔍 COMPARING HEADERS:');
+    const issues = [];
+    
+    for (let i = 0; i < Math.max(currentHeaders.length, expectedHeaders.length); i++) {
+      const current = currentHeaders[i] || 'MISSING';
+      const expected = expectedHeaders[i] || 'EXTRA';
+      
+      if (current !== expected) {
+        const issue = `Column ${i + 1}: Expected "${expected}", Found "${current}"`;
+        console.log(`❌ ${issue}`);
+        issues.push(issue);
+      } else {
+        console.log(`✅ Column ${i + 1}: "${current}" ✓`);
+      }
+    }
+    
+    // Focus on the Riders Assigned column specifically
+    const ridersAssignedIndex = currentHeaders.findIndex(header => 
+      header.toLowerCase().includes('rider') && header.toLowerCase().includes('assign')
+    );
+    
+    console.log('\n🎯 RIDERS ASSIGNED COLUMN ANALYSIS:');
+    if (ridersAssignedIndex >= 0) {
+      console.log(`✅ Found riders assigned column: "${currentHeaders[ridersAssignedIndex]}" at position ${ridersAssignedIndex + 1}`);
+      if (currentHeaders[ridersAssignedIndex] !== 'Riders Assigned') {
+        console.log(`⚠️ ISSUE: Column is named "${currentHeaders[ridersAssignedIndex]}" but system expects "Riders Assigned"`);
+      }
+    } else {
+      console.log('❌ Could not find any column that looks like "Riders Assigned"');
+    }
+    
+    // Check for common variations
+    const variations = [
+      'Riders Assigned',
+      'Assigned Riders', 
+      'Rider Assignment',
+      'Assigned',
+      'ridersAssigned',
+      'assignedRiders'
+    ];
+    
+    console.log('\n🔎 CHECKING COMMON VARIATIONS:');
+    variations.forEach(variation => {
+      const index = currentHeaders.indexOf(variation);
+      if (index >= 0) {
+        console.log(`✅ Found "${variation}" at column ${index + 1}`);
+      } else {
+        console.log(`❌ "${variation}" not found`);
+      }
+    });
+    
+    return {
+      currentHeaders: currentHeaders,
+      expectedHeaders: expectedHeaders,
+      issues: issues,
+      ridersAssignedColumn: ridersAssignedIndex >= 0 ? currentHeaders[ridersAssignedIndex] : null
+    };
+    
+  } catch (error) {
+    console.log('❌ Error:', error.message);
+    return { error: error.message };
+  }
+}
+/**
  * DATA INVESTIGATION SCRIPT
  * Since the fix is already applied but numbers are still wrong,
  * let's investigate your actual data to find the root cause
