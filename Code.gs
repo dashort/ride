@@ -5069,20 +5069,32 @@ function getEstimatedHoursForRequestType(requestType) {
  */
 function exportRiderActivityCSV(startDate, endDate) {
   try {
-    const report = generateRiderActivityReport(startDate, endDate);
-    if (!report.success) {
-      throw new Error(report.error || 'Failed to generate rider activity');
+    const report = generateReportData({
+      startDate: startDate,
+      endDate: endDate,
+      requestType: 'All',
+      status: 'All'
+    });
+
+    const riderHours = (report.tables && report.tables.riderHours)
+      ? report.tables.riderHours
+      : (report.riderHours || []);
+
+    if (!Array.isArray(riderHours) || riderHours.length === 0) {
+      throw new Error('No rider activity data available');
     }
 
     const headers = ['Rider', 'Requests', 'Hours', 'Average'];
     const csvRows = [headers.join(',')];
-    report.data.forEach(r => {
+    riderHours.forEach(r => {
+      const name = r.name || r.riderName || '';
       const requests = r.requests !== undefined ? r.requests : r.escorts;
-      const avg = requests > 0 ? Math.round((r.hours / requests) * 4) / 4 : 0;
+      const hours = r.hours !== undefined ? r.hours : 0;
+      const avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
       const row = [
-        `"${String(r.name).replace(/"/g, '""')}"`,
+        `"${String(name).replace(/"/g, '""')}"`,
         requests,
-        r.hours,
+        hours,
         avg
       ];
       csvRows.push(row.join(','));
@@ -5095,7 +5107,7 @@ function exportRiderActivityCSV(startDate, endDate) {
       success: true,
       csvContent: csvContent,
       filename: filename,
-      count: report.data.length
+      count: riderHours.length
     };
   } catch (error) {
     logError('Error in exportRiderActivityCSV', error);
