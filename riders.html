@@ -549,6 +549,10 @@
                 📊 Export CSV
             </button>
             
+            <button onclick="runRidersDiagnostic()" class="btn btn-danger" id="diagnosticBtn" title="Run diagnostic to fix 'No data' issues">
+                🔍 Diagnose Issue
+            </button>
+            
             <button onclick="toggleBulkMode()" class="btn btn-warning" id="bulkModeBtn">
                 📋 Bulk Actions
             </button>
@@ -771,7 +775,120 @@
     function handleRidersDataFailure(error) {
         hideLoading();
         console.error('❌ Error loading riders:', error);
-        showError('Error loading riders: ' + (error.message || error));
+        
+        // Enhanced error message with diagnostic information
+        const errorMsg = error.message || error;
+        const diagnosticInfo = `
+        <div style="text-align: left; margin-top: 1rem;">
+            <strong>🔍 Quick Diagnostic:</strong><br>
+            • Check if Google Sheets is accessible<br>
+            • Verify the 'Riders' sheet exists<br>
+            • Ensure you have proper permissions<br>
+            <br>
+            <strong>🔧 Automatic Fix:</strong><br>
+            Click the <strong>"🔍 Diagnose Issue"</strong> button above to run automated diagnostics and fixes.
+        </div>`;
+        
+        showError('Error loading riders: ' + errorMsg + diagnosticInfo);
+    }
+
+    // Enhanced diagnostic function for the frontend
+    function runRidersDiagnostic() {
+        console.log('🔍 Starting frontend riders diagnostic...');
+        
+        showLoading();
+        
+        // Update diagnostic button
+        const diagnosticBtn = document.getElementById('diagnosticBtn');
+        if (diagnosticBtn) {
+            diagnosticBtn.innerHTML = '⏳ Running Diagnostic...';
+            diagnosticBtn.disabled = true;
+        }
+        
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            console.log('✅ Google Apps Script available, running backend diagnostic...');
+            
+            google.script.run
+                .withSuccessHandler(handleDiagnosticSuccess)
+                .withFailureHandler(handleDiagnosticFailure)
+                .diagnoseAndFixRidersLoading();
+        } else {
+            console.log('❌ Google Apps Script not available');
+            handleDiagnosticFailure({ 
+                message: "Google Apps Script not available. Please refresh the page and try again." 
+            });
+        }
+    }
+
+    function handleDiagnosticSuccess(result) {
+        hideLoading();
+        
+        // Reset diagnostic button
+        const diagnosticBtn = document.getElementById('diagnosticBtn');
+        if (diagnosticBtn) {
+            diagnosticBtn.innerHTML = '🔍 Diagnose Issue';
+            diagnosticBtn.disabled = false;
+        }
+        
+        console.log('✅ Diagnostic completed:', result);
+        
+        if (result && result.success) {
+            showSuccess(`
+                🎉 <strong>Issue Fixed!</strong><br>
+                The riders data should now load properly.<br>
+                <br>
+                <strong>Fixes Applied:</strong><br>
+                ${result.fixes ? result.fixes.map(fix => `• ${fix}`).join('<br>') : 'No fixes needed'}
+                <br><br>
+                <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 1rem;">
+                    🔄 Refresh Page
+                </button>
+            `);
+        } else {
+            const errorDetails = result ? (result.criticalError || 'Unknown error') : 'No result returned';
+            showError(`
+                ❌ <strong>Diagnostic Failed</strong><br>
+                ${errorDetails}<br>
+                <br>
+                <strong>Manual Steps Required:</strong><br>
+                1. Open your Google Sheets spreadsheet<br>
+                2. Check if a sheet named "Riders" exists<br>
+                3. Ensure the sheet has proper headers and data<br>
+                4. Contact your system administrator if needed<br>
+                <br>
+                <button onclick="location.reload()" class="btn btn-secondary" style="margin-top: 1rem;">
+                    🔄 Try Again
+                </button>
+            `);
+        }
+    }
+
+    function handleDiagnosticFailure(error) {
+        hideLoading();
+        
+        // Reset diagnostic button
+        const diagnosticBtn = document.getElementById('diagnosticBtn');
+        if (diagnosticBtn) {
+            diagnosticBtn.innerHTML = '🔍 Diagnose Issue';
+            diagnosticBtn.disabled = false;
+        }
+        
+        console.error('❌ Diagnostic failed:', error);
+        
+        showError(`
+            ❌ <strong>Diagnostic Failed</strong><br>
+            ${error.message || error}<br>
+            <br>
+            <strong>Possible Solutions:</strong><br>
+            1. Refresh the page and try again<br>
+            2. Check your internet connection<br>
+            3. Ensure you're logged into Google<br>
+            4. Contact your system administrator<br>
+            <br>
+            <button onclick="location.reload()" class="btn btn-secondary" style="margin-top: 1rem;">
+                🔄 Refresh Page
+            </button>
+        `);
     }
 
     function updateUserInfo(user) {
