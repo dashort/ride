@@ -1,4 +1,5 @@
-const ss = ss;
+// Initialize reference to the active spreadsheet
+const ss = SpreadsheetApp.getActiveSpreadsheet();
 /**
  * Diagnostic and helper utilities. The global configuration and menu setup
  * functions were extracted into Config.gs and Menu.gs.
