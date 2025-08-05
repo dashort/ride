@@ -1250,7 +1250,7 @@
         if (data && data.success) {
             console.log('✅ Requests page data loaded:', data);
             currentUser = data.user;
-            // updateUserInfo(currentUser); // TODO: Implement if user info needs display on this page.
+            // updateUserInfo(currentUser);
 
             let requests = data.requests;
             if (!requests || !Array.isArray(requests)) {
