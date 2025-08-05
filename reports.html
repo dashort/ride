@@ -1056,12 +1056,62 @@ function updateTablesSafe(tables) {
                 }
                 var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
-            } else {
-                document.getElementById('riderHoursTable').innerHTML =
-                    '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
+        } else {
+            document.getElementById('riderHoursTable').innerHTML =
+                '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
+        }
+
+
+        }
+
+        /**
+         * Exports the rider activity table to CSV using server-side generation.
+         * @param {string} tableName The table identifier to export.
+         */
+        function exportTable(tableName) {
+            if (tableName !== 'riderHours') {
+                showError('Export not supported for: ' + tableName);
+                return;
             }
 
+            var startDate = document.getElementById('startDate').value;
+            var endDate = document.getElementById('endDate').value;
 
+            if (!startDate || !endDate) {
+                showError('Please select a date range before exporting');
+                return;
+            }
+
+            showLoading('Exporting rider activity...');
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        if (result && result.success) {
+                            var blob = new Blob([result.csvContent], { type: 'text/csv' });
+                            var url = URL.createObjectURL(blob);
+                            var a = document.createElement('a');
+                            a.href = url;
+                            a.download = result.filename || 'rider_activity.csv';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            showNotification('Rider activity exported', '#2ecc71');
+                        } else {
+                            showError(result && result.message ? result.message : 'Export failed');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        handleError(error);
+                    })
+                    .exportRiderActivityCSV(startDate, endDate);
+            } else {
+                hideLoading();
+                showError('Feature requires Google Apps Script connection');
+            }
         }
 
         function formatDateForInput(date) {
