@@ -550,9 +550,6 @@
             document.getElementById('quickPeriod').addEventListener('change', function(e) {
                 if (e.target.value) {
                     setQuickPeriod(e.target.value);
-                } else {
-                    // If "Custom Range" is selected, just regenerate reports with current dates
-                    generateReports();
                 }
             });
 
@@ -561,21 +558,14 @@
                 document.getElementById('quickPeriod').value = '';
                 updatePeriod();
             });
-            
+
             document.getElementById('endDate').addEventListener('change', function() {
                 // Reset quick period to custom when dates are manually changed
                 document.getElementById('quickPeriod').value = '';
                 updatePeriod();
             });
-            
-            // Auto-regenerate reports when filters change
-            document.getElementById('requestTypeFilter').addEventListener('change', function() {
-                generateReports();
-            });
-            
-            document.getElementById('statusFilter').addEventListener('change', function() {
-                generateReports();
-            });
+
+            // Filter changes will be applied when "Generate Reports" is clicked
         }
 
         function setQuickPeriod(period) {
@@ -605,18 +595,17 @@
 
             document.getElementById('startDate').value = formatDateForInput(startDate);
             document.getElementById('endDate').value = formatDateForInput(endDate);
-            // updatePeriod() will automatically call generateReports() now
+            // Update current period without generating reports automatically
             updatePeriod();
         }
 
         function updatePeriod() {
             var startDate = document.getElementById('startDate').value;
             var endDate = document.getElementById('endDate').value;
-            
+
             if (startDate && endDate) {
                 currentPeriod = { start: startDate, end: endDate };
-                // Automatically regenerate reports when date range changes
-                generateReports();
+                // Reports will only regenerate when the button is clicked
             }
         }
 
