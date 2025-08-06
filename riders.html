@@ -805,7 +805,21 @@
 
 
 
-
+// Debug function to test delete functionality
+function testDeleteFunction() {
+  if (app.riders && app.riders.length > 0) {
+    const firstRider = app.riders[0];
+    const riderId = firstRider.jpNumber || firstRider['Rider ID'];
+    console.log('🧪 Testing delete function with first rider:', riderId);
+    
+    if (confirm('This is a test. Do you want to test the delete function (no actual deletion will occur)?')) {
+      console.log('✅ Delete function test would proceed with rider:', riderId);
+      showSuccess('Delete function test completed - no actual deletion performed');
+    }
+  } else {
+    console.log('❌ No riders available for testing');
+  }
+}
 
 /**
  * SEARCH FIX: Replace the filterRiders function in your riders.html
@@ -976,7 +990,28 @@ function debounce(func, wait) {
   };
 }
 
-
+/**
+ * TEST SEARCH: Add this function to test search manually
+ * Add this to riders.html and call it from browser console
+ */
+function testSearch(searchTerm = 'test') {
+  console.log(`🧪 Testing search with term: "${searchTerm}"`);
+  
+  const searchBox = document.getElementById('searchBox');
+  if (!searchBox) {
+    console.error('❌ Search box not found');
+    return;
+  }
+  
+  // Set the search value
+  searchBox.value = searchTerm;
+  
+  // Trigger the search
+  console.log('🔍 Triggering filterRiders...');
+  filterRiders();
+  
+  console.log('✅ Search test complete');
+}
 
 function openAddRiderModal() {
         document.getElementById('modalTitle').textContent = 'Add New Rider';

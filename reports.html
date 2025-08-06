@@ -525,7 +525,7 @@
         let reportData = {};
         let currentPeriod = { start: null, end: null };
         const DEFAULT_REPORT_RANGE_DAYS = 30;
-        const DEBUG_REPORTS = false; // Set to false in production
+        const DEBUG_REPORTS = true; // Set to false in production
 
         document.addEventListener('DOMContentLoaded', function() {
             setDefaultDates();
@@ -615,7 +615,14 @@
             var requestType = document.getElementById('requestTypeFilter').value;
             var status = document.getElementById('statusFilter').value;
 
-
+            if (DEBUG_REPORTS) {
+                console.log('🔄 generateReports() called with:', {
+                    startDate: startDate,
+                    endDate: endDate,
+                    requestType: requestType,
+                    status: status
+                });
+            }
 
             if (!startDate || !endDate) {
                 showError('Please select both start and end dates');
@@ -631,7 +638,9 @@
                 status: status
             };
 
-
+            if (DEBUG_REPORTS) {
+                console.log('📊 Calling getPageDataForReports with filters:', filters);
+            }
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
@@ -639,7 +648,7 @@
                     .withFailureHandler(handlePageDataFailure)
                     .getPageDataForReports(filters);
             } else {
-
+                console.log('Google Apps Script not available for reports page.');
                 handlePageDataFailure({ message: 'Google Apps Script not available.' });
             }
         }
@@ -647,50 +656,95 @@
 function handlePageDataSuccess(data) {
     hideLoading();
 
-
+    // Simple console logging only
+    console.log('✅ handlePageDataSuccess received data:', data);
+    
+    if (data) {
+        console.log('Data type:', typeof data);
+        console.log('Has success:', !!data.success);
+        console.log('Has user:', !!data.user);
+        console.log('Has reportData:', !!data.reportData);
+    }
 
     // Try to process the data
     var handled = false;
     
     // Path 1: Perfect match
     if (data && data.success === true && data.user && data.reportData) {
+        console.log('✅ Processing data - perfect match');
         try {
             updateUserInfoSafely(data.user);
             handleReportData(data.reportData);
             handled = true;
         } catch (e) {
-            // Handle error silently
+            console.log('❌ Processing failed:', e.message);
         }
     }
     
     // Path 2: Has data but success might be truthy value
     if (!handled && data && data.success && data.user && data.reportData) {
+        console.log('✅ Processing data - truthy success');
         try {
             updateUserInfoSafely(data.user);
             handleReportData(data.reportData);
             handled = true;
         } catch (e) {
-            // Handle error silently
+            console.log('❌ Processing failed:', e.message);
         }
     }
     
     // Path 3: Has required data regardless of success flag
     if (!handled && data && data.user && data.reportData) {
+        console.log('✅ Processing data - has required data');
         try {
             updateUserInfoSafely(data.user);
             handleReportData(data.reportData);
             handled = true;
         } catch (e) {
-            // Handle error silently
+            console.log('❌ Processing failed:', e.message);
         }
     }
     
     if (!handled) {
+        console.log('❌ All processing paths failed');
         handlePageDataFailure(data || { message: 'Could not process data.' });
+    } else {
+        console.log('✅ Data processed successfully');
     }
 }
 
+// Also add this simple test function you can call from console
+function testDataReceiving() {
+    console.log('🧪 Testing data receiving...');
+    
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+            .withSuccessHandler(function(result) {
+                console.log('🎯 TEST RESULT:', result);
+                console.log('Test result type:', typeof result);
+                console.log('Test result keys:', result ? Object.keys(result) : 'none');
+                console.log('Test success value:', result ? result.success : 'no success property');
+                
+                // Manually call our diagnostic function
+                handlePageDataSuccess(result);
+            })
+            .withFailureHandler(function(error) {
+                console.log('❌ Test failed:', error);
+            })
+            .getPageDataForReports({
+                startDate: '2024-01-01',
+                endDate: new Date().toISOString().split('T')[0]
+            });
+    } else {
+        console.log('❌ Google Apps Script not available');
+    }
+}
 
+// Add this to automatically run when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📄 Reports page loaded with diagnostic version');
+    console.log('💡 You can run testDataReceiving() from console to test manually');
+});
 
 function updateUserInfoSafely(user) {
     try {
@@ -700,10 +754,10 @@ function updateUserInfoSafely(user) {
                 const element = document.getElementById(id);
                 if (element && element.textContent !== undefined) {
                     element.textContent = value;
-
+                    console.log(`✅ Updated ${id}: ${value}`);
                 }
             } catch (e) {
-
+                console.log(`❌ Error updating ${id}:`, e.message);
             }
         };
 
@@ -711,16 +765,22 @@ function updateUserInfoSafely(user) {
         safeUpdate('userRole', (safeUser.roles || ['user']).join(', '));
         safeUpdate('userAvatar', (safeUser.name || 'U').charAt(0).toUpperCase());
     } catch (error) {
-
+        console.log('Error in updateUserInfoSafely:', error);
     }
 }
 
-
+// Call this when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    addTestButtons();
+});
 
 function handlePageDataFailure(error) {
     hideLoading();
     
-
+    // Simple logging
+    console.log('❌ Backend call failed with error:', error);
+    console.log('Error type:', typeof error);
+    console.log('Error details:', JSON.stringify(error, null, 2));
     
     // Original error handling
     var fallbackUser = (error && error.user) ? error.user : {
@@ -738,55 +798,61 @@ function handleReportData(data) {
     hideLoading();
     reportData = data;
     
-
+    console.log('📊 handleReportData processing:', data);
     
     // Update summary stats safely
     try {
         if (data.summary) {
-
+            console.log('✅ Updating summary stats');
             updateSummaryStatsSafe(data.summary);
         }
     } catch (summaryError) {
-        // Error handling without logging
+        console.error('❌ Error updating summary stats:', summaryError);
     }
     
     // Update charts safely
     try {
         if (data.charts) {
+            console.log('✅ Updating charts');
             updateChartsSafe(data.charts);
         }
     } catch (chartsError) {
-        // Error handling without logging
+        console.error('❌ Error updating charts:', chartsError);
     }
     
-    // Update tables safely
+    // Update tables safely  
     try {
         if (data.tables) {
+            console.log('✅ Updating tables');
             updateTablesSafe(data.tables);
         }
     } catch (tablesError) {
-        // Error handling without logging
+        console.error('❌ Error updating tables:', tablesError);
     }
     
-    // Set current timestamp
-    const timestamp = new Date().toLocaleString();
+    // Update timestamp safely
     try {
-        const element = document.getElementById('lastUpdated');
-        if (element) {
-            element.textContent = timestamp;
+        var now = new Date();
+        var timestamp = 'Last updated: ' + now.toLocaleString();
+        var timestampElement = document.getElementById('lastUpdated');
+        if (timestampElement) {
+            timestampElement.textContent = timestamp;
         }
+        console.log('✅ Report data updated successfully at', timestamp);
     } catch (timestampError) {
-        // Error handling without logging
+        console.log('Could not update timestamp:', timestampError.message);
     }
 }
 
 function updateSummaryStatsSafe(summary) {
+    console.log('📊 updateSummaryStatsSafe called with:', summary);
+    
     // Safely update each stat
     var stats = [
-        { id: 'totalRequests', value: summary.totalRequests || '0' },
-        { id: 'completedEscorts', value: summary.completedEscorts || '0' },
-        { id: 'activeRiders', value: summary.activeRiders || '0' },
-        { id: 'nopdEscortRiders', value: summary.nopdEscortRiders || '0' }
+        { id: 'totalRequests', value: summary.totalRequests || 0 },
+        { id: 'completedEscorts', value: summary.completedEscorts || 0 },
+        { id: 'activeRiders', value: summary.activeRiders || 0 },
+        { id: 'nopdEscortRiders', value: summary.nopdEscortRiders || 0 }
     ];
     
     stats.forEach(function(stat) {
@@ -794,89 +860,121 @@ function updateSummaryStatsSafe(summary) {
             var element = document.getElementById(stat.id);
             if (element) {
                 element.textContent = stat.value;
+                console.log('✅ Updated', stat.id, 'to', stat.value);
+            } else {
+                console.log('⚠️ Element not found:', stat.id);
             }
         } catch (e) {
-            // Error handling without logging
+            console.log('❌ Error updating', stat.id + ':', e.message);
         }
     });
 }
 
 function updateChartsSafe(charts) {
+    console.log('📊 updateChartsSafe called with:', charts);
+    
     // Update request volume chart
     try {
         var volumeChart = document.getElementById('requestVolumeChart');
         if (volumeChart && charts.requestVolume) {
-            volumeChart.innerHTML = '<div style="padding: 1rem; border: 1px solid #e1e8ed; border-radius: 8px; background: #f8f9fa;">' +
-                '<h4 style="margin: 0 0 0.5rem 0; color: #1a73e8;">Request Volume</h4>' +
-                '<p>Total Requests: ' + (charts.requestVolume.total || '0') + '</p>' +
+            volumeChart.innerHTML = 
+                '<div style="padding: 2rem; text-align: center;">' +
+                '<h4>Request Volume Data</h4>' +
+                '<p>Total: ' + (charts.requestVolume.total || 0) + '</p>' +
                 '<p>Peak Day: ' + (charts.requestVolume.peakDay || 'N/A') + '</p>' +
                 '<p>Trend: ' + (charts.requestVolume.trend || 'N/A') + '</p>' +
                 '</div>';
+            console.log('✅ Updated request volume chart');
         } else if (volumeChart) {
             volumeChart.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><h4>Request Volume Data</h4><p>No data available</p></div>';
         }
     } catch (e) {
-        // Error handling without logging
+        console.log('❌ Error updating volume chart:', e.message);
     }
 
     // Update request types chart
     try {
         var typesChart = document.getElementById('requestTypesChart');
-        if (typesChart && charts.requestTypes && charts.requestTypes.length > 0) {
-            var typesHtml = '<div style="padding: 1rem; border: 1px solid #e1e8ed; border-radius: 8px; background: #f8f9fa;"><h4 style="margin: 0 0 0.5rem 0; color: #1a73e8;">Request Types</h4>';
-            charts.requestTypes.forEach(function(type) {
-                typesHtml += '<div style="margin: 0.25rem 0;"><strong>' + type.name + ':</strong> ' + type.count + '</div>';
-            });
+        if (typesChart && charts.requestTypes && Object.keys(charts.requestTypes).length > 0) {
+            var totalRequests = charts.requestVolume && charts.requestVolume.total ? charts.requestVolume.total : 0;
+            var typesHtml = '<div style="padding: 2rem;"><h4>Request Types</h4>';
+            for (var type in charts.requestTypes) {
+                var count = charts.requestTypes[type];
+                var percentage = totalRequests > 0 ? Math.round((count / totalRequests) * 100) : 0;
+                typesHtml += '<p>' + type + ': ' + count + ' (' + percentage + '%)</p>';
+            }
             typesHtml += '</div>';
             typesChart.innerHTML = typesHtml;
+            console.log('✅ Updated request types chart');
         } else if (typesChart) {
             typesChart.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><h4>Request Types</h4><p>No data available</p></div>';
         }
     } catch (e) {
-        // Error handling without logging
+        console.log('❌ Error updating types chart:', e.message);
     }
 }
 
 function updateTablesSafe(tables) {
+    console.log('📊 updateTablesSafe called with:', tables);
+    
     // Update rider hours table
     try {
         var riderTable = document.getElementById('riderHoursTable');
-        if (riderTable && tables.riderHours && tables.riderHours.length > 0) {
-            var tableHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;"><thead><tr style="background: #f8f9fa; border-bottom: 2px solid #e1e8ed;"><th style="padding: 0.75rem; text-align: left; font-weight: 600;">Rider</th><th style="padding: 0.75rem; text-align: right; font-weight: 600;">Hours</th><th style="padding: 0.75rem; text-align: right; font-weight: 600;">Escorts</th></tr></thead><tbody>';
-            
-            tables.riderHours.forEach(function(rider, index) {
-                var rowStyle = (index % 2 === 0) ? 'background: #ffffff;' : 'background: #f8f9fa;';
-                tableHtml += '<tr style="' + rowStyle + ' border-bottom: 1px solid #e1e8ed;"><td style="padding: 0.75rem; font-weight: 500;">' + rider.name + '</td><td style="padding: 0.75rem; text-align: right;">' + rider.hours + '</td><td style="padding: 0.75rem; text-align: right;">' + rider.escorts + '</td></tr>';
+        if (riderTable && tables.riderHours && Array.isArray(tables.riderHours)) {
+            var data = tables.riderHours.slice();
+            data = data.filter(function(r) {
+                var name = r.name || r.riderName || '';
+                return !/nopd/i.test(name);
+            });
+            data.sort(function(a, b) { return ((b.requests || b.escorts || 0) - (a.requests || a.escorts || 0)); });
+
+            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>';
+
+            data.forEach(function(rider) {
+                tableHtml += '<tr>';
+                var requests = (rider.requests !== undefined) ? rider.requests : (rider.escorts || 0);
+                var hours = rider.hours || 0;
+                var avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
+                tableHtml += '<td>' + escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown') + '</td>';
+                tableHtml += '<td>' + requests + '</td>';
+                tableHtml += '<td>' + hours + '</td>';
+                tableHtml += '<td>' + avg.toFixed(2) + '</td>';
+                tableHtml += '</tr>';
             });
 
             tableHtml += '</tbody></table>';
             riderTable.innerHTML = tableHtml;
+            console.log('✅ Updated rider hours table');
         } else if (riderTable) {
             riderTable.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><p>No rider hours data available</p></div>';
         }
     } catch (e) {
-        // Error handling without logging
+        console.log('❌ Error updating rider hours table:', e.message);
     }
     
     // Update recent requests table
     try {
         var requestsTable = document.getElementById('recentRequestsTable');
-        if (requestsTable && tables.recentRequests && tables.recentRequests.length > 0) {
-            var tableHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;"><thead><tr style="background: #f8f9fa; border-bottom: 2px solid #e1e8ed;"><th style="padding: 0.75rem; text-align: left; font-weight: 600;">Date</th><th style="padding: 0.75rem; text-align: left; font-weight: 600;">Client</th><th style="padding: 0.75rem; text-align: left; font-weight: 600;">Rider</th><th style="padding: 0.75rem; text-align: center; font-weight: 600;">Status</th></tr></thead><tbody>';
+        if (requestsTable && tables.recentRequests && Array.isArray(tables.recentRequests)) {
+            var tableHtml = '<table class="report-table"><thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Rider</th></tr></thead><tbody>';
             
-            tables.recentRequests.forEach(function(request, index) {
-                var rowStyle = (index % 2 === 0) ? 'background: #ffffff;' : 'background: #f8f9fa;';
-                var statusColor = request.status === 'Completed' ? '#10b981' : (request.status === 'In Progress' ? '#f59e0b' : '#6b7280');
-                tableHtml += '<tr style="' + rowStyle + ' border-bottom: 1px solid #e1e8ed;"><td style="padding: 0.75rem;">' + request.date + '</td><td style="padding: 0.75rem; font-weight: 500;">' + request.client + '</td><td style="padding: 0.75rem;">' + request.rider + '</td><td style="padding: 0.75rem; text-align: center;"><span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 500; color: white; background: ' + statusColor + ';">' + request.status + '</span></td></tr>';
+            tables.recentRequests.forEach(function(request) {
+                tableHtml += '<tr>';
+                tableHtml += '<td>' + (request.date || 'N/A') + '</td>';
+                tableHtml += '<td>' + (request.type || 'N/A') + '</td>';
+                tableHtml += '<td>' + (request.status || 'N/A') + '</td>';
+                tableHtml += '<td>' + (request.rider || 'Unassigned') + '</td>';
+                tableHtml += '</tr>';
             });
             
             tableHtml += '</tbody></table>';
             requestsTable.innerHTML = tableHtml;
+            console.log('✅ Updated recent requests table');
         } else if (requestsTable) {
             requestsTable.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><p>No recent requests data available</p></div>';
         }
     } catch (e) {
-        // Error handling without logging
+        console.log('❌ Error updating recent requests table:', e.message);
     }
 }
 
@@ -1011,14 +1109,14 @@ function updateTablesSafe(tables) {
                 if (isNaN(date.getTime())) return '';
                 return date.toISOString().split('T')[0];
             } catch (e) {
-                // Error formatting date for input
+                console.error('Error formatting date for input:', date, e);
                 return '';
             }
         }
 
         function setFallbackReportData() {
             hideLoading();
-            // Using fallback data for reports
+            console.log('Using fallback data for reports');
             var data = {
                 summary: { totalRequests: 0, completedEscorts: 0, activeRiders: 0, nopdEscortRiders: 0 },
                 charts: {},
@@ -1040,7 +1138,7 @@ function updateTablesSafe(tables) {
         }
 
         function showLoading(message) {
-
+            console.log('Loading:', message);
             
             // Create or update loading overlay
             let loadingOverlay = document.getElementById('loadingOverlay');
@@ -1083,7 +1181,7 @@ function updateTablesSafe(tables) {
         }
 
         function hideLoading() {
-
+            console.log('Loading complete');
             
             const loadingOverlay = document.getElementById('loadingOverlay');
             if (loadingOverlay) {
@@ -1128,7 +1226,21 @@ function updateTablesSafe(tables) {
             }
         }
 
-        // Show current filter settings
+        // Helper function for testing report generation
+        function testReportGeneration() {
+            if (DEBUG_REPORTS) {
+                console.log('🧪 Testing report generation...');
+                console.log('Current date values:', {
+                    startDate: document.getElementById('startDate').value,
+                    endDate: document.getElementById('endDate').value,
+                    requestType: document.getElementById('requestTypeFilter').value,
+                    status: document.getElementById('statusFilter').value
+                });
+                generateReports();
+            }
+        }
+
+        // Show current filter settings for debugging
         function showCurrentFilters() {
             var startDate = document.getElementById('startDate').value;
             var endDate = document.getElementById('endDate').value;
@@ -1147,6 +1259,15 @@ function updateTablesSafe(tables) {
                 generateReports();
             }
         }
+
+        // Add keyboard shortcuts for debugging
+        document.addEventListener('keydown', function(e) {
+            if (DEBUG_REPORTS && e.ctrlKey && e.shiftKey && e.key === 'R') {
+                e.preventDefault();
+                console.log('🔄 Manual report generation triggered');
+                testReportGeneration();
+            }
+        });
     </script>
 </body>
 </html>

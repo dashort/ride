@@ -3186,9 +3186,9 @@ function _onEdit(e) {
  */
 function getNavigationHtml(currentPage = '') {
   try {
-  
+    Logger.log("Base Script URL: " + getWebAppUrl()); // Added for URL context
     let navHtmlFromFile = HtmlService.createHtmlOutputFromFile('_navigation.html').getContent();
-  
+    Logger.log('Fetched _navigation.html content: ' + navHtmlFromFile);
 
     let navHtmlProcessed = navHtmlFromFile;
     // Logic to set the 'active' class
@@ -3215,11 +3215,11 @@ function getNavigationHtml(currentPage = '') {
         return `${p1} active${p2}${p3}`;
       });
     }
-
+    Logger.log('Processed navigationMenuHtml (with active class attempt for ' + currentPage + '): ' + navHtmlProcessed);
     return navHtmlProcessed;
   } catch (error) {
     logError('Error getting navigation HTML', error);
-
+    Logger.log('Error in getNavigationHtml: ' + error.toString());
     return '<!-- Navigation Load Error -->'; // Fallback
   }
 }
