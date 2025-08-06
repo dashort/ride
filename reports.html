@@ -380,7 +380,50 @@
 
             .export-section {
                 justify-content: center;
-            }
+        }
+    }
+
+        .rider-link {
+            color: #3498db;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .rider-link:hover {
+            text-decoration: underline;
+        }
+
+        #riderRequestsModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        #riderRequestsModal .modal-content {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        #riderRequestsModal .close-btn {
+            margin-top: 1rem;
+            background: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -518,6 +561,14 @@
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <div id="riderRequestsModal">
+        <div class="modal-content">
+            <h3 id="riderModalTitle"></h3>
+            <div id="riderModalContent" style="margin-top:1rem;"></div>
+            <button class="close-btn" onclick="closeRiderModal()">Close</button>
         </div>
     </div>
 
@@ -935,7 +986,8 @@ function updateTablesSafe(tables) {
                 var requests = (rider.requests !== undefined) ? rider.requests : (rider.escorts || 0);
                 var hours = rider.hours || 0;
                 var avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
-                tableHtml += '<td>' + escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown') + '</td>';
+                var nameHtml = escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown');
+                tableHtml += '<td><a href="#" class="rider-link" onclick="showRiderRequests(this.textContent); return false;">' + nameHtml + '</a></td>';
                 tableHtml += '<td>' + requests + '</td>';
                 tableHtml += '<td>' + hours + '</td>';
                 tableHtml += '<td>' + avg.toFixed(2) + '</td>';
@@ -1214,6 +1266,45 @@ function updateTablesSafe(tables) {
         function handleError(error) {
             hideLoading();
             showError(error && error.message ? error.message : error);
+        }
+
+        function showRiderRequests(riderName) {
+            if (!riderName) return;
+            showLoading('Loading requests...');
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        if (result && result.success) {
+                            var content = '<table class="report-table"><thead><tr><th>Request ID</th><th>Date</th><th>Hours</th></tr></thead><tbody>';
+                            if (result.requests.length === 0) {
+                                content += '<tr><td colspan="3" style="text-align:center; color:#7f8c8d;">No completed requests</td></tr>';
+                            } else {
+                                result.requests.forEach(function(r) {
+                                    content += '<tr><td>' + escapeHtml(r.id || '') + '</td><td>' + escapeHtml(r.date || '') + '</td><td>' + (r.hours || 0) + '</td></tr>';
+                                });
+                            }
+                            content += '</tbody></table>';
+                            document.getElementById('riderModalTitle').textContent = riderName + ' - Completed Requests';
+                            document.getElementById('riderModalContent').innerHTML = content;
+                            document.getElementById('riderRequestsModal').style.display = 'flex';
+                        } else {
+                            showError(result && result.error ? result.error : 'No data available');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        handleError(error);
+                    })
+                    .getRiderCompletedRequests(riderName);
+            } else {
+                hideLoading();
+                showError('Feature requires Google Apps Script connection');
+            }
+        }
+
+        function closeRiderModal() {
+            document.getElementById('riderRequestsModal').style.display = 'none';
         }
 
         function logout() {
