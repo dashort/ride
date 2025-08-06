@@ -233,48 +233,6 @@
             color: white;
         }
 
-        .recent-activity {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .activity-title {
-            font-size: 1.4rem;
-            color: #2c3e50;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .activity-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .activity-item {
-            padding: 1rem;
-            border-bottom: 1px solid #ecf0f1;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .activity-item:last-child {
-            border-bottom: none;
-        }
-
-        .activity-description {
-            flex: 1;
-        }
-
-        .activity-time {
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-
         .quick-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -462,39 +420,12 @@
             </div>
         </div>
 
-        <!-- Recent Activity -->
-        <div class="recent-activity">
-            <div class="activity-title">
-                📈 Recent System Activity
-            </div>
-            <div class="activity-list" id="activityList">
-                <div class="activity-item">
-                    <div class="activity-description">Loading recent activity...</div>
-                    <div class="activity-time">--</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Notifications -->
-        <div class="recent-activity">
-            <div class="activity-title">
-                🔔 Recent Notifications
-            </div>
-            <div class="activity-list" id="notificationList">
-                <div class="activity-item">
-                    <div class="activity-description">Loading notifications...</div>
-                    <div class="activity-time">--</div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
         // Initialize admin dashboard
         document.addEventListener('DOMContentLoaded', function() {
             loadAdminDashboardData();
-            loadRecentActivity();
-            loadRecentNotifications();
 
             // Auto-refresh every 30 seconds
             setInterval(loadAdminDashboardData, 30000);
@@ -531,68 +462,6 @@
                 console.log('✅ Dashboard stats updated');
             } catch (error) {
                 console.error('❌ Error updating dashboard stats:', error);
-            }
-        }
-
-        function loadRecentActivity() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(updateRecentActivity)
-                    .withFailureHandler(handleActivityError)
-                    .getRecentSystemActivity();
-            } else {
-                updateRecentActivity(getDemoActivity());
-            }
-        }
-
-        function loadRecentNotifications() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(updateRecentNotifications)
-                    .withFailureHandler(handleActivityError)
-                    .getNotificationHistory();
-            } else {
-                updateRecentNotifications(getDemoNotifications());
-            }
-        }
-
-        function updateRecentActivity(activities) {
-            const activityList = document.getElementById('activityList');
-            
-            if (activities && activities.length > 0) {
-                activityList.innerHTML = activities.map(activity => `
-                    <div class="activity-item">
-                        <div class="activity-description">${activity.description}</div>
-                        <div class="activity-time">${activity.time}</div>
-                    </div>
-                `).join('');
-            } else {
-                activityList.innerHTML = `
-                    <div class="activity-item">
-                        <div class="activity-description">No recent activity</div>
-                        <div class="activity-time">--</div>
-                    </div>
-                `;
-            }
-        }
-
-        function updateRecentNotifications(notifications) {
-            const container = document.getElementById('notificationList');
-
-            if (notifications && notifications.length > 0) {
-                container.innerHTML = notifications.map(n => `
-                    <div class="activity-item">
-                        <div class="activity-description">${n.recipient} (${n.type})</div>
-                        <div class="activity-time">${new Date(n.timestamp).toLocaleString()}</div>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = `
-                    <div class="activity-item">
-                        <div class="activity-description">No notifications</div>
-                        <div class="activity-time">--</div>
-                    </div>
-                `;
             }
         }
 
@@ -855,10 +724,6 @@ function displayEmailResponses(responses) {
             showMessage('Error loading dashboard data', 'error');
         }
 
-        function handleActivityError(error) {
-            console.error('Activity error:', error);
-        }
-
         function handleError(error) {
             console.error('Error:', error);
             showMessage('An error occurred: ' + error.message, 'error');
@@ -876,22 +741,6 @@ function displayEmailResponses(responses) {
                 unassignedEscorts: 2,
                 newRequests: 4
             };
-        }
-
-        function getDemoActivity() {
-            return [
-                { description: 'New escort request created by Dispatcher', time: '2 min ago' },
-                { description: 'Rider John Smith completed assignment E-123-25', time: '15 min ago' },
-                { description: 'System backup completed successfully', time: '1 hour ago' },
-                { description: 'New user registration pending approval', time: '2 hours ago' }
-            ];
-        }
-
-        function getDemoNotifications() {
-            return [
-                { recipient: 'John Doe', type: 'SMS', timestamp: new Date().toISOString(), requestId: 'REQ-1' },
-                { recipient: 'Jane Smith', type: 'Email', timestamp: new Date().toISOString(), requestId: 'REQ-2' }
-            ];
         }
 
         function logout() {
