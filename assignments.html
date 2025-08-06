@@ -821,56 +821,11 @@
     }
 <!-- Add this to your assignments.html <script> section for debugging -->
 
-// Debug function to test riders loading
-function debugRidersLoading() {
-  console.log('🔍 Debugging riders loading...');
-  
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    // Test the enhanced function
-    console.log('📞 Calling debugActiveRidersIssue...');
-    google.script.run
-      .withSuccessHandler(function(result) {
-        console.log('✅ Debug result:', result);
-        
-        if (result.error) {
-          console.error('❌ Server-side error:', result.error);
-        } else {
-          console.log(`📊 Found ${result.ridersFound} total riders, ${result.activeRiders} active`);
-          console.log('📋 Headers:', result.headers);
-          console.log('📄 Sample data:', result.sampleData);
-        }
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Debug call failed:', error);
-      })
-      .debugActiveRidersIssue();
-      
-    // Also test the regular function
-    console.log('📞 Calling getActiveRidersForAssignments...');
-    google.script.run
-      .withSuccessHandler(function(riders) {
-        console.log('✅ Active riders result:', riders);
-        console.log(`📊 Found ${riders.length} active riders`);
-        
-        if (riders.length > 0) {
-          console.log('👤 Sample rider:', riders[0]);
-        } else {
-          console.log('❌ No active riders found');
-        }
-      })
-      .withFailureHandler(function(error) {
-        console.error('❌ Active riders call failed:', error);
-      })
-      .getActiveRidersForAssignments();
-      
-  } else {
-    console.error('❌ Google Apps Script not available');
-  }
-}
+
 
 // Enhanced riders loading with better error handling
 function loadActiveRidersEnhanced() {
-  console.log('🔄 Loading active riders with enhanced debugging...');
+
   
   showLoading('Loading riders...');
   
