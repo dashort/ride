@@ -2906,6 +2906,15 @@ function getPageDataForDashboard(user) { // Added user parameter
       }
     }
     const upcomingAssignments = getUpcomingAssignmentsForWebApp(user);
+    const today = new Date().toDateString();
+    stats.todayAssignments = upcomingAssignments.filter(a => {
+      try {
+        return new Date(a.eventDate).toDateString() === today;
+      } catch (e) {
+        return false;
+      }
+    }).length;
+    stats.weekAssignments = upcomingAssignments.length;
     return { success: true, user, stats, recentRequests, upcomingAssignments };
   } catch (error) {
     logError('Error in getPageDataForDashboard', error);
