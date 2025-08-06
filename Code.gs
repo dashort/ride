@@ -4930,6 +4930,57 @@ function generateRiderActivityReport(startDate, endDate) {
   }
 }
 
+/**
+ * Retrieves all completed requests for a specific rider including
+ * the time spent on each request and the request date.
+ * @param {string} riderName The rider's name.
+ * @return {Object} Result object with a success flag and list of requests.
+ */
+function getRiderCompletedRequests(riderName) {
+  try {
+    if (!riderName) {
+      throw new Error('Rider name required');
+    }
+
+    const requestsData = getRequestsData();
+    const columnMap = requestsData.columnMap;
+    const results = [];
+
+    requestsData.data.forEach(row => {
+      const status = getColumnValue(row, columnMap, CONFIG.columns.requests.status);
+      if (status !== 'Completed') return;
+
+      const assigned = getColumnValue(row, columnMap, CONFIG.columns.requests.ridersAssigned) || '';
+      const riders = String(assigned).split(',').map(r => r.trim().toLowerCase());
+      if (!riders.includes(String(riderName).toLowerCase())) return;
+
+      const startTime = getColumnValue(row, columnMap, CONFIG.columns.requests.startTime);
+      const endTime = getColumnValue(row, columnMap, CONFIG.columns.requests.endTime);
+      let hours = 0;
+      if (startTime instanceof Date && endTime instanceof Date && !isNaN(startTime) && !isNaN(endTime)) {
+        hours = (endTime - startTime) / (1000 * 60 * 60);
+      } else {
+        const requestType = getColumnValue(row, columnMap, CONFIG.columns.requests.type);
+        hours = getEstimatedHoursForRequestType(requestType || 'Other');
+      }
+      hours = Math.round(hours * 100) / 100;
+
+      const eventDate = getColumnValue(row, columnMap, CONFIG.columns.requests.eventDate);
+      const requestId = getColumnValue(row, columnMap, CONFIG.columns.requests.id);
+
+      results.push({
+        id: requestId,
+        date: formatDateForDisplay(eventDate),
+        hours: hours
+      });
+    });
+
+    return { success: true, requests: results };
+  } catch (error) {
+    return { success: false, error: error.message, requests: [] };
+  }
+}
+
 function testColumnMappingFix() {
   console.log('🧪 === TESTING COLUMN MAPPING FIX ===');
   
