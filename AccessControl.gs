@@ -526,10 +526,19 @@ function getAdminDashboardData() {
     } catch (e) {
       console.log('⚠️ Error calculating new requests:', e.message);
     }
-    
+
     const today = new Date();
     const todayStr = today.toDateString();
-    
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // Only keep assignments that are active (today or future and not completed/cancelled)
+    assignments = assignments.filter(a => {
+      const status = String(a.status || a['Status']).trim();
+      const eventDate = a.eventDate || a['Event Date'];
+      return eventDate && new Date(eventDate) >= startOfToday &&
+        !['Completed', 'Cancelled', 'No Show'].includes(status);
+    });
+
     // Calculate today's requests
     let todayRequests = 0;
     let todaysEscorts = 0; // Number of assignments scheduled for today
@@ -554,16 +563,16 @@ function getAdminDashboardData() {
     } catch (e) {
       console.log('⚠️ Error calculating todays escorts:', e.message);
     }
-    
+
     // Calculate unassigned escorts within the next 3 days
     let unassignedEscorts = 0;
     try {
-      const now = new Date();
-      const threeDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+      const threeDays = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), startOfToday.getDate() + 3);
       unassignedEscorts = assignments.filter(a => {
         const eventDate = new Date(a.eventDate || a['Event Date']);
-        return eventDate && eventDate >= now && eventDate <= threeDays &&
-          a.status !== 'Assigned';
+        const status = String(a.status || a['Status']).trim();
+        return eventDate && eventDate >= startOfToday && eventDate <= threeDays &&
+          status !== 'Assigned';
       }).length;
     } catch (e) {
       console.log('⚠️ Error calculating unassigned escorts:', e.message);
@@ -572,11 +581,10 @@ function getAdminDashboardData() {
     // Calculate escorts within the next 3 days
     let threeDayEscorts = 0;
     try {
-      const now = new Date();
-      const threeDays = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
+      const threeDays = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), startOfToday.getDate() + 3);
       threeDayEscorts = assignments.filter(a => {
         const eventDate = new Date(a.eventDate || a['Event Date']);
-        return eventDate && eventDate >= now && eventDate <= threeDays;
+        return eventDate && eventDate >= startOfToday && eventDate <= threeDays;
       }).length;
     } catch (e) {
       console.log('⚠️ Error calculating 3 day escorts:', e.message);
@@ -591,7 +599,7 @@ function getAdminDashboardData() {
     // Calculate pending assignments
     let pendingAssignments = 0;
     try {
-      pendingAssignments = assignments.filter(a => a.status === 'Pending').length;
+      pendingAssignments = assignments.filter(a => String(a.status || a['Status']).trim() === 'Pending').length;
     } catch (e) {
       console.log('⚠️ Error calculating pending assignments:', e.message);
     }
