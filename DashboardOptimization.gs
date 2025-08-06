@@ -201,17 +201,33 @@ function calculateQuickDashboardStats() {
     if (sheets.assignments) {
       try {
         const assignmentsData = sheets.assignments.getDataRange().getValues();
-        stats.totalAssignments = Math.max(0, assignmentsData.length - 1);
-        
-        const today = new Date();
-        const todayStr = today.toDateString();
-        
-        // Count today's assignments (assuming event date is in column E)
-        stats.todaysEscorts = assignmentsData.slice(1).filter(row => {
-          const eventDate = row[4]; // Column E
-          return eventDate && new Date(eventDate).toDateString() === todayStr;
-        }).length;
-        
+        const headers = assignmentsData[0] || [];
+        const dateIdx = headers.indexOf('Event Date');
+        const statusIdx = headers.indexOf('Status');
+
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        let activeAssignments = assignmentsData.slice(1);
+        if (dateIdx !== -1 && statusIdx !== -1) {
+          activeAssignments = activeAssignments.filter(row => {
+            const eventDate = row[dateIdx];
+            const status = String(row[statusIdx] || '').trim();
+            return eventDate && new Date(eventDate) >= startOfToday &&
+              !['Completed', 'Cancelled', 'No Show'].includes(status);
+          });
+        }
+
+        stats.totalAssignments = activeAssignments.length;
+
+        const todayStr = startOfToday.toDateString();
+        if (dateIdx !== -1) {
+          stats.todaysEscorts = activeAssignments.filter(row => {
+            const eventDate = row[dateIdx];
+            return eventDate && new Date(eventDate).toDateString() === todayStr;
+          }).length;
+        }
+
       } catch (e) {
         console.log('⚠️ Error counting assignments:', e.message);
       }
