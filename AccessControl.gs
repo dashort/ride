@@ -2074,11 +2074,19 @@ function getDashboardDataForUser(user) {
       
     } else if (user.role === 'rider') {
       const myAssignments = getAssignmentsForRider(user.riderId);
+      const today = new Date();
+      const upcomingAssignments = myAssignments.filter(a => {
+        try {
+          return new Date(a.eventDate) >= today;
+        } catch (e) {
+          return false;
+        }
+      });
       dashboardData.stats = {
-        myAssignments: myAssignments.length,
-        pendingAssignments: myAssignments.filter(a => a.status === 'Pending').length,
-        completedThisMonth: myAssignments.filter(a => 
-          a.status === 'Completed' && 
+        myAssignments: upcomingAssignments.length,
+        pendingAssignments: upcomingAssignments.filter(a => a.status === 'Pending').length,
+        completedThisMonth: myAssignments.filter(a =>
+          a.status === 'Completed' &&
           isThisMonth(a.completionDate)
         ).length,
         nextEscort: getNextEscortForRider(user.riderId)
