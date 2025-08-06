@@ -361,25 +361,6 @@
                     </button>
                 </div>
             </div>
-
-            <!-- System Operations -->
-            <div class="action-section">
-                <div class="action-title">
-                    ⚙️ System Operations
-                </div>
-                <div class="action-description">
-                    Monitor system performance, manage configurations, and perform maintenance tasks.
-                </div>
-                <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="viewSystemLogs()">
-                        📋 System Logs
-                    </button>
-                    <button class="btn btn-warning" onclick="runDiagnostics()">
-                        🔧 Diagnostics
-                    </button>
-                </div>
-            </div>
-
             <!-- Data Management -->
             <div class="action-section">
                 <div class="action-title">
@@ -537,40 +518,6 @@
             }
         }
 
-        function viewSystemLogs() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                google.script.run
-                    .withSuccessHandler(function(logs) {
-                        displaySystemLogs(logs);
-                    })
-                    .withFailureHandler(handleError)
-                    .getSystemLogs();
-            } else {
-                alert('System logs feature requires Google Apps Script connection');
-            }
-        }
-function displaySystemLogs(logs) {
-    const win = window.open('', '_blank', 'width=900,height=600,scrollbars=yes');
-    const doc = win.document;
-    doc.write('<html><head><title>System Logs</title></head><body>');
-    doc.write('<h2>System Logs</h2>');
-    if (!logs || logs.length === 0) {
-        doc.write('<p>No logs available.</p>');
-    } else {
-        doc.write('<table border="1" style="border-collapse: collapse; width: 100%;">');
-        doc.write('<tr><th>Timestamp</th><th>Type</th><th>Message</th><th>Details</th></tr>');
-        logs.forEach(function(log) {
-            doc.write('<tr><td>' + (log.Timestamp || log.timestamp || '') + '</td>' +
-                     '<td>' + (log.Type || log.type || '') + '</td>' +
-                     '<td>' + (log.Message || log.message || '') + '</td>' +
-                     '<td>' + (log.Details || log.details || '') + '</td></tr>');
-        });
-        doc.write('</table>');
-    }
-    doc.write('</body></html>');
-    doc.close();
-}
-
         function viewEmailResponses() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
@@ -606,22 +553,6 @@ function displayEmailResponses(responses) {
     doc.write('</body></html>');
     doc.close();
 }
-
-        function runDiagnostics() {
-            if (typeof google !== 'undefined' && google.script && google.script.run) {
-                showMessage('Running system diagnostics...', 'info');
-                google.script.run
-                    .withSuccessHandler(function(result) {
-                        showMessage('Diagnostics completed: ' + result.status, 'success');
-                        console.log('Diagnostics result:', result);
-                    })
-                    .withFailureHandler(handleError)
-                    .runSystemDiagnostics();
-            } else {
-                alert('Diagnostics feature requires Google Apps Script connection');
-            }
-        }
-
         function exportAllData() {
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 showMessage('Exporting system data...', 'info');
