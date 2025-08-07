@@ -5184,12 +5184,15 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     const ridersData = getRidersData();
     const assignmentsData = getAssignmentsData();
 
+    const EXCLUDED_RIDERS = new Set(['nopd rider', 'nopd rider 2', 'restlawn', 'unassigned']);
+
     const ridersMap = {};
     ridersData.data.forEach(row => {
       const fullName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
       if (!fullName) return;
+      const key = String(fullName).trim().toLowerCase();
+      if (EXCLUDED_RIDERS.has(key)) return;
       const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber) || '';
-      const key = String(fullName).toLowerCase();
       ridersMap[key] = {
         name: formatNameLastFirst(fullName),
         payroll: payroll,
@@ -5228,7 +5231,8 @@ function exportPublicAssignmentSummaryCSV(startDate) {
         }
       }
 
-      const key = String(riderName).toLowerCase();
+      const key = String(riderName).trim().toLowerCase();
+      if (EXCLUDED_RIDERS.has(key)) return;
       if (!ridersMap[key]) {
         ridersMap[key] = {
           name: formatNameLastFirst(riderName),
@@ -5249,6 +5253,7 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     const csvRows = [headers.join(',')];
     Object.values(ridersMap).forEach(r => {
       const total = r.hours.reduce((sum, h) => sum + h, 0);
+      if (total === 0) return;
       const row = [
         `"${String(r.name).replace(/"/g, '""')}"`,
         r.payroll
