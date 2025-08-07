@@ -5167,6 +5167,110 @@ function exportRiderActivityCSV(startDate, endDate) {
 }
 
 /**
+ * Exports a public assignment summary for the month containing the provided start date.
+ * @param {string} startDate Start date in YYYY-MM-DD format.
+ * @return {object} Result object with CSV content or error message.
+ */
+function exportPublicAssignmentSummaryCSV(startDate) {
+  try {
+    const start = parseDateString(startDate) || new Date();
+    const year = start.getFullYear();
+    const month = start.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const timezone = (CONFIG.system && CONFIG.system.timezone) || Session.getScriptTimeZone();
+
+    const ridersData = getRidersData();
+    const assignmentsData = getAssignmentsData();
+
+    const ridersMap = {};
+    ridersData.data.forEach(row => {
+      const fullName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+      if (!fullName) return;
+      const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber) || '';
+      const key = String(fullName).toLowerCase();
+      ridersMap[key] = {
+        name: formatNameLastFirst(fullName),
+        payroll: payroll,
+        hours: Array(daysInMonth).fill(0)
+      };
+    });
+
+    function formatNameLastFirst(fullName) {
+      const parts = String(fullName).trim().split(/\s+/);
+      if (parts.length <= 1) return fullName;
+      const last = parts.pop();
+      const first = parts.join(' ');
+      return `${last}, ${first}`;
+    }
+
+    assignmentsData.data.forEach(row => {
+      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
+      const riderName = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
+      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
+      if (!(eventDate instanceof Date) || !riderName) return;
+      if (eventDate < firstDay || eventDate > lastDay) return;
+      if (String(status || '').toLowerCase() !== 'completed') return;
+
+      let hours = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
+      if (!hours) {
+        const startTime = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime) ||
+                        getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
+        const endTime = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime) ||
+                      getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime);
+        const startT = parseTimeString(startTime);
+        const endT = parseTimeString(endTime);
+        if (startT && endT) {
+          hours = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
+        } else {
+          hours = 0;
+        }
+      }
+
+      const key = String(riderName).toLowerCase();
+      if (!ridersMap[key]) {
+        ridersMap[key] = {
+          name: formatNameLastFirst(riderName),
+          payroll: '',
+          hours: Array(daysInMonth).fill(0)
+        };
+      }
+      const dayIndex = eventDate.getDate() - 1;
+      ridersMap[key].hours[dayIndex] += hours;
+    });
+
+    const headers = ['Rider Name', 'Payroll Number'];
+    for (let d = 1; d <= daysInMonth; d++) {
+      headers.push(Utilities.formatDate(new Date(year, month, d), timezone, 'MM/dd'));
+    }
+    headers.push('Total');
+
+    const csvRows = [headers.join(',')];
+    Object.values(ridersMap).forEach(r => {
+      const total = r.hours.reduce((sum, h) => sum + h, 0);
+      const row = [
+        `"${String(r.name).replace(/"/g, '""')}"`,
+        r.payroll
+      ];
+      r.hours.forEach(h => row.push(h ? h.toFixed(2) : ''));
+      row.push(total ? total.toFixed(2) : '');
+      csvRows.push(row.join(','));
+    });
+
+    const filename = `public_assignment_summary_${year}_${String(month + 1).padStart(2, '0')}.csv`;
+    return {
+      success: true,
+      csvContent: csvRows.join('\n'),
+      filename: filename
+    };
+  } catch (error) {
+    logError('Error in exportPublicAssignmentSummaryCSV', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
  * Generates an executive summary for the given period or the last 30 days.
  * @param {string} [startDate] Start date in YYYY-MM-DD format.
  * @param {string} [endDate] End date in YYYY-MM-DD format.

@@ -564,6 +564,12 @@
         </div>
     </div>
 
+    <div class="export-section" style="text-align: center; margin: 2rem 0;">
+        <button class="btn btn-success" onclick="exportPublicAssignmentSummary()">
+            📥 Public Assignment Summary
+        </button>
+    </div>
+
     <div id="riderRequestsModal">
         <div class="modal-content">
             <h3 id="riderModalTitle"></h3>
@@ -1149,6 +1155,45 @@ function updateTablesSafe(tables) {
                         handleError(error);
                     })
                     .exportRiderActivityCSV(startDate, endDate);
+            } else {
+                hideLoading();
+                showError('Feature requires Google Apps Script connection');
+            }
+        }
+
+        function exportPublicAssignmentSummary() {
+            var startDate = document.getElementById('startDate').value;
+            if (!startDate) {
+                showError('Please select a start date before exporting');
+                return;
+            }
+
+            showLoading('Exporting assignment summary...');
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(result) {
+                        hideLoading();
+                        if (result && result.success) {
+                            var blob = new Blob([result.csvContent], { type: 'text/csv' });
+                            var url = URL.createObjectURL(blob);
+                            var a = document.createElement('a');
+                            a.href = url;
+                            a.download = result.filename || 'public_assignment_summary.csv';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            showNotification('Assignment summary exported', '#2ecc71');
+                        } else {
+                            showError(result && result.message ? result.message : 'Export failed');
+                        }
+                    })
+                    .withFailureHandler(function(error) {
+                        hideLoading();
+                        handleError(error);
+                    })
+                    .exportPublicAssignmentSummaryCSV(startDate);
             } else {
                 hideLoading();
                 showError('Feature requires Google Apps Script connection');
