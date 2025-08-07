@@ -5190,8 +5190,10 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     const year = start.getFullYear();
     const month = start.getMonth();
     const firstDay = new Date(year, month, 1);
+    firstDay.setHours(0, 0, 0, 0);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
+    lastDay.setHours(23, 59, 59, 999);
     const timezone = (CONFIG.system && CONFIG.system.timezone) || Session.getScriptTimeZone();
 
     const ridersData = getRidersData();
