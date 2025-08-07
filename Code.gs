@@ -152,11 +152,12 @@ function getPageDataForReports(filters) {
     console.log('📊 Fetching actual data from sheets...');
     const requestsData = getRequestsData(false); // Don't use cache for fresh data
     const ridersData = getRidersData(false);     // Don't use cache for fresh data
-    
-    console.log(`✅ Retrieved ${requestsData.data.length} requests and ${ridersData.data.length} riders`);
-    
+    const assignmentsData = getAssignmentsData(false); // Get assignments for accurate stats
+
+    console.log(`✅ Retrieved ${requestsData.data.length} requests, ${assignmentsData.data.length} assignments and ${ridersData.data.length} riders`);
+
     // Calculate real summary statistics
-    const summary = calculateRealSummaryStats(requestsData, ridersData, filters);
+    const summary = calculateRealSummaryStats(requestsData, assignmentsData, filters);
     
     // Generate real chart data
     const charts = generateRealChartData(requestsData, filters);
@@ -212,22 +213,23 @@ function getPageDataForReports(filters) {
 /**
  * Calculate real summary statistics from actual data
  */
-function calculateRealSummaryStats(requestsData, ridersData, filters) {
+function calculateRealSummaryStats(requestsData, assignmentsData, filters) {
   console.log('📊 Calculating real summary stats...');
 
   let totalRequests = 0;
   let completedRequests = 0;
   let activeRiders = 0;
   let nopdEscortRiders = 0;
-  
+
   try {
     // Ensure CONFIG is available
     if (typeof CONFIG === 'undefined') {
       console.error('❌ CONFIG object not available, using fallback column detection');
     }
-    
-    // Filter requests based on date range if provided
+
+    // Filter requests and assignments based on date range if provided
     let filteredRequests = requestsData.data || [];
+    let filteredAssignments = assignmentsData.data || [];
 
     if (filters && filters.startDate && filters.endDate) {
       const startDate = new Date(filters.startDate);
@@ -235,51 +237,62 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
 
       filteredRequests = filteredRequests.filter(row => {
         const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
-                          requestsData.columnMap[CONFIG.columns.requests.date] :
-                          requestsData.columnMap['Date'] ||
-                          requestsData.columnMap['Request Date'] ||
-                          requestsData.columnMap['Event Date'] || 0;
+                           requestsData.columnMap[CONFIG.columns.requests.date] :
+                           requestsData.columnMap['Date'] ||
+                           requestsData.columnMap['Request Date'] ||
+                           requestsData.columnMap['Event Date'] || 0;
         const requestDate = new Date(row[dateColIdx]);
         return requestDate >= startDate && requestDate <= endDate;
+      });
+
+      filteredAssignments = filteredAssignments.filter(row => {
+        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.assignments?.eventDate) ?
+                           assignmentsData.columnMap[CONFIG.columns.assignments.eventDate] :
+                           assignmentsData.columnMap['Event Date'] ||
+                           assignmentsData.columnMap['Date'] || 0;
+        const assignmentDate = row[dateColIdx];
+        const dateVal = assignmentDate instanceof Date ? assignmentDate : new Date(assignmentDate);
+        return dateVal >= startDate && dateVal <= endDate;
       });
     }
 
     const statusColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.status) ?
-                        requestsData.columnMap[CONFIG.columns.requests.status] :
-                        requestsData.columnMap['Status'] ||
-                        requestsData.columnMap['Request Status'] ||
-                        requestsData.columnMap['Service Status'];
-    const ridersAssignedIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.ridersAssigned) ?
-                        requestsData.columnMap[CONFIG.columns.requests.ridersAssigned] :
-                        requestsData.columnMap['Riders Assigned'] ||
-                        requestsData.columnMap['Rider'] ||
-                        requestsData.columnMap['Assigned Rider'] ||
-                        requestsData.columnMap['Rider ID'];
+                         requestsData.columnMap[CONFIG.columns.requests.status] :
+                         requestsData.columnMap['Status'] ||
+                         requestsData.columnMap['Request Status'] ||
+                         requestsData.columnMap['Service Status'];
+
+    const assignmentStatusIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.assignments?.status) ?
+                         assignmentsData.columnMap[CONFIG.columns.assignments.status] :
+                         assignmentsData.columnMap['Status'] ||
+                         assignmentsData.columnMap['Assignment Status'];
+    const riderNameIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.assignments?.riderName) ?
+                         assignmentsData.columnMap[CONFIG.columns.assignments.riderName] :
+                         assignmentsData.columnMap['Rider Name'] ||
+                         assignmentsData.columnMap['Rider'];
 
     const isCompletedStatus = status => String(status || '').toLowerCase().trim() === 'completed';
     const isNopdRider = name => /^nopd rider( 2)?$/i.test(String(name || '').trim());
 
-    // Only count requests that were completed in this period
-    totalRequests = filteredRequests.filter(row => {
-      const status = statusColIdx !== undefined ? row[statusColIdx] : '';
-      return isCompletedStatus(status);
-    }).length;
+    totalRequests = filteredRequests.length;
+    if (statusColIdx !== undefined) {
+      completedRequests = filteredRequests.filter(row => {
+        const status = row[statusColIdx];
+        return isCompletedStatus(status);
+      }).length;
+    }
 
     const activeSet = new Set();
-    
 
-    filteredRequests.forEach(row => {
-      const status = statusColIdx !== undefined ? row[statusColIdx] : '';
+    filteredAssignments.forEach(row => {
+      const status = assignmentStatusIdx !== undefined ? row[assignmentStatusIdx] : '';
       if (isCompletedStatus(status)) {
-        completedRequests++;
-        const ridersVal = ridersAssignedIdx !== undefined ? row[ridersAssignedIdx] : '';
-        String(ridersVal || '').split(',').map(r => r.trim()).filter(r => r).forEach(rider => {
-          if (isNopdRider(rider)) {
-            nopdEscortRiders++;
-          } else {
-            activeSet.add(rider);
-          }
-        });
+        const riderName = riderNameIdx !== undefined ? row[riderNameIdx] : '';
+        if (isNopdRider(riderName)) {
+          nopdEscortRiders++;
+        } else if (riderName) {
+          activeSet.add(riderName);
+        }
       }
     });
 
@@ -289,7 +302,7 @@ function calculateRealSummaryStats(requestsData, ridersData, filters) {
     console.error('❌ Error calculating summary stats:', error);
   }
 
-console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${activeRiders} active riders, ${nopdEscortRiders} NOPD escorts`);
+  console.log(`📊 Summary: ${totalRequests} total, ${completedRequests} completed, ${activeRiders} active riders, ${nopdEscortRiders} NOPD escorts`);
 
   return {
     totalRequests: totalRequests,
