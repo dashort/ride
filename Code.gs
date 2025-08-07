@@ -5231,6 +5231,8 @@ function exportPublicAssignmentSummaryCSV(startDate) {
         }
       }
 
+      hours = Number(hours) || 0;
+
       const key = String(riderName).trim().toLowerCase();
       if (EXCLUDED_RIDERS.has(key)) return;
       if (!ridersMap[key]) {
@@ -5252,13 +5254,13 @@ function exportPublicAssignmentSummaryCSV(startDate) {
 
     const csvRows = [headers.join(',')];
     Object.values(ridersMap).forEach(r => {
-      const total = r.hours.reduce((sum, h) => sum + h, 0);
-      if (total === 0) return;
+      const total = r.hours.reduce((sum, h) => sum + (Number(h) || 0), 0);
+      if (total <= 0) return;
       const row = [
         `"${String(r.name).replace(/"/g, '""')}"`,
         r.payroll
       ];
-      r.hours.forEach(h => row.push(h ? h.toFixed(2) : ''));
+      r.hours.forEach(h => row.push(h ? Number(h).toFixed(2) : ''));
       row.push(total ? total.toFixed(2) : '');
       csvRows.push(row.join(','));
     });
