@@ -758,11 +758,11 @@
         showLoading();
         
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            // Use secured page data API to ensure full response structure
+            // Directly fetch riders page data from backend
             google.script.run
                 .withSuccessHandler(handleRidersDataSuccess)
                 .withFailureHandler(handleRidersDataFailure)
-                .getSecuredPageData('riders');
+                .getPageDataForRiders();
         } else {
             console.log('⚠️ Google Apps Script not available');
             handleRidersDataFailure({ message: "Google Apps Script not available." });
