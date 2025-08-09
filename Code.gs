@@ -5190,93 +5190,39 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     const year = start.getFullYear();
     const month = start.getMonth();
     const firstDay = new Date(year, month, 1);
-    firstDay.setHours(0, 0, 0, 0);
     const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    lastDay.setHours(23, 59, 59, 999);
-    const timezone = (CONFIG.system && CONFIG.system.timezone) || Session.getScriptTimeZone();
+    const timezone = Session.getScriptTimeZone();
+    const startStr = Utilities.formatDate(firstDay, timezone, 'yyyy-MM-dd');
+    const endStr = Utilities.formatDate(lastDay, timezone, 'yyyy-MM-dd');
 
-    const ridersData = getRidersData();
-    const assignmentsData = getAssignmentsData();
-
-    const EXCLUDED_RIDERS = new Set(['nopd rider', 'nopd rider 2', 'restlawn', 'unassigned']);
-
-    const ridersMap = {};
-    ridersData.data.forEach(row => {
-      const fullName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-      if (!fullName) return;
-      const key = String(fullName).trim().toLowerCase();
-      if (EXCLUDED_RIDERS.has(key)) return;
-      const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber) || '';
-      ridersMap[key] = {
-        name: formatNameLastFirst(fullName),
-        payroll: payroll,
-        hours: Array(daysInMonth).fill(0)
-      };
+    const report = generateReportData({
+      startDate: startStr,
+      endDate: endStr,
+      requestType: 'All',
+      status: 'All'
     });
 
-    function formatNameLastFirst(fullName) {
-      const parts = String(fullName).trim().split(/\s+/);
-      if (parts.length <= 1) return fullName;
-      const last = parts.pop();
-      const first = parts.join(' ');
-      return `${last}, ${first}`;
+    const riderHours = (report.tables && report.tables.riderHours)
+      ? report.tables.riderHours
+      : (report.riderHours || []);
+
+    if (!Array.isArray(riderHours) || riderHours.length === 0) {
+      throw new Error('No rider activity data available');
     }
 
-    assignmentsData.data.forEach(row => {
-      const eventDate = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.eventDate);
-      const riderName = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.riderName);
-      const status = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.status);
-      if (!(eventDate instanceof Date) || !riderName) return;
-      if (eventDate < firstDay || eventDate > lastDay) return;
-      if (String(status || '').toLowerCase() !== 'completed') return;
-
-      let hours = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualDuration);
-      if (!hours) {
-        const startTime = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualStartTime) ||
-                        getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.startTime);
-        const endTime = getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.actualEndTime) ||
-                      getColumnValue(row, assignmentsData.columnMap, CONFIG.columns.assignments.endTime);
-        const startT = parseTimeString(startTime);
-        const endT = parseTimeString(endTime);
-        if (startT && endT) {
-          hours = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
-        } else {
-          hours = 0;
-        }
-      }
-
-      hours = Number(hours) || 0;
-
-      const key = String(riderName).trim().toLowerCase();
-      if (EXCLUDED_RIDERS.has(key)) return;
-      if (!ridersMap[key]) {
-        ridersMap[key] = {
-          name: formatNameLastFirst(riderName),
-          payroll: '',
-          hours: Array(daysInMonth).fill(0)
-        };
-      }
-      const dayIndex = eventDate.getDate() - 1;
-      ridersMap[key].hours[dayIndex] += hours;
-    });
-
-    const headers = ['Rider Name', 'Payroll Number'];
-    for (let d = 1; d <= daysInMonth; d++) {
-      headers.push(Utilities.formatDate(new Date(year, month, d), timezone, 'MM/dd'));
-    }
-    headers.push('Total');
-
+    const headers = ['Rider', 'Requests', 'Hours', 'Average'];
     const csvRows = [headers.join(',')];
-    Object.values(ridersMap).forEach(r => {
-      const total = r.hours.reduce((sum, h) => sum + (Number(h) || 0), 0);
-      if (total <= 0) return;
+    riderHours.forEach(r => {
+      const name = r.name || r.riderName || '';
+      const requests = r.requests !== undefined ? r.requests : r.escorts;
+      const hours = r.hours !== undefined ? r.hours : 0;
+      const avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
       const row = [
-        `"${String(r.name).replace(/"/g, '""')}"`,
-        r.payroll
+        `"${String(name).replace(/"/g, '""')}"`,
+        requests,
+        hours,
+        avg
       ];
-      r.hours.forEach(h => row.push(h ? Number(h).toFixed(2) : ''));
-      row.push(total ? total.toFixed(2) : '');
       csvRows.push(row.join(','));
     });
 
@@ -5284,7 +5230,8 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     return {
       success: true,
       csvContent: csvRows.join('\n'),
-      filename: filename
+      filename: filename,
+      count: riderHours.length
     };
   } catch (error) {
     logError('Error in exportPublicAssignmentSummaryCSV', error);
