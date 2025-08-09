@@ -5180,7 +5180,7 @@ function exportRiderActivityCSV(startDate, endDate) {
 }
 
 /**
- * Exports a public assignment summary for the month containing the provided start date.
+ * Exports a public assignment summary with daily rider hours for the month containing the provided start date.
  * @param {string} startDate Start date in YYYY-MM-DD format.
  * @return {object} Result object with CSV content or error message.
  */
@@ -5190,48 +5190,99 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     const year = start.getFullYear();
     const month = start.getMonth();
     const firstDay = new Date(year, month, 1);
+    firstDay.setHours(0, 0, 0, 0);
     const lastDay = new Date(year, month + 1, 0);
-    const timezone = Session.getScriptTimeZone();
-    const startStr = Utilities.formatDate(firstDay, timezone, 'yyyy-MM-dd');
-    const endStr = Utilities.formatDate(lastDay, timezone, 'yyyy-MM-dd');
+    lastDay.setHours(23, 59, 59, 999);
+    const daysInMonth = lastDay.getDate();
 
-    const report = generateReportData({
-      startDate: startStr,
-      endDate: endStr,
-      requestType: 'All',
-      status: 'All'
+    const requestsData = getRequestsData();
+    const ridersData = getRidersData();
+
+    // Map rider names to IDs
+    const riderMap = {};
+    ridersData.data.forEach(row => {
+      const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+      const id = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber);
+      if (name) {
+        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: id || '' };
+      }
     });
 
-    const riderHours = (report.tables && report.tables.riderHours)
-      ? report.tables.riderHours
-      : (report.riderHours || []);
+    // Initialize rider hour structure
+    const riderHours = {};
+    Object.values(riderMap).forEach(r => {
+      riderHours[r.id] = { name: r.name, id: r.id, daily: Array(daysInMonth).fill(0), total: 0 };
+    });
 
-    if (!Array.isArray(riderHours) || riderHours.length === 0) {
+    // Accumulate hours per rider per day
+    requestsData.data.forEach(request => {
+      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+      if (!(eventDate instanceof Date)) return;
+      if (eventDate < firstDay || eventDate > lastDay) return;
+      if (String(status).toLowerCase() !== 'completed') return;
+
+      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+      if (!ridersAssigned) return;
+
+      const day = eventDate.getDate();
+      const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+      const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+
+      let hoursToAdd = 0;
+      if (startTime && endTime) {
+        const startT = startTime instanceof Date ? startTime : new Date(startTime);
+        const endT = endTime instanceof Date ? endTime : new Date(endTime);
+        if (!isNaN(startT.getTime()) && !isNaN(endT.getTime())) {
+          hoursToAdd = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
+        }
+      }
+      if (hoursToAdd <= 0) {
+        const estimates = { Funeral: 0.5, Wedding: 2.5, VIP: 4.0, 'Float Movement': 4.0, Other: 2.0 };
+        hoursToAdd = estimates[requestType] || estimates['Other'];
+      }
+
+      String(ridersAssigned)
+        .split(',')
+        .map(n => n.trim())
+        .filter(Boolean)
+        .forEach(name => {
+          const rider = riderMap[name.toLowerCase()];
+          if (rider && riderHours[rider.id]) {
+            riderHours[rider.id].daily[day - 1] += hoursToAdd;
+            riderHours[rider.id].total += hoursToAdd;
+          }
+        });
+    });
+
+    const header = ['Rider Name', 'Rider ID'];
+    for (let d = 1; d <= daysInMonth; d++) header.push(String(d));
+    header.push('Total Hours');
+
+    const csvRows = [header.join(',')];
+    Object.values(riderHours).forEach(r => {
+      if (r.total > 0) {
+        const row = [
+          `"${String(r.name).replace(/"/g, '""')}"`,
+          `"${String(r.id).replace(/"/g, '""')}"`,
+          ...r.daily,
+          r.total
+        ];
+        csvRows.push(row.join(','));
+      }
+    });
+
+    if (csvRows.length === 1) {
       throw new Error('No rider activity data available');
     }
-
-    const headers = ['Rider', 'Requests', 'Hours', 'Average'];
-    const csvRows = [headers.join(',')];
-    riderHours.forEach(r => {
-      const name = r.name || r.riderName || '';
-      const requests = r.requests !== undefined ? r.requests : r.escorts;
-      const hours = r.hours !== undefined ? r.hours : 0;
-      const avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
-      const row = [
-        `"${String(name).replace(/"/g, '""')}"`,
-        requests,
-        hours,
-        avg
-      ];
-      csvRows.push(row.join(','));
-    });
 
     const filename = `public_assignment_summary_${year}_${String(month + 1).padStart(2, '0')}.csv`;
     return {
       success: true,
       csvContent: csvRows.join('\n'),
       filename: filename,
-      count: riderHours.length
+      count: csvRows.length - 1
     };
   } catch (error) {
     logError('Error in exportPublicAssignmentSummaryCSV', error);
