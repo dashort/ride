@@ -5198,13 +5198,14 @@ function exportPublicAssignmentSummaryCSV(startDate) {
     const requestsData = getRequestsData();
     const ridersData = getRidersData();
 
-    // Map rider names to IDs
+    // Map rider names to payroll numbers, excluding generic NOPD riders
+    const excludedNames = ['nopd rider', 'nopd rider 2'];
     const riderMap = {};
     ridersData.data.forEach(row => {
       const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-      const id = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber);
-      if (name) {
-        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: id || '' };
+      const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
+      if (name && !excludedNames.includes(name.trim().toLowerCase())) {
+        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: payroll || '' };
       }
     });
 
@@ -5242,6 +5243,7 @@ function exportPublicAssignmentSummaryCSV(startDate) {
         const estimates = { Funeral: 0.5, Wedding: 2.5, VIP: 4.0, 'Float Movement': 4.0, Other: 2.0 };
         hoursToAdd = estimates[requestType] || estimates['Other'];
       }
+      hoursToAdd = roundToQuarterHour(hoursToAdd);
 
       String(ridersAssigned)
         .split(',')
@@ -5256,18 +5258,20 @@ function exportPublicAssignmentSummaryCSV(startDate) {
         });
     });
 
-    const header = ['Rider Name', 'Rider ID'];
+    const header = ['Rider Name', 'Payroll Number'];
     for (let d = 1; d <= daysInMonth; d++) header.push(String(d));
     header.push('Total Hours');
 
     const csvRows = [header.join(',')];
     Object.values(riderHours).forEach(r => {
-      if (r.total > 0) {
+      const dailyRounded = r.daily.map(h => roundToQuarterHour(h));
+      const totalRounded = roundToQuarterHour(dailyRounded.reduce((sum, h) => sum + h, 0));
+      if (totalRounded > 0) {
         const row = [
           `"${String(r.name).replace(/"/g, '""')}"`,
           `"${String(r.id).replace(/"/g, '""')}"`,
-          ...r.daily,
-          r.total
+          ...dailyRounded.map(h => h > 0 ? h : ''),
+          totalRounded
         ];
         csvRows.push(row.join(','));
       }
@@ -5309,13 +5313,14 @@ function createPublicAssignmentSummarySheet(startDate) {
     const requestsData = getRequestsData();
     const ridersData = getRidersData();
 
-    // Map rider names to IDs
+    // Map rider names to payroll numbers, excluding generic NOPD riders
+    const excludedNames = ['nopd rider', 'nopd rider 2'];
     const riderMap = {};
     ridersData.data.forEach(row => {
       const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-      const id = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber);
-      if (name) {
-        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: id || '' };
+      const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
+      if (name && !excludedNames.includes(name.trim().toLowerCase())) {
+        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: payroll || '' };
       }
     });
 
@@ -5354,6 +5359,8 @@ function createPublicAssignmentSummarySheet(startDate) {
         hoursToAdd = estimates[requestType] || estimates['Other'];
       }
 
+      hoursToAdd = roundToQuarterHour(hoursToAdd);
+
       String(ridersAssigned)
         .split(',')
         .map(n => n.trim())
@@ -5367,14 +5374,16 @@ function createPublicAssignmentSummarySheet(startDate) {
         });
     });
 
-    const header = ['Rider Name', 'Rider ID'];
+    const header = ['Rider Name', 'Payroll Number'];
     for (let d = 1; d <= daysInMonth; d++) header.push(String(d));
     header.push('Total Hours');
 
     const rows = [header];
     Object.values(riderHours).forEach(r => {
-      if (r.total > 0) {
-        rows.push([r.name, r.id, ...r.daily, r.total]);
+      const dailyRounded = r.daily.map(h => roundToQuarterHour(h));
+      const totalRounded = roundToQuarterHour(dailyRounded.reduce((sum, h) => sum + h, 0));
+      if (totalRounded > 0) {
+        rows.push([r.name, r.id, ...dailyRounded.map(h => h > 0 ? h : ''), totalRounded]);
       }
     });
 
