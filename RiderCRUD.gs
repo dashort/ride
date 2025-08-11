@@ -76,6 +76,35 @@ function getRiders() {
     return [];
   }
 }
+function getRidersForPage() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!sheet) {
+      return { success: false, message: 'Riders sheet not found', riders: [] };
+    }
+    const data = sheet.getDataRange().getValues();
+    const headers = data.shift();
+    const idIdx = headers.indexOf(CONFIG.columns.riders.jpNumber);
+    const nameIdx = headers.indexOf(CONFIG.columns.riders.name);
+    const phoneIdx = headers.indexOf(CONFIG.columns.riders.phone);
+    const statusIdx = headers.indexOf(CONFIG.columns.riders.status);
+    const riders = data
+      .filter(row => row[idIdx] || row[nameIdx])
+      .map(row => ({
+        jpNumber: row[idIdx] || '',
+        name: row[nameIdx] || '',
+        phone: row[phoneIdx] || '',
+        status: row[statusIdx] || ''
+      }));
+    return { success: true, riders: riders };
+  } catch (error) {
+    if (typeof logError === 'function') {
+      logError('getRidersForPage', error);
+    }
+    return { success: false, message: error.message, riders: [] };
+  }
+}
+
 function getRiderDashboard(riderId) {
   return {
     myAssignments: getAssignmentsForRider(riderId),
