@@ -285,12 +285,19 @@ function saveAvailabilityEntry(availabilityData) {
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
     const timestamp = new Date().toISOString();
-    
+
+    // Normalize the input date for reliable comparisons
+    const inputDate = new Date(availabilityData.date);
+    const inputDateStr = inputDate.toISOString().split('T')[0];
+
     // Look for existing entry for this user and date
     let existingRowIndex = -1;
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      if (row[0] === availabilityData.email && row[1] === availabilityData.date) {
+      const rowDate = new Date(row[1]);
+      const rowDateStr = rowDate.toISOString().split('T')[0];
+
+      if (row[0] === availabilityData.email && rowDateStr === inputDateStr) {
         existingRowIndex = i + 1; // Convert to 1-based index for sheet operations
         break;
       }
@@ -298,11 +305,12 @@ function saveAvailabilityEntry(availabilityData) {
     
     if (existingRowIndex > 0) {
       // UPDATE EXISTING ROW - This is where we modify the sheet
-      sheet.getRange(existingRowIndex, 3).setValue(availabilityData.startTime);  // Start Time
-      sheet.getRange(existingRowIndex, 4).setValue(availabilityData.endTime);    // End Time
-      sheet.getRange(existingRowIndex, 5).setValue(availabilityData.status);     // Status
+      sheet.getRange(existingRowIndex, 2).setValue(inputDate);                    // Date
+      sheet.getRange(existingRowIndex, 3).setValue(availabilityData.startTime);   // Start Time
+      sheet.getRange(existingRowIndex, 4).setValue(availabilityData.endTime);     // End Time
+      sheet.getRange(existingRowIndex, 5).setValue(availabilityData.status);      // Status
       sheet.getRange(existingRowIndex, 6).setValue(availabilityData.notes || ''); // Notes
-      sheet.getRange(existingRowIndex, 8).setValue(timestamp);                   // Updated
+      sheet.getRange(existingRowIndex, 8).setValue(timestamp);                    // Updated
       sheet.getRange(existingRowIndex, 9).setValue(availabilityData.riderId || getUserRiderId(availabilityData.email)); // Rider ID
       
       console.log('SHEET UPDATED: Row ' + existingRowIndex + ' modified');
@@ -311,7 +319,7 @@ function saveAvailabilityEntry(availabilityData) {
       // ADD NEW ROW - This is where we add to the sheet
       const newRow = [
         availabilityData.email,
-        availabilityData.date,
+        inputDate,
         availabilityData.startTime,
         availabilityData.endTime,
         availabilityData.status,
