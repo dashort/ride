@@ -778,7 +778,9 @@
                                 ...event,
                                 backgroundColor: statusColors[event.status] || statusColors.available,
                                 borderColor: statusColors[event.status] || statusColors.available,
-                                textColor: 'white'
+                                textColor: 'white',
+                                display: 'background',
+                                allDay: true
                             };
                             
                             console.log(`Adding event ${index + 1}:`, eventWithColors);
@@ -1190,7 +1192,19 @@ function setMaintenanceDay() {
                 
                 if (response && response.success) {
                     // Update the calendar display
-                    calendar.addEvent(eventData);
+                    const statusColors = {
+                        available: '#27ae60',
+                        unavailable: '#e74c3c',
+                        maintenance: '#f39c12',
+                        busy: '#f39c12'
+                    };
+
+                    calendar.addEvent({
+                        ...eventData,
+                        backgroundColor: statusColors[eventData.extendedProps.status] || '#6c757d',
+                        borderColor: statusColors[eventData.extendedProps.status] || '#6c757d',
+                        display: 'background'
+                    });
 
                     showNotification('✅ Saved to Google Sheet!', 'success');
                     // Refresh calendar data to show the latest saved state
@@ -1256,7 +1270,8 @@ function setMaintenanceDay() {
                 start: date.toISOString().split('T')[0],
                 allDay: true,
                 backgroundColor: statusColors[status],
-                borderColor: statusColors[status]
+                borderColor: statusColors[status],
+                display: 'background'
             });
         }
 
@@ -1427,6 +1442,7 @@ function setMaintenanceDay() {
                                 allDay: true,
                                 backgroundColor: statusColors[status] || '#6c757d',
                                 borderColor: statusColors[status] || '#6c757d',
+                                display: 'background',
                                 extendedProps: {
                                     status: status,
                                     notes: notes,
@@ -1610,6 +1626,7 @@ function setMaintenanceDay() {
                             allDay: true,
                             backgroundColor: statusColors[status] || '#6c757d',
                             borderColor: statusColors[status] || '#6c757d',
+                            display: 'background',
                             extendedProps: {
                                 status: status,
                                 notes: availabilityData.notes,
