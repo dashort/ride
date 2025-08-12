@@ -705,6 +705,7 @@
         let allRidersData = [];
         let selectedRiders = [];
         let editingEvent = null;
+        const riderIdParam = new URLSearchParams(window.location.search).get('riderId');
 
         // Initialize application
         document.addEventListener('DOMContentLoaded', function() {
@@ -745,7 +746,11 @@
                     document.getElementById('allRidersBtn').style.display = 'block';
                 }
 
-                loadMyAvailability();
+                if (riderIdParam) {
+                    loadAvailabilityForRider(riderIdParam);
+                } else {
+                    loadMyAvailability();
+                }
             } else {
                 showMessage('Failed to load user information', 'error');
             }
@@ -870,6 +875,33 @@
                     }
                 });
             });
+        }
+
+        function loadAvailabilityForRider(riderId) {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(rider => {
+                        if (!rider || !rider.email) {
+                            handleAvailabilityError('Rider not found');
+                            return;
+                        }
+                        currentUser = {
+                            email: rider.email,
+                            name: rider.name,
+                            role: 'rider',
+                            riderId: rider.jpNumber
+                        };
+                        document.getElementById('userInfo').textContent = `${rider.name} (rider)`;
+                        google.script.run
+                            .withSuccessHandler(handleMyAvailabilityLoaded)
+                            .withFailureHandler(handleAvailabilityError)
+                            .getUserAvailabilityForCalendar(rider.email);
+                    })
+                    .withFailureHandler(handleAvailabilityError)
+                    .getRiderDetails(riderId);
+            } else {
+                handleAvailabilityError('Google Apps Script runtime unavailable');
+            }
         }
 
         // Load all riders data (admin view)

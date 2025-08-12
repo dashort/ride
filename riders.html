@@ -56,13 +56,13 @@
 
   <div class="container">
     <div id="loading">Loading riders...</div>
-    <table id="ridersTable" style="display:none;">
-      <thead>
-        <tr><th>ID</th><th>Name</th><th>Phone</th><th>Status</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+      <table id="ridersTable" style="display:none;">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Phone</th><th>Status</th><th>Availability</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
 
   <script>
     function renderRiders(data) {
@@ -77,11 +77,14 @@
 
       const riders = data.riders || [];
       tbody.innerHTML = '';
-      riders.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.jpNumber || ''}</td><td>${r.name || ''}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td>`;
-        tbody.appendChild(tr);
-      });
+        riders.forEach(r => {
+          const tr = document.createElement('tr');
+          const id = r.jpNumber || '';
+          const nameCell = `<a href="edit-rider.html?riderId=${id}">${r.name || ''}</a>`;
+          const availabilityBtn = `<button onclick="openAvailability('${id}')">Calendar</button>`;
+          tr.innerHTML = `<td>${id}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
+          tbody.appendChild(tr);
+        });
 
       if (riders.length === 0) {
         loading.textContent = 'No riders found';
@@ -92,7 +95,11 @@
       table.style.display = 'table';
     }
 
-    function loadRiders() {
+      function openAvailability(riderId) {
+        window.open(`rider-availability.html?riderId=${encodeURIComponent(riderId)}`, '_blank');
+      }
+
+      function loadRiders() {
       if (google && google.script && google.script.run) {
         google.script.run.withSuccessHandler(renderRiders)
                          .withFailureHandler(err => {

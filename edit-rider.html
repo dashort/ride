@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Rider</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: 2rem auto;
+      background: #fff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 1.5rem;
+      padding: 0.75rem 1.5rem;
+      background: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #message {
+      margin-top: 1rem;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Edit Rider</h1>
+    <input type="hidden" id="riderId">
+    <label>Name
+      <input type="text" id="name">
+    </label>
+    <label>Phone
+      <input type="text" id="phone">
+    </label>
+    <label>Status
+      <input type="text" id="status">
+    </label>
+    <button onclick="saveRider()">Save</button>
+    <div id="message"></div>
+  </div>
+  <script>
+    function getParam(name){return new URLSearchParams(window.location.search).get(name);}
+    function showMessage(msg){document.getElementById('message').textContent = msg;}
+    function loadRider(){
+      const riderId = getParam('riderId');
+      if(!riderId){showMessage('No rider ID provided');return;}
+      if(google && google.script && google.script.run){
+        google.script.run.withSuccessHandler(renderRider)
+                         .withFailureHandler(err=>showMessage('Failed to load rider'))
+                         .getRiderDetails(riderId);
+      }else{
+        showMessage('Google Apps Script runtime unavailable');
+      }
+    }
+    function renderRider(rider){
+      if(!rider){showMessage('Rider not found');return;}
+      document.getElementById('riderId').value = rider.jpNumber || '';
+      document.getElementById('name').value = rider.name || '';
+      document.getElementById('phone').value = rider.phone || '';
+      document.getElementById('status').value = rider.status || '';
+    }
+    function saveRider(){
+      const data = {
+        'Rider ID': document.getElementById('riderId').value,
+        'Full Name': document.getElementById('name').value,
+        'Phone Number': document.getElementById('phone').value,
+        'Status': document.getElementById('status').value
+      };
+      if(google && google.script && google.script.run){
+        google.script.run.withSuccessHandler(res=>showMessage(res.message || 'Saved'))
+                         .withFailureHandler(err=>showMessage('Failed to save rider'))
+                         .updateRider(data);
+      }else{
+        showMessage('Google Apps Script runtime unavailable');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadRider);
+  </script>
+</body>
+</html>
