@@ -80,7 +80,7 @@
         riders.forEach(r => {
           const tr = document.createElement('tr');
           const id = r.jpNumber || '';
-          const nameCell = `<a href="edit-rider.html?riderId=${id}">${r.name || ''}</a>`;
+          const nameCell = `<a href="?page=edit-rider&riderId=${encodeURIComponent(id)}">${r.name || ''}</a>`;
           const availabilityBtn = `<button onclick="openAvailability('${id}')">Calendar</button>`;
           tr.innerHTML = `<td>${id}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
           tbody.appendChild(tr);
@@ -96,7 +96,7 @@
     }
 
       function openAvailability(riderId) {
-        window.open(`rider-availability.html?riderId=${encodeURIComponent(riderId)}`, '_blank');
+        window.open(`?page=rider-availability&riderId=${encodeURIComponent(riderId)}`, '_blank');
       }
 
       function loadRiders() {
