@@ -210,13 +210,29 @@ function saveRiderAvailabilityData(data) {
     // Determine rider ID
     const riderId = data.riderId || currentUser.riderId || getUserRiderId(currentUser.email);
 
-    // Prepare row data
+    // Track timestamps
+    const timestamp = new Date();
+    let createdDate = timestamp;
+
+    // Check if updating existing entry to preserve original created date
+    if (data.id && data.id.startsWith('avail_')) {
+      const rowIndex = parseInt(data.id.replace('avail_', ''));
+      if (rowIndex >= 0 && rowIndex < sheetData.data.length) {
+        const existingRow = sheetData.data[rowIndex];
+        createdDate = getColumnValue(existingRow, sheetData.columnMap, CONFIG.columns.availability.created) || timestamp;
+      }
+    }
+
+    // Prepare row data matching sheet columns
     const rowData = [
       currentUser.email,
       new Date(data.date),
       data.startTime,
       data.endTime,
-      generateAvailabilityNotes(data.status, data.notes),
+      data.status || 'available',
+      data.notes || '',
+      createdDate,
+      timestamp,
       riderId
     ];
 
