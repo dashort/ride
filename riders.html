@@ -65,6 +65,8 @@
     </div>
 
   <script>
+    let baseUrl = '';
+
     function renderRiders(data) {
       const loading = document.getElementById('loading');
       const table = document.getElementById('ridersTable');
@@ -80,7 +82,10 @@
         riders.forEach(r => {
           const tr = document.createElement('tr');
           const id = r.jpNumber || '';
-          const nameCell = `<a href="?page=edit-rider&riderId=${encodeURIComponent(id)}">${r.name || ''}</a>`;
+          const editUrl = baseUrl
+            ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(id)}`
+            : `edit-rider.html?riderId=${encodeURIComponent(id)}`;
+          const nameCell = `<a href="${editUrl}" target="_top">${r.name || ''}</a>`;
           const availabilityBtn = `<button onclick="openAvailability('${id}')">Calendar</button>`;
           tr.innerHTML = `<td>${id}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
           tbody.appendChild(tr);
@@ -95,18 +100,24 @@
       table.style.display = 'table';
     }
 
-      function openAvailability(riderId) {
-        window.open(`?page=rider-availability&riderId=${encodeURIComponent(riderId)}`, '_blank');
-      }
+    function openAvailability(riderId) {
+      const url = baseUrl
+        ? `${baseUrl}?page=rider-availability&riderId=${encodeURIComponent(riderId)}`
+        : `rider-availability.html?riderId=${encodeURIComponent(riderId)}`;
+      window.open(url, '_blank');
+    }
 
-      function loadRiders() {
+    function loadRiders() {
       if (google && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(renderRiders)
-                         .withFailureHandler(err => {
-                           document.getElementById('loading').textContent = 'Failed to load riders';
-                           console.error(err);
-                         })
-                         .getRidersForPage();
+        google.script.run.withSuccessHandler(url => {
+          baseUrl = url;
+          google.script.run.withSuccessHandler(renderRiders)
+                             .withFailureHandler(err => {
+                               document.getElementById('loading').textContent = 'Failed to load riders';
+                               console.error(err);
+                             })
+                             .getRidersForPage();
+        }).getWebAppUrl();
       } else {
         renderRiders({success:false, message:'Google Apps Script runtime unavailable'});
       }
