@@ -392,6 +392,15 @@
             color: white !important;
         }
 
+        /* Background shading for day availability */
+        .fc-bg-event.available-bg {
+            background: rgba(39, 174, 96, 0.2);
+        }
+
+        .fc-bg-event.unavailable-bg {
+            background: rgba(231, 76, 60, 0.2);
+        }
+
         /* Loading States */
         .loading-state {
             text-align: center;
@@ -873,6 +882,19 @@
                         notes: event.notes,
                         riderId: event.riderId
                     }
+                });
+
+                // Shade day cell based on availability status
+                const startDate = new Date(event.start);
+                const dayStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+                const dayEnd = new Date(dayStart);
+                dayEnd.setDate(dayEnd.getDate() + 1);
+
+                riderCalendar.addEvent({
+                    start: dayStart,
+                    end: dayEnd,
+                    display: 'background',
+                    classNames: [event.status === 'available' ? 'available-bg' : 'unavailable-bg']
                 });
             });
         }
