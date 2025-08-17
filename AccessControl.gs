@@ -67,7 +67,7 @@ const PERMISSIONS_MATRIX = {
       send_notifications: true
     },
     // Pages
-    pages: ['dashboard', 'requests', 'assignments', 'riders', 'notifications', 'reports', 'admin-schedule', 'settings']
+    pages: ['dashboard', 'requests', 'assignments', 'riders', 'edit-rider', 'notifications', 'reports', 'admin-schedule', 'settings']
   },
 
   dispatcher: {
@@ -1168,7 +1168,7 @@ function checkPageAccessSafe(pageName, user, rider) {
   try {
     const rolePermissions = {
       admin: [
-        'dashboard', 'requests', 'assignments', 'riders', 'notifications', 
+        'dashboard', 'requests', 'assignments', 'riders', 'edit-rider', 'notifications',
         'reports', 'admin-schedule', 'user-management', 'auth-setup'
       ],
       dispatcher: [
@@ -1687,6 +1687,7 @@ function getPageFileNameSafe(pageName, userRole) {
       'requests': 'requests',
       'assignments': 'assignments',
       'riders': 'riders',
+      'edit-rider': 'edit-rider',
       'notifications': 'notifications',
       'reports': 'reports'
     };

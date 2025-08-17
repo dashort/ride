@@ -6582,6 +6582,7 @@ function getPageFileNameSafe(pageName, userRole) {
       'requests': 'requests',
       'assignments': 'assignments',
       'riders': 'riders',
+      'edit-rider': 'edit-rider',
       'notifications': 'notifications',
       'reports': 'reports',
       'rider-schedule': 'rider-schedule',
@@ -6875,6 +6876,7 @@ function getPageFileNameSafe(pageName, userRole) {
       'requests': 'requests',
       'assignments': 'assignments',
       'riders': 'riders',
+      'edit-rider': 'edit-rider',
       'notifications': 'notifications',
       'reports': 'reports'
     };
@@ -7542,6 +7544,7 @@ function checkPageAccess(pageName, user, rider) {
       'requests',
       'assignments',
       'riders',
+      'edit-rider',
       'notifications',
       'reports',
       'admin-schedule',
@@ -7599,6 +7602,7 @@ function getPageFileName(pageName, userRole) {
     'requests': 'requests',
     'assignments': 'assignments',
     'riders': 'riders',
+    'edit-rider': 'edit-rider',
     'rider-schedule': 'rider-schedule',
     'admin-schedule': 'admin-schedule',
     'notifications': 'notifications',
