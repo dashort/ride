@@ -81,13 +81,13 @@
       tbody.innerHTML = '';
         riders.forEach(r => {
           const tr = document.createElement('tr');
-          const id = r.jpNumber || '';
+          const identifier = r.jpNumber || r.name || '';
           const editUrl = baseUrl
-            ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(id)}`
-            : `edit-rider.html?riderId=${encodeURIComponent(id)}`;
+            ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`
+            : `edit-rider.html?riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`;
           const nameCell = `<a href="${editUrl}" target="_top">${r.name || ''}</a>`;
-          const availabilityBtn = `<button onclick="openAvailability('${id}')">Calendar</button>`;
-          tr.innerHTML = `<td>${id}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
+          const availabilityBtn = `<button onclick="openAvailability('${r.jpNumber || ''}')">Calendar</button>`;
+          tr.innerHTML = `<td>${r.jpNumber || ''}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
           tbody.appendChild(tr);
         });
 
