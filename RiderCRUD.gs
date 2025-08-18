@@ -135,19 +135,48 @@ function getRiderDetails(riderId) {
       return null;
     }
 
-    // Get column info
-    const riderIdColumn = CONFIG.columns.riders.jpNumber;
-    const riderIdIndex = sheetData.columnMap[riderIdColumn];
-    const nameColumn = CONFIG.columns.riders.name;
-    const nameIndex = sheetData.columnMap[nameColumn];
-    
+    // Get column info with flexible header detection
+    const possibleIdColumns = [
+      CONFIG.columns.riders.jpNumber,
+      'Rider ID',
+      'JP Number',
+      'ID'
+    ];
+    const possibleNameColumns = [
+      CONFIG.columns.riders.name,
+      'Full Name',
+      'Name'
+    ];
+
+    let riderIdColumn = null;
+    let riderIdIndex = undefined;
+    for (const col of possibleIdColumns) {
+      const idx = getColumnIndex(sheetData.columnMap, col);
+      if (idx !== undefined) {
+        riderIdColumn = col;
+        riderIdIndex = idx;
+        break;
+      }
+    }
+
+    let nameColumn = null;
+    let nameIndex = undefined;
+    for (const col of possibleNameColumns) {
+      const idx = getColumnIndex(sheetData.columnMap, col);
+      if (idx !== undefined) {
+        nameColumn = col;
+        nameIndex = idx;
+        break;
+      }
+    }
+
     console.log(`📊 Search config:`);
     console.log(`   Looking for column: "${riderIdColumn}" at index: ${riderIdIndex}`);
     console.log(`   Name column: "${nameColumn}" at index: ${nameIndex}`);
     console.log(`   Total data rows: ${sheetData.data.length}`);
-    
+
     if (riderIdIndex === undefined) {
-      throw new Error(`Column "${riderIdColumn}" not found in Riders sheet`);
+      throw new Error(`Column "${CONFIG.columns.riders.jpNumber}" not found in Riders sheet`);
     }
 
     // Search with different strategies
@@ -638,9 +667,18 @@ function mapRowToRiderObject(row, columnMap, headers) {
   });
   
   // Add convenient access properties using CONFIG column names
-  rider.jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber) || '';
+  rider.jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber);
+  if (!rider.jpNumber) {
+    rider.jpNumber = getColumnValue(row, columnMap, 'JP Number') ||
+                     getColumnValue(row, columnMap, 'Rider ID') ||
+                     getColumnValue(row, columnMap, 'ID') || '';
+  }
   rider.payrollNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.payrollNumber) || '';
-  rider.name = getColumnValue(row, columnMap, CONFIG.columns.riders.name) || '';
+  rider.name = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
+  if (!rider.name) {
+    rider.name = getColumnValue(row, columnMap, 'Full Name') ||
+                 getColumnValue(row, columnMap, 'Name') || '';
+  }
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
