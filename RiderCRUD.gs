@@ -702,6 +702,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   // Be flexible about email header variations
   rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) ||
+                getColumnValue(row, columnMap, 'Google Email') ||
                 getColumnValue(row, columnMap, 'Email Address') ||
                 getColumnValue(row, columnMap, 'E-mail') || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';

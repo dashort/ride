@@ -187,7 +187,9 @@ function sendPreAssignmentEmail(requestId, riderName, allRiderNames) {
   const nameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
   const emailIdx = ridersData.columnMap[CONFIG.columns.riders.email];
   const jpIdx = ridersData.columnMap[CONFIG.columns.riders.jpNumber];
-  const riderRow = ridersData.data.find(r => r[nameIdx] === riderName);
+  const normalize = (v) => String(v == null ? '' : v).trim().toLowerCase();
+  const targetName = normalize(riderName);
+  const riderRow = ridersData.data.find(r => normalize(r[nameIdx]) === targetName);
     if (!riderRow) {
       return { success: false, message: 'Rider not found' };
     }

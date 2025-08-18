@@ -903,15 +903,16 @@
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(rider => {
-                        if (!rider || !rider.email) {
+                        const normalize = v => String(v == null ? '' : v).trim();
+                        if (!rider || !normalize(rider.email)) {
                             handleAvailabilityError('Rider not found');
                             return;
                         }
                         currentUser = {
-                            email: rider.email,
-                            name: rider.name,
+                            email: normalize(rider.email),
+                            name: normalize(rider.name),
                             role: 'rider',
-                            riderId: rider.jpNumber
+                            riderId: normalize(rider.jpNumber)
                         };
                         document.getElementById('userInfo').textContent = `${rider.name} (rider)`;
                         google.script.run
