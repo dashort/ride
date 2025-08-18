@@ -20,14 +20,18 @@ function getCurrentUserForAvailability() {
     // Get rider ID if user is a rider
     let riderId = null;
     if (user.role === 'rider') {
-      // Try to find rider ID from riders sheet
+      // Try to find rider ID from riders sheet by matching either primary Email or Google Email
       const ridersData = getRidersData();
-      const emailCol = CONFIG.columns.riders.email;
+      const primaryEmailCol = CONFIG.columns.riders.email;
       const idCol = CONFIG.columns.riders.jpNumber;
-      
+      const normalize = (v) => String(v == null ? '' : v).trim().toLowerCase();
+      const userEmail = normalize(user.email);
+
       for (let row of ridersData.data) {
-        const riderEmail = getColumnValue(row, ridersData.columnMap, emailCol);
-        if (riderEmail && riderEmail.toLowerCase() === user.email.toLowerCase()) {
+        const primary = getColumnValue(row, ridersData.columnMap, primaryEmailCol);
+        const googleEmail = getColumnValue(row, ridersData.columnMap, 'Google Email');
+        const rowEmail = normalize(primary || googleEmail);
+        if (rowEmail && rowEmail === userEmail) {
           riderId = getColumnValue(row, ridersData.columnMap, idCol);
           break;
         }
@@ -772,14 +776,34 @@ function getRiderEmailFromId(riderId) {
     const ridersData = getRidersData();
     const emailCol = CONFIG.columns.riders.email;
     const idCol = CONFIG.columns.riders.jpNumber;
-    
+    const nameCol = CONFIG.columns.riders.name;
+
+    const normalize = (v) => String(v == null ? '' : v).trim().toLowerCase();
+    const targetId = normalize(riderId);
+
+    // First pass: match by Rider ID (case-insensitive, trimmed)
     for (let row of ridersData.data) {
       const riderIdInRow = getColumnValue(row, ridersData.columnMap, idCol);
-      if (riderIdInRow === riderId) {
-        return getColumnValue(row, ridersData.columnMap, emailCol);
+      if (normalize(riderIdInRow) === targetId) {
+        // Prefer primary email, but fall back to 'Google Email' or other variants if available
+        const primary = getColumnValue(row, ridersData.columnMap, emailCol);
+        const googleEmail = getColumnValue(row, ridersData.columnMap, 'Google Email');
+        const email = primary || googleEmail;
+        return email || null;
       }
     }
-    
+
+    // Fallback: if an ID match is not found, try matching by rider name
+    for (let row of ridersData.data) {
+      const riderNameInRow = getColumnValue(row, ridersData.columnMap, nameCol);
+      if (normalize(riderNameInRow) === targetId) {
+        const primary = getColumnValue(row, ridersData.columnMap, emailCol);
+        const googleEmail = getColumnValue(row, ridersData.columnMap, 'Google Email');
+        const email = primary || googleEmail;
+        return email || null;
+      }
+    }
+
     return null;
   } catch (error) {
     console.error('Error getting rider email:', error);
