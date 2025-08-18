@@ -991,6 +991,7 @@ function cleanupRiderData() {
     let rowsUpdated = 0;
     
     // Process rows from bottom to top to avoid index shifting during deletion
+    const pendingStatusUpdates = [];
     for (let i = allRows.length - 1; i >= 0; i--) {
       const row = allRows[i];
       const rowNumber = i + 2; // Account for header
@@ -1011,9 +1012,14 @@ function cleanupRiderData() {
       // Set default status for riders with name but no status
       if (name && !status && statusColumnIndex >= 0) {
         console.log(`📝 Setting default status for row ${rowNumber}: ${name}`);
-        sheet.getRange(rowNumber, statusColumnIndex + 1).setValue('Active');
+        pendingStatusUpdates.push({ row: rowNumber, col: statusColumnIndex + 1, value: 'Active' });
         rowsUpdated++;
       }
+    }
+
+    // Apply all pending status updates in a batch
+    if (pendingStatusUpdates.length > 0 && typeof batchUpdateCells === 'function') {
+      batchUpdateCells(sheet, pendingStatusUpdates);
     }
     
     // Clear cache after cleanup
@@ -1486,15 +1492,19 @@ function quickFixRidersIssue() {
       const allData = sheet.getDataRange().getValues();
       let fixedCount = 0;
       
+      const statusUpdates = [];
       for (let i = 1; i < allData.length; i++) {
         const name = allData[i][1] || allData[i][0];
         const status = allData[i][statusColIndex];
         
         if (name && String(name).trim().length > 0 && 
             (!status || String(status).trim() === '')) {
-          sheet.getRange(i + 1, statusColIndex + 1).setValue('Active');
+          statusUpdates.push({ row: i + 1, col: statusColIndex + 1, value: 'Active' });
           fixedCount++;
         }
+      }
+      if (statusUpdates.length > 0 && typeof batchUpdateCells === 'function') {
+        batchUpdateCells(sheet, statusUpdates);
       }
       
       if (fixedCount > 0) {

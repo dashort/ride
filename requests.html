@@ -1200,21 +1200,11 @@
         console.log('📋 Loading page data with filter:', filter, 'hideCompleted:', hideCompleted);
 
         if (typeof google !== 'undefined' && google.script && google.script.run) {
-            // Load both current view data and all historical data for lookup
+            // Load current view data; build lookup cache from the same payload in the success handler
             google.script.run
                 .withSuccessHandler(data => handlePageDataSuccess(data, hideCompleted))
                 .withFailureHandler(handlePageDataError)
                 .getPageDataForRequests(filter);
-                
-            // Load all historical requests for lookup cache in parallel
-            try {
-                google.script.run
-                    .withSuccessHandler(buildHistoricalLookupCache)
-                    .withFailureHandler(error => console.warn('Could not load historical data for lookup:', error))
-                    .getAllRequestsForLookup();
-            } catch (err) {
-                console.warn('getAllRequestsForLookup not available:', err);
-            }
         } else {
             console.log('⚠️ Google Apps Script not available for requests page.');
             handlePageDataError({ message: "Google Apps Script not available." });
