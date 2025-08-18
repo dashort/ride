@@ -86,7 +86,7 @@
             ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`
             : `edit-rider.html?riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`;
           const nameCell = `<a href="${editUrl}" target="_top">${r.name || ''}</a>`;
-          const availabilityBtn = `<button onclick="openAvailability('${r.jpNumber || ''}')">Calendar</button>`;
+          const availabilityBtn = `<button onclick="openAvailability('${identifier}')">Calendar</button>`;
           tr.innerHTML = `<td>${r.jpNumber || ''}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
           tbody.appendChild(tr);
         });

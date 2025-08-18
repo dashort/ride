@@ -173,8 +173,9 @@ function getRiderDetails(riderId) {
     console.log(`   Name column: "${nameColumn}" at index: ${nameIndex}`);
     console.log(`   Total data rows: ${sheetData.data.length}`);
 
-    if (riderIdIndex === undefined) {
-      throw new Error(`Column "${CONFIG.columns.riders.jpNumber}" not found in Riders sheet`);
+    // If Rider ID column is missing, fall back to name-only search when possible
+    if (riderIdIndex === undefined && nameIndex === undefined) {
+      throw new Error(`Required columns not found in Riders sheet (missing ${CONFIG.columns.riders.jpNumber} and ${CONFIG.columns.riders.name})`);
     }
 
     // Search with different strategies
@@ -191,48 +192,52 @@ function getRiderDetails(riderId) {
         .replace(/^0+/, '');
     };
     
-    // Strategy 1: Exact string match
-    targetRow = sheetData.data.find((row, index) => {
-      const rowRiderId = row[riderIdIndex];
-      const isMatch = String(rowRiderId).trim() === String(riderId).trim();
-      
-      if (index < 5 || isMatch) { // Log first 5 rows or any matches
-        console.log(`   Row ${index + 2}: ID="${rowRiderId}" Name="${row[nameIndex] || 'N/A'}" Match=${isMatch}`);
-      }
-      
-      return isMatch;
-    });
-    
-    if (targetRow) {
-      matchMethod = 'exact string match';
-    } else {
-      // Strategy 2: Normalized ID match (handles 00123 vs 123, JP-123 vs jp123)
-      const normalizedRequestedId = normalizeId(riderId);
-      targetRow = sheetData.data.find(row => normalizeId(row[riderIdIndex]) === normalizedRequestedId);
-      if (targetRow) {
-        matchMethod = 'normalized ID match';
-      } else {
-        // Strategy 3: Case-insensitive match
-        targetRow = sheetData.data.find((row, index) => {
-          const rowRiderId = row[riderIdIndex];
-          const isMatch = String(rowRiderId).trim().toLowerCase() === String(riderId).trim().toLowerCase();
-          return isMatch;
-        });
+    // If we have an ID column, attempt ID-based strategies first
+    if (riderIdIndex !== undefined) {
+      // Strategy 1: Exact string match
+      targetRow = sheetData.data.find((row, index) => {
+        const rowRiderId = row[riderIdIndex];
+        const isMatch = String(rowRiderId).trim() === String(riderId).trim();
         
+        if (index < 5 || isMatch) { // Log first 5 rows or any matches
+          console.log(`   Row ${index + 2}: ID="${rowRiderId}" Name="${row[nameIndex] || 'N/A'}" Match=${isMatch}`);
+        }
+        
+        return isMatch;
+      });
+      
+      if (targetRow) {
+        matchMethod = 'exact string match';
+      } else {
+        // Strategy 2: Normalized ID match (handles 00123 vs 123, JP-123 vs jp123)
+        const normalizedRequestedId = normalizeId(riderId);
+        targetRow = sheetData.data.find(row => normalizeId(row[riderIdIndex]) === normalizedRequestedId);
         if (targetRow) {
-          matchMethod = 'case-insensitive match';
+          matchMethod = 'normalized ID match';
         } else {
-          // Strategy 4: Try searching by name if riderId might actually be a name
-          targetRow = sheetData.data.find((row, index) => {
-            const rowName = row[nameIndex];
-            const isMatch = String(rowName).trim().toLowerCase() === String(riderId).trim().toLowerCase();
+          // Strategy 3: Case-insensitive match
+          targetRow = sheetData.data.find((row) => {
+            const rowRiderId = row[riderIdIndex];
+            const isMatch = String(rowRiderId).trim().toLowerCase() === String(riderId).trim().toLowerCase();
             return isMatch;
           });
           
           if (targetRow) {
-            matchMethod = 'name match (riderId was actually a name)';
+            matchMethod = 'case-insensitive match';
           }
         }
+      }
+    }
+
+    // Strategy 4: Try searching by name if riderId might actually be a name (or ID column missing)
+    if (!targetRow && nameIndex !== undefined) {
+      targetRow = sheetData.data.find((row) => {
+        const rowName = row[nameIndex];
+        const isMatch = String(rowName).trim().toLowerCase() === String(riderId).trim().toLowerCase();
+        return isMatch;
+      });
+      if (targetRow) {
+        matchMethod = riderIdIndex === undefined ? 'name match (ID column missing)' : 'name match (riderId was actually a name)';
       }
     }
 
@@ -695,7 +700,10 @@ function mapRowToRiderObject(row, columnMap, headers) {
                  getColumnValue(row, columnMap, 'Name') || '';
   }
   rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
-  rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) || '';
+  // Be flexible about email header variations
+  rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) ||
+                getColumnValue(row, columnMap, 'Email Address') ||
+                getColumnValue(row, columnMap, 'E-mail') || '';
   rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
   rider.platoon = getColumnValue(row, columnMap, CONFIG.columns.riders.platoon) || '';
   let partTimeVal = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
