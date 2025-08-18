@@ -78,25 +78,23 @@ function getRiders() {
 }
 function getRidersForPage() {
   try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
-    if (!sheet) {
+    // Use shared sheet utility for reliable column detection
+    const sheetData = getSheetData(CONFIG.sheets.riders);
+    if (!sheetData || !sheetData.data) {
       return { success: false, message: 'Riders sheet not found', riders: [] };
     }
-    const data = sheet.getDataRange().getValues();
-    const headers = data.shift();
-    const idIdx = headers.indexOf(CONFIG.columns.riders.jpNumber);
-    const nameIdx = headers.indexOf(CONFIG.columns.riders.name);
-    const phoneIdx = headers.indexOf(CONFIG.columns.riders.phone);
-    const statusIdx = headers.indexOf(CONFIG.columns.riders.status);
-    const riders = data
-      .filter(row => row[idIdx] || row[nameIdx])
-      .map(row => ({
-        jpNumber: row[idIdx] || '',
-        name: row[nameIdx] || '',
-        phone: row[phoneIdx] || '',
-        status: row[statusIdx] || ''
+
+    const riders = sheetData.data
+      .map(row => mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers))
+      .filter(r => r && (r.jpNumber || r.name))
+      .map(r => ({
+        jpNumber: r.jpNumber || '',
+        name: r.name || '',
+        phone: r.phone || '',
+        status: r.status || ''
       }));
-    return { success: true, riders: riders };
+
+    return { success: true, riders };
   } catch (error) {
     if (typeof logError === 'function') {
       logError('getRidersForPage', error);
