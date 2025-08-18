@@ -49,20 +49,54 @@
   <div class="container">
     <h1>Edit Rider</h1>
     <input type="hidden" id="riderId">
+    <label>Payroll Number
+      <input type="text" id="payrollNumber">
+    </label>
     <label>Name
       <input type="text" id="name">
     </label>
     <label>Phone
       <input type="text" id="phone">
     </label>
+    <label>Email
+      <input type="email" id="email">
+    </label>
     <label>Status
       <input type="text" id="status">
+    </label>
+    <label>Platoon
+      <input type="text" id="platoon">
+    </label>
+    <label>Part-Time Rider
+      <select id="partTime">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+      </select>
+    </label>
+    <label>Certification
+      <input type="text" id="certification">
+    </label>
+    <label>Organization
+      <input type="text" id="organization">
+    </label>
+    <label>Total Assignments
+      <input type="number" id="totalAssignments" disabled>
+    </label>
+    <label>Last Assignment Date
+      <input type="text" id="lastAssignmentDate" disabled>
     </label>
     <button onclick="saveRider()">Save</button>
     <div id="message"></div>
   </div>
   <script>
-    function getParam(name){return new URLSearchParams(window.location.search).get(name);}
+    function getParam(name){
+      const params = new URLSearchParams(window.location.search);
+      let value = params.get(name);
+      if(value === null && window.urlParameters){
+        value = window.urlParameters[name] || null;
+      }
+      return value;
+    }
     function showMessage(msg){document.getElementById('message').textContent = msg;}
     function loadRider(){
       const riderId = getParam('riderId');
@@ -78,16 +112,30 @@
     function renderRider(rider){
       if(!rider){showMessage('Rider not found');return;}
       document.getElementById('riderId').value = rider.jpNumber || '';
+      document.getElementById('payrollNumber').value = rider.payrollNumber || '';
       document.getElementById('name').value = rider.name || '';
       document.getElementById('phone').value = rider.phone || '';
+      document.getElementById('email').value = rider.email || '';
       document.getElementById('status').value = rider.status || '';
+      document.getElementById('platoon').value = rider.platoon || '';
+      document.getElementById('partTime').value = rider.partTime || 'No';
+      document.getElementById('certification').value = rider.certification || '';
+      document.getElementById('organization').value = rider.organization || '';
+      document.getElementById('totalAssignments').value = rider.totalAssignments || '';
+      document.getElementById('lastAssignmentDate').value = rider.lastAssignmentDate || '';
     }
     function saveRider(){
       const data = {
         'Rider ID': document.getElementById('riderId').value,
+        'Payroll Number': document.getElementById('payrollNumber').value,
         'Full Name': document.getElementById('name').value,
         'Phone Number': document.getElementById('phone').value,
-        'Status': document.getElementById('status').value
+        'Email': document.getElementById('email').value,
+        'Status': document.getElementById('status').value,
+        'Platoon': document.getElementById('platoon').value,
+        'Part-Time Rider': document.getElementById('partTime').value,
+        'Certification': document.getElementById('certification').value,
+        'Organization': document.getElementById('organization').value
       };
       if(google && google.script && google.script.run){
         google.script.run.withSuccessHandler(res=>showMessage(res.message || 'Saved'))
