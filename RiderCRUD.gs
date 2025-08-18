@@ -180,6 +180,16 @@ function getRiderDetails(riderId) {
     // Search with different strategies
     let targetRow = null;
     let matchMethod = '';
+
+    // Helper to normalize IDs (ignore punctuation, case, and leading zeros)
+    const normalizeId = (value) => {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .replace(/^0+/, '');
+    };
     
     // Strategy 1: Exact string match
     targetRow = sheetData.data.find((row, index) => {
@@ -196,25 +206,32 @@ function getRiderDetails(riderId) {
     if (targetRow) {
       matchMethod = 'exact string match';
     } else {
-      // Strategy 2: Try case-insensitive match
-      targetRow = sheetData.data.find((row, index) => {
-        const rowRiderId = row[riderIdIndex];
-        const isMatch = String(rowRiderId).trim().toLowerCase() === String(riderId).trim().toLowerCase();
-        return isMatch;
-      });
-      
+      // Strategy 2: Normalized ID match (handles 00123 vs 123, JP-123 vs jp123)
+      const normalizedRequestedId = normalizeId(riderId);
+      targetRow = sheetData.data.find(row => normalizeId(row[riderIdIndex]) === normalizedRequestedId);
       if (targetRow) {
-        matchMethod = 'case-insensitive match';
+        matchMethod = 'normalized ID match';
       } else {
-        // Strategy 3: Try searching by name if riderId might actually be a name
+        // Strategy 3: Case-insensitive match
         targetRow = sheetData.data.find((row, index) => {
-          const rowName = row[nameIndex];
-          const isMatch = String(rowName).trim().toLowerCase() === String(riderId).trim().toLowerCase();
+          const rowRiderId = row[riderIdIndex];
+          const isMatch = String(rowRiderId).trim().toLowerCase() === String(riderId).trim().toLowerCase();
           return isMatch;
         });
         
         if (targetRow) {
-          matchMethod = 'name match (riderId was actually a name)';
+          matchMethod = 'case-insensitive match';
+        } else {
+          // Strategy 4: Try searching by name if riderId might actually be a name
+          targetRow = sheetData.data.find((row, index) => {
+            const rowName = row[nameIndex];
+            const isMatch = String(rowName).trim().toLowerCase() === String(riderId).trim().toLowerCase();
+            return isMatch;
+          });
+          
+          if (targetRow) {
+            matchMethod = 'name match (riderId was actually a name)';
+          }
         }
       }
     }
