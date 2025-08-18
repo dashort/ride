@@ -100,11 +100,13 @@
     function showMessage(msg){document.getElementById('message').textContent = msg;}
     function loadRider(){
       const riderId = getParam('riderId');
-      if(!riderId){showMessage('No rider ID provided');return;}
+      const riderName = getParam('name');
+      const lookup = riderId || riderName;
+      if(!lookup){showMessage('No rider ID provided');return;}
       if(google && google.script && google.script.run){
         google.script.run.withSuccessHandler(renderRider)
                          .withFailureHandler(err=>showMessage('Failed to load rider'))
-                         .getRiderDetails(riderId);
+                         .getRiderDetails(lookup);
       }else{
         showMessage('Google Apps Script runtime unavailable');
       }
