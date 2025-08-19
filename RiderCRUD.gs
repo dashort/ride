@@ -47,13 +47,16 @@ function getRiders() {
 }
 function getRidersForPage() {
   try {
-    // Reuse robust rider retrieval logic
-    const riders = getRiders();
+    // Delegate to the main page data loader so results stay consistent
+    const result = getPageDataForRiders();
 
-    if (!riders || riders.length === 0) {
-      return { success: false, message: 'No riders found', riders: [] };
+    if (!result || result.success === false) {
+      const message = result && (result.message || result.error) ?
+        (result.message || result.error) : 'No riders found';
+      return { success: false, message, riders: [] };
     }
 
+    const riders = Array.isArray(result.riders) ? result.riders : [];
     return { success: true, riders };
   } catch (error) {
     if (typeof logError === 'function') {
