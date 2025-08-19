@@ -170,7 +170,7 @@
             const msg = err && err.message ? err.message : 'Failed to load riders';
             showError(`Failed to load riders: ${msg}`);
           })
-          .getPageDataForRiders();
+          .getRidersForPage();
       } else {
         showError('Google Apps Script runtime unavailable');
       }
