@@ -76,9 +76,6 @@
     <label>Certification
       <input type="text" id="certification">
     </label>
-    <label>Organization
-      <input type="text" id="organization">
-    </label>
     <label>Total Assignments
       <input type="number" id="totalAssignments" disabled>
     </label>
@@ -122,7 +119,6 @@
       document.getElementById('platoon').value = rider.platoon || '';
       document.getElementById('partTime').value = rider.partTime || 'No';
       document.getElementById('certification').value = rider.certification || '';
-      document.getElementById('organization').value = rider.organization || '';
       document.getElementById('totalAssignments').value = rider.totalAssignments || '';
       document.getElementById('lastAssignmentDate').value = rider.lastAssignmentDate || '';
     }
@@ -136,8 +132,7 @@
         'Status': document.getElementById('status').value,
         'Platoon': document.getElementById('platoon').value,
         'Part-Time Rider': document.getElementById('partTime').value,
-        'Certification': document.getElementById('certification').value,
-        'Organization': document.getElementById('organization').value
+        'Certification': document.getElementById('certification').value
       };
       if(google && google.script && google.script.run){
         google.script.run.withSuccessHandler(res=>showMessage(res.message || 'Saved'))
