@@ -13,32 +13,63 @@
 function getRiders() {
   try {
     console.log('📋 Fetching all riders with enhanced filtering...');
-
+    
     const sheetData = getSheetData(CONFIG.sheets.riders);
-
+    
     if (!sheetData || !sheetData.data || sheetData.data.length === 0) {
       console.log('⚠️ No rider data found');
       return [];
     }
-
-    const riders = sheetData.data
-      .map((row, index) => {
-        try {
-          const rider = mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers);
-          const hasId = rider.jpNumber && String(rider.jpNumber).trim().length > 0;
-          const hasName = rider.name && String(rider.name).trim().length > 0;
-
-          return (hasId || hasName) ? rider : null;
-        } catch (rowError) {
-          console.warn(`⚠️ Error processing rider row ${index}:`, rowError);
-          return null;
+    
+    const riders = sheetData.data.map((row, index) => {
+      try {
+        // Enhanced column detection
+        const possibleNameColumns = [CONFIG.columns.riders.name, 'Full Name', 'Name'];
+        const possibleIdColumns = [CONFIG.columns.riders.jpNumber, 'Rider ID', 'JP Number', 'ID'];
+        
+        let name = null;
+        let jpNumber = null;
+        
+        // Try to find name in any of the possible columns
+        for (const colName of possibleNameColumns) {
+          const value = getColumnValue(row, sheetData.columnMap, colName);
+          if (value && String(value).trim().length > 0) {
+            name = value;
+            break;
+          }
         }
-      })
-      .filter(rider => rider !== null);
-
+        
+        // Try to find ID in any of the possible columns
+        for (const colName of possibleIdColumns) {
+          const value = getColumnValue(row, sheetData.columnMap, colName);
+          if (value && String(value).trim().length > 0) {
+            jpNumber = value;
+            break;
+          }
+        }
+        
+        // Fallback to positional if no named columns found
+        if (!name && row.length > 1) name = row[1];
+        if (!jpNumber && row.length > 0) jpNumber = row[0];
+        
+        // CONSISTENT LOGIC: Must have either name OR JP number
+        const hasValidIdentifier = (name && String(name).trim().length > 0) || 
+                                  (jpNumber && String(jpNumber).trim().length > 0);
+        
+        if (!hasValidIdentifier) {
+          return null; // Filter out invalid riders
+        }
+        
+        return mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers);
+      } catch (rowError) {
+        console.warn(`⚠️ Error processing rider row ${index}:`, rowError);
+        return null;
+      }
+    }).filter(rider => rider !== null); // Remove nulls
+    
     console.log(`✅ Successfully fetched ${riders.length} valid riders`);
     return riders;
-
+    
   } catch (error) {
     console.error('❌ Error fetching riders:', error);
     logError('Error in getRiders', error);
@@ -47,12 +78,21 @@ function getRiders() {
 }
 function getRidersForPage() {
   try {
-    // Reuse robust rider retrieval logic
-    const riders = getRiders();
-
-    if (!riders || riders.length === 0) {
-      return { success: false, message: 'No riders found', riders: [] };
+    // Use shared sheet utility for reliable column detection
+    const sheetData = getSheetData(CONFIG.sheets.riders);
+    if (!sheetData || !sheetData.data) {
+      return { success: false, message: 'Riders sheet not found', riders: [] };
     }
+
+    const riders = sheetData.data
+      .map(row => mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers))
+      .filter(r => r && (r.jpNumber || r.name))
+      .map(r => ({
+        jpNumber: r.jpNumber || '',
+        name: r.name || '',
+        phone: r.phone || '',
+        status: r.status || ''
+      }));
 
     return { success: true, riders };
   } catch (error) {
@@ -640,85 +680,46 @@ function deleteRider(riderId) {
  */
 function mapRowToRiderObject(row, columnMap, headers) {
   const rider = {};
-
+  
   // Map each header to its corresponding value
   headers.forEach((header, index) => {
     rider[header] = row[index] || '';
   });
-
-  // Helper to get the first non-empty value from multiple possible column names
-  const firstValue = (...names) => {
-    for (const name of names) {
-      const val = getColumnValue(row, columnMap, name);
-      if (val !== null && val !== '') {
-        return val;
-      }
-    }
-    return '';
-  };
-
-  // Add convenient access properties using CONFIG column names with flexible header matching
-  rider.jpNumber = firstValue(
-    CONFIG.columns.riders.jpNumber,
-    'JP Number',
-    'Rider ID',
-    'ID'
-  ) || row[0] || '';
-
-  rider.payrollNumber = firstValue(
-    CONFIG.columns.riders.payrollNumber,
-    'Payroll #',
-    'Payroll No',
-    'Payroll'
-  );
-
-  rider.name = firstValue(
-    CONFIG.columns.riders.name,
-    'Full Name',
-    'Name'
-  ) || row[1] || '';
-
-  rider.phone = firstValue(CONFIG.columns.riders.phone) || row[2] || '';
-
+  
+  // Add convenient access properties using CONFIG column names
+  rider.jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber);
+  if (!rider.jpNumber) {
+    rider.jpNumber = getColumnValue(row, columnMap, 'JP Number') ||
+                     getColumnValue(row, columnMap, 'Rider ID') ||
+                     getColumnValue(row, columnMap, 'ID') || '';
+  }
+  rider.payrollNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.payrollNumber) || '';
+  rider.name = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
+  if (!rider.name) {
+    rider.name = getColumnValue(row, columnMap, 'Full Name') ||
+                 getColumnValue(row, columnMap, 'Name') || '';
+  }
+  rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
   // Be flexible about email header variations
-  rider.email = firstValue(
-    CONFIG.columns.riders.email,
-    'Google Email',
-    'Email Address',
-    'E-mail'
-  );
-
-  rider.status = firstValue(CONFIG.columns.riders.status) || 'Active';
-  rider.platoon = firstValue(CONFIG.columns.riders.platoon);
-
-  let partTimeVal = firstValue(
-    CONFIG.columns.riders.partTime,
-    'Part Time Rider',
-    'Part-Time'
-  );
+  rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) ||
+                getColumnValue(row, columnMap, 'Google Email') ||
+                getColumnValue(row, columnMap, 'Email Address') ||
+                getColumnValue(row, columnMap, 'E-mail') || '';
+  rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
+  rider.platoon = getColumnValue(row, columnMap, CONFIG.columns.riders.platoon) || '';
+  let partTimeVal = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
+  if (partTimeVal === null || partTimeVal === '') {
+    partTimeVal = getColumnValue(row, columnMap, 'Part Time Rider');
+  }
+  if (partTimeVal === null || partTimeVal === '') {
+    partTimeVal = getColumnValue(row, columnMap, 'Part-Time');
+  }
   rider.partTime = partTimeVal || 'No';
-
-  rider.certification = firstValue(
-    CONFIG.columns.riders.certification,
-    'Certifications',
-    'Certification Level'
-  );
-
-  rider.organization = firstValue(CONFIG.columns.riders.organization);
-
-  const totalAssignments = firstValue(
-    CONFIG.columns.riders.totalAssignments,
-    'Assignments Total',
-    'Total Assignment'
-  );
-  rider.totalAssignments = totalAssignments || 0;
-
-  rider.lastAssignmentDate = firstValue(
-    CONFIG.columns.riders.lastAssignmentDate,
-    'Last Assignment',
-    'Last Assigned Date'
-  );
-
+  rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
+  rider.organization = getColumnValue(row, columnMap, CONFIG.columns.riders.organization) || '';
+  rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
+  rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
+  
   return rider;
 }
 

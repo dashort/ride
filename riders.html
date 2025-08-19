@@ -45,58 +45,6 @@
       padding: 1rem;
       text-align: center;
     }
-    /* Modal Styles */
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
-    }
-    .modal-content {
-      background: #fff;
-      max-width: 500px;
-      margin: 5% auto;
-      padding: 1.5rem;
-      border-radius: 8px;
-      position: relative;
-    }
-    .modal-content label {
-      display: block;
-      margin-top: 1rem;
-    }
-    .modal-content input,
-    .modal-content select {
-      width: 100%;
-      padding: 0.5rem;
-      margin-top: 0.25rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .modal-content button {
-      margin-top: 1rem;
-      padding: 0.75rem 1.5rem;
-      background: #3498db;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      cursor: pointer;
-    }
-    #message {
-      margin-top: 1rem;
-      font-weight: 600;
-    }
   </style>
 </head>
 <body>
@@ -108,171 +56,70 @@
 
   <div class="container">
     <div id="loading">Loading riders...</div>
-    <table id="ridersTable" style="display:none;">
-      <thead>
-        <tr><th>ID</th><th>Name</th><th>Phone</th><th>Status</th><th>Actions</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div id="editModal" class="modal">
-    <div class="modal-content">
-      <button class="close-btn" onclick="closeModal()">×</button>
-      <h2>Edit Rider</h2>
-      <input type="hidden" id="editRiderId">
-      <label>Payroll Number
-        <input type="text" id="editPayroll">
-      </label>
-      <label>Name
-        <input type="text" id="editName">
-      </label>
-      <label>Phone
-        <input type="text" id="editPhone">
-      </label>
-      <label>Email
-        <input type="email" id="editEmail">
-      </label>
-      <label>Status
-        <input type="text" id="editStatus">
-      </label>
-      <label>Platoon
-        <input type="text" id="editPlatoon">
-      </label>
-      <label>Part-Time Rider
-        <select id="editPartTime">
-          <option value="Yes">Yes</option>
-          <option value="No">No</option>
-        </select>
-      </label>
-      <label>Certification
-        <input type="text" id="editCertification">
-      </label>
-      <label>Total Assignments
-        <input type="number" id="editTotalAssignments" disabled>
-      </label>
-      <label>Last Assignment Date
-        <input type="text" id="editLastAssignmentDate" disabled>
-      </label>
-      <button onclick="saveRider()">Save</button>
-      <div id="message"></div>
+      <table id="ridersTable" style="display:none;">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Phone</th><th>Status</th><th>Availability</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
-  </div>
 
   <script>
-    let riders = [];
-
-    function loadRiders() {
-      if (typeof google !== 'undefined' && google.script && google.script.run) {
-        // First try direct list (works regardless of frontend expectations)
-        google.script.run
-          .withSuccessHandler(renderRiders)
-          .withFailureHandler(err => {
-            const baseMsg = err && err.message ? err.message : 'Failed to load riders';
-            // Fallback: try unified page data API
-            try {
-              google.script.run
-                .withSuccessHandler(renderRiders)
-                .withFailureHandler(() => {
-                  showError(`Failed to load riders: ${baseMsg}`);
-                })
-                .getPageDataForRiders();
-            } catch (e) {
-              showError(`Failed to load riders: ${baseMsg}`);
-            }
-          })
-          .getRiders();
-      } else {
-        showError('Google Apps Script runtime unavailable');
-      }
-    }
+    let baseUrl = '';
 
     function renderRiders(data) {
-      const riderArray = Array.isArray(data)
-        ? data
-        : (data && Array.isArray(data.riders) ? data.riders : []);
-
-      if ((!data || data.success === false) && (!riderArray || riderArray.length === 0)) {
-        const msg = data && (data.error || data.message) ? (data.error || data.message) : 'Failed to load riders';
-        showError(msg);
-        return;
-      }
-
-      if (!riderArray || riderArray.length === 0) {
-        showError('No riders found');
-        return;
-      }
-
-      riders = riderArray;
-      const tbody = document.querySelector('#ridersTable tbody');
-      tbody.innerHTML = '';
-      riderArray.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.jpNumber || ''}</td>` +
-                      `<td>${r.name || ''}</td>` +
-                      `<td>${r.phone || ''}</td>` +
-                      `<td>${r.status || ''}</td>` +
-                      `<td><button onclick="openModal('${r.jpNumber}')">Edit</button></td>`;
-        tbody.appendChild(tr);
-      });
-
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('ridersTable').style.display = 'table';
-    }
-
-    function showError(msg) {
       const loading = document.getElementById('loading');
-      loading.textContent = msg;
+      const table = document.getElementById('ridersTable');
+      const tbody = table.querySelector('tbody');
+
+      if (!data || !data.success) {
+        loading.textContent = (data && data.message) ? data.message : 'Failed to load riders';
+        return;
+      }
+
+      const riders = data.riders || [];
+      tbody.innerHTML = '';
+        riders.forEach(r => {
+          const tr = document.createElement('tr');
+          const identifier = r.jpNumber || r.name || '';
+          const editUrl = baseUrl
+            ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`
+            : `edit-rider.html?riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`;
+          const nameCell = `<a href="${editUrl}" target="_top">${r.name || ''}</a>`;
+          const availabilityBtn = `<button onclick="openAvailability('${identifier}')">Calendar</button>`;
+          tr.innerHTML = `<td>${r.jpNumber || ''}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
+          tbody.appendChild(tr);
+        });
+
+      if (riders.length === 0) {
+        loading.textContent = 'No riders found';
+        return;
+      }
+
+      loading.style.display = 'none';
+      table.style.display = 'table';
     }
 
-    function openModal(id) {
-      const rider = riders.find(r => String(r.jpNumber) === String(id));
-      if (!rider) return;
-
-      document.getElementById('editRiderId').value = rider.jpNumber || '';
-      document.getElementById('editPayroll').value = rider.payrollNumber || '';
-      document.getElementById('editName').value = rider.name || '';
-      document.getElementById('editPhone').value = rider.phone || '';
-      document.getElementById('editEmail').value = rider.email || '';
-      document.getElementById('editStatus').value = rider.status || '';
-      document.getElementById('editPlatoon').value = rider.platoon || '';
-      document.getElementById('editPartTime').value = rider.partTime || 'No';
-      document.getElementById('editCertification').value = rider.certification || '';
-      document.getElementById('editTotalAssignments').value = rider.totalAssignments || '';
-      document.getElementById('editLastAssignmentDate').value = rider.lastAssignmentDate || '';
-      document.getElementById('message').textContent = '';
-      document.getElementById('editModal').style.display = 'block';
+    function openAvailability(riderId) {
+      const url = baseUrl
+        ? `${baseUrl}?page=rider-availability&riderId=${encodeURIComponent(riderId)}`
+        : `rider-availability.html?riderId=${encodeURIComponent(riderId)}`;
+      window.open(url, '_blank');
     }
 
-    function closeModal() {
-      document.getElementById('editModal').style.display = 'none';
-    }
-
-    function saveRider() {
-      const data = {
-        'Rider ID': document.getElementById('editRiderId').value,
-        'Payroll Number': document.getElementById('editPayroll').value,
-        'Full Name': document.getElementById('editName').value,
-        'Phone Number': document.getElementById('editPhone').value,
-        'Email': document.getElementById('editEmail').value,
-        'Status': document.getElementById('editStatus').value,
-        'Platoon': document.getElementById('editPlatoon').value,
-        'Part-Time Rider': document.getElementById('editPartTime').value,
-        'Certification': document.getElementById('editCertification').value
-      };
-
+    function loadRiders() {
       if (google && google.script && google.script.run) {
-        google.script.run
-          .withSuccessHandler(res => {
-            document.getElementById('message').textContent = res.message || 'Saved';
-            loadRiders();
-          })
-          .withFailureHandler(err => {
-            document.getElementById('message').textContent = 'Failed to save rider';
-          })
-          .updateRider(data);
+        google.script.run.withSuccessHandler(url => {
+          baseUrl = url;
+          google.script.run.withSuccessHandler(renderRiders)
+                             .withFailureHandler(err => {
+                               document.getElementById('loading').textContent = 'Failed to load riders';
+                               console.error(err);
+                             })
+                             .getRidersForPage();
+        }).getWebAppUrl();
       } else {
-        document.getElementById('message').textContent = 'Google Apps Script runtime unavailable';
+        renderRiders({success:false, message:'Google Apps Script runtime unavailable'});
       }
     }
 
@@ -281,4 +128,3 @@
   <script src="load-navigation.js"></script>
 </body>
 </html>
-
