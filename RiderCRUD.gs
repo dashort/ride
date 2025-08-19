@@ -86,13 +86,7 @@ function getRidersForPage() {
 
     const riders = sheetData.data
       .map(row => mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers))
-      .filter(r => r && (r.jpNumber || r.name))
-      .map(r => ({
-        jpNumber: r.jpNumber || '',
-        name: r.name || '',
-        phone: r.phone || '',
-        status: r.status || ''
-      }));
+      .filter(r => r && (r.jpNumber || r.name));
 
     return { success: true, riders };
   } catch (error) {
