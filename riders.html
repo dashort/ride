@@ -164,13 +164,24 @@
 
     function loadRiders() {
       if (typeof google !== 'undefined' && google.script && google.script.run) {
+        // First try direct list (works regardless of frontend expectations)
         google.script.run
           .withSuccessHandler(renderRiders)
           .withFailureHandler(err => {
-            const msg = err && err.message ? err.message : 'Failed to load riders';
-            showError(`Failed to load riders: ${msg}`);
+            const baseMsg = err && err.message ? err.message : 'Failed to load riders';
+            // Fallback: try unified page data API
+            try {
+              google.script.run
+                .withSuccessHandler(renderRiders)
+                .withFailureHandler(() => {
+                  showError(`Failed to load riders: ${baseMsg}`);
+                })
+                .getPageDataForRiders();
+            } catch (e) {
+              showError(`Failed to load riders: ${baseMsg}`);
+            }
           })
-          .getRidersForPage();
+          .getRiders();
       } else {
         showError('Google Apps Script runtime unavailable');
       }
@@ -181,17 +192,14 @@
         ? data
         : (data && Array.isArray(data.riders) ? data.riders : []);
 
-      if (!data || data.success === false) {
-        const msg = data && (data.error || data.message) ?
-          (data.error || data.message) : 'Failed to load riders';
+      if ((!data || data.success === false) && (!riderArray || riderArray.length === 0)) {
+        const msg = data && (data.error || data.message) ? (data.error || data.message) : 'Failed to load riders';
         showError(msg);
         return;
       }
 
       if (!riderArray || riderArray.length === 0) {
-        const msg = data && (data.message || data.error) ?
-          (data.message || data.error) : 'No riders found';
-        showError(msg);
+        showError('No riders found');
         return;
       }
 
