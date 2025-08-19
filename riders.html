@@ -163,10 +163,13 @@
     let riders = [];
 
     function loadRiders() {
-      if (google && google.script && google.script.run) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(renderRiders)
-          .withFailureHandler(err => showError('Failed to load riders'))
+          .withFailureHandler(err => {
+            const msg = err && err.message ? err.message : 'Failed to load riders';
+            showError(`Failed to load riders: ${msg}`);
+          })
           .getPageDataForRiders();
       } else {
         showError('Google Apps Script runtime unavailable');
