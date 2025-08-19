@@ -78,15 +78,12 @@ function getRiders() {
 }
 function getRidersForPage() {
   try {
-    // Use shared sheet utility for reliable column detection
-    const sheetData = getSheetData(CONFIG.sheets.riders);
-    if (!sheetData || !sheetData.data) {
-      return { success: false, message: 'Riders sheet not found', riders: [] };
-    }
+    // Reuse robust rider retrieval logic
+    const riders = getRiders();
 
-    const riders = sheetData.data
-      .map(row => mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers))
-      .filter(r => r && (r.jpNumber || r.name));
+    if (!riders || riders.length === 0) {
+      return { success: false, message: 'No riders found', riders: [] };
+    }
 
     return { success: true, riders };
   } catch (error) {
