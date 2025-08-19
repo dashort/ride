@@ -174,9 +174,13 @@
     }
 
     function renderRiders(data) {
-      const riderArray = Array.isArray(data) ? data : (data && Array.isArray(data.riders) ? data.riders : null);
-      if (!riderArray) {
-        showError('No riders found');
+      const riderArray = Array.isArray(data)
+        ? data
+        : (data && Array.isArray(data.riders) ? data.riders : null);
+
+      if (!riderArray || riderArray.length === 0) {
+        const msg = data && data.message ? data.message : 'No riders found';
+        showError(msg);
         return;
       }
 
