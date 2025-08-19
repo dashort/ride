@@ -2734,6 +2734,7 @@ function fixAssignmentStatuses() {
     console.log(`📊 Processing ${assignmentsData.data.length} assignments...`);
     
     // Process each assignment
+    const batchedStatusUpdates = [];
     assignmentsData.data.forEach((assignment, index) => {
       const rowNumber = index + 2; // +2 for header row and 0-based index
       const currentStatus = getColumnValue(assignment, assignmentsData.columnMap, CONFIG.columns.assignments.status);
@@ -2794,9 +2795,9 @@ function fixAssignmentStatuses() {
         newAssignmentStatus = requestStatus; // Copy request status
       }
       
-      // Update the status
+      // Queue the status update for batching
       try {
-        assignmentsSheet.getRange(rowNumber, statusColumnIndex + 1).setValue(newAssignmentStatus);
+        batchedStatusUpdates.push({ row: rowNumber, col: statusColumnIndex + 1, value: newAssignmentStatus });
         updatedCount++;
         
         statusUpdates.push({
@@ -2810,9 +2811,14 @@ function fixAssignmentStatuses() {
         console.log(`   ✅ Updated ${requestId} (${riderName || 'No Rider'}): "${currentStatus || 'Empty'}" → "${newAssignmentStatus}"`);
         
       } catch (updateError) {
-        console.error(`   ❌ Failed to update ${requestId}:`, updateError);
+        console.error(`   ❌ Failed to queue update for ${requestId}:`, updateError);
       }
     });
+
+    // Apply all queued assignment status updates in one batch
+    if (batchedStatusUpdates.length > 0 && typeof batchUpdateCells === 'function') {
+      batchUpdateCells(assignmentsSheet, batchedStatusUpdates);
+    }
     
     console.log(`\n🎯 === SUMMARY ===`);
     console.log(`✅ Updated ${updatedCount} assignment statuses`);

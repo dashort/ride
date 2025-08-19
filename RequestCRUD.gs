@@ -540,23 +540,26 @@ function updateExistingRequest(requestData) {
 
       // Batch updates for better performance
       if (updates.length > 0) {
-        const batchOperations = [];
-        
-        // Group updates by row to optimize range operations
-        for (const update of updates) {
-          try {
-            batchOperations.push(() => sheet.getRange(sheetRowNumber, update.column).setValue(update.value));
-          } catch (cellError) {
-            debugLog(`Error preparing update for column ${update.column}:`, cellError);
-            // Continue with other updates rather than failing completely
+        try {
+          const cellUpdates = updates.map(u => ({ row: sheetRowNumber, col: u.column, value: u.value }));
+          if (typeof batchUpdateCells === 'function') {
+            batchUpdateCells(sheet, cellUpdates);
+          } else {
+            // Fallback: minimal calls
+            const minCol = Math.min.apply(null, updates.map(u => u.column));
+            const maxCol = Math.max.apply(null, updates.map(u => u.column));
+            const width = maxCol - minCol + 1;
+            const rowValues = new Array(width).fill('');
+            updates.forEach(u => { rowValues[u.column - minCol] = u.value; });
+            sheet.getRange(sheetRowNumber, minCol, 1, width).setValues([rowValues]);
           }
+        } catch (batchError) {
+          debugLog('Batch update failed, falling back to individual updates:', batchError);
+          updates.forEach(u => sheet.getRange(sheetRowNumber, u.column).setValue(u.value));
         }
         
-        // Execute all batch operations
-        batchOperations.forEach(operation => operation());
+        // Apply any pending formatting operations
         formatOperations.forEach(op => op());
-
-        // Single flush after all operations
         SpreadsheetApp.flush();
       }
 
@@ -687,6 +690,7 @@ function recordActualCompletionTimes(requestId) {
     
     // Update all related assignments
     const updateResults = [];
+    const batchedAssignmentUpdates = [];
     
     for (const assignmentInfo of relatedAssignments) {
       try {
@@ -737,14 +741,8 @@ function recordActualCompletionTimes(requestId) {
           updates.push({ column: actualDurationColumn, value: roundToQuarterHour(actualDuration) });
         }
         
-        // Apply all updates for this assignment
-        for (const update of updates) {
-          try {
-            assignmentsSheet.getRange(rowIndex, update.column).setValue(update.value);
-          } catch (cellError) {
-            console.error(`Error updating column ${update.column} for assignment:`, cellError);
-          }
-        }
+        // Queue updates for this assignment (to batch later)
+        updates.forEach(u => batchedAssignmentUpdates.push({ row: rowIndex, col: u.column, value: u.value }));
         
         const roundedDuration = roundToQuarterHour(actualDuration);
         updateResults.push({
@@ -762,6 +760,18 @@ function recordActualCompletionTimes(requestId) {
           rider: 'Unknown',
           success: false,
           error: assignmentError.message
+        });
+      }
+    }
+
+    // Apply all queued assignment cell updates in one batch
+    if (batchedAssignmentUpdates.length > 0 && typeof batchUpdateCells === 'function') {
+      try {
+        batchUpdateCells(assignmentsSheet, batchedAssignmentUpdates);
+      } catch (e) {
+        // Fallback to individual updates if batch fails
+        batchedAssignmentUpdates.forEach(u => {
+          try { assignmentsSheet.getRange(u.row, u.col).setValue(u.value); } catch (ignored) {}
         });
       }
     }
