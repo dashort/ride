@@ -170,22 +170,23 @@
         google.script.run
           .withSuccessHandler(renderRiders)
           .withFailureHandler(err => showError('Failed to load riders'))
-          .getRiders();
+          .getRidersForPage();
       } else {
         showError('Google Apps Script runtime unavailable');
       }
     }
 
     function renderRiders(data) {
-      if (!Array.isArray(data)) {
+      const riderArray = Array.isArray(data) ? data : (data && Array.isArray(data.riders) ? data.riders : null);
+      if (!riderArray) {
         showError('No riders found');
         return;
       }
 
-      riders = data;
+      riders = riderArray;
       const tbody = document.querySelector('#ridersTable tbody');
       tbody.innerHTML = '';
-      data.forEach(r => {
+      riderArray.forEach(r => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td>${r.jpNumber || ''}</td>` +
                       `<td>${r.name || ''}</td>` +
