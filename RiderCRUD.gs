@@ -680,46 +680,85 @@ function deleteRider(riderId) {
  */
 function mapRowToRiderObject(row, columnMap, headers) {
   const rider = {};
-  
+
   // Map each header to its corresponding value
   headers.forEach((header, index) => {
     rider[header] = row[index] || '';
   });
-  
-  // Add convenient access properties using CONFIG column names
-  rider.jpNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.jpNumber);
-  if (!rider.jpNumber) {
-    rider.jpNumber = getColumnValue(row, columnMap, 'JP Number') ||
-                     getColumnValue(row, columnMap, 'Rider ID') ||
-                     getColumnValue(row, columnMap, 'ID') || '';
-  }
-  rider.payrollNumber = getColumnValue(row, columnMap, CONFIG.columns.riders.payrollNumber) || '';
-  rider.name = getColumnValue(row, columnMap, CONFIG.columns.riders.name);
-  if (!rider.name) {
-    rider.name = getColumnValue(row, columnMap, 'Full Name') ||
-                 getColumnValue(row, columnMap, 'Name') || '';
-  }
-  rider.phone = getColumnValue(row, columnMap, CONFIG.columns.riders.phone) || '';
+
+  // Helper to get the first non-empty value from multiple possible column names
+  const firstValue = (...names) => {
+    for (const name of names) {
+      const val = getColumnValue(row, columnMap, name);
+      if (val !== null && val !== '') {
+        return val;
+      }
+    }
+    return '';
+  };
+
+  // Add convenient access properties using CONFIG column names with flexible header matching
+  rider.jpNumber = firstValue(
+    CONFIG.columns.riders.jpNumber,
+    'JP Number',
+    'Rider ID',
+    'ID'
+  );
+
+  rider.payrollNumber = firstValue(
+    CONFIG.columns.riders.payrollNumber,
+    'Payroll #',
+    'Payroll No',
+    'Payroll'
+  );
+
+  rider.name = firstValue(
+    CONFIG.columns.riders.name,
+    'Full Name',
+    'Name'
+  );
+
+  rider.phone = firstValue(CONFIG.columns.riders.phone);
+
   // Be flexible about email header variations
-  rider.email = getColumnValue(row, columnMap, CONFIG.columns.riders.email) ||
-                getColumnValue(row, columnMap, 'Google Email') ||
-                getColumnValue(row, columnMap, 'Email Address') ||
-                getColumnValue(row, columnMap, 'E-mail') || '';
-  rider.status = getColumnValue(row, columnMap, CONFIG.columns.riders.status) || 'Active';
-  rider.platoon = getColumnValue(row, columnMap, CONFIG.columns.riders.platoon) || '';
-  let partTimeVal = getColumnValue(row, columnMap, CONFIG.columns.riders.partTime);
-  if (partTimeVal === null || partTimeVal === '') {
-    partTimeVal = getColumnValue(row, columnMap, 'Part Time Rider');
-  }
-  if (partTimeVal === null || partTimeVal === '') {
-    partTimeVal = getColumnValue(row, columnMap, 'Part-Time');
-  }
+  rider.email = firstValue(
+    CONFIG.columns.riders.email,
+    'Google Email',
+    'Email Address',
+    'E-mail'
+  );
+
+  rider.status = firstValue(CONFIG.columns.riders.status) || 'Active';
+  rider.platoon = firstValue(CONFIG.columns.riders.platoon);
+
+  let partTimeVal = firstValue(
+    CONFIG.columns.riders.partTime,
+    'Part Time Rider',
+    'Part-Time'
+  );
   rider.partTime = partTimeVal || 'No';
-  rider.certification = getColumnValue(row, columnMap, CONFIG.columns.riders.certification) || '';
-  rider.organization = getColumnValue(row, columnMap, CONFIG.columns.riders.organization) || '';
-  rider.totalAssignments = getColumnValue(row, columnMap, CONFIG.columns.riders.totalAssignments) || 0;
-  rider.lastAssignmentDate = getColumnValue(row, columnMap, CONFIG.columns.riders.lastAssignmentDate) || '';
-  
+
+  rider.certification = firstValue(
+    CONFIG.columns.riders.certification,
+    'Certifications',
+    'Certification Level'
+  );
+
+  rider.organization = firstValue(CONFIG.columns.riders.organization);
+
+  const totalAssignments = firstValue(
+    CONFIG.columns.riders.totalAssignments,
+    'Assignments Total',
+    'Total Assignment'
+  );
+  rider.totalAssignments = totalAssignments || 0;
+
+  rider.lastAssignmentDate = firstValue(
+    CONFIG.columns.riders.lastAssignmentDate,
+    'Last Assignment',
+    'Last Assigned Date'
+  );
+
   return rider;
 }
 
