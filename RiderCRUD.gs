@@ -13,63 +13,32 @@
 function getRiders() {
   try {
     console.log('📋 Fetching all riders with enhanced filtering...');
-    
+
     const sheetData = getSheetData(CONFIG.sheets.riders);
-    
+
     if (!sheetData || !sheetData.data || sheetData.data.length === 0) {
       console.log('⚠️ No rider data found');
       return [];
     }
-    
-    const riders = sheetData.data.map((row, index) => {
-      try {
-        // Enhanced column detection
-        const possibleNameColumns = [CONFIG.columns.riders.name, 'Full Name', 'Name'];
-        const possibleIdColumns = [CONFIG.columns.riders.jpNumber, 'Rider ID', 'JP Number', 'ID'];
-        
-        let name = null;
-        let jpNumber = null;
-        
-        // Try to find name in any of the possible columns
-        for (const colName of possibleNameColumns) {
-          const value = getColumnValue(row, sheetData.columnMap, colName);
-          if (value && String(value).trim().length > 0) {
-            name = value;
-            break;
-          }
+
+    const riders = sheetData.data
+      .map((row, index) => {
+        try {
+          const rider = mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers);
+          const hasId = rider.jpNumber && String(rider.jpNumber).trim().length > 0;
+          const hasName = rider.name && String(rider.name).trim().length > 0;
+
+          return (hasId || hasName) ? rider : null;
+        } catch (rowError) {
+          console.warn(`⚠️ Error processing rider row ${index}:`, rowError);
+          return null;
         }
-        
-        // Try to find ID in any of the possible columns
-        for (const colName of possibleIdColumns) {
-          const value = getColumnValue(row, sheetData.columnMap, colName);
-          if (value && String(value).trim().length > 0) {
-            jpNumber = value;
-            break;
-          }
-        }
-        
-        // Fallback to positional if no named columns found
-        if (!name && row.length > 1) name = row[1];
-        if (!jpNumber && row.length > 0) jpNumber = row[0];
-        
-        // CONSISTENT LOGIC: Must have either name OR JP number
-        const hasValidIdentifier = (name && String(name).trim().length > 0) || 
-                                  (jpNumber && String(jpNumber).trim().length > 0);
-        
-        if (!hasValidIdentifier) {
-          return null; // Filter out invalid riders
-        }
-        
-        return mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers);
-      } catch (rowError) {
-        console.warn(`⚠️ Error processing rider row ${index}:`, rowError);
-        return null;
-      }
-    }).filter(rider => rider !== null); // Remove nulls
-    
+      })
+      .filter(rider => rider !== null);
+
     console.log(`✅ Successfully fetched ${riders.length} valid riders`);
     return riders;
-    
+
   } catch (error) {
     console.error('❌ Error fetching riders:', error);
     logError('Error in getRiders', error);
@@ -694,7 +663,7 @@ function mapRowToRiderObject(row, columnMap, headers) {
     'JP Number',
     'Rider ID',
     'ID'
-  );
+  ) || row[0] || '';
 
   rider.payrollNumber = firstValue(
     CONFIG.columns.riders.payrollNumber,
@@ -707,9 +676,9 @@ function mapRowToRiderObject(row, columnMap, headers) {
     CONFIG.columns.riders.name,
     'Full Name',
     'Name'
-  );
+  ) || row[1] || '';
 
-  rider.phone = firstValue(CONFIG.columns.riders.phone);
+  rider.phone = firstValue(CONFIG.columns.riders.phone) || row[2] || '';
 
   // Be flexible about email header variations
   rider.email = firstValue(
