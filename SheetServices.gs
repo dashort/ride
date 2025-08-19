@@ -118,7 +118,8 @@ function getSheetData(sheetName, useCache = true) {
       headers: [],
       data: [],
       columnMap: {},
-      sheet: getSheet(sheetName)
+      // Do not attempt to call getSheet again here, it may throw repeatedly if the sheet is missing
+      sheet: null
     };
   }
 }
