@@ -148,9 +148,6 @@
       <label>Certification
         <input type="text" id="editCertification">
       </label>
-      <label>Organization
-        <input type="text" id="editOrganization">
-      </label>
       <label>Total Assignments
         <input type="number" id="editTotalAssignments" disabled>
       </label>
@@ -218,7 +215,6 @@
       document.getElementById('editPlatoon').value = rider.platoon || '';
       document.getElementById('editPartTime').value = rider.partTime || 'No';
       document.getElementById('editCertification').value = rider.certification || '';
-      document.getElementById('editOrganization').value = rider.organization || '';
       document.getElementById('editTotalAssignments').value = rider.totalAssignments || '';
       document.getElementById('editLastAssignmentDate').value = rider.lastAssignmentDate || '';
       document.getElementById('message').textContent = '';
@@ -239,8 +235,7 @@
         'Status': document.getElementById('editStatus').value,
         'Platoon': document.getElementById('editPlatoon').value,
         'Part-Time Rider': document.getElementById('editPartTime').value,
-        'Certification': document.getElementById('editCertification').value,
-        'Organization': document.getElementById('editOrganization').value
+        'Certification': document.getElementById('editCertification').value
       };
 
       if (google && google.script && google.script.run) {
