@@ -97,10 +97,17 @@
       }
       return value;
     }
+    function getParamFromList(names){
+      for(const n of names){
+        const v = getParam(n);
+        if(v !== null && String(v).trim() !== '') return v;
+      }
+      return null;
+    }
     function showMessage(msg){document.getElementById('message').textContent = msg;}
     function loadRider(){
-      const riderId = getParam('riderId');
-      const riderName = getParam('name');
+      const riderId = getParamFromList(['riderId','id','jpNumber','jp','JP','Rider ID']);
+      const riderName = getParamFromList(['name','fullName','riderName','Rider Name','Full Name']);
       const lookup = riderId || riderName;
       if(!lookup){showMessage('No rider ID provided');return;}
       if(google && google.script && google.script.run){
@@ -113,18 +120,19 @@
     }
     function renderRider(rider){
       if(!rider){showMessage('Rider not found');return;}
-      document.getElementById('riderId').value = rider.jpNumber || '';
-      document.getElementById('payrollNumber').value = rider.payrollNumber || '';
-      document.getElementById('name').value = rider.name || '';
-      document.getElementById('phone').value = rider.phone || '';
-      document.getElementById('email').value = rider.email || '';
-      document.getElementById('status').value = rider.status || '';
-      document.getElementById('platoon').value = rider.platoon || '';
-      document.getElementById('partTime').value = rider.partTime || 'No';
-      document.getElementById('certification').value = rider.certification || '';
-      document.getElementById('organization').value = rider.organization || '';
-      document.getElementById('totalAssignments').value = rider.totalAssignments || '';
-      document.getElementById('lastAssignmentDate').value = rider.lastAssignmentDate || '';
+
+      document.getElementById('riderId').value = rider.jpNumber || rider['Rider ID'] || rider['JP Number'] || '';
+      document.getElementById('payrollNumber').value = rider.payrollNumber || rider['Payroll Number'] || '';
+      document.getElementById('name').value = rider.name || rider['Full Name'] || rider['Name'] || '';
+      document.getElementById('phone').value = rider.phone || rider['Phone Number'] || '';
+      document.getElementById('email').value = rider.email || rider['Email'] || rider['Google Email'] || '';
+      document.getElementById('status').value = rider.status || rider['Status'] || '';
+      document.getElementById('platoon').value = rider.platoon || rider['Platoon'] || '';
+      document.getElementById('partTime').value = rider.partTime || rider['Part-Time Rider'] || rider['Part Time Rider'] || 'No';
+      document.getElementById('certification').value = rider.certification || rider['Certification'] || rider['Certification Level'] || '';
+      document.getElementById('totalAssignments').value = rider.totalAssignments || rider['Total Assignments'] || '';
+      document.getElementById('lastAssignmentDate').value = rider.lastAssignmentDate || rider['Last Assignment Date'] || rider['Last Assignment'] || '';
+
     }
     function saveRider(){
       const data = {
@@ -139,6 +147,17 @@
         'Certification': document.getElementById('certification').value,
         'Organization': document.getElementById('organization').value
       };
+      // Ensure Rider ID is present; if missing but name is present, try to resolve ID via server
+      if(!data['Rider ID'] && data['Full Name'] && google && google.script && google.script.run){
+        google.script.run.withSuccessHandler(function(r){
+          if(r && r.jpNumber){ data['Rider ID'] = r.jpNumber; submitUpdate(data); }
+          else { submitUpdate(data); }
+        }).withFailureHandler(function(){ submitUpdate(data); }).getRiderDetails(data['Full Name']);
+        return;
+      }
+      submitUpdate(data);
+    }
+    function submitUpdate(data){
       if(google && google.script && google.script.run){
         google.script.run.withSuccessHandler(res=>showMessage(res.message || 'Saved'))
                          .withFailureHandler(err=>showMessage('Failed to save rider'))
