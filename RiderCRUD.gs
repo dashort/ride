@@ -327,6 +327,35 @@ function handleRiderOperation(action, data) {
   }
 }
 
+/**
+ * Returns dropdown options for the Rider edit form.
+ * Keeps UI constraints in sync with configuration.
+ * @return {{statusOptions: string[], platoonOptions: string[], certificationOptions: string[], partTimeOptions: string[]}}
+ */
+function getRiderFormOptions() {
+  try {
+    const statusOptions = (CONFIG.options && CONFIG.options.riderStatuses) || ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'];
+    const platoonOptions = (CONFIG.options && CONFIG.options.platoons) || ['A', 'B'];
+    const certificationOptions = (CONFIG.options && CONFIG.options.certificationTypes) || ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified'];
+    const partTimeOptions = ['Yes', 'No'];
+
+    return {
+      statusOptions: statusOptions,
+      platoonOptions: platoonOptions,
+      certificationOptions: certificationOptions,
+      partTimeOptions: partTimeOptions
+    };
+  } catch (error) {
+    console.error('❌ Error getting rider form options:', error);
+    return {
+      statusOptions: ['Active', 'Inactive'],
+      platoonOptions: ['A', 'B'],
+      certificationOptions: ['Standard', 'Advanced'],
+      partTimeOptions: ['Yes', 'No']
+    };
+  }
+}
+
 function getTotalRiderCount() {
   try {
     console.log('📊 Getting total rider count with consistent logic...');

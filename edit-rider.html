@@ -62,10 +62,10 @@
       <input type="email" id="email">
     </label>
     <label>Status
-      <input type="text" id="status">
+      <select id="status"></select>
     </label>
     <label>Platoon
-      <input type="text" id="platoon">
+      <select id="platoon"></select>
     </label>
     <label>Part-Time Rider
       <select id="partTime">
@@ -74,7 +74,7 @@
       </select>
     </label>
     <label>Certification
-      <input type="text" id="certification">
+      <select id="certification"></select>
     </label>
     <label>Organization
       <input type="text" id="organization">
@@ -105,18 +105,60 @@
       return null;
     }
     function showMessage(msg){document.getElementById('message').textContent = msg;}
+    function populateSelectOptions(selectId, options, includeBlank=false){
+      const select = document.getElementById(selectId);
+      if(!select) return;
+      select.innerHTML = '';
+      if(includeBlank){
+        const blank = document.createElement('option');
+        blank.value = '';
+        blank.textContent = '';
+        select.appendChild(blank);
+      }
+      (options || []).forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        select.appendChild(o);
+      });
+    }
+
+    function loadFormOptions(callback){
+      if(typeof google !== 'undefined' && google.script && google.script.run){
+        google.script.run.withSuccessHandler(function(opts){
+          try{
+            populateSelectOptions('status', opts.statusOptions, false);
+            populateSelectOptions('platoon', opts.platoonOptions, true);
+            populateSelectOptions('certification', opts.certificationOptions, true);
+            populateSelectOptions('partTime', opts.partTimeOptions, false);
+          }catch(e){/* no-op */}
+          if(typeof callback === 'function') callback();
+        }).withFailureHandler(function(){ if(typeof callback === 'function') callback(); }).getRiderFormOptions();
+      }else{
+        // Fallback defaults if GAS unavailable
+        populateSelectOptions('status', ['Active','Inactive','Vacation','Training','Suspended']);
+        populateSelectOptions('platoon', ['A','B'], true);
+        populateSelectOptions('certification', ['Standard','Advanced','Instructor','Trainee','Not Certified'], true);
+        populateSelectOptions('partTime', ['Yes','No']);
+        if(typeof callback === 'function') callback();
+      }
+    }
+
     function loadRider(){
       const riderId = getParamFromList(['riderId','id','jpNumber','jp','JP','Rider ID']);
       const riderName = getParamFromList(['name','fullName','riderName','Rider Name','Full Name']);
       const lookup = riderId || riderName;
       if(!lookup){showMessage('No rider ID provided');return;}
-      if(google && google.script && google.script.run){
-        google.script.run.withSuccessHandler(renderRider)
-                         .withFailureHandler(err=>showMessage('Failed to load rider'))
-                         .getRiderDetails(lookup);
-      }else{
-        showMessage('Google Apps Script runtime unavailable');
-      }
+      // Load options first, then load rider so selects exist before setting values
+      loadFormOptions(function(){
+        if(typeof google !== 'undefined' && google.script && google.script.run){
+          google.script.run.withSuccessHandler(renderRider)
+                           .withFailureHandler(err=>showMessage('Failed to load rider'))
+                           .getRiderDetails(lookup);
+        }else{
+          showMessage('Google Apps Script runtime unavailable');
+        }
+      });
     }
     function renderRider(rider){
       if(!rider){showMessage('Rider not found');return;}
@@ -130,6 +172,7 @@
       document.getElementById('platoon').value = rider.platoon || rider['Platoon'] || '';
       document.getElementById('partTime').value = rider.partTime || rider['Part-Time Rider'] || rider['Part Time Rider'] || 'No';
       document.getElementById('certification').value = rider.certification || rider['Certification'] || rider['Certification Level'] || '';
+      document.getElementById('organization').value = rider.organization || rider['Organization'] || '';
       document.getElementById('totalAssignments').value = rider.totalAssignments || rider['Total Assignments'] || '';
       document.getElementById('lastAssignmentDate').value = rider.lastAssignmentDate || rider['Last Assignment Date'] || rider['Last Assignment'] || '';
 
@@ -158,7 +201,7 @@
       submitUpdate(data);
     }
     function submitUpdate(data){
-      if(google && google.script && google.script.run){
+      if(typeof google !== 'undefined' && google.script && google.script.run){
         google.script.run.withSuccessHandler(res=>showMessage(res.message || 'Saved'))
                          .withFailureHandler(err=>showMessage('Failed to save rider'))
                          .updateRider(data);
