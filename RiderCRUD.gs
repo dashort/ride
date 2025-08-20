@@ -121,7 +121,7 @@ function getRiderDetails(riderId) {
   try {
     console.log(`🔍 getRiderDetails called with: "${riderId}" (type: ${typeof riderId})`);
     
-    if (riderId === undefined || riderId === null || String(riderId).trim() === '') {
+    if (!riderId) {
       console.warn('⚠️ No rider ID provided');
       return null;
     }
@@ -513,7 +513,7 @@ function updateRider(riderData) {
     const riderIdField = CONFIG.columns.riders.jpNumber;
   const riderId = riderData[riderIdField];
 
-  if (riderId === undefined || riderId === null || String(riderId).trim() === '') {
+  if (!riderId) {
     throw new Error(`Missing Rider ID (${riderIdField}) in update data`);
   }
 
