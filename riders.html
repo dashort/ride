@@ -79,17 +79,15 @@
 
       const riders = data.riders || [];
       tbody.innerHTML = '';
-        riders.forEach(r => {
-          const tr = document.createElement('tr');
-          const identifier = r.jpNumber || r.name || '';
-          const editUrl = baseUrl
-            ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`
-            : `edit-rider.html?riderId=${encodeURIComponent(identifier)}&name=${encodeURIComponent(r.name || '')}`;
-          const nameCell = `<a href="${editUrl}" target="_top">${r.name || ''}</a>`;
-          const availabilityBtn = `<button onclick="openAvailability('${identifier}')">Calendar</button>`;
-          tr.innerHTML = `<td>${r.jpNumber || ''}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
-          tbody.appendChild(tr);
-        });
+        
+      riders.forEach(r => {
+        const tr = document.createElement('tr');
+        const id = r.jpNumber || '';
+        const nameCell = `<a href="#" onclick="openEdit('${id}'); return false;">${r.name || ''}</a>`;
+        const availabilityBtn = `<button onclick="openAvailability('${id}')">Calendar</button>`;
+        tr.innerHTML = `<td>${id}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
+        tbody.appendChild(tr);
+      });
 
       if (riders.length === 0) {
         loading.textContent = 'No riders found';
@@ -105,6 +103,13 @@
         ? `${baseUrl}?page=rider-availability&riderId=${encodeURIComponent(riderId)}`
         : `rider-availability.html?riderId=${encodeURIComponent(riderId)}`;
       window.open(url, '_blank');
+    }
+
+    function openEdit(riderId) {
+      const url = baseUrl
+        ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(riderId)}`
+        : `edit-rider.html?riderId=${encodeURIComponent(riderId)}`;
+      window.open(url, '_blank', 'width=600,height=600');
     }
 
     function loadRiders() {
