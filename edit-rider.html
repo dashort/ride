@@ -48,168 +48,142 @@
 <body>
   <div class="container">
     <h1>Edit Rider</h1>
-    <input type="hidden" id="riderId">
-    <label>Payroll Number
-      <input type="text" id="payrollNumber">
+
+    <label>Rider ID
+      <input type="text" id="riderId">
     </label>
-    <label>Name
-      <input type="text" id="name">
+
+    <label>Full Name
+      <input type="text" id="fullName">
     </label>
-    <label>Phone
+
+    <label>Phone Number
       <input type="text" id="phone">
     </label>
+
     <label>Email
       <input type="email" id="email">
     </label>
+
     <label>Status
-      <select id="status"></select>
+      <select id="status">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive</option>
+        <option value="Vacation">Vacation</option>
+        <option value="Training">Training</option>
+        <option value="Suspended">Suspended</option>
+      </select>
     </label>
-    <label>Platoon
-      <select id="platoon"></select>
+
+    <label>Certification
+      <select id="certification">
+        <option value=""></option>
+        <option value="Not Certified">Not Certified</option>
+        <option value="Standard">Standard</option>
+        <option value="Instructor">Instructor</option>
+      </select>
     </label>
-    <label>Part-Time Rider
+
+    <label>Total Assignments
+      <input type="number" id="totalAssignments" disabled>
+    </label>
+
+    <label>Last Assignment Date
+      <input type="text" id="lastAssignmentDate" disabled>
+    </label>
+
+    <label>Part Time Rider
       <select id="partTime">
+        <option value=""></option>
         <option value="Yes">Yes</option>
         <option value="No">No</option>
       </select>
     </label>
-    <label>Certification
-      <select id="certification"></select>
+
+    <label>Payroll Number
+      <input type="text" id="payrollNumber">
     </label>
-    <label>Organization
-      <input type="text" id="organization">
+
+    <label>Platoon
+      <select id="platoon">
+        <option value=""></option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+      </select>
     </label>
-    <label>Total Assignments
-      <input type="number" id="totalAssignments" disabled>
-    </label>
-    <label>Last Assignment Date
-      <input type="text" id="lastAssignmentDate" disabled>
-    </label>
+
     <button onclick="saveRider()">Save</button>
     <div id="message"></div>
   </div>
+
   <script>
     function getParam(name){
       const params = new URLSearchParams(window.location.search);
-      let value = params.get(name);
-      if(value === null && window.urlParameters){
-        value = window.urlParameters[name] || null;
-      }
-      return value;
-    }
-    function getParamFromList(names){
-      for(const n of names){
-        const v = getParam(n);
-        if(v !== null && String(v).trim() !== '') return v;
-      }
-      return null;
-    }
-    function showMessage(msg){document.getElementById('message').textContent = msg;}
-    function populateSelectOptions(selectId, options, includeBlank=false){
-      const select = document.getElementById(selectId);
-      if(!select) return;
-      select.innerHTML = '';
-      if(includeBlank){
-        const blank = document.createElement('option');
-        blank.value = '';
-        blank.textContent = '';
-        select.appendChild(blank);
-      }
-      (options || []).forEach(opt => {
-        const o = document.createElement('option');
-        o.value = opt;
-        o.textContent = opt;
-        select.appendChild(o);
-      });
+      return params.get(name);
     }
 
-    function loadFormOptions(callback){
-      if(typeof google !== 'undefined' && google.script && google.script.run){
-        google.script.run.withSuccessHandler(function(opts){
-          try{
-            populateSelectOptions('status', opts.statusOptions, false);
-            populateSelectOptions('platoon', opts.platoonOptions, true);
-            populateSelectOptions('certification', opts.certificationOptions, true);
-            populateSelectOptions('partTime', opts.partTimeOptions, false);
-          }catch(e){/* no-op */}
-          if(typeof callback === 'function') callback();
-        }).withFailureHandler(function(){ if(typeof callback === 'function') callback(); }).getRiderFormOptions();
-      }else{
-        // Fallback defaults if GAS unavailable
-        populateSelectOptions('status', ['Active','Inactive','Vacation','Training','Suspended']);
-        populateSelectOptions('platoon', ['A','B'], true);
-        populateSelectOptions('certification', ['Standard','Advanced','Instructor','Trainee','Not Certified'], true);
-        populateSelectOptions('partTime', ['Yes','No']);
-        if(typeof callback === 'function') callback();
-      }
+    function showMessage(msg){
+      document.getElementById('message').textContent = msg;
     }
 
     function loadRider(){
-      const riderId = getParamFromList(['riderId','id','jpNumber','jp','JP','Rider ID']);
-      const riderName = getParamFromList(['name','fullName','riderName','Rider Name','Full Name']);
-      const lookup = riderId || riderName;
-      if(!lookup){showMessage('No rider ID provided');return;}
-      // Load options first, then load rider so selects exist before setting values
-      loadFormOptions(function(){
-        if(typeof google !== 'undefined' && google.script && google.script.run){
-          google.script.run.withSuccessHandler(renderRider)
-                           .withFailureHandler(err=>showMessage('Failed to load rider'))
-                           .getRiderDetails(lookup);
-        }else{
-          showMessage('Google Apps Script runtime unavailable');
-        }
-      });
-    }
-    function renderRider(rider){
-      if(!rider){showMessage('Rider not found');return;}
-
-      document.getElementById('riderId').value = rider.jpNumber || rider['Rider ID'] || rider['JP Number'] || '';
-      document.getElementById('payrollNumber').value = rider.payrollNumber || rider['Payroll Number'] || '';
-      document.getElementById('name').value = rider.name || rider['Full Name'] || rider['Name'] || '';
-      document.getElementById('phone').value = rider.phone || rider['Phone Number'] || '';
-      document.getElementById('email').value = rider.email || rider['Email'] || rider['Google Email'] || '';
-      document.getElementById('status').value = rider.status || rider['Status'] || '';
-      document.getElementById('platoon').value = rider.platoon || rider['Platoon'] || '';
-      document.getElementById('partTime').value = rider.partTime || rider['Part-Time Rider'] || rider['Part Time Rider'] || 'No';
-      document.getElementById('certification').value = rider.certification || rider['Certification'] || rider['Certification Level'] || '';
-      document.getElementById('organization').value = rider.organization || rider['Organization'] || '';
-      document.getElementById('totalAssignments').value = rider.totalAssignments || rider['Total Assignments'] || '';
-      document.getElementById('lastAssignmentDate').value = rider.lastAssignmentDate || rider['Last Assignment Date'] || rider['Last Assignment'] || '';
-
-    }
-    function saveRider(){
-      const data = {
-        'Rider ID': document.getElementById('riderId').value,
-        'Payroll Number': document.getElementById('payrollNumber').value,
-        'Full Name': document.getElementById('name').value,
-        'Phone Number': document.getElementById('phone').value,
-        'Email': document.getElementById('email').value,
-        'Status': document.getElementById('status').value,
-        'Platoon': document.getElementById('platoon').value,
-        'Part-Time Rider': document.getElementById('partTime').value,
-        'Certification': document.getElementById('certification').value,
-        'Organization': document.getElementById('organization').value
-      };
-      // Ensure Rider ID is present; if missing but name is present, try to resolve ID via server
-      if(!data['Rider ID'] && data['Full Name'] && google && google.script && google.script.run){
-        google.script.run.withSuccessHandler(function(r){
-          if(r && r.jpNumber){ data['Rider ID'] = r.jpNumber; submitUpdate(data); }
-          else { submitUpdate(data); }
-        }).withFailureHandler(function(){ submitUpdate(data); }).getRiderDetails(data['Full Name']);
+      const riderId = getParam('riderId') || getParam('id');
+      if(!riderId){
+        showMessage('No rider ID provided');
         return;
       }
-      submitUpdate(data);
-    }
-    function submitUpdate(data){
       if(typeof google !== 'undefined' && google.script && google.script.run){
-        google.script.run.withSuccessHandler(res=>showMessage(res.message || 'Saved'))
-                         .withFailureHandler(err=>showMessage('Failed to save rider'))
-                         .updateRider(data);
-      }else{
+        google.script.run
+          .withSuccessHandler(populateForm)
+          .withFailureHandler(function(){ showMessage('Failed to load rider'); })
+          .getRiderDetails(riderId);
+      } else {
         showMessage('Google Apps Script runtime unavailable');
       }
     }
+
+    function populateForm(rider){
+      if(!rider){
+        showMessage('Rider not found');
+        return;
+      }
+      document.getElementById('riderId').value = rider['Rider ID'] || rider.jpNumber || '';
+      document.getElementById('fullName').value = rider['Full Name'] || rider.name || '';
+      document.getElementById('phone').value = rider['Phone Number'] || rider.phone || '';
+      document.getElementById('email').value = rider['Email'] || rider.email || '';
+      document.getElementById('status').value = rider['Status'] || rider.status || '';
+      document.getElementById('certification').value = rider['Certification'] || rider.certification || '';
+      document.getElementById('totalAssignments').value = rider['Total Assignments'] || rider.totalAssignments || '';
+      document.getElementById('lastAssignmentDate').value = rider['Last Assignment Date'] || rider.lastAssignmentDate || '';
+      document.getElementById('partTime').value = rider['Part Time Rider'] || rider['Part-Time Rider'] || rider.partTime || '';
+      document.getElementById('payrollNumber').value = rider['Payroll Number'] || rider.payrollNumber || '';
+      document.getElementById('platoon').value = rider['Platoon'] || rider.platoon || '';
+    }
+
+    function saveRider(){
+      const data = {
+        'Rider ID': document.getElementById('riderId').value,
+        'Full Name': document.getElementById('fullName').value,
+        'Phone Number': document.getElementById('phone').value,
+        'Email': document.getElementById('email').value,
+        'Status': document.getElementById('status').value,
+        'Certification': document.getElementById('certification').value,
+        'Part-Time Rider': document.getElementById('partTime').value,
+        'Payroll Number': document.getElementById('payrollNumber').value,
+        'Platoon': document.getElementById('platoon').value
+      };
+      if(typeof google !== 'undefined' && google.script && google.script.run){
+        google.script.run
+          .withSuccessHandler(function(res){ showMessage(res.message || 'Saved'); })
+          .withFailureHandler(function(){ showMessage('Failed to save rider'); })
+          .updateRider(data);
+      } else {
+        showMessage('Google Apps Script runtime unavailable');
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', loadRider);
   </script>
 </body>
 </html>
+
