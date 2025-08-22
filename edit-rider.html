@@ -127,7 +127,7 @@
     }
 
     function loadRider(){
-      const riderId = getParam('riderId') || getParam('id');
+      const riderId = getParam('riderId');
       if(!riderId){
         showMessage('No rider ID provided');
         return;
@@ -147,7 +147,7 @@
         showMessage('Rider not found');
         return;
       }
-      document.getElementById('riderId').value = rider['Rider ID'] || rider.jpNumber || '';
+      document.getElementById('riderId').value = rider['Rider ID'] || rider.riderId || rider.jpNumber || '';
       document.getElementById('fullName').value = rider['Full Name'] || rider.name || '';
       document.getElementById('phone').value = rider['Phone Number'] || rider.phone || '';
       document.getElementById('email').value = rider['Email'] || rider.email || '';
