@@ -145,18 +145,28 @@
     }
 
     function loadRider(){
-      const riderId = getParam('riderId');
-      if(!riderId){
-        showMessage('No rider ID provided');
-        return;
+      function fetchAndLoad(riderId){
+        if(!riderId){
+          showMessage('No rider ID provided');
+          return;
+        }
+        if(typeof google !== 'undefined' && google.script && google.script.run){
+          google.script.run
+            .withSuccessHandler(populateForm)
+            .withFailureHandler(function(){ showMessage('Failed to load rider'); })
+            .getRiderDetails(riderId);
+        } else {
+          showMessage('Google Apps Script runtime unavailable');
+        }
       }
-      if(typeof google !== 'undefined' && google.script && google.script.run){
-        google.script.run
-          .withSuccessHandler(populateForm)
-          .withFailureHandler(function(){ showMessage('Failed to load rider'); })
-          .getRiderDetails(riderId);
+
+      if (typeof google !== 'undefined' && google.script && google.script.url && google.script.url.getLocation){
+        google.script.url.getLocation(function(location){
+          var riderId = location && location.parameter ? location.parameter.riderId : null;
+          fetchAndLoad(riderId);
+        });
       } else {
-        showMessage('Google Apps Script runtime unavailable');
+        fetchAndLoad(getParam('riderId'));
       }
     }
 
