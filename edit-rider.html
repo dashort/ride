@@ -18,6 +18,16 @@
       border-radius: 8px;
       padding: 1.5rem;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .close-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #333;
+      cursor: pointer;
     }
     label {
       display: block;
@@ -47,6 +57,7 @@
 </head>
 <body>
   <div class="container">
+    <span class="close-button" onclick="closeDialog()">&times;</span>
     <h1>Edit Rider</h1>
 
     <label>Rider ID
@@ -117,6 +128,13 @@
   </div>
 
   <script>
+    function closeDialog(){
+      if(typeof google !== 'undefined' && google.script && google.script.host){
+        google.script.host.close();
+      } else {
+        window.close();
+      }
+    }
     function getParam(name){
       const params = new URLSearchParams(window.location.search);
       return params.get(name);
