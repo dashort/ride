@@ -146,6 +146,7 @@
 
     function loadRider(){
       function fetchAndLoad(riderId){
+        riderId = (riderId || '').toString().trim();
         if(!riderId){
           showMessage('No rider ID provided');
           return;
