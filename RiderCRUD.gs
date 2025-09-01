@@ -120,13 +120,17 @@ function getRiderDashboard(riderId) {
 function getRiderDetails(riderId) {
   try {
     console.log(`🔍 getRiderDetails called with: "${riderId}" (type: ${typeof riderId})`);
-    
+
+    // Normalize riderId early to avoid mismatches from extra spaces or number types
+    riderId = String(riderId || '').trim();
+
     if (!riderId) {
       console.warn('⚠️ No rider ID provided');
       return null;
     }
 
-    const sheetData = getSheetData(CONFIG.sheets.riders);
+    // Bypass cache so we always read the most current data from the sheet
+    const sheetData = getSheetData(CONFIG.sheets.riders, false);
     
     if (!sheetData || !sheetData.data || sheetData.data.length === 0) {
       console.log('⚠️ No rider data found in sheet');
