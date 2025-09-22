@@ -978,50 +978,28 @@ function updateTablesSafe(tables) {
                 var name = r.name || r.riderName || '';
                 return !/nopd/i.test(name);
             });
-            data.sort(function(a, b) {
-                var nameA = String(a.name || a.riderName || '').toLowerCase();
-                var nameB = String(b.name || b.riderName || '').toLowerCase();
-                return nameA.localeCompare(nameB);
+            data.sort(function(a, b) { return ((b.requests || b.escorts || 0) - (a.requests || a.escorts || 0)); });
+
+            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>';
+
+            data.forEach(function(rider) {
+                tableHtml += '<tr>';
+                var requests = (rider.requests !== undefined) ? rider.requests : (rider.escorts || 0);
+                var hours = rider.hours || 0;
+                var avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
+                var nameHtml = escapeHtml(rider.name || rider.riderName || rider.rider || 'Unknown');
+                tableHtml += '<td><a href="#" class="rider-link" onclick="showRiderRequests(this.textContent); return false;">' + nameHtml + '</a></td>';
+                tableHtml += '<td>' + requests + '</td>';
+                tableHtml += '<td>' + hours + '</td>';
+                tableHtml += '<td>' + avg.toFixed(2) + '</td>';
+                tableHtml += '</tr>';
             });
-
-            var tableHtml = '<table class="report-table rider-activity-table"><thead><tr><th>Rider</th><th>Date</th><th>Escort Time</th><th>Hours</th></tr></thead><tbody>';
-
-            if (data.length === 0) {
-                tableHtml += '<tr><td colspan="4" style="text-align:center; color: #7f8c8d;">No rider escort assignments recorded for the selected period</td></tr>';
-            } else {
-                data.forEach(function(rider) {
-                    var name = rider.name || rider.riderName || rider.rider || 'Unknown';
-                    var nameLink = '<a href="#" class="rider-link" onclick="showRiderRequests(this.textContent); return false;">' + escapeHtml(name) + '</a>';
-                    var assignments = Array.isArray(rider.assignments) ? rider.assignments : [];
-
-                    if (assignments.length === 0) {
-                        tableHtml += '<tr><td>' + nameLink + '</td><td colspan="3" style="text-align:center; color: #7f8c8d;">No completed escorts in range</td></tr>';
-                        return;
-                    }
-
-                    var firstRow = true;
-                    assignments.forEach(function(entry) {
-                        var dateText = entry && entry.date ? String(entry.date) : 'N/A';
-                        var timeText = entry && entry.escortTime ? String(entry.escortTime) : 'N/A';
-                        var hoursText = formatHoursDisplay(entry ? entry.hours : null);
-                        var riderCell = firstRow ? nameLink : '&nbsp;';
-                        firstRow = false;
-
-                        tableHtml += '<tr>';
-                        tableHtml += '<td>' + riderCell + '</td>';
-                        tableHtml += '<td>' + escapeHtml(dateText) + '</td>';
-                        tableHtml += '<td>' + escapeHtml(timeText) + '</td>';
-                        tableHtml += '<td>' + escapeHtml(hoursText) + '</td>';
-                        tableHtml += '</tr>';
-                    });
-                });
-            }
 
             tableHtml += '</tbody></table>';
             riderTable.innerHTML = tableHtml;
             console.log('✅ Updated rider hours table');
         } else if (riderTable) {
-            riderTable.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><p>No rider escort assignments recorded for the selected period</p></div>';
+            riderTable.innerHTML = '<div style="padding: 2rem; text-align: center; color: #7f8c8d;"><p>No rider hours data available</p></div>';
         }
     } catch (e) {
         console.log('❌ Error updating rider hours table:', e.message);
@@ -1105,50 +1083,24 @@ function updateTablesSafe(tables) {
                     var name = r.name || r.riderName || '';
                     return !/nopd/i.test(name);
                 });
-                data.sort(function(a, b) {
-                    var nameA = String(a.name || a.riderName || '').toLowerCase();
-                    var nameB = String(b.name || b.riderName || '').toLowerCase();
-                    return nameA.localeCompare(nameB);
-                });
+                data.sort(function(a, b) { return ((b.requests || b.escorts || 0) - (a.requests || a.escorts || 0)); });
 
-                var rows = '';
+                var hoursRows = '';
                 for (var i = 0; i < data.length; i++) {
-                    var rider = data[i];
-                    var name = rider.name || rider.riderName || rider.rider || 'Unknown';
-                    var nameLink = '<a href="#" class="rider-link" onclick="showRiderRequests(this.textContent); return false;">' + escapeHtml(name) + '</a>';
-                    var assignments = Array.isArray(rider.assignments) ? rider.assignments : [];
-
-                    if (assignments.length === 0) {
-                        rows += '<tr><td>' + nameLink + '</td><td colspan="3" style="text-align:center; color: #7f8c8d;">No completed escorts in range</td></tr>';
-                        continue;
-                    }
-
-                    var firstRow = true;
-                    assignments.forEach(function(entry) {
-                        var dateText = entry && entry.date ? String(entry.date) : 'N/A';
-                        var timeText = entry && entry.escortTime ? String(entry.escortTime) : 'N/A';
-                        var hoursText = formatHoursDisplay(entry ? entry.hours : null);
-                        var riderCell = firstRow ? nameLink : '&nbsp;';
-                        firstRow = false;
-
-                        rows += '<tr>' +
-                            '<td>' + riderCell + '</td>' +
-                            '<td>' + escapeHtml(dateText) + '</td>' +
-                            '<td>' + escapeHtml(timeText) + '</td>' +
-                            '<td>' + escapeHtml(hoursText) + '</td>' +
-                            '</tr>';
-                    });
+                    var r = data[i];
+                    var requests = (r.requests !== undefined) ? r.requests : (r.escorts !== undefined ? r.escorts : 0);
+                    var hours = (r.hours !== undefined) ? r.hours : 0;
+                    var avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
+                    hoursRows += '<tr><td>' + escapeHtml(r.name || r.riderName || '') + '</td><td>' + requests + '</td><td>' + hours + '</td><td>' + avg.toFixed(2) + '</td></tr>';
                 }
-
-                if (!rows) {
-                    rows = '<tr><td colspan="4" style="text-align:center; color: #7f8c8d;">No rider escort assignments recorded for the selected period</td></tr>';
+                if (data.length === 0) {
+                    hoursRows = '<tr><td colspan="4" style="text-align:center; color: #7f8c8d;">No rider hours recorded for the selected period</td></tr>';
                 }
-
-                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Date</th><th>Escort Time</th><th>Hours</th></tr></thead><tbody>' + rows + '</tbody></table>';
+                var hoursTable = '<table class="stats-table rider-activity-table"><thead><tr><th>Rider</th><th>Requests</th><th>Hours</th><th>Average</th></tr></thead><tbody>' + hoursRows + '</tbody></table>';
                 document.getElementById('riderHoursTable').innerHTML = hoursTable;
         } else {
             document.getElementById('riderHoursTable').innerHTML =
-                '<div class="loading" style="color: #7f8c8d;">No rider escort assignments recorded for the selected period</div>';
+                '<div class="loading" style="color: #7f8c8d;">No rider hours data available for the selected period</div>';
         }
 
 
@@ -1227,7 +1179,7 @@ function updateTablesSafe(tables) {
                             a.click();
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
-                            showNotification('Assignment summary exported', '#2ecc71');
+                            showNotification('Public assignment summary exported', '#2ecc71');
                         } else {
                             showError(result && result.message ? result.message : 'Export failed');
                         }
@@ -1275,18 +1227,6 @@ function updateTablesSafe(tables) {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#39;');
-        }
-
-        function formatHoursDisplay(hours) {
-            var num = parseFloat(hours);
-            if (!isFinite(num)) {
-                return '0';
-            }
-            var rounded = Math.round(num * 100) / 100;
-            if (Math.abs(rounded - Math.round(rounded)) < 1e-9) {
-                return String(Math.round(rounded));
-            }
-            return rounded.toFixed(2);
         }
 
         function showLoading(message) {
