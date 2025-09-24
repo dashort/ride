@@ -144,6 +144,15 @@
       document.getElementById('message').textContent = msg;
     }
 
+    function getFirstParamValue(params, key){
+      if(!params || !key) return null;
+      const value = params[key];
+      if(Array.isArray(value)){
+        return value.length > 0 ? value[0] : null;
+      }
+      return value !== undefined ? value : null;
+    }
+
     function loadRider(){
       function fetchAndLoad(riderId){
         riderId = (riderId || '').toString().trim();
@@ -161,11 +170,17 @@
         }
       }
 
+      const injectedParams = (typeof window !== 'undefined' && window.pageParameters) ? window.pageParameters : null;
+      const injectedRiderId = getFirstParamValue(injectedParams, 'riderId');
+
       if (typeof google !== 'undefined' && google.script && google.script.url && google.script.url.getLocation){
         google.script.url.getLocation(function(location){
-          var riderId = location && location.parameter ? location.parameter.riderId : null;
-          fetchAndLoad(riderId);
+          const locationRiderId = getFirstParamValue(location && location.parameter, 'riderId');
+          const fallbackRiderId = injectedRiderId || getParam('riderId');
+          fetchAndLoad(locationRiderId || fallbackRiderId);
         });
+      } else if (injectedRiderId) {
+        fetchAndLoad(injectedRiderId);
       } else {
         fetchAndLoad(getParam('riderId'));
       }
