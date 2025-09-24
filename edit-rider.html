@@ -141,7 +141,7 @@
     }
 
     function showMessage(msg){
-      document.getElementById('message').textContent = msg;
+      document.getElementById('message').textContent = msg || '';
     }
 
     function getFirstParamValue(params, key){
@@ -154,17 +154,18 @@
     }
 
     function loadRider(){
+      preloadFormOptions();
+
       function fetchAndLoad(riderId){
         riderId = (riderId || '').toString().trim();
         if(!riderId){
           showMessage('No rider ID provided');
           return;
         }
+
         if(typeof google !== 'undefined' && google.script && google.script.run){
-          google.script.run
-            .withSuccessHandler(populateForm)
-            .withFailureHandler(function(){ showMessage('Failed to load rider'); })
-            .getRiderDetails(riderId);
+          showMessage('Loading rider details...');
+          requestRiderDetails(riderId);
         } else {
           showMessage('Google Apps Script runtime unavailable');
         }
@@ -183,6 +184,105 @@
         fetchAndLoad(injectedRiderId);
       } else {
         fetchAndLoad(getParam('riderId'));
+      }
+    }
+
+    function requestRiderDetails(riderId){
+      google.script.run
+        .withSuccessHandler(function(response){ handleRiderResponse(response, riderId); })
+        .withFailureHandler(function(error){
+          const message = (error && error.message) || (typeof error === 'string' ? error : '');
+          if (message && message.indexOf('Script function not found: handleRiderOperation') !== -1) {
+            requestLegacyRiderDetails(riderId);
+            return;
+          }
+          console.error('Failed to load rider details via handleRiderOperation', error);
+          showMessage('Failed to load rider');
+        })
+        .handleRiderOperation('get', { riderId: riderId });
+    }
+
+    function requestLegacyRiderDetails(riderId){
+      google.script.run
+        .withSuccessHandler(function(response){ handleRiderResponse(response, riderId); })
+        .withFailureHandler(function(error){
+          console.error('Failed to load rider details', error);
+          showMessage('Failed to load rider');
+        })
+        .getRiderDetails(riderId);
+    }
+
+    function handleRiderResponse(response){
+      if(!response){
+        showMessage('Rider not found');
+        return;
+      }
+
+      if(typeof response.success === 'boolean'){
+        if(!response.success){
+          showMessage(response.message || 'Rider not found');
+          return;
+        }
+
+        if(response.options){
+          applyFormOptions(response.options);
+        }
+
+        if(response.rider){
+          populateForm(response.rider);
+          showMessage('');
+        } else {
+          showMessage('Rider not found');
+        }
+        return;
+      }
+
+      // Legacy response - assume it's a rider object
+      populateForm(response);
+      showMessage('');
+    }
+
+    function preloadFormOptions(){
+      if(typeof google === 'undefined' || !google.script || !google.script.run){
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(function(options){ applyFormOptions(options); })
+        .withFailureHandler(function(error){ console.error('Failed to load form options', error); })
+        .getRiderFormOptions();
+    }
+
+    function applyFormOptions(options){
+      if(!options) return;
+      updateSelectOptions('status', options.statusOptions, false);
+      updateSelectOptions('certification', options.certificationOptions, true);
+      updateSelectOptions('partTime', options.partTimeOptions, true);
+      updateSelectOptions('platoon', options.platoonOptions, true);
+    }
+
+    function updateSelectOptions(selectId, options, includeEmpty){
+      const select = document.getElementById(selectId);
+      if(!select || !Array.isArray(options)) return;
+
+      const currentValue = select.value;
+      select.innerHTML = '';
+
+      if(includeEmpty){
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = '';
+        select.appendChild(emptyOption);
+      }
+
+      options.forEach(function(optionValue){
+        const optionEl = document.createElement('option');
+        optionEl.value = optionValue;
+        optionEl.textContent = optionValue;
+        select.appendChild(optionEl);
+      });
+
+      if(currentValue){
+        select.value = currentValue;
       }
     }
 
