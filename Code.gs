@@ -5186,102 +5186,28 @@ function exportRiderActivityCSV(startDate, endDate) {
  */
 function exportPublicAssignmentSummaryCSV(startDate) {
   try {
-    const start = parseDateString(startDate) || new Date();
-    const year = start.getFullYear();
-    const month = start.getMonth();
-    const firstDay = new Date(year, month, 1);
-    firstDay.setHours(0, 0, 0, 0);
-    const lastDay = new Date(year, month + 1, 0);
-    lastDay.setHours(23, 59, 59, 999);
-    const daysInMonth = lastDay.getDate();
-
-    const requestsData = getRequestsData();
-    const ridersData = getRidersData();
-
-    // Map rider names to payroll numbers, excluding generic NOPD riders
-    const excludedNames = ['nopd rider', 'nopd rider 2'];
-    const riderMap = {};
-    ridersData.data.forEach(row => {
-      const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-      const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
-      if (name && !excludedNames.includes(name.trim().toLowerCase())) {
-        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: payroll || '' };
-      }
-    });
-
-    // Initialize rider hour structure
-    const riderHours = {};
-    Object.values(riderMap).forEach(r => {
-      riderHours[r.id] = { name: r.name, id: r.id, daily: Array(daysInMonth).fill(0), total: 0 };
-    });
-
-    // Accumulate hours per rider per day
-    requestsData.data.forEach(request => {
-      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      if (!(eventDate instanceof Date)) return;
-      if (eventDate < firstDay || eventDate > lastDay) return;
-      if (String(status).toLowerCase() !== 'completed') return;
-
-      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-      if (!ridersAssigned) return;
-
-      const day = eventDate.getDate();
-      const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
-      const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
-      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-
-      let hoursToAdd = 0;
-      if (startTime && endTime) {
-        const startT = startTime instanceof Date ? startTime : new Date(startTime);
-        const endT = endTime instanceof Date ? endTime : new Date(endTime);
-        if (!isNaN(startT.getTime()) && !isNaN(endT.getTime())) {
-          hoursToAdd = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
-        }
-      }
-      if (hoursToAdd <= 0) {
-        const estimates = { Funeral: 0.5, Wedding: 2.5, VIP: 4.0, 'Float Movement': 4.0, Other: 2.0 };
-        hoursToAdd = estimates[requestType] || estimates['Other'];
-      }
-      hoursToAdd = roundToQuarterHour(hoursToAdd);
-
-      String(ridersAssigned)
-        .split(',')
-        .map(n => n.trim())
-        .filter(Boolean)
-        .forEach(name => {
-          const rider = riderMap[name.toLowerCase()];
-          if (rider && riderHours[rider.id]) {
-            riderHours[rider.id].daily[day - 1] += hoursToAdd;
-            riderHours[rider.id].total += hoursToAdd;
-          }
-        });
-    });
+    const summary = buildPublicAssignmentSummaryData(startDate);
 
     const header = ['Rider Name', 'Payroll Number'];
-    for (let d = 1; d <= daysInMonth; d++) header.push(String(d));
+    for (let d = 1; d <= summary.daysInMonth; d++) header.push(String(d));
     header.push('Total Hours');
 
     const csvRows = [header.join(',')];
-    Object.values(riderHours).forEach(r => {
-      const dailyRounded = r.daily.map(h => roundToQuarterHour(h));
-      const totalRounded = roundToQuarterHour(dailyRounded.reduce((sum, h) => sum + h, 0));
-      if (totalRounded > 0) {
-        const row = [
-          `"${String(r.name).replace(/"/g, '""')}"`,
-          `"${String(r.id).replace(/"/g, '""')}"`,
-          ...dailyRounded.map(h => h > 0 ? h : ''),
-          totalRounded
-        ];
-        csvRows.push(row.join(','));
-      }
+    summary.riders.forEach(rider => {
+      const row = [
+        `"${String(rider.name).replace(/"/g, '""')}"`,
+        `"${String(rider.id).replace(/"/g, '""')}"`,
+        ...rider.dailyEntries.map(formatPublicAssignmentCell),
+        roundToQuarterHour(rider.totalHours)
+      ];
+      csvRows.push(row.join(','));
     });
 
     if (csvRows.length === 1) {
       throw new Error('No rider activity data available');
     }
 
-    const filename = `public_assignment_summary_${year}_${String(month + 1).padStart(2, '0')}.csv`;
+    const filename = `public_assignment_summary_${summary.year}_${String(summary.month + 1).padStart(2, '0')}.csv`;
     return {
       success: true,
       csvContent: csvRows.join('\n'),
@@ -5301,97 +5227,27 @@ function exportPublicAssignmentSummaryCSV(startDate) {
  */
 function createPublicAssignmentSummarySheet(startDate) {
   try {
-    const start = parseDateString(startDate) || new Date();
-    const year = start.getFullYear();
-    const month = start.getMonth();
-    const firstDay = new Date(year, month, 1);
-    firstDay.setHours(0, 0, 0, 0);
-    const lastDay = new Date(year, month + 1, 0);
-    lastDay.setHours(23, 59, 59, 999);
-    const daysInMonth = lastDay.getDate();
-
-    const requestsData = getRequestsData();
-    const ridersData = getRidersData();
-
-    // Map rider names to payroll numbers, excluding generic NOPD riders
-    const excludedNames = ['nopd rider', 'nopd rider 2'];
-    const riderMap = {};
-    ridersData.data.forEach(row => {
-      const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
-      const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
-      if (name && !excludedNames.includes(name.trim().toLowerCase())) {
-        riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: payroll || '' };
-      }
-    });
-
-    // Initialize rider hour structure
-    const riderHours = {};
-    Object.values(riderMap).forEach(r => {
-      riderHours[r.id] = { name: r.name, id: r.id, daily: Array(daysInMonth).fill(0), total: 0 };
-    });
-
-    // Accumulate hours per rider per day
-    requestsData.data.forEach(request => {
-      const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
-      const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
-      if (!(eventDate instanceof Date)) return;
-      if (eventDate < firstDay || eventDate > lastDay) return;
-      if (String(status).toLowerCase() !== 'completed') return;
-
-      const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
-      if (!ridersAssigned) return;
-
-      const day = eventDate.getDate();
-      const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
-      const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
-      const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
-
-      let hoursToAdd = 0;
-      if (startTime && endTime) {
-        const startT = startTime instanceof Date ? startTime : new Date(startTime);
-        const endT = endTime instanceof Date ? endTime : new Date(endTime);
-        if (!isNaN(startT.getTime()) && !isNaN(endT.getTime())) {
-          hoursToAdd = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
-        }
-      }
-      if (hoursToAdd <= 0) {
-        const estimates = { Funeral: 0.5, Wedding: 2.5, VIP: 4.0, 'Float Movement': 4.0, Other: 2.0 };
-        hoursToAdd = estimates[requestType] || estimates['Other'];
-      }
-
-      hoursToAdd = roundToQuarterHour(hoursToAdd);
-
-      String(ridersAssigned)
-        .split(',')
-        .map(n => n.trim())
-        .filter(Boolean)
-        .forEach(name => {
-          const rider = riderMap[name.toLowerCase()];
-          if (rider && riderHours[rider.id]) {
-            riderHours[rider.id].daily[day - 1] += hoursToAdd;
-            riderHours[rider.id].total += hoursToAdd;
-          }
-        });
-    });
+    const summary = buildPublicAssignmentSummaryData(startDate);
 
     const header = ['Rider Name', 'Payroll Number'];
-    for (let d = 1; d <= daysInMonth; d++) header.push(String(d));
+    for (let d = 1; d <= summary.daysInMonth; d++) header.push(String(d));
     header.push('Total Hours');
 
     const rows = [header];
-    Object.values(riderHours).forEach(r => {
-      const dailyRounded = r.daily.map(h => roundToQuarterHour(h));
-      const totalRounded = roundToQuarterHour(dailyRounded.reduce((sum, h) => sum + h, 0));
-      if (totalRounded > 0) {
-        rows.push([r.name, r.id, ...dailyRounded.map(h => h > 0 ? h : ''), totalRounded]);
-      }
+    summary.riders.forEach(rider => {
+      rows.push([
+        rider.name,
+        rider.id,
+        ...rider.dailyEntries.map(formatPublicAssignmentCell),
+        roundToQuarterHour(rider.totalHours)
+      ]);
     });
 
     if (rows.length === 1) {
       throw new Error('No rider activity data available');
     }
 
-    const ss = SpreadsheetApp.create(`Public Assignment Summary ${year}-${String(month + 1).padStart(2, '0')}`);
+    const ss = SpreadsheetApp.create(`Public Assignment Summary ${summary.year}-${String(summary.month + 1).padStart(2, '0')}`);
     const sheet = ss.getActiveSheet();
     sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
 
@@ -5405,6 +5261,169 @@ function createPublicAssignmentSummarySheet(startDate) {
     logError('Error in createPublicAssignmentSummarySheet', error);
     return { success: false, message: error.message };
   }
+}
+
+function buildPublicAssignmentSummaryData(startDate) {
+  const start = parseDateString(startDate) || new Date();
+  const year = start.getFullYear();
+  const month = start.getMonth();
+  const firstDay = new Date(year, month, 1);
+  firstDay.setHours(0, 0, 0, 0);
+  const lastDay = new Date(year, month + 1, 0);
+  lastDay.setHours(23, 59, 59, 999);
+  const daysInMonth = lastDay.getDate();
+
+  const requestsData = getRequestsData();
+  const ridersData = getRidersData();
+
+  const excludedNames = ['nopd rider', 'nopd rider 2'];
+  const riderMap = {};
+  ridersData.data.forEach(row => {
+    const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+    const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
+    if (name && !excludedNames.includes(name.trim().toLowerCase())) {
+      riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: payroll || '' };
+    }
+  });
+
+  const riderHours = {};
+  Object.values(riderMap).forEach(r => {
+    riderHours[r.id] = {
+      name: r.name,
+      id: r.id,
+      daily: Array.from({ length: daysInMonth }, () => []),
+      total: 0
+    };
+  });
+
+  const normalizeTimeValue = value => {
+    if (!value) return null;
+    if (value instanceof Date && !isNaN(value.getTime())) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : null;
+    }
+    return null;
+  };
+
+  requestsData.data.forEach(request => {
+    const eventDate = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.eventDate);
+    const status = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.status);
+    if (!(eventDate instanceof Date)) return;
+    if (eventDate < firstDay || eventDate > lastDay) return;
+    if (String(status).toLowerCase() !== 'completed') return;
+
+    const ridersAssigned = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.ridersAssigned);
+    if (!ridersAssigned) return;
+
+    const day = eventDate.getDate();
+    const startTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.startTime);
+    const endTime = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.endTime);
+    const requestType = getColumnValue(request, requestsData.columnMap, CONFIG.columns.requests.type);
+
+    let hoursToAdd = 0;
+    if (startTime && endTime) {
+      const startT = startTime instanceof Date ? startTime : new Date(startTime);
+      const endT = endTime instanceof Date ? endTime : new Date(endTime);
+      if (!isNaN(startT.getTime()) && !isNaN(endT.getTime())) {
+        hoursToAdd = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
+      }
+    }
+    if (hoursToAdd <= 0) {
+      const estimates = { Funeral: 0.5, Wedding: 2.5, VIP: 4.0, 'Float Movement': 4.0, Other: 2.0 };
+      hoursToAdd = estimates[requestType] || estimates['Other'];
+    }
+
+    hoursToAdd = roundToQuarterHour(hoursToAdd);
+    const normalizedStart = normalizeTimeValue(startTime);
+    const normalizedEnd = normalizeTimeValue(endTime);
+
+    String(ridersAssigned)
+      .split(',')
+      .map(n => n.trim())
+      .filter(Boolean)
+      .forEach(name => {
+        const rider = riderMap[name.toLowerCase()];
+        if (rider && riderHours[rider.id]) {
+          riderHours[rider.id].daily[day - 1].push({
+            start: normalizedStart,
+            end: normalizedEnd,
+            hours: hoursToAdd
+          });
+          riderHours[rider.id].total += hoursToAdd;
+        }
+      });
+  });
+
+  const riders = Object.values(riderHours)
+    .map(rider => {
+      const dailyEntries = rider.daily.map(entries => entries.slice());
+      const totalHours = dailyEntries.reduce((sum, entries) => {
+        return sum + entries.reduce((entrySum, entry) => entrySum + entry.hours, 0);
+      }, 0);
+
+      return {
+        name: rider.name,
+        id: rider.id,
+        dailyEntries: dailyEntries,
+        totalHours: roundToQuarterHour(totalHours)
+      };
+    })
+    .filter(r => r.totalHours > 0);
+
+  return {
+    year: year,
+    month: month,
+    daysInMonth: daysInMonth,
+    riders: riders
+  };
+}
+
+function formatPublicAssignmentCell(entries) {
+  if (!entries || entries.length === 0) {
+    return '';
+  }
+
+  const formatTimeValue = value => {
+    if (!value) return '';
+    const formatted = formatTimeForDisplay(value);
+    if (!formatted || formatted === 'No Time' || formatted === 'Invalid Time') {
+      return '';
+    }
+    return formatted;
+  };
+
+  const formatHoursText = hours => {
+    const rounded = roundToQuarterHour(hours);
+    const absoluteRounded = Math.abs(rounded);
+    let hoursText = rounded.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    if (hoursText === '0') {
+      hoursText = '0';
+    }
+    const unit = absoluteRounded === 1 ? 'hr' : 'hrs';
+    return `${hoursText} ${unit}`;
+  };
+
+  const formatEntry = entry => {
+    const start = formatTimeValue(entry.start);
+    const end = formatTimeValue(entry.end);
+    const hoursText = formatHoursText(entry.hours);
+
+    if (start && end && start !== end) {
+      return `${start} - ${end} (${hoursText})`;
+    }
+    if (start) {
+      return `${start} (${hoursText})`;
+    }
+    if (end) {
+      return `${end} (${hoursText})`;
+    }
+    return `Time TBD (${hoursText})`;
+  };
+
+  return entries.map(formatEntry).join(' | ');
 }
 
 /**
