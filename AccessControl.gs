@@ -1424,13 +1424,15 @@ function doGet(e) {
     const navigation = getRoleBasedNavigationSafe(pageName, user, rider);
     content = content.replace('<!--NAVIGATION_MENU_PLACEHOLDER-->', navigation);
     
-    // CLEAN: Add only essential user context
-    const userScript = `<script>window.currentUser = ${JSON.stringify(user)};</script>`;
-    
+    // CLEAN: Add only essential user context and safely expose URL parameters
+    const safeUserJson = JSON.stringify(user).replace(/</g, '\\u003c');
+    const safeParamsJson = JSON.stringify(e?.parameter || {}).replace(/</g, '\\u003c');
+    const contextScript = `<script>window.currentUser = ${safeUserJson};window.pageParameters = ${safeParamsJson};</script>`;
+
     if (content.includes('</body>')) {
-      content = content.replace('</body>', userScript + '</body>');
+      content = content.replace('</body>', contextScript + '</body>');
     } else {
-      content += userScript;
+      content += contextScript;
     }
     
     return HtmlService.createHtmlOutput(content).setTitle('Motorcycle Escort Management');
