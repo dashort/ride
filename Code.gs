@@ -397,12 +397,6 @@ function generateRealTableData(requestsData, ridersData, filters) {
     const requests = requestsData.data || [];
     const riders = ridersData.data || [];
 
-    const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
-                       requestsData.columnMap[CONFIG.columns.requests.date] :
-                       requestsData.columnMap['Date'] ||
-                       requestsData.columnMap['Request Date'] ||
-                       requestsData.columnMap['Event Date'] || 0;
-
     // Filter requests by date range if provided
     let filteredRequests = requests;
     if (filters && filters.startDate && filters.endDate) {
@@ -410,6 +404,11 @@ function generateRealTableData(requestsData, ridersData, filters) {
       const endDate = new Date(filters.endDate);
 
       filteredRequests = requests.filter(row => {
+        const dateColIdx = (typeof CONFIG !== 'undefined' && CONFIG.columns?.requests?.date) ?
+                          requestsData.columnMap[CONFIG.columns.requests.date] :
+                          requestsData.columnMap['Date'] ||
+                          requestsData.columnMap['Request Date'] ||
+                          requestsData.columnMap['Event Date'] || 0;
         const requestDate = new Date(row[dateColIdx]);
         return requestDate >= startDate && requestDate <= endDate;
       });
@@ -424,56 +423,9 @@ function generateRealTableData(requestsData, ridersData, filters) {
     if (statusColIdx !== undefined) {
       filteredRequests = filteredRequests.filter(row => isCompletedStatus(row[statusColIdx]));
     }
-
-    // Generate rider escort activity grouped by rider and day
-    const riderAssignments = {};
-
-    const parseDateValue = value => {
-      if (!value) {
-        return null;
-      }
-      if (value instanceof Date) {
-        return isNaN(value.getTime()) ? null : value;
-      }
-      const parsed = new Date(value);
-      return isNaN(parsed.getTime()) ? null : parsed;
-    };
-
-    const combineDateAndTime = (dateValue, timeValue) => {
-      const baseDate = parseDateValue(dateValue);
-      if (timeValue instanceof Date) {
-        const clone = parseDateValue(timeValue);
-        if (clone) {
-          return clone;
-        }
-      }
-      if (!baseDate) {
-        return parseDateValue(timeValue);
-      }
-      if (typeof timeValue === 'string' && timeValue.trim()) {
-        const timeString = timeValue.trim();
-        const timeMatch = timeString.match(/^(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(AM|PM)?$/i);
-        if (timeMatch) {
-          let hours = parseInt(timeMatch[1], 10);
-          const minutes = parseInt(timeMatch[2] || '0', 10);
-          const seconds = parseInt(timeMatch[3] || '0', 10);
-          const meridian = timeMatch[4] ? timeMatch[4].toUpperCase() : '';
-          if (meridian === 'PM' && hours < 12) {
-            hours += 12;
-          }
-          if (meridian === 'AM' && hours === 12) {
-            hours = 0;
-          }
-          if (!meridian && hours === 24) {
-            hours = 0;
-          }
-          const combined = new Date(baseDate);
-          combined.setHours(hours, minutes, seconds, 0);
-          return combined;
-        }
-      }
-      return baseDate;
-    };
+    
+    // Generate rider hours data using rider names
+    const riderStats = {};
 
     // Build a lookup map from rider ID to rider name
     const riderNameIdx = ridersData.columnMap[CONFIG.columns.riders.name];
@@ -520,7 +472,6 @@ function generateRealTableData(requestsData, ridersData, filters) {
         const startVal = startTimeIdx !== undefined ? row[startTimeIdx] : null;
         const endVal = endTimeIdx !== undefined ? row[endTimeIdx] : null;
         const typeVal = typeIdx !== undefined ? row[typeIdx] : 'Other';
-        const dateVal = dateColIdx !== undefined ? row[dateColIdx] : null;
 
         let hoursToAdd = 0;
         if (startVal && endVal) {
@@ -534,62 +485,26 @@ function generateRealTableData(requestsData, ridersData, filters) {
           hoursToAdd = getEstimatedHoursForRequestType(String(typeVal) || 'Other');
         }
 
-        const baseDate = parseDateValue(dateVal) || parseDateValue(startVal) || parseDateValue(endVal);
-        const formattedDate = baseDate ? baseDate.toLocaleDateString() : 'N/A';
-
-        let displayTime = 'N/A';
-        let sortTimestamp = baseDate ? baseDate.getTime() : 0;
-        const startDateTime = combineDateAndTime(baseDate, startVal);
-        if (startVal && startDateTime) {
-          displayTime = startDateTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-          sortTimestamp = startDateTime.getTime();
-        } else if (typeof startVal === 'string' && startVal.trim()) {
-          displayTime = startVal.trim();
-          const derived = combineDateAndTime(baseDate, startVal);
-          if (derived) {
-            sortTimestamp = derived.getTime();
-          }
-        }
-
-        const assignmentHours = Math.round(hoursToAdd * 4) / 4;
-
         // Split comma-separated riders and normalize names
         ridersValue.split(',').map(r => r.trim()).filter(r => r).forEach(entry => {
           const riderName = idToName[entry] || entry;
           if (!riderName || riderName.toLowerCase().startsWith('unknown')) return;
 
-          if (!riderAssignments[riderName]) {
-            riderAssignments[riderName] = { totalHours: 0, assignments: [] };
+          if (!riderStats[riderName]) {
+            riderStats[riderName] = { escorts: 0, hours: 0 };
           }
-          riderAssignments[riderName].totalHours += assignmentHours;
-          riderAssignments[riderName].assignments.push({
-            date: formattedDate,
-            escortTime: displayTime,
-            hours: assignmentHours,
-            sortTimestamp: sortTimestamp
-          });
+          riderStats[riderName].escorts += 1;
+          riderStats[riderName].hours += hoursToAdd;
         });
       });
 
-      // Convert to array format with chronological assignments
-      Object.keys(riderAssignments).forEach(name => {
-        const details = riderAssignments[name];
-        const assignments = details.assignments.slice().sort((a, b) => {
-          if (a.sortTimestamp !== b.sortTimestamp) {
-            return a.sortTimestamp - b.sortTimestamp;
-          }
-          return String(a.date || '').localeCompare(String(b.date || '')) ||
-                 String(a.escortTime || '').localeCompare(String(b.escortTime || ''));
-        }).map(item => ({
-          date: item.date,
-          escortTime: item.escortTime,
-          hours: item.hours
-        }));
-
+      // Convert to array format
+      Object.keys(riderStats).forEach(name => {
+        const stats = riderStats[name];
         tables.riderHours.push({
           riderName: name,
-          totalHours: Math.round(details.totalHours * 100) / 100,
-          assignments: assignments
+          escorts: stats.escorts,
+          hours: Math.round(stats.hours * 4) / 4
         });
       });
     }
@@ -5233,37 +5148,21 @@ function exportRiderActivityCSV(startDate, endDate) {
       throw new Error('No rider activity data available');
     }
 
-    const toCsvSafe = value => `"${String(value || '').replace(/"/g, '""')}"`;
-    const formatHours = value => {
-      const num = parseFloat(value);
-      if (!isFinite(num)) {
-        return '0';
-      }
-      return (Math.round(num * 100) / 100).toString();
-    };
-
-    const headers = ['Rider', 'Date', 'Escort Time', 'Hours'];
+    const headers = ['Rider', 'Requests', 'Hours', 'Average'];
     const csvRows = [headers.join(',')];
-    let rowCount = 0;
-
-    riderHours.forEach(rider => {
-      const name = rider.name || rider.riderName || rider.rider || '';
-      const assignments = Array.isArray(rider.assignments) ? rider.assignments : [];
-      assignments.forEach(assignment => {
-        const row = [
-          toCsvSafe(name),
-          toCsvSafe(assignment.date || ''),
-          toCsvSafe(assignment.escortTime || ''),
-          formatHours(assignment.hours)
-        ];
-        csvRows.push(row.join(','));
-        rowCount++;
-      });
+    riderHours.forEach(r => {
+      const name = r.name || r.riderName || '';
+      const requests = r.requests !== undefined ? r.requests : r.escorts;
+      const hours = r.hours !== undefined ? r.hours : 0;
+      const avg = requests > 0 ? Math.round((hours / requests) * 4) / 4 : 0;
+      const row = [
+        `"${String(name).replace(/"/g, '""')}"`,
+        requests,
+        hours,
+        avg
+      ];
+      csvRows.push(row.join(','));
     });
-
-    if (rowCount === 0) {
-      throw new Error('No rider escort assignments available for export');
-    }
 
     const csvContent = csvRows.join('\n');
     const filename = `rider_activity_${startDate}_to_${endDate}.csv`;
@@ -5272,7 +5171,7 @@ function exportRiderActivityCSV(startDate, endDate) {
       success: true,
       csvContent: csvContent,
       filename: filename,
-      count: rowCount
+      count: riderHours.length
     };
   } catch (error) {
     logError('Error in exportRiderActivityCSV', error);

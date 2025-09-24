@@ -560,20 +560,6 @@
     function updateStats(stats) {
         console.log('📊 Updating stats display:', stats);
 
-        const normalizedStats = {
-            totalRiders: 0,
-            activeRiders: 0,
-            pendingRequests: 0,
-            newRequests: 0,
-            todayAssignments: 0,
-            weekAssignments: 0,
-            ...(typeof stats === 'object' && stats !== null ? stats : {})
-        };
-
-        if (!stats || typeof stats !== 'object') {
-            console.warn('⚠️ No stats provided, using fallback values.');
-        }
-
         const safeUpdateStat = (id, value) => {
             try {
                 const element = document.getElementById(id);
@@ -589,10 +575,10 @@
             }
         };
 
-        safeUpdateStat('activeRiders', normalizedStats.activeRiders);
-        safeUpdateStat('newRequests', normalizedStats.newRequests ?? normalizedStats.pendingRequests);
-        safeUpdateStat('todayAssignments', normalizedStats.todayAssignments);
-        safeUpdateStat('weekAssignments', normalizedStats.weekAssignments);
+        safeUpdateStat('activeRiders', stats.activeRiders);
+        safeUpdateStat('newRequests', stats.newRequests ?? stats.pendingRequests);
+        safeUpdateStat('todayAssignments', stats.todayAssignments);
+        safeUpdateStat('weekAssignments', stats.weekAssignments);
     }
 
     function updateRecentRequests(requests) {

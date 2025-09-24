@@ -1179,7 +1179,7 @@ function updateTablesSafe(tables) {
                             a.click();
                             document.body.removeChild(a);
                             URL.revokeObjectURL(url);
-                            showNotification('Public assignment summary exported', '#2ecc71');
+                            showNotification('Assignment summary exported', '#2ecc71');
                         } else {
                             showError(result && result.message ? result.message : 'Export failed');
                         }
@@ -1231,7 +1231,7 @@ function updateTablesSafe(tables) {
 
         function showLoading(message) {
             console.log('Loading:', message);
-
+            
             // Create or update loading overlay
             let loadingOverlay = document.getElementById('loadingOverlay');
             if (!loadingOverlay) {
