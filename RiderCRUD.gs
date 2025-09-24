@@ -280,9 +280,16 @@ function handleRiderOperation(action, data) {
     switch (action) {
       case 'get':
         // Get rider details for editing
-        const riderId = data.riderId || data['Rider ID'];
+        const riderId = String(data.riderId || data['Rider ID'] || '').trim();
         console.log(`Getting rider details for: "${riderId}"`);
-        
+
+        if (!riderId) {
+          return {
+            success: false,
+            message: 'No rider ID provided'
+          };
+        }
+
         const rider = getRiderDetails(riderId);
         if (!rider) {
           return {
@@ -290,10 +297,11 @@ function handleRiderOperation(action, data) {
             message: `Rider with ID "${riderId}" not found`
           };
         }
-        
+
         return {
           success: true,
-          rider: rider
+          rider: rider,
+          options: getRiderFormOptions()
         };
         
       case 'create':
