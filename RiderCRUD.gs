@@ -196,6 +196,16 @@ function getRiderDetails(riderId) {
         .replace(/^0+/, '');
     };
     
+    // Helper to normalize names (lowercase, remove punctuation, collapse spaces)
+    const normalizeText = (value) => {
+      if (value === null || value === undefined) return '';
+      return String(value)
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ');
+    };
+    
     // If we have an ID column, attempt ID-based strategies first
     if (riderIdIndex !== undefined) {
       // Strategy 1: Exact string match
@@ -235,13 +245,36 @@ function getRiderDetails(riderId) {
 
     // Strategy 4: Try searching by name if riderId might actually be a name (or ID column missing)
     if (!targetRow && nameIndex !== undefined) {
+      const requestedName = String(riderId || '').trim();
+      const requestedNameLower = requestedName.toLowerCase();
+      const normalizedRequestedName = normalizeText(requestedName);
+
+      // 4a) Exact case-insensitive match
       targetRow = sheetData.data.find((row) => {
         const rowName = row[nameIndex];
-        const isMatch = String(rowName).trim().toLowerCase() === String(riderId).trim().toLowerCase();
-        return isMatch;
+        return String(rowName).trim().toLowerCase() === requestedNameLower;
       });
       if (targetRow) {
         matchMethod = riderIdIndex === undefined ? 'name match (ID column missing)' : 'name match (riderId was actually a name)';
+      } else {
+        // 4b) Normalized equality match (ignores punctuation and extra spaces)
+        targetRow = sheetData.data.find((row) => {
+          const rowName = row[nameIndex];
+          return normalizeText(rowName) === normalizedRequestedName;
+        });
+        if (targetRow) {
+          matchMethod = 'normalized name match';
+        } else {
+          // 4c) Partial match (only as a last resort)
+          const candidate = sheetData.data.find((row) => {
+            const normRowName = normalizeText(row[nameIndex]);
+            return normRowName.includes(normalizedRequestedName) || normalizedRequestedName.includes(normRowName);
+          });
+          if (candidate) {
+            targetRow = candidate;
+            matchMethod = 'partial name match';
+          }
+        }
       }
     }
 
