@@ -3,127 +3,319 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Riders - Motorcycle Escort Management</title>
+  <title>Riders</title>
   <style>
+    :root {
+      color-scheme: light dark;
+    }
+
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      color: #333;
-    }
-    .header {
-      background: rgba(255, 255, 255, 0.95);
-      padding: 1rem 2rem;
-      box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-    }
-    .header h1 {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      font-size: 1.8rem;
-      color: #2c3e50;
+      background: #f2f4f8;
+      min-height: 100vh;
+      color: #1f2933;
     }
-    .container {
-      max-width: 1000px;
-      margin: 2rem auto;
-      background: #fff;
-      border-radius: 8px;
-      padding: 1rem 1.5rem;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+    header {
+      background: linear-gradient(135deg, #4c6ef5, #364fc7);
+      color: #ffffff;
+      padding: 1.5rem 2rem;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.2);
     }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      font-weight: 600;
+    }
+
+    main {
+      max-width: 1100px;
+      margin: 2rem auto 3rem;
+      padding: 0 1.5rem;
+    }
+
+    .panel {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 1.5rem 1.75rem;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+    }
+
+    .status-message {
+      margin: 0;
+      padding: 1rem;
+      border-radius: 10px;
+      background: #edf2ff;
+      color: #364fc7;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .status-message.error {
+      background: #ffe3e3;
+      color: #c92a2a;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 1rem;
     }
-    th, td {
-      padding: 8px;
-      border-bottom: 1px solid #ecf0f1;
+
+    thead {
+      background: #f1f5f9;
     }
-    th {
-      background: #f8f9fa;
+
+    th,
+    td {
+      padding: 0.75rem 0.9rem;
       text-align: left;
+      font-size: 0.95rem;
+      border-bottom: 1px solid #e5e9f0;
     }
-    #loading {
-      padding: 1rem;
-      text-align: center;
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    a.action-link {
+      color: #3b5bdb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    a.action-link:hover,
+    a.action-link:focus {
+      text-decoration: underline;
+    }
+
+    .calendar-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: #e7f5ff;
+      color: #1c7ed6;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .calendar-link:hover,
+    .calendar-link:focus {
+      background: #d0ebff;
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 720px) {
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tr {
+        margin-bottom: 1.5rem;
+        border: 1px solid #e5e9f0;
+        border-radius: 12px;
+        padding: 1rem;
+        background: #ffffff;
+      }
+
+      td {
+        border: none;
+        padding: 0.4rem 0;
+      }
+
+      td::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: 600;
+        color: #6c7b94;
+        margin-bottom: 0.25rem;
+      }
     }
   </style>
 </head>
 <body>
-  <header class="header">
-    <h1>Riders</h1>
+  <header>
+    <h1>Rider Directory</h1>
   </header>
 
   <div id="navigation-container"></div>
 
-  <div class="container">
-    <div id="loading">Loading riders...</div>
-      <table id="ridersTable" style="display:none;">
+  <main>
+    <section class="panel">
+      <p id="status" class="status-message">Loading riders…</p>
+      <table id="rider-table" hidden>
         <thead>
-          <tr><th>ID</th><th>Name</th><th>Phone</th><th>Status</th><th>Availability</th></tr>
+          <tr>
+            <th scope="col">Rider ID</th>
+            <th scope="col">Name</th>
+            <th scope="col">Status</th>
+            <th scope="col">Availability</th>
+          </tr>
         </thead>
         <tbody></tbody>
       </table>
-    </div>
+    </section>
+  </main>
 
   <script>
-    let baseUrl = '';
+    (function () {
+      const state = {
+        baseUrl: ''
+      };
 
-    function renderRiders(data) {
-      const loading = document.getElementById('loading');
-      const table = document.getElementById('ridersTable');
-      const tbody = table.querySelector('tbody');
+      const statusEl = document.getElementById('status');
+      const tableEl = document.getElementById('rider-table');
+      const tbodyEl = tableEl.querySelector('tbody');
 
-      if (!data || !data.success) {
-        loading.textContent = (data && data.message) ? data.message : 'Failed to load riders';
-        return;
+      function setStatus(message, isError) {
+        statusEl.textContent = message;
+        statusEl.classList.toggle('error', Boolean(isError));
+        statusEl.hidden = false;
       }
 
-      const riders = data.riders || [];
-      tbody.innerHTML = '';
-        riders.forEach(r => {
-          const tr = document.createElement('tr');
-          const riderIdentifier = r.riderId || r.jpNumber || r.name || '';
-          const editUrl = baseUrl
-            ? `${baseUrl}?page=edit-rider&riderId=${encodeURIComponent(riderIdentifier)}`
-            : `edit-rider.html?riderId=${encodeURIComponent(riderIdentifier)}`;
-          const nameCell = `<a href="${editUrl}" target="_top">${r.name || ''}</a>`;
-          const availabilityBtn = `<button onclick="openAvailability('${riderIdentifier}')">Calendar</button>`;
-          tr.innerHTML = `<td>${r.riderId || r.jpNumber || ''}</td><td>${nameCell}</td><td>${r.phone || ''}</td><td>${r.status || ''}</td><td>${availabilityBtn}</td>`;
-          tbody.appendChild(tr);
+      function hideStatus() {
+        statusEl.hidden = true;
+      }
+
+      function buildPageUrl(page, params) {
+        const safeParams = params || {};
+
+        if (!state.baseUrl) {
+          const search = new URLSearchParams(safeParams);
+          const path = `${page}.html`;
+          return search.toString() ? `${path}?${search.toString()}` : path;
+        }
+
+        try {
+          const url = new URL(state.baseUrl);
+          url.searchParams.set('page', page);
+          Object.keys(safeParams).forEach((key) => {
+            if (safeParams[key] !== undefined && safeParams[key] !== null) {
+              url.searchParams.set(key, safeParams[key]);
+            }
+          });
+          return url.toString();
+        } catch (error) {
+          console.error('Failed to construct page URL, falling back to relative path.', error);
+          const search = new URLSearchParams(safeParams);
+          const path = `${page}.html`;
+          return search.toString() ? `${path}?${search.toString()}` : path;
+        }
+      }
+
+      function createCell(label, content) {
+        const td = document.createElement('td');
+        td.dataset.label = label;
+        if (content instanceof Node) {
+          td.appendChild(content);
+        } else {
+          td.textContent = content;
+        }
+        return td;
+      }
+
+      function createCalendarLink(riderId) {
+        const link = document.createElement('a');
+        link.className = 'calendar-link';
+        link.href = buildPageUrl('rider-availability', { riderId });
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'View Calendar';
+        return link;
+      }
+
+      function createEditLink(riderId, name) {
+        const link = document.createElement('a');
+        link.className = 'action-link';
+        link.href = buildPageUrl('edit-rider', { riderId });
+        link.target = '_top';
+        link.textContent = name || 'Edit Rider';
+        return link;
+      }
+
+      function renderRiders(response) {
+        if (!response || !response.success) {
+          const message = (response && response.message) ? response.message : 'Unable to load riders.';
+          setStatus(message, true);
+          tableEl.hidden = true;
+          return;
+        }
+
+        const riders = Array.isArray(response.riders) ? response.riders : [];
+
+        if (riders.length === 0) {
+          setStatus('No riders available.', false);
+          tableEl.hidden = true;
+          return;
+        }
+
+        tbodyEl.innerHTML = '';
+
+        riders.forEach((rider) => {
+          const riderId = rider.riderId || '';
+          const name = rider.name || 'Unnamed Rider';
+          const status = rider.status || 'Unknown';
+
+          const row = document.createElement('tr');
+          row.appendChild(createCell('Rider ID', riderId));
+          row.appendChild(createCell('Name', createEditLink(riderId, name)));
+          row.appendChild(createCell('Status', status));
+          row.appendChild(createCell('Availability', createCalendarLink(riderId)));
+          tbodyEl.appendChild(row);
         });
 
-      if (riders.length === 0) {
-        loading.textContent = 'No riders found';
-        return;
+        tableEl.hidden = false;
+        hideStatus();
       }
 
-      loading.style.display = 'none';
-      table.style.display = 'table';
-    }
-
-    function openAvailability(riderId) {
-      const url = baseUrl
-        ? `${baseUrl}?page=rider-availability&riderId=${encodeURIComponent(riderId)}`
-        : `rider-availability.html?riderId=${encodeURIComponent(riderId)}`;
-      window.open(url, '_blank');
-    }
-
-    function loadRiders() {
-      if (google && google.script && google.script.run) {
-        google.script.run.withSuccessHandler(url => {
-          baseUrl = url;
-          google.script.run.withSuccessHandler(renderRiders)
-                             .withFailureHandler(err => {
-                               document.getElementById('loading').textContent = 'Failed to load riders';
-                               console.error(err);
-                             })
-                             .getRidersForPage();
-        }).getWebAppUrl();
-      } else {
-        renderRiders({success:false, message:'Google Apps Script runtime unavailable'});
+      function requestRiders() {
+        if (window.google && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler(renderRiders)
+            .withFailureHandler((error) => {
+              console.error('Failed to retrieve riders:', error);
+              setStatus('Failed to retrieve riders.', true);
+            })
+            .getRidersForPage();
+        } else {
+          setStatus('Google Apps Script runtime unavailable.', true);
+        }
       }
-    }
 
-    document.addEventListener('DOMContentLoaded', loadRiders);
+      function initialize() {
+        if (window.google && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((url) => {
+              state.baseUrl = url || '';
+              requestRiders();
+            })
+            .withFailureHandler((error) => {
+              console.warn('Could not determine base URL:', error);
+              state.baseUrl = '';
+              requestRiders();
+            })
+            .getWebAppUrl();
+        } else {
+          setStatus('Google Apps Script runtime unavailable.', true);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', initialize);
+    })();
   </script>
   <script src="load-navigation.js"></script>
 </body>
