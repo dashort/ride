@@ -3,102 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Riders</title>
+  <title>Rider Directory</title>
   <style>
     :root {
       color-scheme: light dark;
     }
 
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       margin: 0;
-      background: #f2f4f8;
-      min-height: 100vh;
-      color: #1f2933;
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f5f7fb;
+      color: #1f2937;
     }
 
     header {
-      background: linear-gradient(135deg, #4c6ef5, #364fc7);
+      background: linear-gradient(135deg, #3358d4, #1c3aa9);
       color: #ffffff;
-      padding: 1.5rem 2rem;
-      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.2);
+      padding: 1.75rem 1rem;
+      text-align: center;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
     }
 
     header h1 {
       margin: 0;
-      font-size: 1.9rem;
+      font-size: clamp(1.75rem, 2.5vw + 1rem, 2.4rem);
       font-weight: 600;
     }
 
     main {
       max-width: 1100px;
-      margin: 2rem auto 3rem;
-      padding: 0 1.5rem;
+      margin: 2.5rem auto;
+      padding: 0 1.5rem 3rem;
     }
 
     .panel {
       background: #ffffff;
-      border-radius: 14px;
-      padding: 1.5rem 1.75rem;
-      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
     }
 
     .status-message {
-      margin: 0;
-      padding: 1rem;
-      border-radius: 10px;
-      background: #edf2ff;
-      color: #364fc7;
-      text-align: center;
+      margin: 0 0 1.25rem;
+      padding: 0.9rem 1.2rem;
+      border-radius: 12px;
+      background: #e8f0fe;
+      color: #1a3d8f;
       font-weight: 500;
+      text-align: center;
+    }
+
+    .status-message[hidden] {
+      display: none;
     }
 
     .status-message.error {
-      background: #ffe3e3;
-      color: #c92a2a;
+      background: #fee2e2;
+      color: #b91c1c;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 1rem;
+      border-radius: 12px;
+      overflow: hidden;
     }
 
     thead {
       background: #f1f5f9;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+      color: #475569;
     }
 
     th,
     td {
-      padding: 0.75rem 0.9rem;
+      padding: 0.85rem 1rem;
       text-align: left;
-      font-size: 0.95rem;
-      border-bottom: 1px solid #e5e9f0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: none;
     }
 
     tbody tr:hover {
       background: #f8fafc;
     }
 
-    a.action-link {
-      color: #3b5bdb;
-      text-decoration: none;
+    .rider-name {
+      color: #1d4ed8;
       font-weight: 600;
+      text-decoration: none;
     }
 
-    a.action-link:hover,
-    a.action-link:focus {
+    .rider-name:focus,
+    .rider-name:hover {
       text-decoration: underline;
     }
 
     .calendar-link {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      background: #e7f5ff;
-      color: #1c7ed6;
-      padding: 0.4rem 0.75rem;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
       border-radius: 999px;
+      background: #dbeafe;
+      color: #1d4ed8;
       text-decoration: none;
       font-weight: 600;
       transition: background 0.2s ease, transform 0.2s ease;
@@ -106,17 +124,23 @@
 
     .calendar-link:hover,
     .calendar-link:focus {
-      background: #d0ebff;
+      background: #bfdbfe;
       transform: translateY(-1px);
+    }
+
+    .calendar-link svg {
+      width: 1rem;
+      height: 1rem;
+      fill: currentColor;
     }
 
     @media (max-width: 720px) {
       table,
       thead,
       tbody,
-      tr,
       th,
-      td {
+      td,
+      tr {
         display: block;
       }
 
@@ -125,39 +149,41 @@
       }
 
       tr {
-        margin-bottom: 1.5rem;
-        border: 1px solid #e5e9f0;
-        border-radius: 12px;
-        padding: 1rem;
+        margin-bottom: 1.25rem;
         background: #ffffff;
+        border-radius: 14px;
+        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+        overflow: hidden;
       }
 
       td {
         border: none;
-        padding: 0.4rem 0;
+        padding: 0.75rem 1rem;
       }
 
       td::before {
         content: attr(data-label);
         display: block;
-        font-weight: 600;
-        color: #6c7b94;
-        margin-bottom: 0.25rem;
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.35rem;
       }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Rider Directory</h1>
+    <h1 id="pageTitle">Rider Directory</h1>
   </header>
 
   <div id="navigation-container"></div>
 
   <main>
     <section class="panel">
-      <p id="status" class="status-message">Loading riders…</p>
-      <table id="rider-table" hidden>
+      <p id="statusMessage" class="status-message" role="status" aria-live="polite">Loading riders…</p>
+      <table id="ridersTable" hidden>
         <thead>
           <tr>
             <th scope="col">Rider ID</th>
@@ -173,59 +199,51 @@
 
   <script>
     (function () {
-      const state = {
-        baseUrl: ''
-      };
+      const statusMessage = document.getElementById('statusMessage');
+      const ridersTable = document.getElementById('ridersTable');
+      const ridersTbody = ridersTable.querySelector('tbody');
+      const pageTitle = document.getElementById('pageTitle');
+      let webAppBaseUrl = '';
 
-      const statusEl = document.getElementById('status');
-      const tableEl = document.getElementById('rider-table');
-      const tbodyEl = tableEl.querySelector('tbody');
+      function setDocumentTitle() {
+        if (pageTitle && pageTitle.textContent) {
+          document.title = pageTitle.textContent.trim();
+        }
+      }
 
-      function setStatus(message, isError) {
-        statusEl.textContent = message;
-        statusEl.classList.toggle('error', Boolean(isError));
-        statusEl.hidden = false;
+      function isAppsScriptAvailable() {
+        return typeof google !== 'undefined' && google.script && google.script.run;
+      }
+
+      function showStatus(message, isError) {
+        statusMessage.textContent = message;
+        statusMessage.classList.toggle('error', Boolean(isError));
+        statusMessage.hidden = false;
       }
 
       function hideStatus() {
-        statusEl.hidden = true;
+        statusMessage.hidden = true;
       }
 
-      function buildPageUrl(page, params) {
-        const safeParams = params || {};
+      function buildPageUrl(pageName, params) {
+        const searchParams = new URLSearchParams(params || {});
+        const fallbackUrl = `${pageName}.html${searchParams.toString() ? `?${searchParams}` : ''}`;
 
-        if (!state.baseUrl) {
-          const search = new URLSearchParams(safeParams);
-          const path = `${page}.html`;
-          return search.toString() ? `${path}?${search.toString()}` : path;
+        if (!webAppBaseUrl) {
+          return fallbackUrl;
         }
 
         try {
-          const url = new URL(state.baseUrl);
-          url.searchParams.set('page', page);
-          Object.keys(safeParams).forEach((key) => {
-            if (safeParams[key] !== undefined && safeParams[key] !== null) {
-              url.searchParams.set(key, safeParams[key]);
-            }
-          });
+          const url = new URL(webAppBaseUrl);
+          url.searchParams.set('page', pageName);
+          for (const [key, value] of searchParams.entries()) {
+            url.searchParams.set(key, value);
+          }
           return url.toString();
         } catch (error) {
-          console.error('Failed to construct page URL, falling back to relative path.', error);
-          const search = new URLSearchParams(safeParams);
-          const path = `${page}.html`;
-          return search.toString() ? `${path}?${search.toString()}` : path;
+          console.warn('Falling back to relative URL due to error constructing page URL.', error);
+          return fallbackUrl;
         }
-      }
-
-      function createCell(label, content) {
-        const td = document.createElement('td');
-        td.dataset.label = label;
-        if (content instanceof Node) {
-          td.appendChild(content);
-        } else {
-          td.textContent = content;
-        }
-        return td;
       }
 
       function createCalendarLink(riderId) {
@@ -233,84 +251,126 @@
         link.className = 'calendar-link';
         link.href = buildPageUrl('rider-availability', { riderId });
         link.target = '_blank';
-        link.rel = 'noopener';
-        link.textContent = 'View Calendar';
+        link.rel = 'noopener noreferrer';
+
+        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        icon.setAttribute('aria-hidden', 'true');
+        icon.setAttribute('focusable', 'false');
+        icon.setAttribute('viewBox', '0 0 20 20');
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M6 2a1 1 0 10-2 0v1H3a2 2 0 00-2 2v1h18V5a2 2 0 00-2-2h-1V2a1 1 0 10-2 0v1H6V2zM19 8H1v7a2 2 0 002 2h14a2 2 0 002-2V8zm-4.5 3a.5.5 0 01.5.5V13a1 1 0 01-1 1h-2a.5.5 0 01-.5-.5V11a1 1 0 011-1h2z');
+        icon.appendChild(path);
+
+        const label = document.createElement('span');
+        label.textContent = 'View Calendar';
+
+        link.append(icon, label);
         return link;
       }
 
       function createEditLink(riderId, name) {
         const link = document.createElement('a');
-        link.className = 'action-link';
+        link.className = 'rider-name';
         link.href = buildPageUrl('edit-rider', { riderId });
         link.target = '_top';
-        link.textContent = name || 'Edit Rider';
+        link.textContent = name || 'Unnamed Rider';
         return link;
+      }
+
+      function renderRiderRow(rider) {
+        const row = document.createElement('tr');
+
+        const riderId = rider && rider.riderId ? String(rider.riderId) : '';
+        const riderName = rider && rider.name ? String(rider.name) : 'Unnamed Rider';
+        const riderStatus = rider && rider.status ? String(rider.status) : 'Unknown';
+
+        const idCell = document.createElement('td');
+        idCell.dataset.label = 'Rider ID';
+        idCell.textContent = riderId;
+
+        const nameCell = document.createElement('td');
+        nameCell.dataset.label = 'Name';
+        nameCell.appendChild(createEditLink(riderId, riderName));
+
+        const statusCell = document.createElement('td');
+        statusCell.dataset.label = 'Status';
+        statusCell.textContent = riderStatus;
+
+        const availabilityCell = document.createElement('td');
+        availabilityCell.dataset.label = 'Availability';
+        availabilityCell.appendChild(createCalendarLink(riderId));
+
+        row.append(idCell, nameCell, statusCell, availabilityCell);
+        return row;
       }
 
       function renderRiders(response) {
         if (!response || !response.success) {
-          const message = (response && response.message) ? response.message : 'Unable to load riders.';
-          setStatus(message, true);
-          tableEl.hidden = true;
+          const message = response && response.message ? response.message : 'Unable to load riders.';
+          showStatus(message, true);
+          ridersTable.hidden = true;
           return;
         }
 
         const riders = Array.isArray(response.riders) ? response.riders : [];
 
         if (riders.length === 0) {
-          setStatus('No riders available.', false);
-          tableEl.hidden = true;
+          showStatus('No riders found.', false);
+          ridersTable.hidden = true;
           return;
         }
 
-        tbodyEl.innerHTML = '';
-
+        ridersTbody.textContent = '';
         riders.forEach((rider) => {
-          const riderId = rider.riderId || '';
-          const name = rider.name || 'Unnamed Rider';
-          const status = rider.status || 'Unknown';
-
-          const row = document.createElement('tr');
-          row.appendChild(createCell('Rider ID', riderId));
-          row.appendChild(createCell('Name', createEditLink(riderId, name)));
-          row.appendChild(createCell('Status', status));
-          row.appendChild(createCell('Availability', createCalendarLink(riderId)));
-          tbodyEl.appendChild(row);
+          ridersTbody.appendChild(renderRiderRow(rider));
         });
 
-        tableEl.hidden = false;
+        ridersTable.hidden = false;
         hideStatus();
       }
 
-      function requestRiders() {
-        if (window.google && google.script && google.script.run) {
+      function fetchRiders() {
+        return new Promise((resolve, reject) => {
           google.script.run
-            .withSuccessHandler(renderRiders)
-            .withFailureHandler((error) => {
-              console.error('Failed to retrieve riders:', error);
-              setStatus('Failed to retrieve riders.', true);
-            })
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
             .getRidersForPage();
-        } else {
-          setStatus('Google Apps Script runtime unavailable.', true);
-        }
+        });
       }
 
-      function initialize() {
-        if (window.google && google.script && google.script.run) {
+      function fetchWebAppUrl() {
+        return new Promise((resolve, reject) => {
           google.script.run
-            .withSuccessHandler((url) => {
-              state.baseUrl = url || '';
-              requestRiders();
-            })
-            .withFailureHandler((error) => {
-              console.warn('Could not determine base URL:', error);
-              state.baseUrl = '';
-              requestRiders();
-            })
+            .withSuccessHandler((url) => resolve(typeof url === 'string' ? url : ''))
+            .withFailureHandler(reject)
             .getWebAppUrl();
-        } else {
-          setStatus('Google Apps Script runtime unavailable.', true);
+        });
+      }
+
+      async function initialize() {
+        setDocumentTitle();
+
+        if (!isAppsScriptAvailable()) {
+          showStatus('Google Apps Script runtime unavailable.', true);
+          return;
+        }
+
+        showStatus('Loading riders…', false);
+
+        try {
+          try {
+            webAppBaseUrl = await fetchWebAppUrl();
+          } catch (error) {
+            webAppBaseUrl = '';
+            console.warn('Could not determine base URL. Continuing with relative links.', error);
+          }
+
+          const response = await fetchRiders();
+          renderRiders(response);
+        } catch (error) {
+          console.error('Failed to retrieve riders.', error);
+          showStatus('Failed to retrieve riders.', true);
         }
       }
 
