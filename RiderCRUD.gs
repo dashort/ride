@@ -91,7 +91,11 @@ function getRidersForPage() {
         riderId: r.jpNumber || '',
         name: r.name || '',
         phone: r.phone || '',
-        status: r.status || ''
+        email: r.email || '',
+        status: r.status || '',
+        platoon: r.platoon || '',
+        partTime: r.partTime || '',
+        certification: r.certification || ''
       }));
 
     return { success: true, riders };
@@ -357,7 +361,10 @@ function handleRiderOperation(action, data) {
       case 'bulkUpdateStatus':
         // Bulk update rider status
         return bulkUpdateRiderStatus(data.riderIds, data.newStatus);
-        
+
+      case 'bulkUpdate':
+        return bulkUpdateRiders(data && data.updates ? data.updates : []);
+
       default:
         throw new Error(`Unknown rider operation: ${action}`);
     }
@@ -656,6 +663,85 @@ function updateRider(riderData) {
     return {
       success: false,
       message: `Failed to update rider: ${error.message}`
+    };
+  }
+}
+
+/**
+ * Updates multiple riders in one request.
+ * @param {Array<object>} updates Array of rider update payloads.
+ * @return {{success: boolean, message: string, updatedCount?: number, failures?: Array<object>}}
+ */
+function bulkUpdateRiders(updates) {
+  try {
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return {
+        success: false,
+        message: 'No rider updates were provided.',
+        updatedCount: 0,
+        failures: []
+      };
+    }
+
+    const results = [];
+    const failures = [];
+
+    updates.forEach((updatePayload, index) => {
+      if (!updatePayload || typeof updatePayload !== 'object') {
+        failures.push({
+          index,
+          riderId: '',
+          message: 'Invalid update payload.'
+        });
+        return;
+      }
+
+      const riderId = updatePayload[CONFIG.columns.riders.jpNumber] || updatePayload.riderId || updatePayload.jpNumber || '';
+
+      try {
+        const response = updateRider(updatePayload);
+        if (response && response.success) {
+          results.push(riderId);
+        } else {
+          failures.push({
+            index,
+            riderId,
+            message: (response && response.message) || 'Unknown error updating rider.'
+          });
+        }
+      } catch (error) {
+        console.error(`❌ Error in bulkUpdateRiders for rider ${riderId}:`, error);
+        failures.push({
+          index,
+          riderId,
+          message: error.message
+        });
+      }
+    });
+
+    const success = failures.length === 0;
+    const message = success
+      ? `Updated ${results.length} rider${results.length === 1 ? '' : 's'}.`
+      : `Updated ${results.length} rider${results.length === 1 ? '' : 's'}, ${failures.length} failed.`;
+
+    return {
+      success,
+      message,
+      updatedCount: results.length,
+      updated: results,
+      failures
+    };
+  } catch (error) {
+    console.error('❌ Error in bulkUpdateRiders:', error);
+    if (typeof logError === 'function') {
+      logError('Error in bulkUpdateRiders', error);
+    }
+    return {
+      success: false,
+      message: `Failed to update riders: ${error.message}`,
+      updatedCount: 0,
+      updated: [],
+      failures: []
     };
   }
 }
