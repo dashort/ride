@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rider Directory</title>
+  <title>Rider Operations Center</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -18,43 +18,130 @@
     body {
       margin: 0;
       font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: #f5f7fb;
-      color: #1f2937;
+      background: #f3f4f6;
+      color: #0f172a;
+      line-height: 1.6;
     }
 
-    header {
-      background: linear-gradient(135deg, #3358d4, #1c3aa9);
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    header.page-header {
+      background: linear-gradient(120deg, #1d4ed8, #1e3a8a);
       color: #ffffff;
-      padding: 1.75rem 1rem;
+      padding: clamp(2rem, 4vw, 3rem) 1.5rem;
       text-align: center;
-      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.28);
     }
 
-    header h1 {
+    header.page-header h1 {
       margin: 0;
-      font-size: clamp(1.75rem, 2.5vw + 1rem, 2.4rem);
+      font-size: clamp(2rem, 2vw + 1.5rem, 2.8rem);
       font-weight: 600;
     }
 
+    header.page-header p {
+      margin: 0.5rem auto 0;
+      max-width: 720px;
+      font-size: 1.05rem;
+      opacity: 0.9;
+    }
+
     main {
-      max-width: 1100px;
-      margin: 2.5rem auto;
+      max-width: 1200px;
+      margin: -2rem auto 3rem;
       padding: 0 1.5rem 3rem;
     }
 
     .panel {
       background: #ffffff;
-      border-radius: 16px;
-      padding: 1.75rem 2rem;
-      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+      border-radius: 18px;
+      padding: clamp(1.5rem, 2vw, 2rem);
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .panel-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .panel-heading h2 {
+      margin: 0;
+      font-size: clamp(1.3rem, 1.5vw + 1rem, 1.8rem);
+    }
+
+    .panel-heading p {
+      margin: 0.35rem 0 0;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      border: none;
+      border-radius: 999px;
+      padding: 0.65rem 1.4rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      font-size: 0.95rem;
+    }
+
+    button.primary {
+      background: #1d4ed8;
+      color: #ffffff;
+      box-shadow: 0 12px 20px rgba(29, 78, 216, 0.35);
+    }
+
+    button.primary:hover,
+    button.primary:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 26px rgba(29, 78, 216, 0.35);
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    button.secondary:hover,
+    button.secondary:focus-visible {
+      transform: translateY(-1px);
+      background: #cbd5f5;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     .status-message {
-      margin: 0 0 1.25rem;
-      padding: 0.9rem 1.2rem;
-      border-radius: 12px;
-      background: #e8f0fe;
-      color: #1a3d8f;
+      margin: 0 0 1rem;
+      padding: 0.85rem 1.1rem;
+      border-radius: 14px;
+      background: #e0e7ff;
+      color: #1e3a8a;
       font-weight: 500;
       text-align: center;
     }
@@ -68,15 +155,19 @@
       color: #b91c1c;
     }
 
+    .table-wrapper {
+      overflow-x: auto;
+      border-radius: 14px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
-      border-radius: 12px;
-      overflow: hidden;
+      min-width: 720px;
     }
 
     thead {
-      background: #f1f5f9;
+      background: #f8fafc;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       font-size: 0.75rem;
@@ -88,6 +179,7 @@
       padding: 0.85rem 1rem;
       text-align: left;
       border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
     }
 
     tbody tr:last-child td {
@@ -95,7 +187,7 @@
     }
 
     tbody tr:hover {
-      background: #f8fafc;
+      background: #f1f5f9;
     }
 
     .rider-name {
@@ -104,37 +196,183 @@
       text-decoration: none;
     }
 
-    .rider-name:focus,
-    .rider-name:hover {
+    .rider-name:hover,
+    .rider-name:focus-visible {
       text-decoration: underline;
     }
 
-    .calendar-link {
+    .status-pill {
       display: inline-flex;
       align-items: center;
       gap: 0.4rem;
-      padding: 0.45rem 0.85rem;
+      padding: 0.25rem 0.7rem;
       border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
       background: #dbeafe;
       color: #1d4ed8;
-      text-decoration: none;
-      font-weight: 600;
-      transition: background 0.2s ease, transform 0.2s ease;
     }
 
-    .calendar-link:hover,
-    .calendar-link:focus {
-      background: #bfdbfe;
-      transform: translateY(-1px);
+    .status-pill[data-status="Inactive"] {
+      background: #fee2e2;
+      color: #b91c1c;
     }
 
-    .calendar-link svg {
-      width: 1rem;
-      height: 1rem;
-      fill: currentColor;
+    .status-pill[data-status="Vacation"],
+    .status-pill[data-status="Training"] {
+      background: #fef9c3;
+      color: #b45309;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 1000;
+    }
+
+    .modal[hidden] {
+      display: none;
+    }
+
+    .modal:not([hidden]) {
+      display: flex;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-dialog {
+      position: relative;
+      max-width: 1000px;
+      width: min(100%, 1000px);
+      max-height: calc(100vh - 3rem);
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 30px 60px rgba(15, 23, 42, 0.35);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      z-index: 1;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1.5rem 1.75rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: #1e293b;
+    }
+
+    .modal-subtitle {
+      margin: 0.35rem 0 0;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+
+    .icon-button {
+      background: transparent;
+      color: #475569;
+      border: none;
+      border-radius: 999px;
+      padding: 0.4rem 0.6rem;
+      font-size: 1.25rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: background 0.18s ease;
+    }
+
+    .icon-button:hover,
+    .icon-button:focus-visible {
+      background: #e2e8f0;
+    }
+
+    .modal-table-wrapper {
+      flex: 1;
+      padding: 0 1.75rem;
+      overflow: auto;
+    }
+
+    .modal-table-wrapper table {
+      min-width: 820px;
+    }
+
+    .modal-actions {
+      padding: 1rem 1.75rem 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+      border-top: 1px solid #e2e8f0;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0) 0%, rgba(15, 23, 42, 0.04) 100%);
+    }
+
+    .modal .status-message {
+      margin: 0 1.75rem 1rem;
+    }
+
+    .row-changed {
+      background: rgba(96, 165, 250, 0.12);
+    }
+
+    .row-changed td {
+      border-bottom-color: rgba(59, 130, 246, 0.35);
+    }
+
+    .row-disabled {
+      opacity: 0.6;
+    }
+
+    .modal-input,
+    .modal-select {
+      width: 100%;
+      border: 1px solid #cbd5f5;
+      border-radius: 10px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.95rem;
+      background: #f8fafc;
+      color: #0f172a;
+      transition: border 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .modal-input:focus,
+    .modal-select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+      background: #ffffff;
+    }
+
+    .modal-input:disabled,
+    .modal-select:disabled {
+      background: #e2e8f0;
+      cursor: not-allowed;
     }
 
     @media (max-width: 720px) {
+      header.page-header {
+        text-align: left;
+      }
+
+      .panel-heading {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
       table,
       thead,
       tbody,
@@ -148,20 +386,24 @@
         display: none;
       }
 
-      tr {
-        margin-bottom: 1.25rem;
-        background: #ffffff;
+      table {
+        min-width: 0;
+      }
+
+      tbody tr {
+        margin-bottom: 1rem;
         border-radius: 14px;
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);
+        background: #ffffff;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
         overflow: hidden;
       }
 
-      td {
+      tbody td {
         border: none;
         padding: 0.75rem 1rem;
       }
 
-      td::before {
+      tbody td::before {
         content: attr(data-label);
         display: block;
         font-size: 0.75rem;
@@ -174,35 +416,112 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1 id="pageTitle">Rider Directory</h1>
+  <div id="navigation-container"></div>
+  <header class="page-header">
+    <h1 id="pageTitle">Rider Operations Center</h1>
+    <p>Review escort riders at a glance, jump directly into individual edits, or update entire rosters in one pass.</p>
   </header>
 
-  <div id="navigation-container"></div>
-
   <main>
-    <section class="panel">
+    <section class="panel directory-panel">
+      <div class="panel-heading">
+        <div>
+          <h2>Active Rider Roster</h2>
+          <p>Names link directly to the single rider editor. Use the bulk editor to update shared details in seconds.</p>
+        </div>
+        <div class="actions">
+          <button id="bulkEditButton" type="button" class="primary">Bulk Edit Riders</button>
+        </div>
+      </div>
       <p id="statusMessage" class="status-message" role="status" aria-live="polite">Loading riders…</p>
-      <table id="ridersTable" hidden>
-        <thead>
-          <tr>
-            <th scope="col">Rider ID</th>
-            <th scope="col">Name</th>
-            <th scope="col">Status</th>
-            <th scope="col">Availability</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-wrapper">
+        <table id="ridersTable" hidden>
+          <thead>
+            <tr>
+              <th scope="col">Rider ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Email</th>
+              <th scope="col">Status</th>
+              <th scope="col">Platoon</th>
+              <th scope="col">Part-Time</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
   </main>
+
+  <div id="bulkEditor" class="modal" role="dialog" aria-modal="true" aria-labelledby="bulkEditorTitle" hidden>
+    <div class="modal-backdrop" data-action="close"></div>
+    <div class="modal-dialog">
+      <header class="modal-header">
+        <div>
+          <h2 id="bulkEditorTitle">Bulk Rider Editor</h2>
+          <p class="modal-subtitle">Edit rider details in a spreadsheet-style grid and commit everything with one update.</p>
+        </div>
+        <button type="button" class="icon-button" data-action="close" aria-label="Close bulk editor">✕</button>
+      </header>
+      <p id="bulkStatusMessage" class="status-message" role="status" aria-live="polite" hidden></p>
+      <div class="modal-table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Rider ID</th>
+              <th scope="col">Name</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Email</th>
+              <th scope="col">Status</th>
+              <th scope="col">Platoon</th>
+              <th scope="col">Part-Time</th>
+            </tr>
+          </thead>
+          <tbody id="bulkTableBody"></tbody>
+        </table>
+      </div>
+      <footer class="modal-actions">
+        <button type="button" class="secondary" data-action="close">Cancel</button>
+        <button type="button" id="bulkUpdateButton" class="primary">Update Riders</button>
+      </footer>
+    </div>
+  </div>
 
   <script>
     (function () {
       const statusMessage = document.getElementById('statusMessage');
       const ridersTable = document.getElementById('ridersTable');
-      const ridersTbody = ridersTable.querySelector('tbody');
+      const ridersTbody = ridersTable ? ridersTable.querySelector('tbody') : null;
       const pageTitle = document.getElementById('pageTitle');
+      const bulkEditButton = document.getElementById('bulkEditButton');
+      const bulkEditor = document.getElementById('bulkEditor');
+      const bulkTableBody = document.getElementById('bulkTableBody');
+      const bulkStatusMessage = document.getElementById('bulkStatusMessage');
+      const bulkUpdateButton = document.getElementById('bulkUpdateButton');
+      const closeTriggers = bulkEditor ? bulkEditor.querySelectorAll('[data-action="close"]') : [];
+
+      const state = {
+        riders: [],
+        ridersById: new Map(),
+        options: {
+          statusOptions: ['Active', 'Inactive'],
+          platoonOptions: ['A', 'B'],
+          partTimeOptions: ['Yes', 'No']
+        },
+        changedRows: new Map(),
+        pendingUpdate: false,
+        modalOpen: false
+      };
+
+      const fieldConfig = {
+        name: { sheetKey: 'Full Name', prop: 'name', type: 'text', placeholder: 'Full Name' },
+        phone: { sheetKey: 'Phone Number', prop: 'phone', type: 'tel', placeholder: 'Phone' },
+        email: { sheetKey: 'Email', prop: 'email', type: 'email', placeholder: 'Email' },
+        status: { sheetKey: 'Status', prop: 'status', type: 'select', optionsKey: 'statusOptions' },
+        platoon: { sheetKey: 'Platoon', prop: 'platoon', type: 'select', optionsKey: 'platoonOptions', allowEmpty: true },
+        partTime: { sheetKey: 'Part-Time Rider', prop: 'partTime', type: 'select', optionsKey: 'partTimeOptions', allowEmpty: true }
+      };
+
       let webAppBaseUrl = '';
 
       function setDocumentTitle() {
@@ -216,13 +535,28 @@
       }
 
       function showStatus(message, isError) {
+        if (!statusMessage) return;
         statusMessage.textContent = message;
         statusMessage.classList.toggle('error', Boolean(isError));
         statusMessage.hidden = false;
       }
 
       function hideStatus() {
+        if (!statusMessage) return;
         statusMessage.hidden = true;
+      }
+
+      function setBulkStatus(message, isError) {
+        if (!bulkStatusMessage) return;
+        if (!message) {
+          bulkStatusMessage.hidden = true;
+          bulkStatusMessage.textContent = '';
+          bulkStatusMessage.classList.remove('error');
+          return;
+        }
+        bulkStatusMessage.textContent = message;
+        bulkStatusMessage.classList.toggle('error', Boolean(isError));
+        bulkStatusMessage.hidden = false;
       }
 
       function buildPageUrl(pageName, params) {
@@ -246,29 +580,6 @@
         }
       }
 
-      function createCalendarLink(riderId) {
-        const link = document.createElement('a');
-        link.className = 'calendar-link';
-        link.href = buildPageUrl('rider-availability', { riderId });
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-
-        const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        icon.setAttribute('aria-hidden', 'true');
-        icon.setAttribute('focusable', 'false');
-        icon.setAttribute('viewBox', '0 0 20 20');
-
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M6 2a1 1 0 10-2 0v1H3a2 2 0 00-2 2v1h18V5a2 2 0 00-2-2h-1V2a1 1 0 10-2 0v1H6V2zM19 8H1v7a2 2 0 002 2h14a2 2 0 002-2V8zm-4.5 3a.5.5 0 01.5.5V13a1 1 0 01-1 1h-2a.5.5 0 01-.5-.5V11a1 1 0 011-1h2z');
-        icon.appendChild(path);
-
-        const label = document.createElement('span');
-        label.textContent = 'View Calendar';
-
-        link.append(icon, label);
-        return link;
-      }
-
       function createEditLink(riderId, name) {
         const link = document.createElement('a');
         link.className = 'rider-name';
@@ -278,34 +589,54 @@
         return link;
       }
 
+      function createStatusPill(status) {
+        const pill = document.createElement('span');
+        pill.className = 'status-pill';
+        pill.dataset.status = status || '';
+        pill.textContent = status || 'Unknown';
+        return pill;
+      }
+
       function renderRiderRow(rider) {
         const row = document.createElement('tr');
 
-        const riderId = rider && rider.riderId ? String(rider.riderId) : '';
-        const riderName = rider && rider.name ? String(rider.name) : 'Unnamed Rider';
-        const riderStatus = rider && rider.status ? String(rider.status) : 'Unknown';
-
         const idCell = document.createElement('td');
         idCell.dataset.label = 'Rider ID';
-        idCell.textContent = riderId;
+        idCell.textContent = rider.riderId || '—';
 
         const nameCell = document.createElement('td');
         nameCell.dataset.label = 'Name';
-        nameCell.appendChild(createEditLink(riderId, riderName));
+        nameCell.appendChild(createEditLink(rider.riderId, rider.name));
+
+        const phoneCell = document.createElement('td');
+        phoneCell.dataset.label = 'Phone';
+        phoneCell.textContent = rider.phone || '—';
+
+        const emailCell = document.createElement('td');
+        emailCell.dataset.label = 'Email';
+        emailCell.textContent = rider.email || '—';
 
         const statusCell = document.createElement('td');
         statusCell.dataset.label = 'Status';
-        statusCell.textContent = riderStatus;
+        statusCell.appendChild(createStatusPill(rider.status));
 
-        const availabilityCell = document.createElement('td');
-        availabilityCell.dataset.label = 'Availability';
-        availabilityCell.appendChild(createCalendarLink(riderId));
+        const platoonCell = document.createElement('td');
+        platoonCell.dataset.label = 'Platoon';
+        platoonCell.textContent = rider.platoon || '—';
 
-        row.append(idCell, nameCell, statusCell, availabilityCell);
+        const partTimeCell = document.createElement('td');
+        partTimeCell.dataset.label = 'Part-Time';
+        partTimeCell.textContent = rider.partTime || '—';
+
+        row.append(idCell, nameCell, phoneCell, emailCell, statusCell, platoonCell, partTimeCell);
         return row;
       }
 
       function renderRiders(response) {
+        if (!ridersTable || !ridersTbody) {
+          return;
+        }
+
         if (!response || !response.success) {
           const message = response && response.message ? response.message : 'Unable to load riders.';
           showStatus(message, true);
@@ -321,13 +652,40 @@
           return;
         }
 
+        applyRiderData(riders);
+
         ridersTbody.textContent = '';
-        riders.forEach((rider) => {
+        state.riders.forEach((rider) => {
           ridersTbody.appendChild(renderRiderRow(rider));
         });
 
         ridersTable.hidden = false;
         hideStatus();
+      }
+
+      function applyRiderData(riders) {
+        const normalized = Array.isArray(riders) ? riders.slice() : [];
+        normalized.sort((a, b) => {
+          const nameA = (a && a.name ? String(a.name) : '').toLowerCase();
+          const nameB = (b && b.name ? String(b.name) : '').toLowerCase();
+          return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
+        });
+
+        state.riders = normalized.map((rider) => ({
+          riderId: rider && rider.riderId ? String(rider.riderId) : '',
+          name: rider && rider.name ? String(rider.name) : '',
+          phone: rider && rider.phone ? String(rider.phone) : '',
+          email: rider && rider.email ? String(rider.email) : '',
+          status: rider && rider.status ? String(rider.status) : '',
+          platoon: rider && rider.platoon ? String(rider.platoon) : '',
+          partTime: rider && rider.partTime ? String(rider.partTime) : '',
+          certification: rider && rider.certification ? String(rider.certification) : ''
+        }));
+
+        state.ridersById = new Map();
+        state.riders.forEach((rider) => {
+          state.ridersById.set(rider.riderId, rider);
+        });
       }
 
       function fetchRiders() {
@@ -348,6 +706,335 @@
         });
       }
 
+      function fetchRiderOptions() {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler((options) => resolve(options || {}))
+            .withFailureHandler(reject)
+            .getRiderFormOptions();
+        });
+      }
+
+      function updateOptions(options) {
+        if (!options || typeof options !== 'object') {
+          return;
+        }
+        if (Array.isArray(options.statusOptions) && options.statusOptions.length) {
+          state.options.statusOptions = options.statusOptions.slice();
+        }
+        if (Array.isArray(options.platoonOptions) && options.platoonOptions.length) {
+          state.options.platoonOptions = options.platoonOptions.slice();
+        }
+        if (Array.isArray(options.partTimeOptions) && options.partTimeOptions.length) {
+          state.options.partTimeOptions = options.partTimeOptions.slice();
+        }
+      }
+
+      function openBulkEditor() {
+        if (!bulkEditor) return;
+        state.changedRows.clear();
+        renderBulkTable();
+        setBulkStatus('Make inline edits and press Update Riders to save your changes.', false);
+        bulkEditor.hidden = false;
+        document.body.classList.add('modal-open');
+        state.modalOpen = true;
+        updateBulkUpdateButton();
+      }
+
+      function closeBulkEditor() {
+        if (!bulkEditor) return;
+        bulkEditor.hidden = true;
+        document.body.classList.remove('modal-open');
+        state.modalOpen = false;
+        state.changedRows.clear();
+        setBulkStatus('', false);
+        updateBulkUpdateButton();
+      }
+
+      function renderBulkTable() {
+        if (!bulkTableBody) return;
+        bulkTableBody.textContent = '';
+
+        const fragment = document.createDocumentFragment();
+
+        state.riders.forEach((rider) => {
+          const row = document.createElement('tr');
+          row.dataset.riderId = rider.riderId;
+
+          const hasId = Boolean(rider.riderId);
+          const pendingChanges = hasId ? state.changedRows.get(rider.riderId) : null;
+          if (!hasId) {
+            row.classList.add('row-disabled');
+          } else if (pendingChanges) {
+            row.classList.add('row-changed');
+          }
+
+          const idCell = document.createElement('td');
+          idCell.textContent = rider.riderId || '—';
+          row.appendChild(idCell);
+          fragment.appendChild(row);
+
+          Object.keys(fieldConfig).forEach((fieldKey) => {
+            const config = fieldConfig[fieldKey];
+            const cell = document.createElement('td');
+            const changeValue = pendingChanges && Object.prototype.hasOwnProperty.call(pendingChanges, config.sheetKey)
+              ? pendingChanges[config.sheetKey]
+              : undefined;
+            const value = changeValue !== undefined ? changeValue : (rider[config.prop] || '');
+
+            if (config.type === 'select') {
+              const select = document.createElement('select');
+              select.className = 'modal-select';
+              select.dataset.field = fieldKey;
+              select.value = value;
+              if (!hasId) {
+                select.disabled = true;
+              }
+
+              if (config.allowEmpty) {
+                const emptyOption = document.createElement('option');
+                emptyOption.value = '';
+                emptyOption.textContent = '';
+                select.appendChild(emptyOption);
+              }
+
+              const optionsList = state.options[config.optionsKey] || [];
+              optionsList.forEach((optionValue) => {
+                const optionEl = document.createElement('option');
+                optionEl.value = optionValue;
+                optionEl.textContent = optionValue;
+                select.appendChild(optionEl);
+              });
+
+              select.value = value;
+              cell.appendChild(select);
+            } else {
+              const input = document.createElement('input');
+              input.type = config.type || 'text';
+              input.className = 'modal-input';
+              input.dataset.field = fieldKey;
+              input.value = value;
+              if (config.placeholder) {
+                input.placeholder = config.placeholder;
+              }
+              if (config.type === 'tel') {
+                input.inputMode = 'tel';
+              }
+              if (!hasId) {
+                input.disabled = true;
+              }
+              cell.appendChild(input);
+            }
+
+            row.appendChild(cell);
+          });
+        });
+
+        bulkTableBody.appendChild(fragment);
+        updateBulkUpdateButton();
+      }
+
+      function sanitizeValue(value) {
+        if (value === null || value === undefined) {
+          return '';
+        }
+        return String(value).trim();
+      }
+
+      function updateChangeState(riderId, fieldKey, newValue, row) {
+        if (!riderId || !fieldConfig[fieldKey]) {
+          return;
+        }
+
+        const config = fieldConfig[fieldKey];
+        const originalRider = state.ridersById.get(riderId);
+        const originalValue = originalRider ? sanitizeValue(originalRider[config.prop]) : '';
+        const sanitizedNewValue = sanitizeValue(newValue);
+
+        const existing = state.changedRows.get(riderId);
+
+        if (originalValue === sanitizedNewValue) {
+          if (existing) {
+            delete existing[config.sheetKey];
+            if (Object.keys(existing).filter((key) => key !== 'Rider ID').length === 0) {
+              state.changedRows.delete(riderId);
+            } else {
+              state.changedRows.set(riderId, existing);
+            }
+          }
+        } else {
+          const payload = existing || { 'Rider ID': riderId };
+          payload[config.sheetKey] = newValue;
+          state.changedRows.set(riderId, payload);
+        }
+
+        if (row) {
+          row.classList.toggle('row-changed', state.changedRows.has(riderId));
+        }
+        updateBulkUpdateButton();
+      }
+
+      function updateBulkUpdateButton() {
+        if (!bulkUpdateButton) return;
+        const changeCount = state.changedRows.size;
+        const label = changeCount > 0
+          ? `Update ${changeCount} Rider${changeCount === 1 ? '' : 's'}`
+          : 'Update Riders';
+        bulkUpdateButton.textContent = label;
+        bulkUpdateButton.disabled = changeCount === 0 || state.pendingUpdate;
+      }
+
+      function runBulkUpdate(updates) {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .handleRiderOperation('bulkUpdate', { updates });
+        });
+      }
+
+      function formatFailureSummary(failures) {
+        if (!Array.isArray(failures) || failures.length === 0) {
+          return '';
+        }
+        const parts = failures.slice(0, 3).map((failure) => {
+          const id = failure && failure.riderId ? failure.riderId : 'Unknown';
+          const message = failure && failure.message ? failure.message : 'Update failed';
+          return `${id}: ${message}`;
+        });
+        if (failures.length > 3) {
+          parts.push(`+${failures.length - 3} more`);
+        }
+        return parts.join(' • ');
+      }
+
+      async function handleBulkUpdate() {
+        if (state.changedRows.size === 0) {
+          setBulkStatus('No changes to update.', false);
+          return;
+        }
+
+        const updates = Array.from(state.changedRows.values()).map((payload) => ({ ...payload }));
+        state.pendingUpdate = true;
+        updateBulkUpdateButton();
+        setBulkStatus('Applying updates…', false);
+
+        try {
+          const response = await runBulkUpdate(updates);
+          const failures = response && Array.isArray(response.failures) ? response.failures : [];
+          const message = response && response.message ? response.message : 'Bulk update completed.';
+          const failureSummary = formatFailureSummary(failures);
+          const fullMessage = failureSummary ? `${message} ${failureSummary}` : message;
+
+          if (response && response.success) {
+            setBulkStatus(fullMessage, false);
+            state.changedRows.clear();
+            updateBulkUpdateButton();
+            await reloadRiders();
+            renderBulkTable();
+          } else {
+            setBulkStatus(fullMessage, true);
+            if (response && Array.isArray(response.updated)) {
+              response.updated.forEach((riderId) => {
+                state.changedRows.delete(riderId);
+              });
+              if (response.updated.length) {
+                await reloadRiders();
+                renderBulkTable();
+                setBulkStatus(fullMessage, true);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Bulk update failed.', error);
+          setBulkStatus(`Failed to update riders. ${error && error.message ? error.message : ''}`.trim(), true);
+        } finally {
+          state.pendingUpdate = false;
+          updateBulkUpdateButton();
+        }
+      }
+
+      async function reloadRiders() {
+        try {
+          const response = await fetchRiders();
+          if (response && response.success) {
+            applyRiderData(response.riders);
+            if (ridersTable && ridersTbody) {
+              ridersTbody.textContent = '';
+              state.riders.forEach((rider) => {
+                ridersTbody.appendChild(renderRiderRow(rider));
+              });
+              ridersTable.hidden = state.riders.length === 0;
+              if (state.riders.length === 0) {
+                showStatus('No riders found.', false);
+              } else {
+                hideStatus();
+              }
+            }
+          } else if (response && response.message) {
+            showStatus(response.message, true);
+          }
+        } catch (error) {
+          console.error('Failed to refresh riders after bulk update.', error);
+        }
+      }
+
+      function attachEventListeners() {
+        if (bulkEditButton) {
+          bulkEditButton.addEventListener('click', () => {
+            if (!state.riders.length) {
+              showStatus('No rider data available for editing.', true);
+              return;
+            }
+            openBulkEditor();
+          });
+        }
+
+        if (bulkTableBody) {
+          const changeHandler = (event) => {
+            const target = event.target;
+            if (!target || !target.dataset || !target.dataset.field) {
+              return;
+            }
+            const row = target.closest('tr');
+            if (!row) {
+              return;
+            }
+            const riderId = row.dataset.riderId;
+            updateChangeState(riderId, target.dataset.field, target.value, row);
+          };
+
+          bulkTableBody.addEventListener('input', changeHandler);
+          bulkTableBody.addEventListener('change', changeHandler);
+        }
+
+        if (bulkUpdateButton) {
+          bulkUpdateButton.addEventListener('click', () => {
+            if (!state.pendingUpdate) {
+              handleBulkUpdate();
+            }
+          });
+        }
+
+        if (closeTriggers && closeTriggers.length) {
+          closeTriggers.forEach((trigger) => {
+            trigger.addEventListener('click', () => {
+              if (!state.pendingUpdate) {
+                closeBulkEditor();
+              }
+            });
+          });
+        }
+
+        if (bulkEditor) {
+          bulkEditor.addEventListener('click', (event) => {
+            if (event.target === bulkEditor && !state.pendingUpdate) {
+              closeBulkEditor();
+            }
+          });
+        }
+      }
+
       async function initialize() {
         setDocumentTitle();
 
@@ -366,6 +1053,13 @@
             console.warn('Could not determine base URL. Continuing with relative links.', error);
           }
 
+          try {
+            const options = await fetchRiderOptions();
+            updateOptions(options);
+          } catch (error) {
+            console.warn('Unable to fetch rider options.', error);
+          }
+
           const response = await fetchRiders();
           renderRiders(response);
         } catch (error) {
@@ -374,6 +1068,7 @@
         }
       }
 
+      attachEventListeners();
       document.addEventListener('DOMContentLoaded', initialize);
     })();
   </script>
