@@ -4,6 +4,243 @@
 
 // STEP 1: Add this simple test function to your Apps Script Code.gs
 // This will help us see exactly what's happening
+/**
+ * Add this to your Apps Script Code.gs file
+ * Run this function to test if handleRiderOperation works
+ */
+function testHandleRiderOperationExists() {
+  console.log('🧪 Testing handleRiderOperation function...\n');
+  
+  try {
+    // Check if the function exists
+    if (typeof handleRiderOperation !== 'function') {
+      console.log('❌ handleRiderOperation function does NOT exist!');
+      console.log('   You need to add this function to RiderCRUD.gs');
+      return { 
+        exists: false, 
+        error: 'Function not found',
+        solution: 'Add handleRiderOperation function to your project'
+      };
+    }
+    
+    console.log('✅ handleRiderOperation function exists');
+    
+    // Test calling it with riderId 1329
+    console.log('\n🧪 Testing with riderId: 1329');
+    const result = handleRiderOperation('get', { riderId: '1329' });
+    
+    console.log('Result:', result);
+    console.log('Success:', result.success);
+    
+    if (result.success && result.rider) {
+      console.log('\n✅ handleRiderOperation works correctly!');
+      console.log('Rider name:', result.rider.name || result.rider['Full Name']);
+      console.log('Rider ID:', result.rider.jpNumber || result.rider['JP Number']);
+    } else {
+      console.log('\n⚠️ handleRiderOperation returned an error:');
+      console.log('Message:', result.message);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error testing handleRiderOperation:', error);
+    return { 
+      exists: false, 
+      error: error.message,
+      stack: error.stack 
+    };
+  }
+}
+
+/**
+ * Alternative: Test the legacy getRiderDetails function
+ */
+function testGetRiderDetailsExists() {
+  console.log('🧪 Testing getRiderDetails function...\n');
+  
+  try {
+    if (typeof getRiderDetails !== 'function') {
+      console.log('❌ getRiderDetails function does NOT exist!');
+      return { exists: false };
+    }
+    
+    console.log('✅ getRiderDetails function exists');
+    
+    const result = getRiderDetails('1329');
+    
+    if (result) {
+      console.log('\n✅ getRiderDetails works!');
+      console.log('Rider:', result);
+    } else {
+      console.log('\n❌ getRiderDetails returned null');
+    }
+    
+    return { exists: true, result: result };
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return { exists: false, error: error.message };
+  }
+}
+/**
+ * DIAGNOSTIC SCRIPT - Add this to your Apps Script project
+ * Run this function to diagnose the rider detail issue
+ */
+function diagnoseRiderDetailIssue() {
+  console.log('🔍 === RIDER DETAIL DIAGNOSTIC ===\n');
+  
+  try {
+    // Step 1: Check what getRidersForPage returns
+    console.log('1️⃣ Testing getRidersForPage()...');
+    const ridersPageData = getRidersForPage();
+    
+    if (!ridersPageData.success) {
+      console.log('❌ getRidersForPage failed:', ridersPageData.message);
+      return;
+    }
+    
+    console.log(`✅ Found ${ridersPageData.riders.length} riders`);
+    
+    // Show first 3 riders with their data
+    console.log('\n📊 First 3 riders structure:');
+    ridersPageData.riders.slice(0, 3).forEach((rider, index) => {
+      console.log(`\nRider ${index + 1}:`);
+      console.log(`  riderId: "${rider.riderId}"`);
+      console.log(`  name: "${rider.name}"`);
+      console.log(`  jpNumber in object: "${rider.jpNumber || 'N/A'}"`);
+    });
+    
+    // Step 2: Test getRiderDetails with the first rider's ID
+    if (ridersPageData.riders.length > 0) {
+      const testRiderId = ridersPageData.riders[0].riderId;
+      console.log(`\n2️⃣ Testing getRiderDetails with ID: "${testRiderId}"`);
+      
+      const riderDetails = getRiderDetails(testRiderId);
+      
+      if (riderDetails) {
+        console.log('✅ getRiderDetails succeeded!');
+        console.log('Returned rider:');
+        console.log(`  JP Number: "${riderDetails.jpNumber || riderDetails['JP Number'] || 'N/A'}"`);
+        console.log(`  Name: "${riderDetails.name || riderDetails['Full Name'] || 'N/A'}"`);
+        console.log(`  Phone: "${riderDetails.phone || riderDetails['Phone Number'] || 'N/A'}"`);
+      } else {
+        console.log('❌ getRiderDetails returned null');
+        
+        // Step 3: Check the raw sheet data
+        console.log('\n3️⃣ Checking raw sheet data...');
+        const sheetData = getSheetData(CONFIG.sheets.riders, false);
+        
+        console.log(`Headers: ${sheetData.headers.join(', ')}`);
+        console.log('\nColumn Map:');
+        Object.keys(sheetData.columnMap).forEach(key => {
+          console.log(`  "${key}" -> index ${sheetData.columnMap[key]}`);
+        });
+        
+        console.log(`\nFirst row data:`);
+        if (sheetData.data.length > 0) {
+          const firstRow = sheetData.data[0];
+          sheetData.headers.forEach((header, index) => {
+            console.log(`  ${header}: "${firstRow[index]}"`);
+          });
+        }
+        
+        // Step 4: Test what CONFIG expects
+        console.log('\n4️⃣ CONFIG.columns.riders settings:');
+        console.log(JSON.stringify(CONFIG.columns.riders, null, 2));
+      }
+    }
+    
+    // Step 5: Test handleRiderOperation
+    if (ridersPageData.riders.length > 0) {
+      const testRiderId = ridersPageData.riders[0].riderId;
+      console.log(`\n5️⃣ Testing handleRiderOperation with ID: "${testRiderId}"`);
+      
+      const operationResult = handleRiderOperation('get', { riderId: testRiderId });
+      
+      if (operationResult.success) {
+        console.log('✅ handleRiderOperation succeeded!');
+        console.log('Rider found:', operationResult.rider ? 'Yes' : 'No');
+      } else {
+        console.log('❌ handleRiderOperation failed:', operationResult.message);
+      }
+    }
+    
+    console.log('\n\n=== DIAGNOSTIC COMPLETE ===');
+    
+    // Return summary
+    return {
+      ridersFound: ridersPageData.riders.length,
+      sampleRiderId: ridersPageData.riders[0]?.riderId,
+      sampleRiderName: ridersPageData.riders[0]?.name
+    };
+    
+  } catch (error) {
+    console.error('❌ Diagnostic failed:', error);
+    console.error('Stack trace:', error.stack);
+    return { error: error.message };
+  }
+}
+
+/**
+ * Quick fix function - call this if the diagnostic shows empty riderIds
+ */
+function fixEmptyRiderIds() {
+  console.log('🔧 Attempting to fix empty rider IDs...\n');
+  
+  try {
+    const sheetData = getSheetData(CONFIG.sheets.riders, false);
+    
+    console.log('Sheet headers:', sheetData.headers);
+    console.log('\nLooking for JP Number/Rider ID column...');
+    
+    // Find which column has the rider IDs
+    const possibleIdColumns = ['JP Number', 'Rider ID', 'ID', 'jpNumber'];
+    let foundColumn = null;
+    let foundIndex = null;
+    
+    for (const colName of possibleIdColumns) {
+      const index = sheetData.columnMap[colName];
+      if (index !== undefined) {
+        foundColumn = colName;
+        foundIndex = index;
+        console.log(`✅ Found column: "${colName}" at index ${index}`);
+        break;
+      }
+    }
+    
+    if (!foundColumn) {
+      console.log('❌ No rider ID column found!');
+      console.log('Available columns:', Object.keys(sheetData.columnMap));
+      return { success: false, message: 'No rider ID column found in sheet' };
+    }
+    
+    // Check if CONFIG.columns.riders.jpNumber is correctly set
+    console.log(`\n📝 CONFIG.columns.riders.jpNumber is set to: "${CONFIG.columns.riders.jpNumber}"`);
+    console.log(`   Actual column in sheet: "${foundColumn}"`);
+    
+    if (CONFIG.columns.riders.jpNumber !== foundColumn) {
+      console.log(`\n⚠️ MISMATCH DETECTED!`);
+      console.log(`   You need to update CONFIG.columns.riders.jpNumber`);
+      console.log(`   Change it from "${CONFIG.columns.riders.jpNumber}" to "${foundColumn}"`);
+      
+      return {
+        success: false,
+        message: 'Column mismatch',
+        currentConfig: CONFIG.columns.riders.jpNumber,
+        actualColumn: foundColumn,
+        fix: `Change CONFIG.columns.riders.jpNumber to "${foundColumn}"`
+      };
+    }
+    
+    console.log('✅ Column configuration looks correct');
+    return { success: true, message: 'Configuration is correct' };
+    
+  } catch (error) {
+    console.error('❌ Fix attempt failed:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 function debugReportsIssue() {
   console.log('🔍 === DEBUGGING REPORTS ISSUE ===');

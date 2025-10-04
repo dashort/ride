@@ -310,15 +310,103 @@ function getRiderDetails(riderId) {
  * Main handler for all rider operations called from the web app
  * Add this function to RiderCRUD.gs
  */
+/**
+ * Add this NEW function to RiderCRUD.gs
+ * This creates a clean, serializable object for the web app
+ */
+function getRiderForWebApp(riderId) {
+  try {
+    console.log('🌐 getRiderForWebApp called with:', riderId);
+    
+    riderId = String(riderId || '').trim();
+    
+    if (!riderId) {
+      console.log('❌ No riderId provided');
+      return null;
+    }
+    
+    // Get the rider using the existing function
+    const rider = getRiderDetails(riderId);
+    
+    if (!rider) {
+      console.log('❌ Rider not found');
+      return null;
+    }
+    
+    console.log('✅ Rider found, creating clean object...');
+    
+    // Extract values, converting everything to strings explicitly
+    const riderId_val = String(rider['JP Number'] || rider.jpNumber || riderId || '');
+    const name_val = String(rider['Full Name'] || rider.name || '');
+    const phone_val = String(rider['Phone Number'] || rider.phone || '');
+    const email_val = String(rider['Email'] || rider.email || '');
+    const status_val = String(rider['Status'] || rider.status || 'Active');
+    const cert_val = String(rider['Certification'] || rider.certification || '');
+    const assignments_val = String(rider['Total Assignments'] || rider.totalAssignments || '0');
+    const lastDate_val = String(rider['Last Assignment Date'] || rider.lastAssignmentDate || '');
+    const partTime_val = String(rider['Part-Time Rider'] || rider['Part Time Rider'] || rider.partTime || '');
+    const payroll_val = String(rider['Payroll Number'] || rider.payrollNumber || '');
+    const platoon_val = String(rider['Platoon'] || rider.platoon || '');
+    
+    // Create a completely new object with ONLY primitive values
+    const cleanRider = {};
+    cleanRider['Rider ID'] = riderId_val;
+    cleanRider['Full Name'] = name_val;
+    cleanRider['Phone Number'] = phone_val;
+    cleanRider['Email'] = email_val;
+    cleanRider['Status'] = status_val;
+    cleanRider['Certification'] = cert_val;
+    cleanRider['Total Assignments'] = assignments_val;
+    cleanRider['Last Assignment Date'] = lastDate_val;
+    cleanRider['Part-Time Rider'] = partTime_val;
+    cleanRider['Payroll Number'] = payroll_val;
+    cleanRider['Platoon'] = platoon_val;
+    
+    // Also add the alternate property names
+    cleanRider.riderId = riderId_val;
+    cleanRider.jpNumber = riderId_val;
+    cleanRider.name = name_val;
+    cleanRider.phone = phone_val;
+    cleanRider.email = email_val;
+    cleanRider.status = status_val;
+    cleanRider.certification = cert_val;
+    cleanRider.totalAssignments = assignments_val;
+    cleanRider.lastAssignmentDate = lastDate_val;
+    cleanRider.partTime = partTime_val;
+    cleanRider.payrollNumber = payroll_val;
+    cleanRider.platoon = platoon_val;
+    
+    // Verify it can be stringified
+    try {
+      const test = JSON.stringify(cleanRider);
+      console.log('✅ Clean rider serializes OK, length:', test.length);
+    } catch (e) {
+      console.error('❌ Serialization failed:', e.message);
+      return null;
+    }
+    
+    console.log('✅ Returning clean rider object');
+    return cleanRider;
+    
+  } catch (error) {
+    console.error('❌ Error in getRiderForWebApp:', error);
+    console.error('Stack:', error.stack);
+    return null;
+  }
+}
+
+/**
+ * Now update handleRiderOperation to use this function
+ * Replace the 'get' case with this:
+ */
 function handleRiderOperation(action, data) {
   try {
-    console.log(`🔧 handleRiderOperation: ${action}`, data);
+    console.log(`🔧 handleRiderOperation: ${action}`);
     
     switch (action) {
       case 'get':
-        // Get rider details for editing
         const riderId = String(data.riderId || data['Rider ID'] || '').trim();
-        console.log(`Getting rider details for: "${riderId}"`);
+        console.log(`   Getting rider for web app: "${riderId}"`);
 
         if (!riderId) {
           return {
@@ -327,7 +415,8 @@ function handleRiderOperation(action, data) {
           };
         }
 
-        const rider = getRiderDetails(riderId);
+        const rider = getRiderForWebApp(riderId);
+        
         if (!rider) {
           return {
             success: false,
@@ -335,31 +424,37 @@ function handleRiderOperation(action, data) {
           };
         }
 
-        return {
+        const options = getRiderFormOptions();
+
+        const result = {
           success: true,
           rider: rider,
-          options: getRiderFormOptions()
+          options: options || {
+            statusOptions: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
+            certificationOptions: ['', 'Not Certified', 'Standard', 'Instructor'],
+            partTimeOptions: ['', 'Yes', 'No'],
+            platoonOptions: ['', 'A', 'B']
+          }
         };
         
+        console.log('✅ Returning result');
+        return result;
+        
+      // ... keep other cases as they are
       case 'create':
-        // Add new rider
         return addRider(data);
         
       case 'update':
-        // Update existing rider
         return updateRider(data);
         
       case 'delete':
-        // Delete rider
         const deleteId = data.riderId || data['Rider ID'];
         return deleteRider(deleteId);
         
       case 'export':
-        // Export riders to CSV
         return exportRidersToCSV(data.status);
         
       case 'bulkUpdateStatus':
-        // Bulk update rider status
         return bulkUpdateRiderStatus(data.riderIds, data.newStatus);
 
       case 'bulkUpdate':

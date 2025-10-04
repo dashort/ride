@@ -524,6 +524,22 @@
 
       let webAppBaseUrl = '';
 
+      function openRiderDetail(riderId) {
+  if (!riderId) {
+    console.error('No rider ID provided to openRiderDetail');
+    return;
+  }
+  
+  console.log('Opening rider detail for ID:', riderId);
+  
+  // Navigate to the edit-rider page with the riderId parameter
+  const baseUrl = window.location.origin + window.location.pathname;
+  const editUrl = baseUrl + '?page=edit-rider&riderId=' + encodeURIComponent(riderId);
+  
+  // Open in the same window
+  window.location.href = editUrl;
+}
+
       function setDocumentTitle() {
         if (pageTitle && pageTitle.textContent) {
           document.title = pageTitle.textContent.trim();

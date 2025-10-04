@@ -128,13 +128,85 @@
   </div>
 
   <script>
-    function closeDialog(){
-      if(typeof google !== 'undefined' && google.script && google.script.host){
-        google.script.host.close();
-      } else {
-        window.close();
-      }
+   // Replace the closeDialog function in edit-rider.html with this:
+
+// Replace the closeDialog function in edit-rider.html with this DEBUG version:
+
+// FIXED closeDialog function - replace in edit-rider.html
+
+// SIMPLEST SOLUTION - just go back to the previous page
+
+// SOLUTION: Navigate directly to riders page using the web app URL
+
+// Works in both deployed web app AND editor preview
+
+// Final close button solution
+
+// Debug version to see what's happening
+
+// Clean version without debug logging
+
+function closeDialog() {
+  // Try dialog close first (for modal contexts)
+  if (typeof google !== 'undefined' && 
+      google.script && 
+      google.script.host && 
+      typeof google.script.host.close === 'function') {
+    try {
+      google.script.host.close();
+      return;
+    } catch (e) {
+      // Fall through to navigation
     }
+  }
+  
+  // Get the web app URL from server and navigate to riders page
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(baseUrl) {
+        const ridersUrl = baseUrl + '?page=riders';
+        window.location.href = ridersUrl;
+      })
+      .withFailureHandler(function(error) {
+        console.error('Failed to navigate:', error);
+        alert('Cannot navigate. Please use the navigation menu to return to Riders page.');
+      })
+      .getWebAppUrl();
+  } else {
+    alert('Cannot navigate. Please use the navigation menu.');
+  }
+}
+
+// Also add this to verify the button is wired up correctly
+document.addEventListener('DOMContentLoaded', function() {
+  const closeBtn = document.querySelector('.close-button');
+  if (closeBtn) {
+    console.log('✅ Close button found in DOM');
+    console.log('   onclick attribute:', closeBtn.getAttribute('onclick'));
+  } else {
+    console.error('❌ Close button NOT found in DOM!');
+  }
+});
+
+// ALTERNATIVE: If you want to go back to the previous page in history
+function closeDialogWithHistory() {
+  console.log('🔙 Close button clicked');
+  
+  // Check if we're in a modal/dialog context
+  if (typeof google !== 'undefined' && google.script && google.script.host) {
+    google.script.host.close();
+    return;
+  }
+  
+  // Check if there's history to go back to
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    // No history, go to riders page
+    const baseUrl = window.location.origin + window.location.pathname;
+    window.location.href = baseUrl + '?page=riders';
+  }
+}
     function getParam(name){
       const params = new URLSearchParams(window.location.search);
       return params.get(name);
@@ -153,78 +225,227 @@
       return value !== undefined ? value : null;
     }
 
-    function pickFirstValidValue(){
-      for(let i = 0; i < arguments.length; i++){
-        const candidate = arguments[i];
-        if(candidate === null || candidate === undefined) continue;
-        const trimmed = String(candidate).trim();
-        if(trimmed){
-          return trimmed;
-        }
-      }
-      return '';
+// ============================================================
+// COPY THIS ENTIRE SECTION into edit-rider.html
+// Replace from "function loadRider()" all the way down to the 
+// document.addEventListener('DOMContentLoaded', loadRider); line
+// ============================================================
+
+function getParam(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name);
+}
+
+function getFirstParamValue(params, key) {
+  if (!params || !key) return null;
+  const value = params[key];
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value[0] : null;
+  }
+  return value !== undefined ? value : null;
+}
+
+function pickFirstValidValue() {
+  for (let i = 0; i < arguments.length; i++) {
+    const candidate = arguments[i];
+    if (candidate === null || candidate === undefined) continue;
+    const trimmed = String(candidate).trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return '';
+}
+
+function loadRider() {
+  console.log('🔍 === LOADRIDER STARTING ===');
+  preloadFormOptions();
+
+  function fetchAndLoad(riderId) {
+    riderId = (riderId || '').toString().trim();
+    console.log('📞 fetchAndLoad called with:', riderId);
+    
+    if (!riderId) {
+      showMessage('No rider ID provided');
+      console.error('❌ Empty riderId!');
+      return;
     }
 
-    function loadRider(){
-      preloadFormOptions();
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      showMessage('Loading rider details...');
+      console.log('🚀 Calling requestRiderDetails with riderId:', riderId);
+      requestRiderDetails(riderId);
+    } else {
+      showMessage('Google Apps Script runtime unavailable');
+    }
+  }
 
-      function fetchAndLoad(riderId){
-        riderId = (riderId || '').toString().trim();
-        if(!riderId){
-          showMessage('No rider ID provided');
-          return;
-        }
+  // Get all possible sources for riderId
+  const urlRiderId = getParam('riderId');
+  const urlParams = window.urlParameters || null;
+  const pageParams = window.pageParameters || null;
+  
+  console.log('URL param:', urlRiderId);
+  console.log('window.urlParameters:', urlParams);
+  console.log('window.pageParameters:', pageParams);
+  
+  const injectedUrlRiderId = getFirstParamValue(urlParams, 'riderId');
+  const injectedPageRiderId = getFirstParamValue(pageParams, 'riderId');
+  
+  console.log('Extracted urlParameters.riderId:', injectedUrlRiderId);
+  console.log('Extracted pageParameters.riderId:', injectedPageRiderId);
 
-        if(typeof google !== 'undefined' && google.script && google.script.run){
-          showMessage('Loading rider details...');
-          requestRiderDetails(riderId);
-        } else {
-          showMessage('Google Apps Script runtime unavailable');
-        }
-      }
+  // CRITICAL FIX: Use the injected parameters directly
+  // We know window.urlParameters.riderId exists and has the correct value
+  const selectedRiderId = pickFirstValidValue(injectedUrlRiderId, injectedPageRiderId, urlRiderId);
+  
+  console.log('✅ Selected riderId:', selectedRiderId);
+  
+  if (!selectedRiderId) {
+    console.error('❌ No valid riderId found!');
+    showMessage('No rider ID found');
+    return;
+  }
+  
+  fetchAndLoad(selectedRiderId);
+}
 
-      const pageParams = (typeof window !== 'undefined' && window.pageParameters) ? window.pageParameters : null;
-      const urlParams = (typeof window !== 'undefined' && window.urlParameters) ? window.urlParameters : null;
-      const injectedRiderId = getFirstParamValue(pageParams, 'riderId');
-      const injectedUrlRiderId = getFirstParamValue(urlParams, 'riderId');
+document.addEventListener('DOMContentLoaded', loadRider);
 
-      if (typeof google !== 'undefined' && google.script && google.script.url && google.script.url.getLocation){
-        google.script.url.getLocation(function(location){
-          const locationParams = location && location.parameter;
-          const locationRiderId = getFirstParamValue(locationParams, 'riderId');
-          const selectedRiderId = pickFirstValidValue(locationRiderId, injectedRiderId, injectedUrlRiderId, getParam('riderId'));
-          fetchAndLoad(selectedRiderId);
+// Make sure these helper functions are defined correctly
+
+function getParam(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name);
+}
+
+function getFirstParamValue(params, key) {
+  if (!params || !key) return null;
+  const value = params[key];
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value[0] : null;
+  }
+  return value !== undefined ? value : null;
+}
+
+function pickFirstValidValue() {
+  for (let i = 0; i < arguments.length; i++) {
+    const candidate = arguments[i];
+    if (candidate === null || candidate === undefined) continue;
+    const trimmed = String(candidate).trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return '';
+}
+
+
+
+// Add this debugging to your requestRiderDetails and handleRiderResponse functions
+// Replace the existing versions in edit-rider.html
+
+// Replace the requestRiderDetails function in edit-rider.html with this simpler version
+
+function requestRiderDetails(riderId) {
+  console.log('🔧 Loading rider:', riderId);
+  showMessage('Loading rider details...');
+  
+  google.script.run
+    .withSuccessHandler(function(rider) {
+      if (rider) {
+        handleRiderResponse({
+          success: true,
+          rider: rider,
+          options: {
+            statusOptions: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
+            certificationOptions: ['', 'Not Certified', 'Standard', 'Instructor'],
+            partTimeOptions: ['', 'Yes', 'No'],
+            platoonOptions: ['', 'A', 'B']
+          }
         });
       } else {
-        const selectedRiderId = pickFirstValidValue(injectedRiderId, injectedUrlRiderId, getParam('riderId'));
-        fetchAndLoad(selectedRiderId);
+        showMessage('Rider not found');
       }
-    }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Failed to load rider:', error);
+      showMessage('Failed to load rider');
+    })
+    .getRiderForWebApp(riderId);
+}
 
-    function requestRiderDetails(riderId){
-      google.script.run
-        .withSuccessHandler(function(response){ handleRiderResponse(response, riderId); })
-        .withFailureHandler(function(error){
-          const message = (error && error.message) || (typeof error === 'string' ? error : '');
-          if (message && message.indexOf('Script function not found: handleRiderOperation') !== -1) {
-            requestLegacyRiderDetails(riderId);
-            return;
+function requestLegacyRiderDetails(riderId) {
+  console.log('🔧 requestLegacyRiderDetails called with:', riderId);
+  
+  google.script.run
+    .withSuccessHandler(function(response) {
+      console.log('✅ LEGACY SUCCESS handler received:', response);
+      if (response) {
+        handleRiderResponse({
+          success: true,
+          rider: response,
+          options: {
+            statusOptions: ['Active', 'Inactive', 'Vacation', 'Training', 'Suspended'],
+            certificationOptions: ['', 'Not Certified', 'Standard', 'Instructor'],
+            partTimeOptions: ['', 'Yes', 'No'],
+            platoonOptions: ['', 'A', 'B']
           }
-          console.error('Failed to load rider details via handleRiderOperation', error);
-          showMessage('Failed to load rider');
-        })
-        .handleRiderOperation('get', { riderId: riderId });
+        });
+      } else {
+        showMessage('Rider not found');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('❌ LEGACY FAILURE:', error);
+      showMessage('Failed to load rider');
+    })
+    .getRiderForWebApp(riderId);
+}
+
+function handleRiderResponse(response) {
+  console.log('🔍 handleRiderResponse called');
+  console.log('   Response:', response);
+  
+  if (!response) {
+    console.error('❌ Response is null/undefined');
+    showMessage('Rider not found');
+    return;
+  }
+
+  // Check if it's a structured response with success property
+  if (typeof response.success === 'boolean') {
+    console.log('📦 Structured response detected, success:', response.success);
+    
+    if (!response.success) {
+      console.error('❌ Response indicates failure:', response.message);
+      showMessage(response.message || 'Rider not found');
+      return;
     }
 
-    function requestLegacyRiderDetails(riderId){
-      google.script.run
-        .withSuccessHandler(function(response){ handleRiderResponse(response, riderId); })
-        .withFailureHandler(function(error){
-          console.error('Failed to load rider details', error);
-          showMessage('Failed to load rider');
-        })
-        .getRiderDetails(riderId);
+    if (response.options) {
+      console.log('✅ Applying form options');
+      applyFormOptions(response.options);
     }
+
+    if (response.rider) {
+      console.log('✅ Populating form with rider data');
+      console.log('   Rider data:', response.rider);
+      populateForm(response.rider);
+      showMessage('');
+    } else {
+      console.error('❌ Response.rider is missing');
+      showMessage('Rider not found');
+    }
+    return;
+  }
+
+  // Legacy response - assume it's a rider object directly
+  console.log('📦 Legacy response format detected');
+  console.log('   Rider object:', response);
+  populateForm(response);
+  showMessage('');
+}
 
     function handleRiderResponse(response){
       if(!response){
