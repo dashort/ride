@@ -153,6 +153,18 @@
       return value !== undefined ? value : null;
     }
 
+    function pickFirstValidValue(){
+      for(let i = 0; i < arguments.length; i++){
+        const candidate = arguments[i];
+        if(candidate === null || candidate === undefined) continue;
+        const trimmed = String(candidate).trim();
+        if(trimmed){
+          return trimmed;
+        }
+      }
+      return '';
+    }
+
     function loadRider(){
       preloadFormOptions();
 
@@ -171,19 +183,21 @@
         }
       }
 
-      const injectedParams = (typeof window !== 'undefined' && window.pageParameters) ? window.pageParameters : null;
-      const injectedRiderId = getFirstParamValue(injectedParams, 'riderId');
+      const pageParams = (typeof window !== 'undefined' && window.pageParameters) ? window.pageParameters : null;
+      const urlParams = (typeof window !== 'undefined' && window.urlParameters) ? window.urlParameters : null;
+      const injectedRiderId = getFirstParamValue(pageParams, 'riderId');
+      const injectedUrlRiderId = getFirstParamValue(urlParams, 'riderId');
 
       if (typeof google !== 'undefined' && google.script && google.script.url && google.script.url.getLocation){
         google.script.url.getLocation(function(location){
-          const locationRiderId = getFirstParamValue(location && location.parameter, 'riderId');
-          const fallbackRiderId = injectedRiderId || getParam('riderId');
-          fetchAndLoad(locationRiderId || fallbackRiderId);
+          const locationParams = location && location.parameter;
+          const locationRiderId = getFirstParamValue(locationParams, 'riderId');
+          const selectedRiderId = pickFirstValidValue(locationRiderId, injectedRiderId, injectedUrlRiderId, getParam('riderId'));
+          fetchAndLoad(selectedRiderId);
         });
-      } else if (injectedRiderId) {
-        fetchAndLoad(injectedRiderId);
       } else {
-        fetchAndLoad(getParam('riderId'));
+        const selectedRiderId = pickFirstValidValue(injectedRiderId, injectedUrlRiderId, getParam('riderId'));
+        fetchAndLoad(selectedRiderId);
       }
     }
 
