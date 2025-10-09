@@ -90,10 +90,32 @@
             text-align: center;
         }
 
-        .calendar-grid {
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #2d3748;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .calendar-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .calendar-header-row {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 8px;
+            margin-bottom: 8px;
         }
 
         .day-header {
@@ -104,32 +126,46 @@
             font-size: 14px;
         }
 
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+        }
+
         .calendar-day {
             aspect-ratio: 1;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
-            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
             transition: all 0.2s;
             position: relative;
-            user-select: none;
+            min-height: 80px;
             background: white;
         }
 
-        .calendar-day:hover:not(.disabled) {
+        .calendar-day:hover:not(.other-month) {
             border-color: #667eea;
-            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .calendar-day.disabled {
+        .calendar-day.other-month {
+            opacity: 0.3;
             background: #f7fafc;
-            color: #cbd5e0;
-            cursor: not-allowed;
+        }
+
+        .calendar-day.today {
+            border-color: #667eea;
+            border-width: 3px;
+            background: #edf2f7;
         }
 
         .calendar-day.selected {
             background: #667eea;
-            border-color: #667eea;
+            border-color: #5a67d8;
             color: white;
         }
 
@@ -144,14 +180,16 @@
         }
 
         .day-number {
+            font-size: 18px;
             font-weight: 600;
-            font-size: 14px;
             margin-bottom: 4px;
         }
 
         .day-status {
             font-size: 10px;
-            opacity: 0.8;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.1);
         }
 
         .sidebar {
@@ -163,66 +201,41 @@
         .control-panel {
             background: white;
             border-radius: 12px;
-            padding: 24px;
+            padding: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
         .control-panel h3 {
             color: #2d3748;
-            font-size: 18px;
             margin-bottom: 16px;
+            font-size: 18px;
         }
 
         .selection-info {
             background: #edf2f7;
-            border-radius: 8px;
             padding: 12px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            color: #4a5568;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-group label {
-            display: block;
-            font-weight: 600;
-            color: #4a5568;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 2px solid #e2e8f0;
             border-radius: 8px;
+            margin-bottom: 16px;
+            text-align: center;
             font-size: 14px;
-        }
-
-        .time-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            color: #4a5568;
         }
 
         .status-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            display: flex;
+            gap: 8px;
             margin-bottom: 16px;
         }
 
         .status-btn {
+            flex: 1;
             padding: 12px;
-            border: 2px solid #e2e8f0;
+            border: 2px solid;
             border-radius: 8px;
-            background: white;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s;
+            background: white;
         }
 
         .status-btn.available {
@@ -245,29 +258,59 @@
             color: white;
         }
 
-        .btn {
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: #4a5568;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group textarea {
             width: 100%;
-            padding: 12px 20px;
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            margin-bottom: 12px;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
         }
 
         .btn-primary:hover {
             background: #5a67d8;
+            transform: translateY(-2px);
         }
 
-        .btn-secondary {
+        .btn-clear {
+            width: 100%;
+            padding: 8px;
             background: #e2e8f0;
             color: #4a5568;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 14px;
         }
 
         .legend {
@@ -277,56 +320,25 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        .legend h4 {
+        .legend h3 {
             color: #2d3748;
             margin-bottom: 12px;
+            font-size: 16px;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 8px;
             font-size: 14px;
         }
 
-        .legend-box {
+        .legend-color {
             width: 24px;
             height: 24px;
             border-radius: 4px;
             border: 2px solid;
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: white;
-            padding: 16px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            display: none;
-            z-index: 1000;
-            animation: slideIn 0.3s ease;
-        }
-
-        .notification.success {
-            border-left: 4px solid #48bb78;
-        }
-
-        .notification.error {
-            border-left: 4px solid #f56565;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
         }
 
         @media (max-width: 1024px) {
@@ -337,12 +349,20 @@
     </style>
 </head>
 <body>
-    <!--NAVIGATION_MENU_PLACEHOLDER-->
-    
     <div class="container">
         <div class="header">
             <h1>📅 Rider Availability Calendar</h1>
-            <p>Select multiple days and set your availability</p>
+            <p id="headerSubtitle">Select multiple days and set your availability</p>
+            
+            <!-- Admin Rider Selection -->
+            <div id="adminRiderSelector" style="display: none; margin-top: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">
+                    Editing availability for:
+                </label>
+                <select id="riderSelect" onchange="switchRider()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <option value="">Select a rider...</option>
+                </select>
+            </div>
         </div>
 
         <div class="main-content">
@@ -350,21 +370,23 @@
                 <div class="calendar-header">
                     <div class="calendar-nav">
                         <button class="nav-btn" onclick="previousMonth()">←</button>
-                        <div class="month-year" id="monthYear">Loading...</div>
+                        <div class="month-year" id="monthYear"></div>
                         <button class="nav-btn" onclick="nextMonth()">→</button>
                     </div>
-                    <button class="btn-secondary" style="padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;" onclick="goToToday()">Today</button>
+                    <button class="btn-secondary" onclick="goToToday()">Today</button>
                 </div>
 
-                <div class="calendar-grid">
-                    <div class="day-header">Sun</div>
-                    <div class="day-header">Mon</div>
-                    <div class="day-header">Tue</div>
-                    <div class="day-header">Wed</div>
-                    <div class="day-header">Thu</div>
-                    <div class="day-header">Fri</div>
-                    <div class="day-header">Sat</div>
-                    <div id="calendarDays"></div>
+                <div class="calendar-wrapper">
+                    <div class="calendar-header-row">
+                        <div class="day-header">Sun</div>
+                        <div class="day-header">Mon</div>
+                        <div class="day-header">Tue</div>
+                        <div class="day-header">Wed</div>
+                        <div class="day-header">Thu</div>
+                        <div class="day-header">Fri</div>
+                        <div class="day-header">Sat</div>
+                    </div>
+                    <div class="calendar-grid" id="calendarDays"></div>
                 </div>
             </div>
 
@@ -387,38 +409,42 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Time Range</label>
-                        <div class="time-row">
-                            <input type="time" id="startTime" value="09:00">
-                            <input type="time" id="endTime" value="17:00">
+                        <label>Time Range (Optional)</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="time" id="startTime" placeholder="Start">
+                            <input type="time" id="endTime" placeholder="End">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Notes (Optional)</label>
-                        <input type="text" id="notes" placeholder="e.g., Out of town">
+                        <label>Notes</label>
+                        <textarea id="notes" placeholder="Add any notes..."></textarea>
                     </div>
 
-                    <button class="btn btn-primary" onclick="saveAvailability()">
-                        💾 Save Availability
+                    <button class="btn-primary" onclick="saveAvailability()">
+                        Save Availability
                     </button>
-                    <button class="btn btn-secondary" onclick="clearSelection()">
+                    <button class="btn-clear" onclick="clearSelection()">
                         Clear Selection
                     </button>
                 </div>
 
                 <div class="legend">
-                    <h4>Legend</h4>
+                    <h3>📋 Legend</h3>
                     <div class="legend-item">
-                        <div class="legend-box" style="background: #c6f6d5; border-color: #48bb78;"></div>
+                        <div class="legend-color" style="background: #c6f6d5; border-color: #48bb78;"></div>
                         <span>Available</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-box" style="background: #fed7d7; border-color: #f56565;"></div>
+                        <div class="legend-color" style="background: #fed7d7; border-color: #f56565;"></div>
                         <span>Unavailable</span>
                     </div>
                     <div class="legend-item">
-                        <div class="legend-box" style="background: #667eea; border-color: #667eea;"></div>
+                        <div class="legend-color" style="background: #edf2f7; border-color: #667eea;"></div>
+                        <span>Today</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #667eea; border-color: #5a67d8;"></div>
                         <span>Selected</span>
                     </div>
                 </div>
@@ -426,288 +452,410 @@
         </div>
     </div>
 
-    <div class="notification" id="notification"></div>
-
     <script>
-        console.log('🚀 Calendar script loading...');
-        
         let currentDate = new Date();
-        let selectedDates = [];
-        let isDragging = false;
+        let selectedDays = new Set();
         let selectedStatus = 'available';
-        let existingAvailability = {};
+        let availability = {};
+        let isDragging = false;
+        let dragStarted = false;
         let currentUser = null;
+        let allRiders = [];
+        let selectedRiderEmail = null;
+        let isAdminMode = false;
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ DOM loaded');
-            loadCurrentUser();
-            setupEventListeners();
-        });
-
-        function loadCurrentUser() {
-            console.log('📝 Loading current user...');
-            
-            if (typeof google !== 'undefined' && google.script) {
+        // Initialize calendar
+        function initCalendar() {
+            // Get current user info
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(function(user) {
-                        console.log('✅ User loaded:', user);
                         currentUser = user;
-                        loadExistingAvailability();
+                        console.log('Current user:', user);
+                        
+                        // Check if user is admin or dispatcher
+                        if (user.role === 'admin' || user.role === 'dispatcher') {
+                            isAdminMode = true;
+                            loadAllRiders();
+                            document.getElementById('adminRiderSelector').style.display = 'block';
+                            document.getElementById('headerSubtitle').textContent = 'Select a rider to manage their availability';
+                        } else {
+                            // Regular rider mode
+                            selectedRiderEmail = user.email;
+                            renderCalendar();
+                            loadAvailability();
+                        }
                     })
                     .withFailureHandler(function(error) {
-                        console.error('❌ Error loading user:', error);
-                        showNotification('Error loading user information', 'error');
-                        // Demo mode
-                        currentUser = {
-                            email: 'demo@example.com',
-                            name: 'Demo User',
-                            role: 'rider'
-                        };
-                        renderCalendar();
+                        console.error('Error getting user:', error);
+                        alert('Error loading user information. Please refresh the page.');
                     })
                     .getCurrentUser();
             } else {
-                console.log('⚠️ Google script not available, using demo mode');
-                currentUser = {
-                    email: 'demo@example.com',
-                    name: 'Demo User',
-                    role: 'rider'
-                };
+                // Development mode - mock admin user for testing
+                currentUser = { email: 'admin@example.com', name: 'Admin User', role: 'admin' };
+                isAdminMode = true;
+                loadAllRiders();
+                document.getElementById('adminRiderSelector').style.display = 'block';
                 renderCalendar();
             }
         }
 
-        function loadExistingAvailability() {
-            console.log('📊 Loading existing availability...');
-            
-            if (typeof google !== 'undefined' && google.script) {
+        // Load all riders for admin selection
+        function loadAllRiders() {
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(function(data) {
-                        console.log('✅ Availability loaded:', data);
-                        existingAvailability = {};
-                        if (data && data.length > 0) {
-                            data.forEach(item => {
-                                const dateKey = item.date; // Use date as-is from backend
-                                existingAvailability[dateKey] = item;
-                            });
+                    .withSuccessHandler(function(response) {
+                        if (response.success && response.riders) {
+                            allRiders = response.riders;
+                            populateRiderDropdown();
+                        } else {
+                            console.error('Error loading riders:', response.error);
+                            alert('Error loading riders list');
                         }
-                        console.log('📅 Processed availability:', existingAvailability);
-                        renderCalendar();
                     })
                     .withFailureHandler(function(error) {
-                        console.error('❌ Error loading availability:', error);
-                        renderCalendar();
+                        console.error('Error loading riders:', error);
+                        alert('Error loading riders list');
                     })
-                    .getUserAvailability();
+                    .getAllRidersWithAvailability();
             } else {
-                console.log('⚠️ Rendering without availability data');
-                renderCalendar();
+                // Development mode - mock riders
+                allRiders = [
+                    { email: 'rider1@example.com', name: 'John Doe', jpNumber: 'JP001' },
+                    { email: 'rider2@example.com', name: 'Jane Smith', jpNumber: 'JP002' },
+                    { email: 'rider3@example.com', name: 'Bob Johnson', jpNumber: 'JP003' }
+                ];
+                populateRiderDropdown();
             }
         }
 
-        function setupEventListeners() {
-            document.addEventListener('mouseup', function() {
-                isDragging = false;
+        // Populate rider dropdown
+        function populateRiderDropdown() {
+            const select = document.getElementById('riderSelect');
+            select.innerHTML = '<option value="">Select a rider...</option>';
+            
+            allRiders.forEach(rider => {
+                const option = document.createElement('option');
+                option.value = rider.email;
+                option.textContent = `${rider.name} (${rider.jpNumber})`;
+                select.appendChild(option);
             });
         }
 
-        function renderCalendar() {
-            console.log('🎨 Rendering calendar...');
+        // Switch to selected rider
+        function switchRider() {
+            const select = document.getElementById('riderSelect');
+            selectedRiderEmail = select.value;
             
+            if (selectedRiderEmail) {
+                const rider = allRiders.find(r => r.email === selectedRiderEmail);
+                document.getElementById('headerSubtitle').textContent = `Managing availability for ${rider.name}`;
+                clearSelection();
+                loadAvailability();
+            } else {
+                document.getElementById('headerSubtitle').textContent = 'Select a rider to manage their availability';
+                availability = {};
+                renderCalendar();
+            }
+        }
+
+        // Render the calendar grid
+        function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
             
             // Update header
             const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'];
+                              'July', 'August', 'September', 'October', 'November', 'December'];
             document.getElementById('monthYear').textContent = `${monthNames[month]} ${year}`;
 
-            // Calculate days
+            // Get first day of month and number of days
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
 
-            // Render days
             const calendarDays = document.getElementById('calendarDays');
             calendarDays.innerHTML = '';
 
-            // Empty cells for days before month starts
-            for (let i = 0; i < firstDay; i++) {
-                const emptyDay = document.createElement('div');
-                emptyDay.className = 'calendar-day disabled';
-                calendarDays.appendChild(emptyDay);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Previous month days
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                const date = new Date(year, month - 1, day);
+                calendarDays.appendChild(createDayElement(date, true));
             }
 
-            // Render actual days
+            // Current month days
             for (let day = 1; day <= daysInMonth; day++) {
                 const date = new Date(year, month, day);
-                const dateKey = formatDateKey(date);
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day';
-                
-                // Check if past date
-                if (date < today) {
-                    dayElement.classList.add('disabled');
-                }
-
-                // Check if selected
-                if (selectedDates.includes(dateKey)) {
-                    dayElement.classList.add('selected');
-                }
-
-                // Check existing availability
-                if (existingAvailability[dateKey]) {
-                    const avail = existingAvailability[dateKey];
-                    if (avail.status) {
-                        dayElement.classList.add(avail.status);
-                    }
-                }
-
-                dayElement.innerHTML = `
-                    <div class="day-number">${day}</div>
-                    <div class="day-status">${getStatusText(dateKey)}</div>
-                `;
-
-                dayElement.dataset.date = dateKey;
-                
-                if (date >= today) {
-                    dayElement.addEventListener('mousedown', function(e) {
-                        e.preventDefault();
-                        isDragging = true;
-                        toggleDateSelection(dateKey);
-                    });
-
-                    dayElement.addEventListener('mouseenter', function() {
-                        if (isDragging) {
-                            toggleDateSelection(dateKey);
-                        }
-                    });
-
-                    dayElement.addEventListener('click', function(e) {
-                        if (!isDragging) {
-                            toggleDateSelection(dateKey);
-                        }
-                    });
-                }
-
-                calendarDays.appendChild(dayElement);
+                calendarDays.appendChild(createDayElement(date, false));
             }
 
-            updateSelectionInfo();
-            console.log('✅ Calendar rendered');
+            // Next month days to complete the grid
+            const totalCells = calendarDays.children.length;
+            const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for (let day = 1; day <= remainingCells; day++) {
+                const date = new Date(year, month + 1, day);
+                calendarDays.appendChild(createDayElement(date, true));
+            }
         }
 
-        function toggleDateSelection(dateKey) {
-            const index = selectedDates.indexOf(dateKey);
-            if (index > -1) {
-                selectedDates.splice(index, 1);
-            } else {
-                selectedDates.push(dateKey);
+        // Create a day element
+        function createDayElement(date, otherMonth) {
+            const dayEl = document.createElement('div');
+            dayEl.className = 'calendar-day';
+            
+            if (otherMonth) {
+                dayEl.classList.add('other-month');
             }
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dateKey = date.toISOString().split('T')[0];
+            
+            if (date.getTime() === today.getTime()) {
+                dayEl.classList.add('today');
+            }
+
+            if (selectedDays.has(dateKey)) {
+                dayEl.classList.add('selected');
+            }
+
+            if (availability[dateKey]) {
+                dayEl.classList.add(availability[dateKey].status);
+            }
+
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'day-number';
+            dayNumber.textContent = date.getDate();
+            dayEl.appendChild(dayNumber);
+
+            if (availability[dateKey]) {
+                const status = document.createElement('div');
+                status.className = 'day-status';
+                status.textContent = availability[dateKey].status === 'available' ? 'Available' : 'Unavailable';
+                dayEl.appendChild(status);
+            }
+
+            dayEl.dataset.date = dateKey;
+            
+            dayEl.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                isDragging = true;
+                dragStarted = false;
+                toggleDaySelection(dateKey);
+            });
+
+            dayEl.addEventListener('mouseenter', () => {
+                if (isDragging && !dragStarted) {
+                    dragStarted = true;
+                }
+                if (isDragging && dragStarted) {
+                    addDayToSelection(dateKey);
+                }
+            });
+
+            return dayEl;
+        }
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragStarted = false;
+        });
+
+        // Add day to selection (for dragging)
+        function addDayToSelection(dateKey) {
+            if (!selectedDays.has(dateKey)) {
+                selectedDays.add(dateKey);
+                updateSelectionInfo();
+                renderCalendar();
+            }
+        }
+
+        // Toggle day selection
+        function toggleDaySelection(dateKey) {
+            if (selectedDays.has(dateKey)) {
+                selectedDays.delete(dateKey);
+            } else {
+                selectedDays.add(dateKey);
+            }
+            updateSelectionInfo();
             renderCalendar();
         }
 
-        function getStatusText(dateKey) {
-            if (existingAvailability[dateKey]) {
-                const avail = existingAvailability[dateKey];
-                if (avail.startTime && avail.endTime) {
-                    return `${avail.startTime}-${avail.endTime}`;
-                }
-                return avail.status || '';
-            }
-            return '';
-        }
-
-        function formatDateKey(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${month}/${day}/${year}`; // Match backend format
-        }
-
-        function selectStatus(status) {
-            selectedStatus = status;
-            document.getElementById('availableBtn').classList.toggle('active', status === 'available');
-            document.getElementById('unavailableBtn').classList.toggle('active', status === 'unavailable');
-        }
-
+        // Update selection info
         function updateSelectionInfo() {
-            const count = selectedDates.length;
+            const count = selectedDays.size;
             const info = document.getElementById('selectionInfo');
+            info.innerHTML = `<strong>${count} day${count !== 1 ? 's' : ''} selected</strong><br>`;
             
             if (count === 0) {
-                info.innerHTML = '<strong>0 days selected</strong><br>Click and drag to select multiple days';
+                info.innerHTML += 'Click and drag to select multiple days';
             } else {
-                info.innerHTML = `<strong>${count} day${count > 1 ? 's' : ''} selected</strong>`;
+                info.innerHTML += `Set as ${selectedStatus}`;
             }
         }
 
-        function clearSelection() {
-            selectedDates = [];
-            renderCalendar();
+        // Select status
+        function selectStatus(status) {
+            selectedStatus = status;
+            document.getElementById('availableBtn').classList.remove('active');
+            document.getElementById('unavailableBtn').classList.remove('active');
+            document.getElementById(status + 'Btn').classList.add('active');
+            updateSelectionInfo();
         }
 
+        // Save availability
         function saveAvailability() {
-            console.log('💾 Saving availability...');
-            
-            if (selectedDates.length === 0) {
-                showNotification('Please select at least one day', 'error');
+            if (selectedDays.size === 0) {
+                alert('Please select at least one day');
                 return;
             }
 
-            const startTime = document.getElementById('startTime').value;
-            const endTime = document.getElementById('endTime').value;
+            // Determine which email to use
+            let targetEmail;
+            if (isAdminMode && selectedRiderEmail) {
+                targetEmail = selectedRiderEmail;
+            } else if (currentUser && currentUser.email) {
+                targetEmail = currentUser.email;
+            } else {
+                alert('User not authenticated. Please refresh the page.');
+                return;
+            }
+
+            if (!targetEmail) {
+                alert('Please select a rider first');
+                return;
+            }
+
+            const startTime = document.getElementById('startTime').value || '00:00';
+            const endTime = document.getElementById('endTime').value || '23:59';
             const notes = document.getElementById('notes').value;
 
-            if (startTime && endTime && startTime >= endTime) {
-                showNotification('End time must be after start time', 'error');
-                return;
-            }
+            // Save each selected day
+            let savedCount = 0;
+            const totalDays = selectedDays.size;
 
-            if (typeof google !== 'undefined' && google.script) {
-                showNotification('Saving availability...', 'success');
-                
-                let savedCount = 0;
-                selectedDates.forEach((dateKey) => {
-                    // Convert back to YYYY-MM-DD format for backend
-                    const parts = dateKey.split('/');
-                    const backendDate = `${parts[2]}-${parts[0]}-${parts[1]}`;
-                    
-                    const data = {
-                        email: currentUser.email,
-                        date: backendDate,
-                        startTime: startTime || null,
-                        endTime: endTime || null,
-                        status: selectedStatus,
-                        notes: notes || '',
-                        riderId: currentUser.riderId || null
-                    };
-                    
-                    console.log('Saving:', data);
-                    
+            selectedDays.forEach(dateKey => {
+                const data = {
+                    email: targetEmail,
+                    date: dateKey,
+                    startTime: startTime,
+                    endTime: endTime,
+                    status: selectedStatus,
+                    notes: notes,
+                    riderId: null // Will be looked up by backend
+                };
+
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
                     google.script.run
-                        .withSuccessHandler(function(result) {
+                        .withSuccessHandler(function(response) {
                             savedCount++;
-                            if (savedCount === selectedDates.length) {
-                                showNotification(`✓ Saved ${selectedDates.length} day(s)`, 'success');
-                                selectedDates = [];
-                                loadExistingAvailability();
-                                document.getElementById('notes').value = '';
+                            console.log('Saved:', response);
+                            
+                            if (savedCount === totalDays) {
+                                // All saves complete
+                                const riderName = isAdminMode ? 
+                                    allRiders.find(r => r.email === targetEmail)?.name || 'Rider' :
+                                    'your';
+                                alert(`Successfully set ${totalDays} day(s) as ${selectedStatus} for ${riderName}!`);
+                                clearSelection();
+                                loadAvailability();
                             }
                         })
                         .withFailureHandler(function(error) {
                             console.error('Save error:', error);
-                            showNotification('Error saving: ' + error, 'error');
+                            alert('Error saving availability: ' + error);
                         })
                         .saveRiderAvailabilityData(data);
-                });
-            } else {
-                showNotification('Demo mode - data not saved', 'error');
+                } else {
+                    // Development mode - store locally
+                    availability[dateKey] = {
+                        status: selectedStatus,
+                        startTime: startTime,
+                        endTime: endTime,
+                        notes: notes
+                    };
+                    savedCount++;
+                }
+            });
+
+            // If in development mode, show success immediately
+            if (typeof google === 'undefined') {
+                alert(`Successfully set ${selectedDays.size} day(s) as ${selectedStatus}!`);
+                clearSelection();
             }
         }
 
+        // Clear selection
+        function clearSelection() {
+            selectedDays.clear();
+            document.getElementById('startTime').value = '';
+            document.getElementById('endTime').value = '';
+            document.getElementById('notes').value = '';
+            updateSelectionInfo();
+            renderCalendar();
+        }
+
+        // Load availability (from backend)
+        function loadAvailability() {
+            // Determine which email to load
+            let targetEmail;
+            if (isAdminMode && selectedRiderEmail) {
+                targetEmail = selectedRiderEmail;
+            } else if (currentUser && currentUser.email) {
+                targetEmail = currentUser.email;
+            } else {
+                console.log('No user loaded yet');
+                return;
+            }
+
+            if (!targetEmail) {
+                console.log('No rider selected');
+                return;
+            }
+
+            if (typeof google !== 'undefined' && google.script && google.script.run) {
+                google.script.run
+                    .withSuccessHandler(function(data) {
+                        console.log('Loaded availability for', targetEmail, ':', data);
+                        
+                        // Convert backend data to availability object
+                        availability = {};
+                        if (data && Array.isArray(data)) {
+                            data.forEach(entry => {
+                                const dateKey = entry.date; // Backend returns date in YYYY-MM-DD format
+                                availability[dateKey] = {
+                                    status: entry.status || 'available',
+                                    startTime: entry.startTime,
+                                    endTime: entry.endTime,
+                                    notes: entry.notes
+                                };
+                            });
+                        }
+                        
+                        renderCalendar();
+                    })
+                    .withFailureHandler(function(error) {
+                        console.error('Error loading availability:', error);
+                    })
+                    .getUserAvailabilityForCalendar(targetEmail);
+            } else {
+                // Development mode - use mock data
+                const today = new Date();
+                availability[today.toISOString().split('T')[0]] = {
+                    status: 'available',
+                    startTime: '09:00',
+                    endTime: '17:00'
+                };
+                renderCalendar();
+            }
+        }
+
+        // Navigation functions
         function previousMonth() {
             currentDate.setMonth(currentDate.getMonth() - 1);
             renderCalendar();
@@ -723,18 +871,8 @@
             renderCalendar();
         }
 
-        function showNotification(message, type) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type}`;
-            notification.style.display = 'block';
-
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
-        }
-        
-        console.log('✅ Calendar script loaded');
+        // Initialize on load
+        initCalendar();
     </script>
 </body>
 </html>
