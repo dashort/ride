@@ -14,125 +14,130 @@ const ss = SpreadsheetApp.getActiveSpreadsheet();
 // FIX BACKEND RETURNING NULL
 // ========================================
 /**
- * Check what's actually being rendered on the page
+ * Test if availability backend functions exist and work
  */
-function checkActualPageOutput() {
-  console.log('=== CHECKING ACTUAL PAGE OUTPUT ===\n');
+function testAvailabilityBackend() {
+  console.log('=== TESTING AVAILABILITY BACKEND ===\n');
   
-  // Simulate loading as admin
-  const mockEvent = { parameter: {} };
+  // Test 1: Check if functions exist
+  console.log('1. CHECKING FUNCTION EXISTENCE:');
+  console.log('   getCurrentUser:', typeof getCurrentUser !== 'undefined' ? '✅ EXISTS' : '❌ MISSING');
+  console.log('   getUserAvailability:', typeof getUserAvailability !== 'undefined' ? '✅ EXISTS' : '❌ MISSING');
+  console.log('   saveRiderAvailabilityData:', typeof saveRiderAvailabilityData !== 'undefined' ? '✅ EXISTS' : '❌ MISSING');
+  console.log('   getAllRidersWithAvailability:', typeof getAllRidersWithAvailability !== 'undefined' ? '✅ EXISTS' : '❌ MISSING');
   
+  // Test 2: Test getCurrentUser
+  console.log('\n2. TESTING getCurrentUser():');
   try {
-    const result = doGet(mockEvent);
-    const content = result.getContent();
-    
-    console.log('1. PAGE LOADED SUCCESSFULLY');
-    console.log('   Content length:', content.length, 'chars\n');
-    
-    // Check if _navigation.html content is in the output
-    console.log('2. CHECKING IF _NAVIGATION.HTML IS INCLUDED:');
-    const hasNavTag = content.includes('<nav class="navigation">');
-    console.log('   Has <nav> tag:', hasNavTag ? '✅ YES' : '❌ NO');
-    
-    if (hasNavTag) {
-      // Extract navigation section
-      const navStart = content.indexOf('<nav class="navigation">');
-      const navEnd = content.indexOf('</nav>', navStart) + 6;
-      const navSection = content.substring(navStart, navEnd);
-      
-      console.log('\n3. NAVIGATION CONTENT:');
-      console.log(navSection);
-      
-      console.log('\n4. CHECKING FOR SPECIFIC LINKS:');
-      console.log('   Has Dashboard:', navSection.includes('Dashboard') ? '✅' : '❌');
-      console.log('   Has Requests:', navSection.includes('Requests') ? '✅' : '❌');
-      console.log('   Has Riders:', navSection.includes('Riders') ? '✅' : '❌');
-      console.log('   Has Availability:', navSection.includes('Availability') ? '✅' : '❌');
-      console.log('   Has User Management:', navSection.includes('User Management') ? '✅' : '❌');
-      
-      console.log('\n5. CHECKING DATA-PAGE ATTRIBUTES:');
-      const dataPageRegex = /data-page="([^"]+)"/g;
-      const pages = [];
-      let match;
-      while ((match = dataPageRegex.exec(navSection)) !== null) {
-        pages.push(match[1]);
-      }
-      console.log('   Pages found:', pages.join(', '));
-      
-      if (pages.includes('rider-availability-calendar')) {
-        console.log('\n   ✅ rider-availability-calendar IS in the navigation!');
-      } else if (pages.includes('enhanced-rider-availability')) {
-        console.log('\n   ⚠️ enhanced-rider-availability is there (wrong name)');
-      } else {
-        console.log('\n   ❌ No availability calendar link found!');
-      }
-      
-    } else {
-      console.log('   Navigation not found in output!');
-    }
-    
-    // Check if there's any JavaScript that might hide elements
-    console.log('\n6. CHECKING FOR JAVASCRIPT THAT MIGHT HIDE ITEMS:');
-    const hasRoleFilter = content.includes('role') && content.includes('filter');
-    const hasHideLogic = content.includes('display: none') || content.includes('.hide') || content.includes('hidden');
-    
-    console.log('   Has role-based filtering:', hasRoleFilter ? '⚠️ POSSIBLE' : 'No');
-    console.log('   Has hide logic:', hasHideLogic ? '⚠️ YES' : 'No');
-    
-  } catch (error) {
-    console.log('❌ Error:', error.message);
+    const user = getCurrentUser();
+    console.log('   ✅ Function works');
+    console.log('   User:', user.email, '-', user.name, '-', user.role);
+  } catch (e) {
+    console.log('   ❌ Error:', e.message);
   }
   
-  console.log('\n=== CHECK COMPLETE ===');
-}
-
-/**
- * Test if file exists and can be loaded
- */
-function testAvailabilityFileExists() {
-  console.log('=== TESTING FILE EXISTENCE ===\n');
-  
-  const filenames = [
-    'rider-availability-calendar',
-    'enhanced-rider-availability',
-    'rider-availability',
-    'availability-calendar'
-  ];
-  
-  filenames.forEach(filename => {
-    try {
-      HtmlService.createHtmlOutputFromFile(filename);
-      console.log(`✅ ${filename}.html EXISTS`);
-    } catch (e) {
-      console.log(`❌ ${filename}.html NOT FOUND`);
+  // Test 3: Test getUserAvailability
+  console.log('\n3. TESTING getUserAvailability():');
+  try {
+    const availability = getUserAvailability();
+    console.log('   ✅ Function works');
+    console.log('   Returned:', typeof availability);
+    console.log('   Is array:', Array.isArray(availability) ? 'YES' : 'NO');
+    console.log('   Length:', availability ? availability.length : 0);
+    if (availability && availability.length > 0) {
+      console.log('   Sample entry:', availability[0]);
     }
-  });
+  } catch (e) {
+    console.log('   ❌ Error:', e.message);
+  }
+  
+  // Test 4: Check if Availability sheet exists
+  console.log('\n4. CHECKING AVAILABILITY SHEET:');
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Availability');
+    if (sheet) {
+      console.log('   ✅ Sheet exists');
+      const lastRow = sheet.getLastRow();
+      console.log('   Rows:', lastRow);
+      if (lastRow > 1) {
+        const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+        console.log('   Headers:', headers.join(', '));
+      } else {
+        console.log('   ⚠️ Sheet is empty (only headers or no data)');
+      }
+    } else {
+      console.log('   ❌ Sheet does NOT exist');
+      console.log('   Available sheets:', ss.getSheets().map(s => s.getName()).join(', '));
+    }
+  } catch (e) {
+    console.log('   ❌ Error:', e.message);
+  }
+  
+  // Test 5: Test page data function
+  console.log('\n5. TESTING getPageDataForAvailability() if it exists:');
+  if (typeof getPageDataForAvailability !== 'undefined') {
+    try {
+      const pageData = getPageDataForAvailability();
+      console.log('   ✅ Function works');
+      console.log('   Success:', pageData.success);
+      console.log('   Has user:', !!pageData.user);
+      console.log('   Has availability:', !!pageData.availability);
+    } catch (e) {
+      console.log('   ❌ Error:', e.message);
+    }
+  } else {
+    console.log('   ⚠️ Function does not exist (might not be needed)');
+  }
   
   console.log('\n=== TEST COMPLETE ===');
 }
 
 /**
- * Check what _navigation.html currently contains
+ * Create sample availability data for testing
  */
-function showNavigationFileContent() {
-  console.log('=== CURRENT _NAVIGATION.HTML CONTENT ===\n');
+function createSampleAvailabilityData() {
+  console.log('=== CREATING SAMPLE AVAILABILITY DATA ===\n');
   
   try {
-    const navFile = HtmlService.createHtmlOutputFromFile('_navigation');
-    const content = navFile.getContent();
+    const user = getCurrentUser();
+    console.log('Creating for user:', user.email);
     
-    console.log(content);
+    // Create 5 sample days
+    const today = new Date();
+    const results = [];
     
-    console.log('\n=== CHECKING FOR AVAILABILITY LINK ===');
-    console.log('Contains "rider-availability-calendar":', content.includes('rider-availability-calendar') ? '✅ YES' : '❌ NO');
-    console.log('Contains "enhanced-rider-availability":', content.includes('enhanced-rider-availability') ? '✅ YES' : '❌ NO');
-    console.log('Contains "Availability":', content.includes('Availability') ? '✅ YES' : '❌ NO');
+    for (let i = 1; i <= 5; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      
+      const dateStr = date.toISOString().split('T')[0];
+      
+      const data = {
+        email: user.email,
+        date: dateStr,
+        startTime: '09:00',
+        endTime: '17:00',
+        status: 'available',
+        notes: `Sample day ${i}`,
+        riderId: user.riderId || null
+      };
+      
+      console.log(`Creating sample for ${dateStr}...`);
+      const result = saveRiderAvailabilityData(data);
+      results.push(result);
+      console.log('  Result:', result.success ? '✅ SUCCESS' : '❌ FAILED');
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    console.log(`\n✅ Created ${successCount} sample availability entries`);
+    console.log('Refresh your calendar page to see them!');
     
   } catch (e) {
-    console.log('❌ Cannot load _navigation.html:', e.message);
+    console.log('❌ Error:', e.message);
   }
   
-  console.log('\n=== CONTENT DISPLAY COMPLETE ===');
+  console.log('\n=== COMPLETE ===');
 }
 // STEP 1: Add this ultra-simple test function to your Apps Script
 function simpleReportsTest() {
@@ -7499,18 +7504,6 @@ function checkPageAccessSafe(pageName, user, rider) {
   }
 }
 
-function getRoleBasedNavigationSafe(pageName, user, rider) {
-  try {
-    if (typeof getRoleBasedNavigation === 'function') {
-      return getRoleBasedNavigation(pageName, user, rider);
-    }
-    return '<nav>Navigation unavailable</nav>';
-  } catch (error) {
-    console.error('Error in getRoleBasedNavigationSafe:', error);
-    return '<nav>Navigation error</nav>';
-  }
-}
-
 function injectUserInfoSafe(content, user, rider) {
   try {
     if (typeof injectUserInfo === 'function') {
@@ -9207,6 +9200,7 @@ function getRoleBasedNavigationSafe(currentPage, user, rider) {
         { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
         { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
         { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
+        { page: 'rider-availability-calendar', label: '📅 Availability', url: `${baseUrl}?page=rider-availability-calendar` },
         { page: 'user-management', label: '🔐 User Management', url: `${baseUrl}?page=user-management` },
         { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
         { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }

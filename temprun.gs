@@ -1,7 +1,33 @@
 // ========================================
 // STEP-BY-STEP DEBUG AND FIX
 // ========================================
-
+/**
+ * Check what CONFIG.sheets.availability is set to
+ */
+function checkConfigAvailability() {
+  console.log('=== CHECKING CONFIG.sheets.availability ===\n');
+  
+  console.log('CONFIG.sheets.availability =', CONFIG.sheets.availability);
+  console.log('');
+  
+  // Check if the sheet exists with that name
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(CONFIG.sheets.availability);
+  
+  if (sheet) {
+    console.log('✅ Sheet exists with this name');
+    console.log('   Rows:', sheet.getLastRow());
+  } else {
+    console.log('❌ Sheet does NOT exist with this name');
+    console.log('');
+    console.log('Available sheets:', ss.getSheets().map(s => s.getName()).join(', '));
+  }
+  
+  console.log('\n=== FIX ===');
+  console.log('The CONFIG value should be: "Rider Availability"');
+  console.log('Find CONFIG.sheets.availability in your Config.gs or Code.gs');
+  console.log('And change it to: CONFIG.sheets.availability = "Rider Availability";');
+}
 // STEP 1: Add this simple test function to your Apps Script Code.gs
 // This will help us see exactly what's happening
 /**
