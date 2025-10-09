@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rider Availability Calendar</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { Calendar, Clock, User, Check, X, Plus, Save } = lucide;
+        
+        const RiderAvailabilityCalendar = () => {
+          const [riders, setRiders] = React.useState([
+            { id: 1, name: 'Sarah Johnson', availability: {} },
+            { id: 2, name: 'Mike Chen', availability: {} },
+            { id: 3, name: 'Emma Davis', availability: {} }
+          ]);
+          
+          const [selectedRider, setSelectedRider] = React.useState(null);
+          const [selectedDates, setSelectedDates] = React.useState([]);
+          const [startTime, setStartTime] = React.useState('09:00');
+          const [endTime, setEndTime] = React.useState('17:00');
+          const [isAvailable, setIsAvailable] = React.useState(true);
+          const [currentMonth, setCurrentMonth] = React.useState(new Date());
+          const [newRiderName, setNewRiderName] = React.useState('');
+          const [showAddRider, setShowAddRider] = React.useState(false);
+
+          const getDaysInMonth = (date) => {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay();
+            
+            return { daysInMonth, startingDayOfWeek, year, month };
+          };
+
+          const formatDateKey = (year, month, day) => {
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          };
+
+          const toggleDateSelection = (day) => {
+            const { year, month } = getDaysInMonth(currentMonth);
+            const dateKey = formatDateKey(year, month, day);
+            
+            setSelectedDates(prev => 
+              prev.includes(dateKey) 
+                ? prev.filter(d => d !== dateKey)
+                : [...prev, dateKey]
+            );
+          };
+
+          const applyAvailability = () => {
+            if (!selectedRider || selectedDates.length === 0) return;
+
+            setRiders(prev => prev.map(rider => {
+              if (rider.id === selectedRider.id) {
+                const newAvailability = { ...rider.availability };
+                selectedDates.forEach(date => {
+                  newAvailability[date] = {
+                    available: isAvailable,
+                    startTime: isAvailable ? startTime : null,
+                    endTime: isAvailable ? endTime : null
+                  };
+                });
+                return { ...rider, availability: newAvailability };
+              }
+              return rider;
+            }));
+
+            setSelectedDates([]);
+          };
+
+          const addRider = () => {
+            if (newRiderName.trim()) {
+              setRiders(prev => [...prev, {
+                id: Date.now(),
+                name: newRiderName.trim(),
+                availability: {}
+              }]);
+              setNewRiderName('');
+              setShowAddRider(false);
+            }
+          };
+
+          const getAvailabilityStatus = (day) => {
+            if (!selectedRider) return null;
+            const { year, month } = getDaysInMonth(currentMonth);
+            const dateKey = formatDateKey(year, month, day);
+            return selectedRider.availability[dateKey];
+          };
+
+          const changeMonth = (delta) => {
+            setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+            setSelectedDates([]);
+          };
+
+          const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentMonth);
+          const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+          const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+              <div className="max-w-7xl mx-auto">
+                <div className="bg-white rounded-2xl shadow-xl p-8">
+                  <div className="flex items-center gap-3 mb-8">
+                    <Calendar className="w-8 h-8 text-indigo-600" />
+                    <h1 className="text-3xl font-bold text-gray-800">Rider Availability Manager</h1>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Rider Selection Panel */}
+                    <div className="lg:col-span-1 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                          <User className="w-5 h-5" />
+                          Select Rider
+                        </h2>
+                        <button
+                          onClick={() => setShowAddRider(!showAddRider)}
+                          className="p-2 hover:bg-white rounded-lg transition-colors"
+                        >
+                          <Plus className="w-5 h-5 text-indigo-600" />
+                        </button>
+                      </div>
+
+                      {showAddRider && (
+                        <div className="mb-4 space-y-2">
+                          <input
+                            type="text"
+                            value={newRiderName}
+                            onChange={(e) => setNewRiderName(e.target.value)}
+                            placeholder="Enter rider name"
+                            className="w-full px-3 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            onKeyPress={(e) => e.key === 'Enter' && addRider()}
+                          />
+                          <button
+                            onClick={addRider}
+                            className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add Rider
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        {riders.map(rider => (
+                          <button
+                            key={rider.id}
+                            onClick={() => {
+                              setSelectedRider(rider);
+                              setSelectedDates([]);
+                            }}
+                            className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
+                              selectedRider?.id === rider.id
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-white hover:bg-indigo-50 text-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">{rider.name}</span>
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                selectedRider?.id === rider.id
+                                  ? 'bg-indigo-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {Object.keys(rider.availability).length} days
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Calendar Panel */}
+                    <div className="lg:col-span-2">
+                      {selectedRider ? (
+                        <div className="space-y-6">
+                          {/* Calendar Header */}
+                          <div className="flex items-center justify-between bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl p-4">
+                            <button
+                              onClick={() => changeMonth(-1)}
+                              className="px-4 py-2 hover:bg-white/20 rounded-lg transition-colors"
+                            >
+                              ←
+                            </button>
+                            <h3 className="text-xl font-semibold">{monthName}</h3>
+                            <button
+                              onClick={() => changeMonth(1)}
+                              className="px-4 py-2 hover:bg-white/20 rounded-lg transition-colors"
+                            >
+                              →
+                            </button>
+                          </div>
+
+                          {/* Calendar Grid */}
+                          <div className="bg-white rounded-xl border border-gray-200 p-4">
+                            <div className="grid grid-cols-7 gap-2 mb-2">
+                              {dayNames.map(day => (
+                                <div key={day} className="text-center text-sm font-semibold text-gray-600 py-2">
+                                  {day}
+                                </div>
+                              ))}
+                            </div>
+                            
+                            <div className="grid grid-cols-7 gap-2">
+                              {[...Array(startingDayOfWeek)].map((_, i) => (
+                                <div key={`empty-${i}`} />
+                              ))}
+                              
+                              {[...Array(daysInMonth)].map((_, i) => {
+                                const day = i + 1;
+                                const dateKey = formatDateKey(year, month, day);
+                                const isSelected = selectedDates.includes(dateKey);
+                                const status = getAvailabilityStatus(day);
+                                
+                                return (
+                                  <button
+                                    key={day}
+                                    onClick={() => toggleDateSelection(day)}
+                                    className={`aspect-square rounded-lg p-2 transition-all relative ${
+                                      isSelected
+                                        ? 'bg-indigo-600 text-white shadow-lg scale-105'
+                                        : status?.available
+                                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                        : status?.available === false
+                                        ? 'bg-red-100 text-red-800 hover:bg-red-200'
+                                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                                    }`}
+                                  >
+                                    <div className="text-sm font-medium">{day}</div>
+                                    {status && (
+                                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
+                                        {status.available ? (
+                                          <Check className="w-3 h-3" />
+                                        ) : (
+                                          <X className="w-3 h-3" />
+                                        )}
+                                      </div>
+                                    )}
+                                    {status?.available && status.startTime && (
+                                      <div className="text-xs mt-1 opacity-75">
+                                        {status.startTime.slice(0, 5)}
+                                      </div>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Time Selection Panel */}
+                          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                              <Clock className="w-5 h-5" />
+                              Set Availability for Selected Days ({selectedDates.length})
+                            </h3>
+                            
+                            <div className="space-y-4">
+                              <div className="flex gap-4">
+                                <button
+                                  onClick={() => setIsAvailable(true)}
+                                  className={`flex-1 py-3 rounded-lg font-medium transition-all ${
+                                    isAvailable
+                                      ? 'bg-green-500 text-white shadow-md'
+                                      : 'bg-white text-gray-600 hover:bg-green-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Check className="w-5 h-5" />
+                                    Available
+                                  </div>
+                                </button>
+                                <button
+                                  onClick={() => setIsAvailable(false)}
+                                  className={`flex-1 py-3 rounded-lg font-medium transition-all ${
+                                    !isAvailable
+                                      ? 'bg-red-500 text-white shadow-md'
+                                      : 'bg-white text-gray-600 hover:bg-red-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-center gap-2">
+                                    <X className="w-5 h-5" />
+                                    Unavailable
+                                  </div>
+                                </button>
+                              </div>
+
+                              {isAvailable && (
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Start Time
+                                    </label>
+                                    <input
+                                      type="time"
+                                      value={startTime}
+                                      onChange={(e) => setStartTime(e.target.value)}
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      End Time
+                                    </label>
+                                    <input
+                                      type="time"
+                                      value={endTime}
+                                      onChange={(e) => setEndTime(e.target.value)}
+                                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              <button
+                                onClick={applyAvailability}
+                                disabled={selectedDates.length === 0}
+                                className={`w-full py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                                  selectedDates.length > 0
+                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-md'
+                                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                }`}
+                              >
+                                <Save className="w-5 h-5" />
+                                Apply to {selectedDates.length} Selected Day{selectedDates.length !== 1 ? 's' : ''}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-full flex items-center justify-center text-gray-400">
+                          <div className="text-center">
+                            <User className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                            <p className="text-lg">Select a rider to manage their availability</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<RiderAvailabilityCalendar />);
+    </script>
+</body>
+</html>

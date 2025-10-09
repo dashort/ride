@@ -13,7 +13,127 @@ const ss = SpreadsheetApp.getActiveSpreadsheet();
 // ========================================
 // FIX BACKEND RETURNING NULL
 // ========================================
+/**
+ * Check what's actually being rendered on the page
+ */
+function checkActualPageOutput() {
+  console.log('=== CHECKING ACTUAL PAGE OUTPUT ===\n');
+  
+  // Simulate loading as admin
+  const mockEvent = { parameter: {} };
+  
+  try {
+    const result = doGet(mockEvent);
+    const content = result.getContent();
+    
+    console.log('1. PAGE LOADED SUCCESSFULLY');
+    console.log('   Content length:', content.length, 'chars\n');
+    
+    // Check if _navigation.html content is in the output
+    console.log('2. CHECKING IF _NAVIGATION.HTML IS INCLUDED:');
+    const hasNavTag = content.includes('<nav class="navigation">');
+    console.log('   Has <nav> tag:', hasNavTag ? '✅ YES' : '❌ NO');
+    
+    if (hasNavTag) {
+      // Extract navigation section
+      const navStart = content.indexOf('<nav class="navigation">');
+      const navEnd = content.indexOf('</nav>', navStart) + 6;
+      const navSection = content.substring(navStart, navEnd);
+      
+      console.log('\n3. NAVIGATION CONTENT:');
+      console.log(navSection);
+      
+      console.log('\n4. CHECKING FOR SPECIFIC LINKS:');
+      console.log('   Has Dashboard:', navSection.includes('Dashboard') ? '✅' : '❌');
+      console.log('   Has Requests:', navSection.includes('Requests') ? '✅' : '❌');
+      console.log('   Has Riders:', navSection.includes('Riders') ? '✅' : '❌');
+      console.log('   Has Availability:', navSection.includes('Availability') ? '✅' : '❌');
+      console.log('   Has User Management:', navSection.includes('User Management') ? '✅' : '❌');
+      
+      console.log('\n5. CHECKING DATA-PAGE ATTRIBUTES:');
+      const dataPageRegex = /data-page="([^"]+)"/g;
+      const pages = [];
+      let match;
+      while ((match = dataPageRegex.exec(navSection)) !== null) {
+        pages.push(match[1]);
+      }
+      console.log('   Pages found:', pages.join(', '));
+      
+      if (pages.includes('rider-availability-calendar')) {
+        console.log('\n   ✅ rider-availability-calendar IS in the navigation!');
+      } else if (pages.includes('enhanced-rider-availability')) {
+        console.log('\n   ⚠️ enhanced-rider-availability is there (wrong name)');
+      } else {
+        console.log('\n   ❌ No availability calendar link found!');
+      }
+      
+    } else {
+      console.log('   Navigation not found in output!');
+    }
+    
+    // Check if there's any JavaScript that might hide elements
+    console.log('\n6. CHECKING FOR JAVASCRIPT THAT MIGHT HIDE ITEMS:');
+    const hasRoleFilter = content.includes('role') && content.includes('filter');
+    const hasHideLogic = content.includes('display: none') || content.includes('.hide') || content.includes('hidden');
+    
+    console.log('   Has role-based filtering:', hasRoleFilter ? '⚠️ POSSIBLE' : 'No');
+    console.log('   Has hide logic:', hasHideLogic ? '⚠️ YES' : 'No');
+    
+  } catch (error) {
+    console.log('❌ Error:', error.message);
+  }
+  
+  console.log('\n=== CHECK COMPLETE ===');
+}
 
+/**
+ * Test if file exists and can be loaded
+ */
+function testAvailabilityFileExists() {
+  console.log('=== TESTING FILE EXISTENCE ===\n');
+  
+  const filenames = [
+    'rider-availability-calendar',
+    'enhanced-rider-availability',
+    'rider-availability',
+    'availability-calendar'
+  ];
+  
+  filenames.forEach(filename => {
+    try {
+      HtmlService.createHtmlOutputFromFile(filename);
+      console.log(`✅ ${filename}.html EXISTS`);
+    } catch (e) {
+      console.log(`❌ ${filename}.html NOT FOUND`);
+    }
+  });
+  
+  console.log('\n=== TEST COMPLETE ===');
+}
+
+/**
+ * Check what _navigation.html currently contains
+ */
+function showNavigationFileContent() {
+  console.log('=== CURRENT _NAVIGATION.HTML CONTENT ===\n');
+  
+  try {
+    const navFile = HtmlService.createHtmlOutputFromFile('_navigation');
+    const content = navFile.getContent();
+    
+    console.log(content);
+    
+    console.log('\n=== CHECKING FOR AVAILABILITY LINK ===');
+    console.log('Contains "rider-availability-calendar":', content.includes('rider-availability-calendar') ? '✅ YES' : '❌ NO');
+    console.log('Contains "enhanced-rider-availability":', content.includes('enhanced-rider-availability') ? '✅ YES' : '❌ NO');
+    console.log('Contains "Availability":', content.includes('Availability') ? '✅ YES' : '❌ NO');
+    
+  } catch (e) {
+    console.log('❌ Cannot load _navigation.html:', e.message);
+  }
+  
+  console.log('\n=== CONTENT DISPLAY COMPLETE ===');
+}
 // STEP 1: Add this ultra-simple test function to your Apps Script
 function simpleReportsTest() {
   console.log('🧪 simpleReportsTest called');
@@ -6907,17 +7027,6 @@ function getPageFileNameSafe(pageName, userRole) {
   }
 }
 
-function getRoleBasedNavigationSafe(pageName, user, rider) {
-  try {
-    if (typeof getRoleBasedNavigation === 'function') {
-      return getRoleBasedNavigation(pageName, user, rider);
-    }
-    return '<nav>Navigation unavailable</nav>';
-  } catch (error) {
-    console.error('Error in getRoleBasedNavigationSafe:', error);
-    return '<nav>Navigation error</nav>';
-  }
-}
 
 function injectUserInfoSafe(content, user, rider) {
   try {
@@ -7600,7 +7709,8 @@ function getPageFileName(pageName, userRole) {
     rider: {
       'dashboard': 'rider-dashboard',
       'rider-schedule': 'rider-schedule',
-      'my-assignments': 'rider-assignments'
+      'my-assignments': 'rider-assignments',
+      'rider-availability-calendar': 'rider-availability-calendar'
     },
     // dispatcher: {
     //   'dashboard': 'dispatcher-dashboard'  // File doesn't exist - use default instead
@@ -7625,7 +7735,8 @@ function getPageFileName(pageName, userRole) {
     'rider-schedule': 'rider-schedule',
     'admin-schedule': 'admin-schedule',
     'notifications': 'notifications',
-    'reports': 'reports'
+    'reports': 'reports',
+    'rider-availability-calendar': 'rider-availability-calendar'
   };
   
   return defaultPages[pageName] || 'index';
@@ -7641,20 +7752,26 @@ function getRoleBasedNavigation(currentPage, user, rider) {
       { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
       { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
       { page: 'riders', label: '👥 Riders', url: `${baseUrl}?page=riders` },
+      { page: 'rider-availability-calendar', label: '📅 Availability', url: `${baseUrl}?page=rider-availability-calendar` },
       { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
       { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+    
     ],
     dispatcher: [
       { page: 'dashboard', label: '📊 Dashboard', url: `${baseUrl}` },
       { page: 'requests', label: '📋 Requests', url: `${baseUrl}?page=requests` },
       { page: 'assignments', label: '🏍️ Assignments', url: `${baseUrl}?page=assignments` },
+      { page: 'rider-availability-calendar', label: '📅 Availability', url: `${baseUrl}?page=rider-availability-calendar` },
       { page: 'notifications', label: '📱 Notifications', url: `${baseUrl}?page=notifications` },
       { page: 'reports', label: '📊 Reports', url: `${baseUrl}?page=reports` }
+      
     ],
     rider: [
       { page: 'dashboard', label: '📊 My Dashboard', url: `${baseUrl}` },
       { page: 'rider-schedule', label: '📅 My Schedule', url: `${baseUrl}?page=rider-schedule` },
+            { page: 'rider-availability-calendar', label: '📅 Availability', url: `${baseUrl}?page=rider-availability-calendar` },
       { page: 'my-assignments', label: '🏍️ My Assignments', url: `${baseUrl}?page=my-assignments` }
+
     ]
   };
   

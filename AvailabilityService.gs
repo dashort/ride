@@ -1029,3 +1029,276 @@ function getPageDataForMobileRiderView(filter = 'All') {
     return { success: false, error: 'Failed to load mobile data' };
   }
 }
+/**
+ * Add these functions to your AvailabilityService.gs file
+ * These support the admin view of all riders' availability
+ */
+
+/**
+ * Get all riders with their availability data for admin view
+ * @return {object} Object containing riders array and availability data
+ */
+function getAllRidersWithAvailability() {
+  try {
+    console.log('Getting all riders with availability...');
+    
+    // Get current user and verify admin/dispatcher access
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+    
+    if (currentUser.role !== 'admin' && currentUser.role !== 'dispatcher') {
+      return { success: false, error: 'Access denied. Admin or dispatcher role required.' };
+    }
+
+    // Get all active riders
+    const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
+    if (!ridersSheet) {
+      return { success: false, error: 'Riders sheet not found' };
+    }
+
+    const ridersData = ridersSheet.getDataRange().getValues();
+    const ridersHeaders = ridersData[0];
+    
+    // Build riders array
+    const riders = [];
+    for (let i = 1; i < ridersData.length; i++) {
+      const row = ridersData[i];
+      const status = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.status);
+      
+      // Only include active riders
+      if (status === 'Active') {
+        const email = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.email);
+        const name = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.name);
+        const jpNumber = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.jpNumber);
+        
+        if (email && name) {
+          riders.push({
+            email: email,
+            name: name,
+            jpNumber: jpNumber || 'N/A',
+            status: status
+          });
+        }
+      }
+    }
+
+    console.log(`Found ${riders.length} active riders`);
+
+    // Get availability for all riders
+    const availabilitySheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
+    const availability = {};
+    
+    if (availabilitySheet) {
+      const availData = availabilitySheet.getDataRange().getValues();
+      const availHeaders = availData[0];
+      
+      // Process availability data
+      for (let i = 1; i < availData.length; i++) {
+        const row = availData[i];
+        const email = row[0]; // Email is first column
+        const date = row[1];
+        const startTime = row[2];
+        const endTime = row[3];
+        const status = row[4];
+        const notes = row[5];
+        
+        if (email && date) {
+          // Initialize rider's availability object if needed
+          if (!availability[email]) {
+            availability[email] = {};
+          }
+          
+          // Format date as YYYY-MM-DD
+          const dateObj = new Date(date);
+          const dateKey = formatDateForClient(dateObj);
+          
+          availability[email][dateKey] = {
+            date: dateKey,
+            startTime: startTime || null,
+            endTime: endTime || null,
+            status: status || 'available',
+            notes: notes || ''
+          };
+        }
+      }
+    }
+
+    console.log(`Loaded availability for ${Object.keys(availability).length} riders`);
+
+    return {
+      success: true,
+      riders: riders,
+      availability: availability
+    };
+
+  } catch (error) {
+    console.error('Error getting all riders with availability:', error);
+    logError('Error in getAllRidersWithAvailability', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get availability for a specific rider (admin function)
+ * @param {string} riderEmail Email of the rider
+ * @return {object} Availability data for the rider
+ */
+function getRiderAvailabilityByEmail(riderEmail) {
+  try {
+    console.log('Getting availability for rider:', riderEmail);
+    
+    // Verify admin/dispatcher access
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+    
+    if (currentUser.role !== 'admin' && currentUser.role !== 'dispatcher') {
+      return { success: false, error: 'Access denied' };
+    }
+
+    // Get availability sheet
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
+    if (!sheet) {
+      return { success: false, error: 'Availability sheet not found' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const availability = [];
+
+    // Process rows (skip header)
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const email = row[0];
+      
+      if (email === riderEmail) {
+        const date = row[1];
+        const startTime = row[2];
+        const endTime = row[3];
+        const status = row[4];
+        const notes = row[5];
+        
+        if (date) {
+          const dateObj = new Date(date);
+          availability.push({
+            date: formatDateForClient(dateObj),
+            startTime: startTime || null,
+            endTime: endTime || null,
+            status: status || 'available',
+            notes: notes || ''
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      availability: availability
+    };
+
+  } catch (error) {
+    console.error('Error getting rider availability:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get availability summary for all riders on a specific date
+ * @param {string} dateStr Date in YYYY-MM-DD format
+ * @return {object} Summary of rider availability for the date
+ */
+function getAvailabilitySummaryForDate(dateStr) {
+  try {
+    console.log('Getting availability summary for date:', dateStr);
+    
+    // Verify admin/dispatcher access
+    const currentUser = getCurrentUser();
+    if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'dispatcher')) {
+      return { success: false, error: 'Access denied' };
+    }
+
+    const result = getAllRidersWithAvailability();
+    if (!result.success) {
+      return result;
+    }
+
+    const summary = {
+      date: dateStr,
+      available: [],
+      unavailable: [],
+      noStatus: []
+    };
+
+    result.riders.forEach(rider => {
+      const riderAvail = result.availability[rider.email];
+      
+      if (riderAvail && riderAvail[dateStr]) {
+        const status = riderAvail[dateStr].status;
+        if (status === 'available') {
+          summary.available.push({
+            name: rider.name,
+            email: rider.email,
+            jpNumber: rider.jpNumber,
+            times: riderAvail[dateStr].startTime && riderAvail[dateStr].endTime
+              ? `${riderAvail[dateStr].startTime} - ${riderAvail[dateStr].endTime}`
+              : 'All day'
+          });
+        } else if (status === 'unavailable') {
+          summary.unavailable.push({
+            name: rider.name,
+            email: rider.email,
+            jpNumber: rider.jpNumber,
+            reason: riderAvail[dateStr].notes || 'No reason specified'
+          });
+        }
+      } else {
+        summary.noStatus.push({
+          name: rider.name,
+          email: rider.email,
+          jpNumber: rider.jpNumber
+        });
+      }
+    });
+
+    return {
+      success: true,
+      summary: summary
+    };
+
+  } catch (error) {
+    console.error('Error getting availability summary:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Helper function to format date for client
+ * @param {Date} date Date object
+ * @return {string} Formatted date string YYYY-MM-DD
+ */
+function formatDateForClient(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Helper function to get column value safely
+ * @param {Array} row Data row
+ * @param {object} dataObj Data object with headers
+ * @param {string} columnName Column name to get
+ * @return {any} Column value
+ */
+function getColumnValue(row, dataObj, columnName) {
+  try {
+    const headers = dataObj.headers || dataObj.columnMap?.headers || [];
+    const index = headers.indexOf(columnName);
+    return index >= 0 ? row[index] : null;
+  } catch (error) {
+    console.error('Error getting column value:', error);
+    return null;
+  }
+}
