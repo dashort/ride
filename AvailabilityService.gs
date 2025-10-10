@@ -54,70 +54,198 @@ function getCurrentUserForAvailability() {
   }
 }
 
+/**
+ * Simple test function to verify web app communication
+ * Add this to AvailabilityService.gs
+ */
+function testSimpleReturn() {
+  console.log('testSimpleReturn called');
+  return ['test1', 'test2', 'test3'];
+}
 
+/**
+ * Test that returns the same structure as getUserAvailabilityForCalendar
+ */
+function testAvailabilityReturn() {
+  console.log('testAvailabilityReturn called');
+  
+  return [
+    {
+      id: 'test_1',
+      date: '2025-10-10',
+      status: 'available',
+      title: 'Available'
+    },
+    {
+      id: 'test_2',
+      date: '2025-10-11',
+      status: 'available',
+      title: 'Available'
+    }
+  ];
+}
+
+/**
+ * Alternative version of getUserAvailabilityForCalendar
+ * that returns simpler data
+ */
+function getUserAvailabilitySimple(email) {
+  try {
+    console.log('getUserAvailabilitySimple called for:', email);
+    
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rider Availability');
+    if (!sheet) {
+      console.log('Sheet not found');
+      return [];
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    const results = [];
+    const targetEmail = String(email).toLowerCase().trim();
+    
+    console.log('Searching for:', targetEmail);
+    
+    for (let i = 1; i < data.length; i++) {
+      const rowEmail = String(data[i][0] || '').toLowerCase().trim();
+      
+      if (rowEmail === targetEmail) {
+        const dateObj = new Date(data[i][1]);
+        const dateKey = dateObj.toISOString().split('T')[0];
+        
+        results.push({
+          date: dateKey,
+          status: data[i][4] || 'available'
+        });
+        
+        console.log('Found:', dateKey);
+      }
+    }
+    
+    console.log('Returning', results.length, 'results');
+    return results;
+    
+  } catch (error) {
+    console.error('Error:', error.message);
+    return [];
+  }
+}
 /**
  * Gets availability data for a specific user's calendar
  * @param {string} email User email
  * @return {Array} Array of calendar events
  */
+/**
+ * Gets availability data for a specific user's calendar
+ * REPLACE getUserAvailabilityForCalendar in AvailabilityService.gs
+ */
 function getUserAvailabilityForCalendar(email) {
   try {
+    console.log(`=== getUserAvailabilityForCalendar START ===`);
     console.log(`Getting availability for user: ${email}`);
     
-    // Ensure availability sheet exists
-    ensureAvailabilitySheet();
+    if (!email) {
+      console.log('❌ No email provided');
+      return [];
+    }
     
-    const sheetData = getSheetData(CONFIG.sheets.availability, false);
-    if (!sheetData || !sheetData.data) {
+    // Get the sheet directly (no caching)
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    console.log('Got spreadsheet:', ss.getName());
+    
+    const sheetName = CONFIG.sheets.availability;
+    console.log('Looking for sheet:', sheetName);
+    
+    const sheet = ss.getSheetByName(sheetName);
+    
+    if (!sheet) {
+      console.log('❌ Availability sheet not found:', sheetName);
+      console.log('Available sheets:', ss.getSheets().map(s => s.getName()).join(', '));
       return [];
     }
 
+    console.log('✅ Sheet found:', sheet.getName());
+
+    // Get all data from sheet
+    const data = sheet.getDataRange().getValues();
+    console.log('Total rows in sheet:', data.length);
+    
+    if (data.length <= 1) {
+      console.log('⚠️ No availability data in sheet (only header or empty)');
+      return [];
+    }
+
+    const headers = data[0];
+    console.log('Headers:', JSON.stringify(headers));
+    
     const events = [];
-    const emailCol = CONFIG.columns.availability.email;
-    const dateCol = CONFIG.columns.availability.date;
-    const startCol = CONFIG.columns.availability.startTime;
-    const endCol = CONFIG.columns.availability.endTime;
-    const statusCol = CONFIG.columns.availability.status;
-    const notesCol = CONFIG.columns.availability.notes;
+    const targetEmail = String(email).toLowerCase().trim();
+    
+    console.log('Looking for email (normalized):', targetEmail);
 
-    for (let i = 0; i < sheetData.data.length; i++) {
-      const row = sheetData.data[i];
-      const rowEmail = getColumnValue(row, sheetData.columnMap, emailCol);
+    // Process each row (skip header)
+    let matchCount = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const rowEmail = String(row[0] || '').toLowerCase().trim();
       
-      if (rowEmail && rowEmail.toLowerCase() === email.toLowerCase()) {
-        const date = getColumnValue(row, sheetData.columnMap, dateCol);
-        const startTime = getColumnValue(row, sheetData.columnMap, startCol);
-        const endTime = getColumnValue(row, sheetData.columnMap, endCol);
-        const status = getColumnValue(row, sheetData.columnMap, statusCol) || 'available';
-        const notes = getColumnValue(row, sheetData.columnMap, notesCol) || '';
-
-        if (date && startTime && endTime) {
-          const eventDate = new Date(date);
-          const startDateTime = combineDateAndTime(eventDate, startTime);
-          const endDateTime = combineDateAndTime(eventDate, endTime);
-
-          const eventData = {
-            id: `avail_${i}`,
-            title: getEventTitle(status, notes),
-            start: startDateTime.toISOString(),
-            end: endDateTime.toISOString(),
-            status: status,
-            notes: notes,
-            riderId: getUserRiderId(email)
-          };
-          
-          console.log(`Creating event for ${email} on ${date}:`, eventData);
-          events.push(eventData);
+      if (i <= 3) {
+        console.log(`Row ${i} email: "${rowEmail}"`);
+      }
+      
+      // Check if this row is for our target email
+      if (rowEmail === targetEmail) {
+        matchCount++;
+        
+        const date = row[1]; // Date column
+        const startTime = row[2]; // Start Time column
+        const endTime = row[3]; // End Time column
+        const status = row[4] || 'available'; // Status column
+        const notes = row[5] || ''; // Notes column
+        
+        console.log(`Match ${matchCount}: Date=${date}, Status=${status}`);
+        
+        if (date) {
+          try {
+            // Format the date as YYYY-MM-DD
+            const dateObj = new Date(date);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const dateKey = `${year}-${month}-${day}`;
+            
+            // Create event object
+            const event = {
+              id: `avail_${i}`,
+              date: dateKey,
+              start: dateObj.toISOString(),
+              end: dateObj.toISOString(),
+              status: status,
+              notes: notes,
+              startTime: startTime,
+              endTime: endTime,
+              title: status === 'available' ? 'Available' : 'Unavailable'
+            };
+            
+            events.push(event);
+            console.log(`✅ Added event for ${dateKey}: ${status}`);
+          } catch (dateError) {
+            console.error(`Error processing date for row ${i}:`, dateError.message);
+          }
+        } else {
+          console.log(`⚠️ Row ${i} has no date`);
         }
       }
     }
 
-    console.log(`Found ${events.length} availability events for ${email}`);
+    console.log(`✅ Found ${events.length} availability events for ${email}`);
+    console.log('Returning events:', JSON.stringify(events));
+    console.log(`=== getUserAvailabilityForCalendar END ===`);
+    
     return events;
 
   } catch (error) {
-    console.error('Error getting user availability:', error);
-    logError('Error in getUserAvailabilityForCalendar', error);
+    console.error('❌ ERROR in getUserAvailabilityForCalendar:', error.message);
+    console.error('Stack:', error.stack);
     return [];
   }
 }
@@ -187,32 +315,48 @@ function getAllRidersAvailabilityForCalendar() {
 
 /**
  * Saves rider availability data
- * @param {object} data Availability data object
- * @return {object} Success/error result
+ * REPLACE the entire saveRiderAvailabilityData function in AvailabilityService.gs
  */
 function saveRiderAvailabilityData(data) {
   try {
-    console.log('Saving rider availability:', data);
+    console.log('Saving rider availability:', JSON.stringify(data));
     
     // Validate required fields
+    if (!data.email) {
+      console.error('Missing email in data');
+      return { success: false, error: 'Email is required' };
+    }
+    
     if (!data.date || !data.startTime || !data.endTime) {
-      return { success: false, error: 'Missing required fields' };
+      console.error('Missing required fields');
+      return { success: false, error: 'Missing required fields (date, startTime, endTime)' };
     }
 
-    // Get current user
-    const currentUser = getCurrentUser();
+    // Get current user for authorization check
+    const currentUserResponse = getCurrentUser();
+    let currentUser;
+    if (currentUserResponse && currentUserResponse.user) {
+      currentUser = currentUserResponse.user;
+    } else {
+      currentUser = currentUserResponse;
+    }
+    
     if (!currentUser) {
       return { success: false, error: 'User not authenticated' };
     }
+
+    console.log('Current user:', currentUser.email, 'Saving for:', data.email);
 
     // Ensure availability sheet exists
     ensureAvailabilitySheet();
     
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
-    const sheetData = getSheetData(CONFIG.sheets.availability, false);
+    
+    if (!sheet) {
+      return { success: false, error: 'Availability sheet not found' };
+    }
 
-    // Determine rider ID
-    const riderId = data.riderId || currentUser.riderId || getUserRiderId(currentUser.email);
+    const sheetData = getSheetData(CONFIG.sheets.availability, false);
 
     // Track timestamps
     const timestamp = new Date();
@@ -227,9 +371,17 @@ function saveRiderAvailabilityData(data) {
       }
     }
 
+    // CRITICAL FIX: Use data.email (the target rider's email), not currentUser.email
+    const targetEmail = data.email;
+    console.log('Target email for save:', targetEmail);
+
+    // Determine rider ID
+    const riderId = data.riderId || getUserRiderId(targetEmail);
+
     // Prepare row data matching sheet columns
+    // Column order: Email, Date, Start Time, End Time, Status, Notes, Created, Updated, Rider ID
     const rowData = [
-      currentUser.email,
+      targetEmail,                      // Use the email passed in data
       new Date(data.date),
       data.startTime,
       data.endTime,
@@ -239,6 +391,8 @@ function saveRiderAvailabilityData(data) {
       timestamp,
       riderId
     ];
+
+    console.log('Row data to save:', JSON.stringify(rowData));
 
     // Check if updating existing entry
     if (data.id && data.id.startsWith('avail_')) {
@@ -256,23 +410,24 @@ function saveRiderAvailabilityData(data) {
     } else {
       // Add new row
       sheet.appendRow(rowData);
-      console.log('Added new availability row');
+      console.log('Added new availability row for:', targetEmail);
     }
 
     // Clear cache
     dataCache.clear('sheet_' + CONFIG.sheets.availability);
     
-    logActivity(`Availability ${data.status} set by ${currentUser.name} for ${data.date} ${data.startTime}-${data.endTime}`);
+    logActivity(`Availability ${data.status} set for ${targetEmail} on ${data.date} by ${currentUser.name}`);
     
     return { 
       success: true, 
-      message: `Availability ${data.status === 'available' ? 'added' : 'updated'} successfully` 
+      message: `Availability saved successfully for ${targetEmail}`
     };
 
   } catch (error) {
     console.error('Error saving rider availability:', error);
+    console.error('Error stack:', error.stack);
     logError('Error in saveRiderAvailabilityData', error);
-    return { success: false, error: 'Failed to save availability' };
+    return { success: false, error: 'Failed to save availability: ' + error.message };
   }
 }
 
@@ -1030,114 +1185,192 @@ function getPageDataForMobileRiderView(filter = 'All') {
   }
 }
 /**
- * Add these functions to your AvailabilityService.gs file
- * These support the admin view of all riders' availability
- */
-
-/**
- * Get all riders with their availability data for admin view
- * @return {object} Object containing riders array and availability data
+ * Simplified version - returns just riders list without availability data
+ * REPLACE getAllRidersWithAvailability in AvailabilityService.gs
  */
 function getAllRidersWithAvailability() {
   try {
-    console.log('Getting all riders with availability...');
+    console.log('Getting all riders for calendar...');
     
     // Get current user and verify admin/dispatcher access
-    const currentUser = getCurrentUser();
+    const currentUserResponse = getCurrentUser();
+    
+    // Handle both nested and direct user object structures
+    let currentUser;
+    if (currentUserResponse && currentUserResponse.user) {
+      currentUser = currentUserResponse.user;
+    } else {
+      currentUser = currentUserResponse;
+    }
+    
     if (!currentUser) {
+      console.log('No current user');
       return { success: false, error: 'User not authenticated' };
     }
     
+    console.log('User role:', currentUser.role);
+    
     if (currentUser.role !== 'admin' && currentUser.role !== 'dispatcher') {
+      console.log('Access denied for role:', currentUser.role);
       return { success: false, error: 'Access denied. Admin or dispatcher role required.' };
     }
+
+    console.log('User authorized, fetching riders...');
 
     // Get all active riders
     const ridersSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.riders);
     if (!ridersSheet) {
+      console.log('Riders sheet not found');
       return { success: false, error: 'Riders sheet not found' };
     }
 
     const ridersData = ridersSheet.getDataRange().getValues();
-    const ridersHeaders = ridersData[0];
     
-    // Build riders array
+    if (ridersData.length <= 1) {
+      console.log('No riders in sheet');
+      return { success: true, riders: [] };
+    }
+    
+    const headers = ridersData[0];
+    
+    // Find column indices
+    const nameCol = headers.indexOf(CONFIG.columns.riders.name);
+    const emailCol = headers.indexOf(CONFIG.columns.riders.email);
+    const jpCol = headers.indexOf(CONFIG.columns.riders.jpNumber);
+    const statusCol = headers.indexOf(CONFIG.columns.riders.status);
+    
+    console.log('Columns:', { nameCol, emailCol, jpCol, statusCol });
+    
+    // Build riders array (simplified - no availability data)
     const riders = [];
     for (let i = 1; i < ridersData.length; i++) {
       const row = ridersData[i];
-      const status = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.status);
       
-      // Only include active riders
-      if (status === 'Active') {
-        const email = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.email);
-        const name = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.name);
-        const jpNumber = getColumnValue(row, { headers: ridersHeaders }, CONFIG.columns.riders.jpNumber);
-        
-        if (email && name) {
-          riders.push({
-            email: email,
-            name: name,
-            jpNumber: jpNumber || 'N/A',
-            status: status
-          });
-        }
+      const name = nameCol >= 0 ? row[nameCol] : null;
+      const email = emailCol >= 0 ? row[emailCol] : null;
+      const jpNumber = jpCol >= 0 ? row[jpCol] : null;
+      const status = statusCol >= 0 ? row[statusCol] : 'Active';
+      
+      // Only include active riders with name and email
+      if (name && email && (status === 'Active' || !status)) {
+        riders.push({
+          email: String(email).trim(),
+          name: String(name).trim(),
+          jpNumber: jpNumber ? String(jpNumber).trim() : 'N/A'
+        });
       }
     }
 
-    console.log(`Found ${riders.length} active riders`);
+    console.log(`Returning ${riders.length} active riders`);
 
-    // Get availability for all riders
-    const availabilitySheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
-    const availability = {};
-    
-    if (availabilitySheet) {
-      const availData = availabilitySheet.getDataRange().getValues();
-      const availHeaders = availData[0];
-      
-      // Process availability data
-      for (let i = 1; i < availData.length; i++) {
-        const row = availData[i];
-        const email = row[0]; // Email is first column
-        const date = row[1];
-        const startTime = row[2];
-        const endTime = row[3];
-        const status = row[4];
-        const notes = row[5];
-        
-        if (email && date) {
-          // Initialize rider's availability object if needed
-          if (!availability[email]) {
-            availability[email] = {};
-          }
-          
-          // Format date as YYYY-MM-DD
-          const dateObj = new Date(date);
-          const dateKey = formatDateForClient(dateObj);
-          
-          availability[email][dateKey] = {
-            date: dateKey,
-            startTime: startTime || null,
-            endTime: endTime || null,
-            status: status || 'available',
-            notes: notes || ''
-          };
-        }
-      }
-    }
-
-    console.log(`Loaded availability for ${Object.keys(availability).length} riders`);
-
+    // Return simplified response (no availability data for now)
     return {
       success: true,
-      riders: riders,
-      availability: availability
+      riders: riders
     };
 
   } catch (error) {
-    console.error('Error getting all riders with availability:', error);
-    logError('Error in getAllRidersWithAvailability', error);
+    console.error('Error in getAllRidersWithAvailability:', error.message);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Helper function to format date for client
+ */
+function formatDateForClient(date) {
+  if (!date || !(date instanceof Date)) return '';
+  
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+}
+function testGetAllRidersWithAvailability() {
+  console.log('🧪 === TESTING getAllRidersWithAvailability ===\n');
+  
+  try {
+    // Call the function directly
+    const result = getAllRidersWithAvailability();
+    
+    console.log('📊 Result type:', typeof result);
+    console.log('📊 Result is null?', result === null);
+    console.log('📊 Result is undefined?', result === undefined);
+    
+    if (result) {
+      console.log('✅ Function returned a result');
+      console.log('   Success:', result.success);
+      
+      if (result.success) {
+        console.log('   Riders count:', result.riders ? result.riders.length : 0);
+        
+        if (result.riders && result.riders.length > 0) {
+          console.log('\n👥 First 3 riders:');
+          result.riders.slice(0, 3).forEach((rider, i) => {
+            console.log(`   ${i + 1}. ${rider.name} (${rider.email}) - ${rider.jpNumber}`);
+          });
+        }
+      } else {
+        console.log('❌ Function returned success: false');
+        console.log('   Error:', result.error);
+      }
+      
+      console.log('\n📦 Full result:');
+      console.log(JSON.stringify(result, null, 2));
+      
+    } else {
+      console.log('❌ Function returned null or undefined!');
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error testing function:', error.message);
+    console.error('Stack:', error.stack);
+    return null;
+  }
+}
+
+/**
+ * Test if the function is accessible from the web app
+ */
+function testGetAllRidersAsWebApp() {
+  console.log('🌐 === TESTING as Web App Call ===\n');
+  
+  try {
+    // Simulate how the web app calls it
+    const result = getAllRidersWithAvailability();
+    
+    // Try to convert to JSON (this is what happens when returning to client)
+    const jsonString = JSON.stringify(result);
+    console.log('✅ Can convert to JSON');
+    console.log('JSON length:', jsonString.length);
+    
+    // Parse it back
+    const parsed = JSON.parse(jsonString);
+    console.log('✅ Can parse back from JSON');
+    console.log('Parsed riders count:', parsed.riders ? parsed.riders.length : 0);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Error in web app simulation:', error.message);
+    return null;
+  }
+}
+
+/**
+ * Helper function to format date for client
+ */
+function formatDateForClient(date) {
+  if (!date || !(date instanceof Date)) return '';
+  
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
 }
 
 /**

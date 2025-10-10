@@ -4,6 +4,364 @@
 /**
  * Check what CONFIG.sheets.availability is set to
  */
+/**
+ * Diagnostic function to check what's in your Riders sheet
+ * Add this to your Apps Script project and run it from the Script Editor
+ */
+/**
+ * Diagnostic: Check what's in the Availability sheet after save
+ * Run this after trying to save availability
+ */
+/**
+ * Diagnostic: Check what's in the Availability sheet after save
+ * Run this after trying to save availability
+ */
+/**
+ * Verify that functions exist and work
+ * Run this in Apps Script editor
+ */
+function verifyFunctionsExist() {
+  console.log('=== VERIFYING FUNCTIONS ===\n');
+  
+  // Test 1: Check if getUserAvailabilitySimple exists
+  console.log('1. Checking getUserAvailabilitySimple:');
+  if (typeof getUserAvailabilitySimple === 'function') {
+    console.log('   ✅ Function exists');
+    try {
+      const result = getUserAvailabilitySimple('lonero_gj@jpso.com');
+      console.log('   ✅ Function works');
+      console.log('   Returned:', JSON.stringify(result));
+    } catch (error) {
+      console.log('   ❌ Function error:', error.message);
+    }
+  } else {
+    console.log('   ❌ Function does NOT exist');
+  }
+  
+  // Test 2: Check if getUserAvailabilityForCalendar exists
+  console.log('\n2. Checking getUserAvailabilityForCalendar:');
+  if (typeof getUserAvailabilityForCalendar === 'function') {
+    console.log('   ✅ Function exists');
+    try {
+      const result = getUserAvailabilityForCalendar('lonero_gj@jpso.com');
+      console.log('   ✅ Function works');
+      console.log('   Returned:', result ? result.length + ' items' : 'null');
+    } catch (error) {
+      console.log('   ❌ Function error:', error.message);
+    }
+  } else {
+    console.log('   ❌ Function does NOT exist');
+  }
+  
+  // Test 3: Check if testSimpleReturn exists
+  console.log('\n3. Checking testSimpleReturn:');
+  if (typeof testSimpleReturn === 'function') {
+    console.log('   ✅ Function exists');
+    const result = testSimpleReturn();
+    console.log('   Returned:', result);
+  } else {
+    console.log('   ❌ Function does NOT exist');
+  }
+}
+function checkAvailabilitySheet() {
+  console.log('=== AVAILABILITY SHEET CHECK ===\n');
+  
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
+    
+    if (!sheet) {
+      console.log('❌ Availability sheet not found');
+      console.log('CONFIG.sheets.availability =', CONFIG.sheets.availability);
+      return;
+    }
+    
+    console.log('✅ Sheet found:', sheet.getName());
+    
+    const data = sheet.getDataRange().getValues();
+    console.log('Total rows:', data.length);
+    
+    if (data.length === 0) {
+      console.log('❌ Sheet is empty!');
+      return;
+    }
+    
+    // Show headers
+    console.log('\n📋 Headers:');
+    const headers = data[0];
+    headers.forEach((header, index) => {
+      console.log(`  Column ${index}: "${header}"`);
+    });
+    
+    // Show ALL entries with emails
+    console.log('\n📊 All Entries with Emails:');
+    let emailCount = 0;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const email = row[0];
+      if (email && String(email).trim()) {
+        emailCount++;
+        console.log(`\nRow ${i}:`);
+        console.log(`  Email: "${email}"`);
+        console.log(`  Date: "${row[1]}"`);
+        console.log(`  Start Time: "${row[2]}"`);
+        console.log(`  End Time: "${row[3]}"`);
+        console.log(`  Status: "${row[4]}"`);
+        console.log(`  Notes: "${row[5]}"`);
+      }
+    }
+    
+    console.log(`\n✅ Rows with emails: ${emailCount} out of ${data.length - 1} total`);
+    
+    // Check for specific email
+    const testEmail = 'lonero_gj@jpso.com';
+    console.log(`\n🔍 Checking for ${testEmail}:`);
+    let found = 0;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).toLowerCase() === testEmail.toLowerCase()) {
+        found++;
+        console.log(`  Found in row ${i}`);
+      }
+    }
+    console.log(`  Total entries for ${testEmail}: ${found}`);
+    
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+  }
+}
+
+/**
+ * Test save function with specific data
+ */
+function testSaveAvailability() {
+  console.log('=== TEST SAVE AVAILABILITY ===\n');
+  
+  try {
+    const testData = {
+      email: 'lonero_gj@jpso.com',  // Use the email you're testing with
+      date: '2025-10-20',
+      startTime: '09:00',
+      endTime: '17:00',
+      status: 'available',
+      notes: 'Test entry for Lonero'
+    };
+    
+    console.log('Test data:', JSON.stringify(testData, null, 2));
+    console.log('\nCalling saveRiderAvailabilityData...');
+    
+    const result = saveRiderAvailabilityData(testData);
+    
+    console.log('\nResult:', JSON.stringify(result, null, 2));
+    
+    if (result.success) {
+      console.log('✅ Save succeeded!');
+      console.log('\nNow checking sheet...');
+      checkAvailabilitySheet();
+    } else {
+      console.log('❌ Save failed:', result.error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Test error:', error.message);
+    console.error('Stack:', error.stack);
+  }
+}
+function checkAvailabilitySheet() {
+  console.log('=== AVAILABILITY SHEET CHECK ===\n');
+  
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.sheets.availability);
+    
+    if (!sheet) {
+      console.log('❌ Availability sheet not found');
+      console.log('CONFIG.sheets.availability =', CONFIG.sheets.availability);
+      return;
+    }
+    
+    console.log('✅ Sheet found:', sheet.getName());
+    
+    const data = sheet.getDataRange().getValues();
+    console.log('Total rows:', data.length);
+    
+    if (data.length === 0) {
+      console.log('❌ Sheet is empty!');
+      return;
+    }
+    
+    // Show headers
+    console.log('\n📋 Headers:');
+    const headers = data[0];
+    headers.forEach((header, index) => {
+      console.log(`  Column ${index}: "${header}"`);
+    });
+    
+    // Show recent entries
+    console.log('\n📊 Recent Entries (last 5):');
+    const startRow = Math.max(1, data.length - 5);
+    for (let i = startRow; i < data.length; i++) {
+      const row = data[i];
+      console.log(`\nRow ${i}:`);
+      console.log(`  Email: "${row[0]}"`);
+      console.log(`  Date: "${row[1]}"`);
+      console.log(`  Start Time: "${row[2]}"`);
+      console.log(`  End Time: "${row[3]}"`);
+      console.log(`  Status: "${row[4]}"`);
+      console.log(`  Notes: "${row[5]}"`);
+    }
+    
+    // Check for empty emails
+    let emptyEmailCount = 0;
+    for (let i = 1; i < data.length; i++) {
+      if (!data[i][0] || String(data[i][0]).trim() === '') {
+        emptyEmailCount++;
+      }
+    }
+    
+    console.log(`\n⚠️ Rows with empty email: ${emptyEmailCount}`);
+    
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+  }
+}
+
+/**
+ * Test save function with specific data
+ */
+function testSaveAvailability() {
+  console.log('=== TEST SAVE AVAILABILITY ===\n');
+  
+  try {
+    const testData = {
+      email: 'test@jpso.com',
+      date: '2025-10-15',
+      startTime: '09:00',
+      endTime: '17:00',
+      status: 'available',
+      notes: 'Test entry'
+    };
+    
+    console.log('Test data:', JSON.stringify(testData, null, 2));
+    console.log('\nCalling saveRiderAvailabilityData...');
+    
+    const result = saveRiderAvailabilityData(testData);
+    
+    console.log('\nResult:', JSON.stringify(result, null, 2));
+    
+    if (result.success) {
+      console.log('✅ Save succeeded!');
+      console.log('\nNow checking sheet...');
+      checkAvailabilitySheet();
+    } else {
+      console.log('❌ Save failed:', result.error);
+    }
+    
+  } catch (error) {
+    console.error('❌ Test error:', error.message);
+    console.error('Stack:', error.stack);
+  }
+}
+function diagnoseRidersSheet() {
+  console.log('=== RIDERS SHEET DIAGNOSTIC ===\n');
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ridersSheet = ss.getSheetByName('Riders');
+    
+    if (!ridersSheet) {
+      console.log('❌ ERROR: Riders sheet not found!');
+      console.log('Available sheets:', ss.getSheets().map(s => s.getName()).join(', '));
+      return;
+    }
+    
+    console.log('✅ Riders sheet found');
+    
+    const data = ridersSheet.getDataRange().getValues();
+    console.log(`\n📊 Total rows: ${data.length}`);
+    
+    if (data.length === 0) {
+      console.log('❌ Sheet is empty!');
+      return;
+    }
+    
+    // Show headers
+    const headers = data[0];
+    console.log(`\n📋 Column Headers (${headers.length} columns):`);
+    headers.forEach((header, index) => {
+      console.log(`  ${index}: "${header}"`);
+    });
+    
+    // Show CONFIG expected columns
+    console.log('\n⚙️ CONFIG expects these column names:');
+    console.log(`  Name: "${CONFIG.columns.riders.name}"`);
+    console.log(`  Email: "${CONFIG.columns.riders.email}"`);
+    console.log(`  JP Number: "${CONFIG.columns.riders.jpNumber}"`);
+    console.log(`  Status: "${CONFIG.columns.riders.status}"`);
+    
+    // Check if CONFIG columns exist in headers
+    console.log('\n🔍 Column Match Check:');
+    const nameExists = headers.includes(CONFIG.columns.riders.name);
+    const emailExists = headers.includes(CONFIG.columns.riders.email);
+    const jpExists = headers.includes(CONFIG.columns.riders.jpNumber);
+    const statusExists = headers.includes(CONFIG.columns.riders.status);
+    
+    console.log(`  Name column found: ${nameExists ? '✅' : '❌'}`);
+    console.log(`  Email column found: ${emailExists ? '✅' : '❌'}`);
+    console.log(`  JP Number column found: ${jpExists ? '✅' : '❌'}`);
+    console.log(`  Status column found: ${statusExists ? '✅' : '❌'}`);
+    
+    // Show sample riders
+    console.log(`\n👥 Sample Riders (first 3 rows):`);
+    for (let i = 1; i <= Math.min(3, data.length - 1); i++) {
+      const row = data[i];
+      console.log(`\n  Rider ${i}:`);
+      row.forEach((cell, index) => {
+        if (cell && String(cell).trim()) {
+          console.log(`    ${headers[index]}: "${cell}"`);
+        }
+      });
+    }
+    
+    // Count active riders
+    const statusColIndex = headers.indexOf(CONFIG.columns.riders.status);
+    const nameColIndex = headers.indexOf(CONFIG.columns.riders.name);
+    const emailColIndex = headers.indexOf(CONFIG.columns.riders.email);
+    
+    let activeCount = 0;
+    let withEmail = 0;
+    let withName = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const status = statusColIndex >= 0 ? row[statusColIndex] : null;
+      const name = nameColIndex >= 0 ? row[nameColIndex] : null;
+      const email = emailColIndex >= 0 ? row[emailColIndex] : null;
+      
+      if (name && String(name).trim()) withName++;
+      if (email && String(email).trim()) withEmail++;
+      
+      if (status === 'Active' && name && email) {
+        activeCount++;
+      }
+    }
+    
+    console.log(`\n📈 Summary:`);
+    console.log(`  Total data rows: ${data.length - 1}`);
+    console.log(`  Rows with name: ${withName}`);
+    console.log(`  Rows with email: ${withEmail}`);
+    console.log(`  Active riders with name AND email: ${activeCount}`);
+    
+    if (activeCount === 0) {
+      console.log('\n⚠️ WARNING: No active riders found with both name and email!');
+      console.log('   Possible issues:');
+      console.log('   1. Status column might not contain "Active" (case-sensitive)');
+      console.log('   2. Riders might be missing name or email');
+      console.log('   3. Column headers might not match CONFIG');
+    }
+    
+  } catch (error) {
+    console.log('❌ ERROR:', error.message);
+    console.log(error.stack);
+  }
+}
 function checkConfigAvailability() {
   console.log('=== CHECKING CONFIG.sheets.availability ===\n');
   

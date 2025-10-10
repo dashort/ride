@@ -24,7 +24,7 @@
     "https://www.googleapis.com/auth/gmail.modify"
   ],
   "webapp": {
-    "executeAs": "USER_ACCESSING",
+    "executeAs": "USER_DEPLOYING",
     "access": "ANYONE"
   },
   "urlFetchWhitelist": [

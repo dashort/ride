@@ -39,6 +39,32 @@
             margin-bottom: 8px;
         }
 
+        /* Admin Rider Selector Styles */
+        #adminRiderSelector {
+            margin-top: 16px;
+        }
+
+        #adminRiderSelector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        #riderSelect {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        #riderSelect:hover {
+            border-color: #667eea;
+        }
+
         .main-content {
             display: grid;
             grid-template-columns: 1fr 350px;
@@ -79,7 +105,6 @@
 
         .nav-btn:hover {
             background: #5a67d8;
-            transform: translateY(-2px);
         }
 
         .month-year {
@@ -349,21 +374,31 @@
     </style>
 </head>
 <body>
+    <!--NAVIGATION_MENU_PLACEHOLDER-->
+    
     <div class="container">
         <div class="header">
             <h1>📅 Rider Availability Calendar</h1>
             <p id="headerSubtitle">Select multiple days and set your availability</p>
             
-            <!-- Admin Rider Selection -->
-            <div id="adminRiderSelector" style="display: none; margin-top: 16px;">
-                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">
-                    Editing availability for:
-                </label>
-                <select id="riderSelect" onchange="switchRider()" style="width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                    <option value="">Select a rider...</option>
-                </select>
-            </div>
-        </div>
+<!-- Admin Rider Selection -->
+<div id="adminRiderSelector" style="display: none; margin-top: 16px;">
+    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">
+        Editing availability for:
+    </label>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <input 
+            type="text" 
+            id="riderSearch" 
+            placeholder="Search riders..." 
+            oninput="filterRiders()"
+            style="flex: 1; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+        >
+        <select id="riderSelect" onchange="switchRider()" style="flex: 2; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            <option value="">Select a rider...</option>
+        </select>
+    </div>
+</div>
 
         <div class="main-content">
             <div class="calendar-section">
@@ -427,6 +462,61 @@
                     <button class="btn-clear" onclick="clearSelection()">
                         Clear Selection
                     </button>
+                    
+                    <hr style="margin: 20px 0; border: none; border-top: 1px solid #e2e8f0;">
+                    
+                    <h3 style="margin-bottom: 12px;">🔄 Recurring Schedule</h3>
+                    
+                    <div class="form-group">
+                        <label>Repeat Pattern</label>
+                        <select id="recurringPattern" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <option value="">Select pattern...</option>
+                            <option value="weekly">Every Week</option>
+                            <option value="biweekly">Every 2 Weeks</option>
+                            <option value="monthly">Every Month</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Days of Week</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-0" value="0"> Sun
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-1" value="1"> Mon
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-2" value="2"> Tue
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-3" value="3"> Wed
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-4" value="4"> Thu
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-5" value="5"> Fri
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: normal;">
+                                <input type="checkbox" id="day-6" value="6"> Sat
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <select id="recurringDuration" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <option value="30">Next 30 days</option>
+                            <option value="60">Next 60 days</option>
+                            <option value="90">Next 90 days</option>
+                            <option value="180">Next 6 months</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn-primary" onclick="applyRecurringSchedule()" style="background: #8b5cf6;">
+                        Apply Recurring Schedule
+                    </button>
                 </div>
 
                 <div class="legend">
@@ -466,20 +556,34 @@
 
         // Initialize calendar
         function initCalendar() {
+            console.log('Initializing calendar...');
+            
             // Get current user info
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
-                    .withSuccessHandler(function(user) {
+                    .withSuccessHandler(function(response) {
+                        console.log('Current user:', response);
+                        
+                        // Handle nested user object structure
+                        let user;
+                        if (response.user) {
+                            user = response.user;
+                        } else {
+                            user = response;
+                        }
+                        
                         currentUser = user;
-                        console.log('Current user:', user);
+                        console.log('User role:', user.role);
                         
                         // Check if user is admin or dispatcher
                         if (user.role === 'admin' || user.role === 'dispatcher') {
+                            console.log('Admin/Dispatcher mode enabled');
                             isAdminMode = true;
                             loadAllRiders();
                             document.getElementById('adminRiderSelector').style.display = 'block';
                             document.getElementById('headerSubtitle').textContent = 'Select a rider to manage their availability';
                         } else {
+                            console.log('Regular rider mode');
                             // Regular rider mode
                             selectedRiderEmail = user.email;
                             renderCalendar();
@@ -493,6 +597,7 @@
                     .getCurrentUser();
             } else {
                 // Development mode - mock admin user for testing
+                console.log('Development mode - using mock admin user');
                 currentUser = { email: 'admin@example.com', name: 'Admin User', role: 'admin' };
                 isAdminMode = true;
                 loadAllRiders();
@@ -503,24 +608,30 @@
 
         // Load all riders for admin selection
         function loadAllRiders() {
+            console.log('Loading all riders...');
+            
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(function(response) {
-                        if (response.success && response.riders) {
+                        console.log('Riders loaded:', response);
+                        
+                        if (response && response.success && response.riders) {
                             allRiders = response.riders;
+                            console.log('Set allRiders array, length:', allRiders.length);
                             populateRiderDropdown();
                         } else {
-                            console.error('Error loading riders:', response.error);
-                            alert('Error loading riders list');
+                            console.error('Error loading riders:', response ? response.error : 'No response');
+                            alert('Error loading riders list: ' + (response ? response.error : 'No response'));
                         }
                     })
                     .withFailureHandler(function(error) {
                         console.error('Error loading riders:', error);
-                        alert('Error loading riders list');
+                        alert('Error loading riders list: ' + error);
                     })
                     .getAllRidersWithAvailability();
             } else {
                 // Development mode - mock riders
+                console.log('Development mode - using mock riders');
                 allRiders = [
                     { email: 'rider1@example.com', name: 'John Doe', jpNumber: 'JP001' },
                     { email: 'rider2@example.com', name: 'Jane Smith', jpNumber: 'JP002' },
@@ -532,15 +643,74 @@
 
         // Populate rider dropdown
         function populateRiderDropdown() {
+            console.log('Populating dropdown with', allRiders.length, 'riders');
+            
             const select = document.getElementById('riderSelect');
+            if (!select) {
+                console.error('Rider select element not found!');
+                return;
+            }
+            
             select.innerHTML = '<option value="">Select a rider...</option>';
             
             allRiders.forEach(rider => {
                 const option = document.createElement('option');
                 option.value = rider.email;
                 option.textContent = `${rider.name} (${rider.jpNumber})`;
+                option.dataset.name = rider.name.toLowerCase();
+                option.dataset.jpNumber = rider.jpNumber.toLowerCase();
                 select.appendChild(option);
             });
+            
+            console.log('Dropdown populated successfully');
+        }
+
+        // Filter riders based on search input
+        function filterRiders() {
+            const searchInput = document.getElementById('riderSearch');
+            const select = document.getElementById('riderSelect');
+            
+            if (!searchInput || !select) return;
+            
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const options = select.getElementsByTagName('option');
+            
+            // If search is empty, show all
+            if (!searchTerm) {
+                for (let i = 0; i < options.length; i++) {
+                    options[i].style.display = '';
+                }
+                return;
+            }
+            
+            // Filter options based on search term
+            let firstMatch = null;
+            for (let i = 1; i < options.length; i++) { // Skip first "Select a rider..." option
+                const option = options[i];
+                const name = option.dataset.name || '';
+                const jpNumber = option.dataset.jpNumber || '';
+                const text = option.textContent.toLowerCase();
+                
+                // Check if search term matches name, JP number, or full text
+                if (name.includes(searchTerm) || jpNumber.includes(searchTerm) || text.includes(searchTerm)) {
+                    option.style.display = '';
+                    if (!firstMatch) {
+                        firstMatch = option;
+                    }
+                } else {
+                    option.style.display = 'none';
+                }
+            }
+            
+            // Auto-select first match if Enter is pressed
+            searchInput.onkeydown = function(e) {
+                if (e.key === 'Enter' && firstMatch) {
+                    select.value = firstMatch.value;
+                    switchRider();
+                    searchInput.value = '';
+                    filterRiders(); // Reset filter
+                }
+            };
         }
 
         // Switch to selected rider
@@ -548,10 +718,17 @@
             const select = document.getElementById('riderSelect');
             selectedRiderEmail = select.value;
             
+            console.log('Switched to rider:', selectedRiderEmail);
+            
             if (selectedRiderEmail) {
                 const rider = allRiders.find(r => r.email === selectedRiderEmail);
                 document.getElementById('headerSubtitle').textContent = `Managing availability for ${rider.name}`;
                 clearSelection();
+                
+                // Clear current availability display
+                availability = {};
+                
+                // Load this rider's availability
                 loadAvailability();
             } else {
                 document.getElementById('headerSubtitle').textContent = 'Select a rider to manage their availability';
@@ -644,17 +821,38 @@
             
             dayEl.addEventListener('mousedown', (e) => {
                 e.preventDefault();
+                
+                // Check if this is a simple click (not starting a drag)
+                const wasSelected = selectedDays.has(dateKey);
+                
+                // Toggle selection
+                if (wasSelected) {
+                    selectedDays.delete(dateKey);
+                } else {
+                    selectedDays.add(dateKey);
+                }
+                
+                updateSelectionInfo();
+                renderCalendar();
+                
+                // Start drag mode for additional selections
                 isDragging = true;
                 dragStarted = false;
-                toggleDaySelection(dateKey);
             });
 
             dayEl.addEventListener('mouseenter', () => {
-                if (isDragging && !dragStarted) {
-                    dragStarted = true;
-                }
-                if (isDragging && dragStarted) {
-                    addDayToSelection(dateKey);
+                // Only add more days during drag, don't toggle
+                if (isDragging) {
+                    if (!dragStarted) {
+                        dragStarted = true;
+                    } else {
+                        // During drag, only add days (don't toggle)
+                        if (!selectedDays.has(dateKey)) {
+                            selectedDays.add(dateKey);
+                            updateSelectionInfo();
+                            renderCalendar();
+                        }
+                    }
                 }
             });
 
@@ -717,10 +915,15 @@
 
             // Determine which email to use
             let targetEmail;
+            let targetName;
+            
             if (isAdminMode && selectedRiderEmail) {
                 targetEmail = selectedRiderEmail;
+                const rider = allRiders.find(r => r.email === selectedRiderEmail);
+                targetName = rider ? rider.name : 'Rider';
             } else if (currentUser && currentUser.email) {
                 targetEmail = currentUser.email;
+                targetName = 'your';
             } else {
                 alert('User not authenticated. Please refresh the page.');
                 return;
@@ -730,6 +933,8 @@
                 alert('Please select a rider first');
                 return;
             }
+
+            console.log('Saving availability for email:', targetEmail);
 
             const startTime = document.getElementById('startTime').value || '00:00';
             const endTime = document.getElementById('endTime').value || '23:59';
@@ -746,22 +951,20 @@
                     startTime: startTime,
                     endTime: endTime,
                     status: selectedStatus,
-                    notes: notes,
-                    riderId: null // Will be looked up by backend
+                    notes: notes
                 };
+
+                console.log('Saving data:', JSON.stringify(data));
 
                 if (typeof google !== 'undefined' && google.script && google.script.run) {
                     google.script.run
                         .withSuccessHandler(function(response) {
                             savedCount++;
-                            console.log('Saved:', response);
+                            console.log('Save response:', response);
                             
                             if (savedCount === totalDays) {
                                 // All saves complete
-                                const riderName = isAdminMode ? 
-                                    allRiders.find(r => r.email === targetEmail)?.name || 'Rider' :
-                                    'your';
-                                alert(`Successfully set ${totalDays} day(s) as ${selectedStatus} for ${riderName}!`);
+                                alert(`Successfully set ${totalDays} day(s) as ${selectedStatus} for ${targetName}!`);
                                 clearSelection();
                                 loadAvailability();
                             }
@@ -818,31 +1021,47 @@
                 return;
             }
 
+            console.log('Loading availability for:', targetEmail);
+
             if (typeof google !== 'undefined' && google.script && google.script.run) {
+                // TEST: Try the simple version first
                 google.script.run
                     .withSuccessHandler(function(data) {
-                        console.log('Loaded availability for', targetEmail, ':', data);
+                        console.log('SUCCESS! Loaded availability for', targetEmail);
+                        console.log('Data type:', typeof data);
+                        console.log('Is null?', data === null);
+                        console.log('Is array?', Array.isArray(data));
+                        console.log('Data:', data);
                         
                         // Convert backend data to availability object
                         availability = {};
                         if (data && Array.isArray(data)) {
                             data.forEach(entry => {
-                                const dateKey = entry.date; // Backend returns date in YYYY-MM-DD format
-                                availability[dateKey] = {
-                                    status: entry.status || 'available',
-                                    startTime: entry.startTime,
-                                    endTime: entry.endTime,
-                                    notes: entry.notes
-                                };
+                                if (entry && entry.date) {
+                                    const dateKey = entry.date;
+                                    
+                                    availability[dateKey] = {
+                                        status: entry.status || 'available',
+                                        startTime: entry.startTime || '00:00',
+                                        endTime: entry.endTime || '23:59',
+                                        notes: entry.notes || ''
+                                    };
+                                    
+                                    console.log('Added availability for date:', dateKey);
+                                }
                             });
+                        } else {
+                            console.log('Data is not an array or is null');
                         }
                         
+                        console.log('Total availability entries loaded:', Object.keys(availability).length);
                         renderCalendar();
                     })
                     .withFailureHandler(function(error) {
-                        console.error('Error loading availability:', error);
+                        console.error('FAILURE! Error loading availability:', error);
+                        alert('Error loading availability: ' + error.message);
                     })
-                    .getUserAvailabilityForCalendar(targetEmail);
+                    .getUserAvailabilitySimple(targetEmail);  // Use simple version for testing
             } else {
                 // Development mode - use mock data
                 const today = new Date();
@@ -869,6 +1088,78 @@
         function goToToday() {
             currentDate = new Date();
             renderCalendar();
+        }
+
+        // Apply recurring schedule
+        function applyRecurringSchedule() {
+            const pattern = document.getElementById('recurringPattern').value;
+            const duration = parseInt(document.getElementById('recurringDuration').value);
+            
+            if (!pattern) {
+                alert('Please select a repeat pattern');
+                return;
+            }
+            
+            // Get selected days of week
+            const selectedDaysOfWeek = [];
+            for (let i = 0; i <= 6; i++) {
+                const checkbox = document.getElementById(`day-${i}`);
+                if (checkbox && checkbox.checked) {
+                    selectedDaysOfWeek.push(i);
+                }
+            }
+            
+            if (selectedDaysOfWeek.length === 0) {
+                alert('Please select at least one day of the week');
+                return;
+            }
+            
+            // Calculate dates based on pattern
+            const today = new Date();
+            const endDate = new Date(today);
+            endDate.setDate(endDate.getDate() + duration);
+            
+            selectedDays.clear();
+            
+            let currentDate = new Date(today);
+            let weekCount = 0;
+            
+            while (currentDate <= endDate) {
+                const dayOfWeek = currentDate.getDay();
+                
+                // Check if this day of week is selected
+                if (selectedDaysOfWeek.includes(dayOfWeek)) {
+                    // Check if it matches the pattern
+                    let shouldInclude = false;
+                    
+                    if (pattern === 'weekly') {
+                        shouldInclude = true;
+                    } else if (pattern === 'biweekly') {
+                        shouldInclude = (weekCount % 2 === 0);
+                    } else if (pattern === 'monthly') {
+                        // First occurrence of this day in each month
+                        const dayOfMonth = currentDate.getDate();
+                        shouldInclude = (dayOfMonth <= 7);
+                    }
+                    
+                    if (shouldInclude) {
+                        const dateKey = currentDate.toISOString().split('T')[0];
+                        selectedDays.add(dateKey);
+                    }
+                }
+                
+                // Track week changes for biweekly pattern
+                if (dayOfWeek === 0) {
+                    weekCount++;
+                }
+                
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            
+            updateSelectionInfo();
+            renderCalendar();
+            
+            alert(`Selected ${selectedDays.size} days based on recurring pattern!`);
         }
 
         // Initialize on load
