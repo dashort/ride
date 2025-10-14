@@ -5345,11 +5345,6 @@ function exportPublicAssignmentSummaryCSV(startDate) {
   }
 }
 
-/**
- * Creates a spreadsheet summarizing rider assignment hours per day for the month containing the provided start date.
- * @param {string} startDate Start date in YYYY-MM-DD format.
- * @return {object} Result object with spreadsheet information or error message.
- */
 function createPublicAssignmentSummarySheet(startDate) {
   try {
     const summary = buildPublicAssignmentSummaryData(startDate);
@@ -5372,9 +5367,58 @@ function createPublicAssignmentSummarySheet(startDate) {
       throw new Error('No rider activity data available');
     }
 
+    // Create the spreadsheet
     const ss = SpreadsheetApp.create(`Public Assignment Summary ${summary.year}-${String(summary.month + 1).padStart(2, '0')}`);
     const sheet = ss.getActiveSheet();
+    
+    // Set the values
     sheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
+    
+    // ===== CRITICAL: Enable text wrapping for all data cells =====
+    const dataRange = sheet.getRange(2, 3, rows.length - 1, summary.daysInMonth);
+    dataRange.setWrap(true);
+    dataRange.setVerticalAlignment('top');
+    dataRange.setHorizontalAlignment('center');
+    
+    // Format header row
+    const headerRange = sheet.getRange(1, 1, 1, rows[0].length);
+    headerRange.setFontWeight('bold')
+               .setBackground('#4285f4')
+               .setFontColor('white')
+               .setHorizontalAlignment('center')
+               .setVerticalAlignment('middle');
+    
+    // Format rider name and payroll columns
+    sheet.getRange(2, 1, rows.length - 1, 2)
+         .setFontWeight('bold')
+         .setVerticalAlignment('top');
+    
+    // Format total hours column
+    sheet.getRange(2, rows[0].length, rows.length - 1, 1)
+         .setFontWeight('bold')
+         .setHorizontalAlignment('center')
+         .setVerticalAlignment('middle');
+    
+    // Set column widths
+    sheet.setColumnWidth(1, 150); // Rider Name
+    sheet.setColumnWidth(2, 100); // Payroll
+    for (let i = 3; i <= summary.daysInMonth + 2; i++) {
+      sheet.setColumnWidth(i, 80); // Day columns
+    }
+    sheet.setColumnWidth(rows[0].length, 100); // Total Hours
+    
+    // Set row heights to accommodate multiple lines
+    for (let i = 2; i <= rows.length; i++) {
+      sheet.setRowHeight(i, 70);
+    }
+    
+    // Freeze the header row and first two columns
+    sheet.setFrozenRows(1);
+    sheet.setFrozenColumns(2);
+    
+    // Add borders
+    sheet.getRange(1, 1, rows.length, rows[0].length)
+         .setBorder(true, true, true, true, true, true);
 
     return {
       success: true,
@@ -5506,50 +5550,488 @@ function buildPublicAssignmentSummaryData(startDate) {
   };
 }
 
+/**
+ * Format military time (24-hour format) from a Date or time value
+ * @param {Date|string|number} value - The time value to format
+ * @return {string} Time in HH:MM format (e.g., "14:30")
+ */
+function formatMilitaryTime(value) {
+  if (!value) return '';
+  
+  try {
+    let date;
+    
+    // Handle Date objects
+    if (value instanceof Date) {
+      date = value;
+    }
+    // Handle time strings with AM/PM
+    else if (typeof value === 'string' && (value.includes('AM') || value.includes('PM'))) {
+      const parts = value.trim().split(/[:\s]/);
+      let hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      const ampm = parts[2];
+      
+      if (ampm.toUpperCase() === 'PM' && hours < 12) {
+        hours += 12;
+      } else if (ampm.toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+    }
+    // Handle time strings in HH:MM format
+    else if (typeof value === 'string' && value.includes(':')) {
+      const parts = value.split(':');
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      
+      date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+    }
+    // Handle decimal time (fraction of day)
+    else if (typeof value === 'number' && value >= 0 && value < 1) {
+      date = new Date(1899, 11, 30, 0, 0, 0, Math.round(value * 24 * 60 * 60 * 1000));
+    }
+    // Try to parse as generic date
+    else {
+      date = new Date(value);
+    }
+    
+    if (isNaN(date.getTime())) {
+      return '';
+    }
+    
+    // Format as military time (HH:MM)
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${hours}:${minutes}`;
+    
+  } catch (error) {
+    console.error('Error formatting military time:', error);
+    return '';
+  }
+}
+
+/**
+ * Format hours as just the numeric value
+ * @param {number} hours - The hours value
+ * @return {string} Formatted hours (e.g., "2.5" or "4")
+ */
+function formatHoursNumeric(hours) {
+  const rounded = roundToQuarterHour(hours);
+  
+  // Format to 2 decimal places, then clean up unnecessary zeros
+  let hoursText = rounded.toFixed(2)
+    .replace(/\.00$/, '')      // Remove .00
+    .replace(/(\.\d)0$/, '$1'); // Remove trailing zero after decimal (2.50 -> 2.5)
+  
+  if (hoursText === '0') {
+    hoursText = '0';
+  }
+  
+  return hoursText;
+}
+
+/**
+ * Format cell content for a single day
+ * @param {Array} entries - Array of assignment entries for this day
+ * @return {string} Formatted cell content with newlines
+ */
 function formatPublicAssignmentCell(entries) {
   if (!entries || entries.length === 0) {
     return '';
   }
 
-  const formatTimeValue = value => {
-    if (!value) return '';
-    const formatted = formatTimeForDisplay(value);
-    if (!formatted || formatted === 'No Time' || formatted === 'Invalid Time') {
+  // Single assignment - simple format
+  if (entries.length === 1) {
+    const entry = entries[0];
+    const hours = formatHoursNumeric(entry.hours);
+    const start = formatMilitaryTime(entry.start);
+    const end = formatMilitaryTime(entry.end);
+    
+    // Build the cell content with line breaks
+    let lines = [hours];
+    
+    if (start && end && start !== end) {
+      lines.push(`${start}-${end}`);
+    } else if (start) {
+      lines.push(start);
+    } else if (end) {
+      lines.push(end);
+    } else {
+      lines.push('TBD');
+    }
+    
+    return lines.join('\n');
+  }
+  
+  // Multiple assignments on same day
+  const totalHours = entries.reduce((sum, entry) => sum + entry.hours, 0);
+  const lines = [formatHoursNumeric(totalHours)];
+  
+  // Add each assignment's times on separate lines
+  entries.forEach(entry => {
+    const start = formatMilitaryTime(entry.start);
+    const end = formatMilitaryTime(entry.end);
+    
+    if (start && end && start !== end) {
+      lines.push(`${start}-${end}`);
+    } else if (start) {
+      lines.push(start);
+    } else if (end) {
+      lines.push(end);
+    } else {
+      lines.push('TBD');
+    }
+  });
+  
+  return lines.join('\n');
+}
+
+
+
+/**
+ * ALSO UPDATE: CSV export with proper formatting
+ * Replace the existing exportPublicAssignmentSummaryCSV in Code.gs
+ */
+function exportPublicAssignmentSummaryCSV(startDate) {
+  try {
+    const summary = buildPublicAssignmentSummaryData(startDate);
+
+    const header = ['Rider Name', 'Payroll Number'];
+    for (let d = 1; d <= summary.daysInMonth; d++) header.push(String(d));
+    header.push('Total Hours');
+
+    const csvRows = [header.join(',')];
+    summary.riders.forEach(rider => {
+      const row = [
+        `"${String(rider.name).replace(/"/g, '""')}"`,
+        `"${String(rider.id).replace(/"/g, '""')}"`,
+        // For CSV, replace newlines with semicolons or keep them
+        ...rider.dailyEntries.map(entries => {
+          const formatted = formatPublicAssignmentCell(entries);
+          // Keep newlines in CSV - they'll work in Excel/Sheets when properly quoted
+          return `"${formatted.replace(/"/g, '""')}"`;
+        }),
+        roundToQuarterHour(rider.totalHours)
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    if (csvRows.length === 1) {
+      throw new Error('No rider activity data available');
+    }
+
+    const filename = `public_assignment_summary_${summary.year}_${String(summary.month + 1).padStart(2, '0')}.csv`;
+    return {
+      success: true,
+      csvContent: csvRows.join('\n'),
+      filename: filename,
+      count: csvRows.length - 1
+    };
+  } catch (error) {
+    logError('Error in exportPublicAssignmentSummaryCSV', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * TEST FUNCTION: Create a sample spreadsheet with test data
+ */
+function createTestPublicAssignmentSummary() {
+  console.log('🧪 Creating test Public Assignment Summary...\n');
+  
+  try {
+    // Create a test spreadsheet
+    const ss = SpreadsheetApp.create('TEST Public Assignment Summary');
+    const sheet = ss.getActiveSheet();
+    
+    // Create test data
+    const header = ['Rider Name', 'Payroll', '1', '2', '3', '4', '5', 'Total'];
+    const testData = [
+      header,
+      [
+        'John Smith',
+        'JP-001',
+        '',                           // Day 1: no work
+        '2.5\n09:30-11:45',          // Day 2: single assignment
+        '4.5\n08:00-10:00\n14:00-16:30', // Day 3: two assignments
+        '',                           // Day 4: no work
+        '3\n13:00-16:00',            // Day 5: single assignment
+        '10'
+      ],
+      [
+        'Jane Doe',
+        'JP-002',
+        '2\n10:00-12:00',            // Day 1: single
+        '',
+        '6\n08:00-11:00\n12:00-15:00\n16:00-19:00', // Day 3: three assignments
+        '4\n09:00-13:00',            // Day 4: single
+        '',
+        '12'
+      ]
+    ];
+    
+    // Write the data
+    sheet.getRange(1, 1, testData.length, testData[0].length).setValues(testData);
+    
+    // Apply formatting
+    const dataRange = sheet.getRange(2, 3, testData.length - 1, 5); // Days columns
+    dataRange.setWrap(true);
+    dataRange.setVerticalAlignment('top');
+    dataRange.setHorizontalAlignment('center');
+    
+    // Format header
+    sheet.getRange(1, 1, 1, header.length)
+         .setFontWeight('bold')
+         .setBackground('#4285f4')
+         .setFontColor('white')
+         .setHorizontalAlignment('center');
+    
+    // Set column widths
+    sheet.setColumnWidth(1, 150);
+    sheet.setColumnWidth(2, 100);
+    for (let i = 3; i <= 7; i++) {
+      sheet.setColumnWidth(i, 100);
+    }
+    sheet.setColumnWidth(8, 80);
+    
+    // Set row heights
+    for (let i = 2; i <= testData.length; i++) {
+      sheet.setRowHeight(i, 70);
+    }
+    
+    // Freeze rows and columns
+    sheet.setFrozenRows(1);
+    sheet.setFrozenColumns(2);
+    
+    // Add borders
+    sheet.getRange(1, 1, testData.length, header.length)
+         .setBorder(true, true, true, true, true, true);
+    
+    console.log('✅ Test spreadsheet created!');
+    console.log(`📊 URL: ${ss.getUrl()}`);
+    console.log('\nCheck the spreadsheet to verify:');
+    console.log('1. Hours appear on the first line of each day cell');
+    console.log('2. Times appear below hours in military format');
+    console.log('3. Multiple assignments show all times stacked vertically');
+    console.log('4. Text wrapping is enabled so you can see all content');
+    
+    return {
+      success: true,
+      url: ss.getUrl(),
+      spreadsheetId: ss.getId()
+    };
+    
+  } catch (error) {
+    console.error('❌ Error creating test spreadsheet:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * DIAGNOSTIC: Check if wrapping is enabled on an existing sheet
+ */
+function checkExistingSheetFormatting() {
+  console.log('🔍 Checking existing sheet formatting...\n');
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getActiveSheet();
+    
+    console.log(`Sheet name: ${sheet.getName()}`);
+    
+    // Check a sample cell with multi-line content
+    const testCell = sheet.getRange('C2'); // First day column, first rider
+    const value = testCell.getValue();
+    const wrap = testCell.getWrap();
+    const vAlign = testCell.getVerticalAlignment();
+    const hAlign = testCell.getHorizontalAlignment();
+    
+    console.log(`\nCell C2 analysis:`);
+    console.log(`  Value: "${value}"`);
+    console.log(`  Contains newline: ${value.toString().includes('\n')}`);
+    console.log(`  Wrap enabled: ${wrap}`);
+    console.log(`  Vertical alignment: ${vAlign}`);
+    console.log(`  Horizontal alignment: ${hAlign}`);
+    
+    if (!wrap) {
+      console.log('\n❌ PROBLEM FOUND: Text wrapping is NOT enabled!');
+      console.log('   This is why newlines appear as text instead of line breaks.');
+      console.log('\n💡 FIX: Run fixExistingSheetFormatting() to enable wrapping.');
+    } else {
+      console.log('\n✅ Text wrapping is enabled correctly.');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error checking sheet:', error);
+  }
+}
+
+/**
+ * FIX: Apply proper formatting to an existing sheet
+ */
+function fixExistingSheetFormatting() {
+  console.log('🔧 Fixing existing sheet formatting...\n');
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getActiveSheet();
+    
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    
+    console.log(`Processing ${sheet.getName()}: ${lastRow} rows, ${lastCol} columns`);
+    
+    // Enable wrapping for day columns (assuming columns C onwards are days)
+    // Adjust the column numbers based on your actual structure
+    if (lastCol >= 3) {
+      const dayColumns = lastCol - 2; // Subtract name and payroll columns
+      const dataRange = sheet.getRange(2, 3, lastRow - 1, dayColumns);
+      
+      console.log('Enabling text wrapping...');
+      dataRange.setWrap(true);
+      dataRange.setVerticalAlignment('top');
+      dataRange.setHorizontalAlignment('center');
+      
+      console.log('Setting row heights...');
+      for (let i = 2; i <= lastRow; i++) {
+        sheet.setRowHeight(i, 70);
+      }
+      
+      console.log('✅ Formatting applied!');
+      console.log('\n💡 Refresh the spreadsheet to see the changes.');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error fixing sheet:', error);
+  }
+}
+
+// ============================================
+// USAGE INSTRUCTIONS
+// ============================================
+
+/*
+📋 STEP-BY-STEP INSTRUCTIONS:
+
+1. REPLACE FUNCTIONS IN CODE.GS:
+   - Replace formatPublicAssignmentCell()
+   - Replace createPublicAssignmentSummarySheet()
+   - Replace exportPublicAssignmentSummaryCSV()
+   - Add formatMilitaryTime() and formatHoursNumeric()
+
+2. TEST WITH SAMPLE DATA:
+   Run: createTestPublicAssignmentSummary()
+   This creates a test spreadsheet so you can see the format
+
+3. CREATE YOUR ACTUAL SUMMARY:
+   Run: createPublicAssignmentSummarySheet('2025-01-01')
+
+4. IF YOU HAVE AN EXISTING SHEET TO FIX:
+   a) Open the existing spreadsheet
+   b) Run: checkExistingSheetFormatting()
+   c) If wrapping is disabled, run: fixExistingSheetFormatting()
+
+🔑 KEY CHANGES:
+- Added .setWrap(true) to enable text wrapping in cells
+- Added .setVerticalAlignment('top') for better readability
+- Increased row heights to accommodate multiple lines
+- Times now display on separate lines within each day's cell
+
+The problem was that Google Sheets doesn't automatically wrap text.
+We need to explicitly enable it with setWrap(true).
+*/
+
+
+/**
+ * Format military time (24-hour format) from a Date or time value
+ * @param {Date|string|number} value - The time value to format
+ * @return {string} Time in HH:MM format (e.g., "14:30")
+ */
+function formatMilitaryTime(value) {
+  if (!value) return '';
+  
+  try {
+    let date;
+    
+    // Handle Date objects (your data has these!)
+    if (value instanceof Date) {
+      if (isNaN(value.getTime())) return '';
+      date = value;
+    }
+    // Handle time strings with AM/PM
+    else if (typeof value === 'string' && (value.includes('AM') || value.includes('PM'))) {
+      const parts = value.trim().split(/[:\s]/);
+      let hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      const ampm = parts[2];
+      
+      if (ampm.toUpperCase() === 'PM' && hours < 12) {
+        hours += 12;
+      } else if (ampm.toUpperCase() === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+    }
+    // Handle time strings in HH:MM format
+    else if (typeof value === 'string' && value.includes(':')) {
+      const parts = value.split(':');
+      const hours = parseInt(parts[0], 10);
+      const minutes = parseInt(parts[1], 10);
+      
+      date = new Date();
+      date.setHours(hours, minutes, 0, 0);
+    }
+    // Handle decimal time (fraction of day)
+    else if (typeof value === 'number' && value >= 0 && value < 1) {
+      date = new Date(1899, 11, 30, 0, 0, 0, Math.round(value * 24 * 60 * 60 * 1000));
+    }
+    // Try to parse as generic date
+    else {
+      date = new Date(value);
+    }
+    
+    if (isNaN(date.getTime())) {
       return '';
     }
-    return formatted;
-  };
-
-  const formatHoursText = hours => {
-    const rounded = roundToQuarterHour(hours);
-    const absoluteRounded = Math.abs(rounded);
-    let hoursText = rounded.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
-    if (hoursText === '0') {
-      hoursText = '0';
-    }
-    const unit = absoluteRounded === 1 ? 'hr' : 'hrs';
-    return `${hoursText} ${unit}`;
-  };
-
-  const formatEntry = entry => {
-    const start = formatTimeValue(entry.start);
-    const end = formatTimeValue(entry.end);
-    const hoursText = formatHoursText(entry.hours);
-
-    if (start && end && start !== end) {
-      return `${start} - ${end} (${hoursText})`;
-    }
-    if (start) {
-      return `${start} (${hoursText})`;
-    }
-    if (end) {
-      return `${end} (${hoursText})`;
-    }
-    return `Time TBD (${hoursText})`;
-  };
-
-  return entries.map(formatEntry).join(' | ');
+    
+    // Format as military time (HH:MM)
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${hours}:${minutes}`;
+    
+  } catch (error) {
+    console.error('Error formatting military time:', error);
+    return '';
+  }
 }
+
+/**
+ * Format hours as just the numeric value
+ * ADD THIS TO Code.gs (new function)
+ */
+function formatHoursNumeric(hours) {
+  const rounded = roundToQuarterHour(hours);
+  
+  // Format to 2 decimal places, then clean up unnecessary zeros
+  let hoursText = rounded.toFixed(2)
+    .replace(/\.00$/, '')      // Remove .00
+    .replace(/(\.\d)0$/, '$1'); // Remove trailing zero after decimal (2.50 -> 2.5)
+  
+  if (hoursText === '0') {
+    hoursText = '0';
+  }
+  
+  return hoursText;
+}
+
 
 /**
  * Generates an executive summary for the given period or the last 30 days.

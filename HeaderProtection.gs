@@ -445,60 +445,6 @@ function dailyHeaderValidation() {
   }
 }
 
-/**
- * 🧪 Test header protection (FIXED)
- */
-function testHeaderProtectionFixed() {
-  console.log('🧪 Testing header protection...');
-  
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const testSheet = ss.getSheetByName('Requests');
-    
-    if (!testSheet) {
-      console.log('❌ Requests sheet not found for testing');
-      return false;
-    }
-    
-    // Check if protection exists
-    const protections = testSheet.getProtections(SpreadsheetApp.ProtectionType.RANGE);
-    const headerProtections = protections.filter(p => p.getRange().getRow() === 1);
-    
-    if (headerProtections.length > 0) {
-      console.log(`✅ Found ${headerProtections.length} header protection(s)`);
-      headerProtections.forEach(p => {
-        console.log(`   Protected range: ${p.getRange().getA1Notation()}`);
-        console.log(`   Warning only: ${p.isWarningOnly()}`);
-        console.log(`   Description: ${p.getDescription()}`);
-      });
-    } else {
-      console.log('⚠️ No header protections found');
-    }
-    
-    // Check data validation
-    const headerRange = testSheet.getRange(1, 1, 1, testSheet.getLastColumn());
-    let headerValidationFound = false;
-    
-    for (let col = 1; col <= testSheet.getLastColumn(); col++) {
-      const cell = testSheet.getRange(1, col);
-      if (cell.getDataValidation()) {
-        headerValidationFound = true;
-        console.log(`❌ Data validation found in header cell ${cell.getA1Notation()}`);
-      }
-    }
-    
-    if (!headerValidationFound) {
-      console.log('✅ No data validation found in header row (good!)');
-    }
-    
-    console.log('🧪 Protection test completed');
-    return true;
-    
-  } catch (error) {
-    console.error('❌ Protection test failed:', error);
-    return false;
-  }
-}
 
 /**
  * 🔄 Manual trigger to validate and fix all headers immediately
