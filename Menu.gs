@@ -70,6 +70,14 @@ function createMenu() {
       .addItem('🗑️ Remove Email Triggers', 'deleteEmailResponseTriggers')
     )
     .addSeparator()
+    .addSubMenu(ui.createMenu('🛡️ System Protection & Maintenance')
+      .addItem('🔧 Fix Duplicate Columns', 'menuFixDuplicateColumns')
+      .addItem('✅ Validate All Headers', 'validateAllSheetHeaders')
+      .addItem('🛡️ Setup Header Protection', 'setupAllHeaderProtection')
+      .addItem('💾 Backup All Headers', 'backupAllHeaders')
+      .addItem('⏰ Setup Daily Checks', 'setupDailyDuplicateColumnCheck')
+    )
+    .addSeparator()
     .addItem('Generate Missing Request IDs', 'generateAllMissingRequestIds')
     .addToUi();
 }
