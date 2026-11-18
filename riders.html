@@ -473,6 +473,88 @@
       background: #f9fafb;
     }
 
+    .modal-table-wrapper td,
+    .modal-table-wrapper th {
+      min-width: 140px;
+    }
+
+    /* Reorder mode */
+    .reorder-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+    }
+
+    .reorder-toolbar[hidden] {
+      display: none;
+    }
+
+    .reorder-toolbar .hint {
+      flex: 1 1 240px;
+      font-size: 0.9rem;
+    }
+
+    .order-cell {
+      white-space: nowrap;
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .move-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-left: 0.5rem;
+    }
+
+    .move-controls button {
+      padding: 0.2rem 0.55rem;
+      min-width: 0;
+      font-size: 0.85rem;
+      line-height: 1.2;
+      border-radius: 6px;
+      background: #e2e8f0;
+      color: #1e293b;
+      box-shadow: none;
+    }
+
+    .move-controls button:hover:not(:disabled) {
+      background: #cbd5e1;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+      color: #94a3b8;
+      margin-right: 0.35rem;
+    }
+
+    tr.dragging {
+      opacity: 0.4;
+    }
+
+    tr.drop-target td {
+      box-shadow: inset 0 3px 0 #2563eb;
+    }
+
+    tr.row-moved td {
+      background: rgba(96, 165, 250, 0.12);
+    }
+
+    .field-note {
+      display: block;
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
     /* LARGER INPUT FIELDS */
     .modal-input,
     .modal-select {
@@ -679,22 +761,21 @@
         </div>
         <div class="actions">
           <button id="addRiderButton" type="button" class="secondary">➕ Add New Rider</button>
+          <button id="reorderButton" type="button" class="secondary">↕ Reorder Riders</button>
           <button id="bulkEditButton" type="button" class="primary">Bulk Edit Riders</button>
         </div>
+      </div>
+      <div id="reorderToolbar" class="reorder-toolbar" hidden>
+        <span class="hint">Drag rows by the ⠿ handle or use ▲ ▼ to move riders, then press <strong>Save Order</strong>. The order is saved to the Riders sheet.</span>
+        <button id="sortAzButton" type="button" class="secondary">Sort A–Z</button>
+        <button id="cancelReorderButton" type="button" class="secondary">Cancel</button>
+        <button id="saveOrderButton" type="button" class="primary" disabled>Save Order</button>
       </div>
       <p id="statusMessage" class="status-message" role="status" aria-live="polite">Loading riders…</p>
       <div class="table-wrapper">
         <table id="ridersTable" hidden>
           <thead>
-            <tr>
-              <th scope="col">Rider ID</th>
-              <th scope="col">Name</th>
-              <th scope="col">Phone</th>
-              <th scope="col">Email</th>
-              <th scope="col">Status</th>
-              <th scope="col">Platoon</th>
-              <th scope="col">Part-Time</th>
-            </tr>
+            <tr id="ridersHeadRow"></tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -716,15 +797,7 @@
       <div class="modal-table-wrapper">
         <table>
           <thead>
-            <tr>
-              <th scope="col">Rider ID</th>
-              <th scope="col">Name</th>
-              <th scope="col">Phone</th>
-              <th scope="col">Email</th>
-              <th scope="col">Status</th>
-              <th scope="col">Platoon</th>
-              <th scope="col">Part-Time</th>
-            </tr>
+            <tr id="bulkHeadRow"></tr>
           </thead>
           <tbody id="bulkTableBody"></tbody>
         </table>
@@ -812,6 +885,32 @@
                 <option value="No">No</option>
               </select>
             </div>
+
+            <div>
+              <label for="newRiderPayroll" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">
+                Payroll Number
+              </label>
+              <input type="text" id="newRiderPayroll" class="modal-input" inputmode="numeric" placeholder="5–8 digits">
+            </div>
+
+            <div>
+              <label for="newRiderCertification" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">
+                Certification
+              </label>
+              <select id="newRiderCertification" class="modal-select">
+                <option value=""></option>
+                <option value="Standard">Standard</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="newRiderOrganization" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">
+                Organization
+              </label>
+              <input type="text" id="newRiderOrganization" class="modal-input">
+            </div>
+
+            <div id="newRiderExtraFields" style="display: grid; gap: 1.25rem;"></div>
           </div>
         </form>
       </div>
@@ -827,58 +926,87 @@
       const statusMessage = document.getElementById('statusMessage');
       const ridersTable = document.getElementById('ridersTable');
       const ridersTbody = ridersTable ? ridersTable.querySelector('tbody') : null;
+      const ridersHeadRow = document.getElementById('ridersHeadRow');
       const pageTitle = document.getElementById('pageTitle');
       const addRiderButton = document.getElementById('addRiderButton');
       const addRiderModal = document.getElementById('addRiderModal');
       const addRiderForm = document.getElementById('addRiderForm');
       const addRiderStatusMessage = document.getElementById('addRiderStatusMessage');
       const saveNewRiderButton = document.getElementById('saveNewRiderButton');
+      const newRiderExtraFields = document.getElementById('newRiderExtraFields');
       const addModalCloseTriggers = addRiderModal ? addRiderModal.querySelectorAll('[data-action="close-add"]') : [];
       const bulkEditButton = document.getElementById('bulkEditButton');
       const bulkEditor = document.getElementById('bulkEditor');
+      const bulkHeadRow = document.getElementById('bulkHeadRow');
       const bulkTableBody = document.getElementById('bulkTableBody');
       const bulkStatusMessage = document.getElementById('bulkStatusMessage');
       const bulkUpdateButton = document.getElementById('bulkUpdateButton');
       const closeTriggers = bulkEditor ? bulkEditor.querySelectorAll('[data-action="close"]') : [];
+      const reorderButton = document.getElementById('reorderButton');
+      const reorderToolbar = document.getElementById('reorderToolbar');
+      const sortAzButton = document.getElementById('sortAzButton');
+      const cancelReorderButton = document.getElementById('cancelReorderButton');
+      const saveOrderButton = document.getElementById('saveOrderButton');
 
       const state = {
         riders: [],
         ridersById: new Map(),
+        extraColumns: [],
         options: {
           statusOptions: ['Active', 'Inactive'],
           platoonOptions: ['A', 'B'],
-          partTimeOptions: ['Yes', 'No']
+          partTimeOptions: ['Yes', 'No'],
+          certificationOptions: ['Standard', 'Advanced', 'Instructor', 'Trainee', 'Not Certified']
         },
         changedRows: new Map(),
         pendingUpdate: false,
-        modalOpen: false
+        modalOpen: false,
+        reorderMode: false,
+        orderDraft: [],
+        savingOrder: false,
+        dragIndex: -1
       };
 
-      const fieldConfig = {
-        riderId: { sheetKey: 'Rider ID', prop: 'riderId', type: 'text', placeholder: 'JP Number' },
-        name: { sheetKey: 'Full Name', prop: 'name', type: 'text', placeholder: 'Full Name' },
-        phone: { sheetKey: 'Phone Number', prop: 'phone', type: 'tel', placeholder: 'Phone' },
-        email: { sheetKey: 'Email', prop: 'email', type: 'email', placeholder: 'Email' },
-        status: { sheetKey: 'Status', prop: 'status', type: 'select', optionsKey: 'statusOptions' },
-        platoon: { sheetKey: 'Platoon', prop: 'platoon', type: 'select', optionsKey: 'platoonOptions', allowEmpty: true },
-        partTime: { sheetKey: 'Part-Time Rider', prop: 'partTime', type: 'select', optionsKey: 'partTimeOptions', allowEmpty: true }
+      // Editable fields, in display order. `label` is the column heading and
+      // `sheetKey` is the Riders sheet header the value is saved to.
+      const baseFieldConfig = {
+        riderId: { label: 'Rider ID', sheetKey: 'Rider ID', prop: 'riderId', type: 'text', placeholder: 'JP Number' },
+        name: { label: 'Name', sheetKey: 'Full Name', prop: 'name', type: 'text', placeholder: 'Full Name' },
+        phone: { label: 'Phone', sheetKey: 'Phone Number', prop: 'phone', type: 'tel', placeholder: 'Phone' },
+        email: { label: 'Email', sheetKey: 'Email', prop: 'email', type: 'email', placeholder: 'Email' },
+        status: { label: 'Status', sheetKey: 'Status', prop: 'status', type: 'select', optionsKey: 'statusOptions' },
+        platoon: { label: 'Platoon', sheetKey: 'Platoon', prop: 'platoon', type: 'select', optionsKey: 'platoonOptions', allowEmpty: true },
+        partTime: { label: 'Part-Time', sheetKey: 'Part-Time Rider', prop: 'partTime', type: 'select', optionsKey: 'partTimeOptions', allowEmpty: true },
+        payrollNumber: { label: 'Payroll #', sheetKey: 'Payroll Number', prop: 'payrollNumber', type: 'text', placeholder: '5–8 digits' },
+        certification: { label: 'Certification', sheetKey: 'Certification', prop: 'certification', type: 'select', optionsKey: 'certificationOptions', allowEmpty: true },
+        organization: { label: 'Organization', sheetKey: 'Organization', prop: 'organization', type: 'text', placeholder: 'Organization' }
       };
+
+      let fieldConfig = Object.assign({}, baseFieldConfig);
+
+      // Adds a text field for every extra column found on the Riders sheet.
+      function rebuildFieldConfig() {
+        fieldConfig = Object.assign({}, baseFieldConfig);
+        state.extraColumns.forEach((column) => {
+          fieldConfig['extra:' + column] = {
+            label: column,
+            sheetKey: column,
+            extraKey: column,
+            type: 'text',
+            placeholder: column
+          };
+        });
+      }
+
+      function getFieldValue(rider, config) {
+        if (!rider) return '';
+        if (config.extraKey) {
+          return rider.extras && rider.extras[config.extraKey] ? rider.extras[config.extraKey] : '';
+        }
+        return rider[config.prop] || '';
+      }
 
       let webAppBaseUrl = '';
-
-      function openRiderDetail(riderId) {
-        if (!riderId) {
-          console.error('No rider ID provided to openRiderDetail');
-          return;
-        }
-        
-        console.log('Opening rider detail for ID:', riderId);
-        
-        const baseUrl = window.location.origin + window.location.pathname;
-        const editUrl = baseUrl + '?page=edit-rider&riderId=' + encodeURIComponent(riderId);
-        
-        window.location.href = editUrl;
-      }
 
       function setDocumentTitle() {
         if (pageTitle && pageTitle.textContent) {
@@ -966,39 +1094,103 @@
         return pill;
       }
 
-      function renderRiderRow(rider) {
+      function renderHeadRow(headRow, includeOrder) {
+        if (!headRow) return;
+        headRow.textContent = '';
+        if (includeOrder) {
+          const th = document.createElement('th');
+          th.scope = 'col';
+          th.textContent = '#';
+          headRow.appendChild(th);
+        }
+        Object.keys(fieldConfig).forEach((fieldKey) => {
+          const th = document.createElement('th');
+          th.scope = 'col';
+          th.textContent = fieldConfig[fieldKey].label;
+          headRow.appendChild(th);
+        });
+      }
+
+      function createMoveButton(label, title, direction, disabled) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = label;
+        button.title = title;
+        button.setAttribute('aria-label', title);
+        button.dataset.move = direction;
+        button.disabled = disabled;
+        return button;
+      }
+
+      function renderRiderRow(rider, index, total) {
         const row = document.createElement('tr');
+        row.dataset.index = String(index);
 
-        const idCell = document.createElement('td');
-        idCell.dataset.label = 'Rider ID';
-        idCell.textContent = rider.riderId || '—';
+        const orderCell = document.createElement('td');
+        orderCell.dataset.label = '#';
+        orderCell.className = 'order-cell';
 
-        const nameCell = document.createElement('td');
-        nameCell.dataset.label = 'Name';
-        nameCell.appendChild(createEditLink(rider.riderId, rider.name));
+        if (state.reorderMode) {
+          const canMove = Boolean(rider.riderId);
+          if (canMove) {
+            row.draggable = true;
+            const handle = document.createElement('span');
+            handle.className = 'drag-handle';
+            handle.textContent = '⠿';
+            handle.title = 'Drag to reorder';
+            orderCell.appendChild(handle);
+          }
+          orderCell.appendChild(document.createTextNode(String(index + 1)));
+          const controls = document.createElement('span');
+          controls.className = 'move-controls';
+          controls.append(
+            createMoveButton('⤒', 'Move to top', 'top', !canMove || index === 0),
+            createMoveButton('▲', 'Move up', 'up', !canMove || index === 0),
+            createMoveButton('▼', 'Move down', 'down', !canMove || index === total - 1),
+            createMoveButton('⤓', 'Move to bottom', 'bottom', !canMove || index === total - 1)
+          );
+          orderCell.appendChild(controls);
+          if (!canMove) {
+            row.classList.add('row-disabled');
+            row.title = 'Riders without a Rider ID cannot be reordered and stay at the end of the list.';
+          }
+          const originalIndex = state.riders.indexOf(rider);
+          if (originalIndex !== index) {
+            row.classList.add('row-moved');
+          }
+        } else {
+          orderCell.textContent = String(index + 1);
+        }
+        row.appendChild(orderCell);
 
-        const phoneCell = document.createElement('td');
-        phoneCell.dataset.label = 'Phone';
-        phoneCell.textContent = rider.phone || '—';
+        Object.keys(fieldConfig).forEach((fieldKey) => {
+          const config = fieldConfig[fieldKey];
+          const cell = document.createElement('td');
+          cell.dataset.label = config.label;
+          const value = getFieldValue(rider, config);
 
-        const emailCell = document.createElement('td');
-        emailCell.dataset.label = 'Email';
-        emailCell.textContent = rider.email || '—';
+          if (fieldKey === 'name' && !state.reorderMode) {
+            cell.appendChild(createEditLink(rider.riderId, rider.name));
+          } else if (fieldKey === 'status') {
+            cell.appendChild(createStatusPill(value));
+          } else {
+            cell.textContent = value || '—';
+          }
+          row.appendChild(cell);
+        });
 
-        const statusCell = document.createElement('td');
-        statusCell.dataset.label = 'Status';
-        statusCell.appendChild(createStatusPill(rider.status));
-
-        const platoonCell = document.createElement('td');
-        platoonCell.dataset.label = 'Platoon';
-        platoonCell.textContent = rider.platoon || '—';
-
-        const partTimeCell = document.createElement('td');
-        partTimeCell.dataset.label = 'Part-Time';
-        partTimeCell.textContent = rider.partTime || '—';
-
-        row.append(idCell, nameCell, phoneCell, emailCell, statusCell, platoonCell, partTimeCell);
         return row;
+      }
+
+      function renderRiderTable() {
+        if (!ridersTable || !ridersTbody) return;
+        renderHeadRow(ridersHeadRow, true);
+        const list = state.reorderMode ? state.orderDraft : state.riders;
+        ridersTbody.textContent = '';
+        list.forEach((rider, index) => {
+          ridersTbody.appendChild(renderRiderRow(rider, index, list.length));
+        });
+        ridersTable.hidden = list.length === 0;
       }
 
       function renderRiders(response) {
@@ -1021,89 +1213,128 @@
           return;
         }
 
-        applyRiderData(riders);
-
-        ridersTbody.textContent = '';
-        state.riders.forEach((rider) => {
-          ridersTbody.appendChild(renderRiderRow(rider));
-        });
-
-        ridersTable.hidden = false;
+        applyRiderData(riders, response.extraColumns);
+        renderRiderTable();
         hideStatus();
       }
 
-      function applyRiderData(riders) {
-        const normalized = Array.isArray(riders) ? riders.slice() : [];
-        normalized.sort((a, b) => {
-          const nameA = (a && a.name ? String(a.name) : '').toLowerCase();
-          const nameB = (b && b.name ? String(b.name) : '').toLowerCase();
-          return nameA.localeCompare(nameB, undefined, { sensitivity: 'base' });
-        });
+      function applyRiderData(riders, extraColumns) {
+        state.extraColumns = Array.isArray(extraColumns) ? extraColumns.slice() : [];
+        rebuildFieldConfig();
+        renderAddExtraFields();
 
-        state.riders = normalized.map((rider) => ({
-          riderId: rider && rider.riderId ? String(rider.riderId) : '',
-          name: rider && rider.name ? String(rider.name) : '',
-          phone: rider && rider.phone ? String(rider.phone) : '',
-          email: rider && rider.email ? String(rider.email) : '',
-          status: rider && rider.status ? String(rider.status) : '',
-          platoon: rider && rider.platoon ? String(rider.platoon) : '',
-          partTime: rider && rider.partTime ? String(rider.partTime) : '',
-          certification: rider && rider.certification ? String(rider.certification) : ''
-        }));
+        // Keep the order returned by the server (the Riders sheet row order).
+        const list = Array.isArray(riders) ? riders : [];
+        const asText = (value) => (value === null || value === undefined ? '' : String(value));
+
+        state.riders = list.map((rider) => {
+          const source = rider || {};
+          const extras = {};
+          state.extraColumns.forEach((column) => {
+            extras[column] = source.extras ? asText(source.extras[column]) : '';
+          });
+          return {
+            riderId: asText(source.riderId),
+            name: asText(source.name),
+            phone: asText(source.phone),
+            email: asText(source.email),
+            status: asText(source.status),
+            platoon: asText(source.platoon),
+            partTime: asText(source.partTime),
+            certification: asText(source.certification),
+            payrollNumber: asText(source.payrollNumber),
+            organization: asText(source.organization),
+            totalAssignments: asText(source.totalAssignments),
+            lastAssignmentDate: asText(source.lastAssignmentDate),
+            extras
+          };
+        });
 
         state.ridersById = new Map();
         state.riders.forEach((rider) => {
-          state.ridersById.set(rider.riderId, rider);
+          if (rider.riderId) {
+            state.ridersById.set(rider.riderId, rider);
+          }
+        });
+      }
+
+      function callServer(functionName, ...args) {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)[functionName](...args);
         });
       }
 
       function fetchRiders() {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .getRidersForPage();
-        });
+        return callServer('getRidersForPage');
       }
 
       function fetchWebAppUrl() {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler((url) => resolve(typeof url === 'string' ? url : ''))
-            .withFailureHandler(reject)
-            .getWebAppUrl();
-        });
+        return callServer('getWebAppUrl').then((url) => (typeof url === 'string' ? url : ''));
       }
 
       function fetchRiderOptions() {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler((options) => resolve(options || {}))
-            .withFailureHandler(reject)
-            .getRiderFormOptions();
-        });
+        return callServer('getRiderFormOptions').then((options) => options || {});
       }
 
       function updateOptions(options) {
         if (!options || typeof options !== 'object') {
           return;
         }
-        if (Array.isArray(options.statusOptions) && options.statusOptions.length) {
-          state.options.statusOptions = options.statusOptions.slice();
+        ['statusOptions', 'platoonOptions', 'partTimeOptions', 'certificationOptions'].forEach((key) => {
+          if (Array.isArray(options[key]) && options[key].length) {
+            state.options[key] = options[key].filter((value) => value !== '');
+          }
+        });
+        populateAddFormSelects();
+      }
+
+      function fillSelect(select, values, allowEmpty) {
+        if (!select) return;
+        const current = select.value;
+        select.textContent = '';
+        if (allowEmpty) {
+          select.appendChild(new Option('', ''));
         }
-        if (Array.isArray(options.platoonOptions) && options.platoonOptions.length) {
-          state.options.platoonOptions = options.platoonOptions.slice();
+        values.forEach((value) => select.appendChild(new Option(value, value)));
+        if (current && values.indexOf(current) !== -1) {
+          select.value = current;
         }
-        if (Array.isArray(options.partTimeOptions) && options.partTimeOptions.length) {
-          state.options.partTimeOptions = options.partTimeOptions.slice();
-        }
+      }
+
+      function populateAddFormSelects() {
+        fillSelect(document.getElementById('newRiderStatus'), state.options.statusOptions, false);
+        fillSelect(document.getElementById('newRiderPlatoon'), state.options.platoonOptions, true);
+        fillSelect(document.getElementById('newRiderPartTime'), state.options.partTimeOptions, true);
+        fillSelect(document.getElementById('newRiderCertification'), state.options.certificationOptions, true);
+      }
+
+      function renderAddExtraFields() {
+        if (!newRiderExtraFields) return;
+        newRiderExtraFields.textContent = '';
+        state.extraColumns.forEach((column, index) => {
+          const wrapper = document.createElement('div');
+          const label = document.createElement('label');
+          const inputId = 'newRiderExtra' + index;
+          label.htmlFor = inputId;
+          label.textContent = column;
+          label.style.cssText = 'display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;';
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.id = inputId;
+          input.className = 'modal-input';
+          input.dataset.sheetKey = column;
+          wrapper.append(label, input);
+          newRiderExtraFields.appendChild(wrapper);
+        });
       }
 
       function openBulkEditor() {
         if (!bulkEditor) return;
         state.changedRows.clear();
         renderBulkTable();
-        setBulkStatus('Make inline edits and press Update Riders to save your changes.', false);
+        setBulkStatus('Make inline edits and press Update Riders to save your changes. Changing a Rider ID does not update assignments already made under the old ID.', false);
         bulkEditor.hidden = false;
         document.body.classList.add('modal-open');
         state.modalOpen = true;
@@ -1122,19 +1353,18 @@
 
       function openAddRiderModal() {
         if (!addRiderModal) return;
-        
-        // Reset form
+
         if (addRiderForm) addRiderForm.reset();
         setAddRiderStatus('', false);
-        
-        // Set default status to Active
+
         const statusSelect = document.getElementById('newRiderStatus');
-        if (statusSelect) statusSelect.value = 'Active';
-        
+        if (statusSelect && state.options.statusOptions.indexOf('Active') !== -1) statusSelect.value = 'Active';
+        const certSelect = document.getElementById('newRiderCertification');
+        if (certSelect && state.options.certificationOptions.indexOf('Standard') !== -1) certSelect.value = 'Standard';
+
         addRiderModal.hidden = false;
         document.body.classList.add('modal-open');
-        
-        // Focus first input
+
         const firstInput = document.getElementById('newRiderId');
         if (firstInput) setTimeout(() => firstInput.focus(), 100);
       }
@@ -1147,23 +1377,36 @@
         setAddRiderStatus('', false);
       }
 
+      function inputValue(id) {
+        const el = document.getElementById(id);
+        return el ? String(el.value || '').trim() : '';
+      }
+
       async function handleAddNewRider() {
         if (!addRiderForm || !addRiderForm.checkValidity()) {
-          addRiderForm.reportValidity();
+          if (addRiderForm) addRiderForm.reportValidity();
           return;
         }
 
         const newRiderData = {
-          'Rider ID': document.getElementById('newRiderId').value.trim(),
-          'Full Name': document.getElementById('newRiderName').value.trim(),
-          'Phone Number': document.getElementById('newRiderPhone').value.trim(),
-          'Email': document.getElementById('newRiderEmail').value.trim(),
-          'Status': document.getElementById('newRiderStatus').value,
-          'Platoon': document.getElementById('newRiderPlatoon').value,
-          'Part-Time Rider': document.getElementById('newRiderPartTime').value
+          'Rider ID': inputValue('newRiderId'),
+          'Full Name': inputValue('newRiderName'),
+          'Phone Number': inputValue('newRiderPhone'),
+          'Email': inputValue('newRiderEmail'),
+          'Status': inputValue('newRiderStatus'),
+          'Platoon': inputValue('newRiderPlatoon'),
+          'Part-Time Rider': inputValue('newRiderPartTime'),
+          'Payroll Number': inputValue('newRiderPayroll'),
+          'Certification': inputValue('newRiderCertification'),
+          'Organization': inputValue('newRiderOrganization')
         };
 
-        // Validate required fields
+        if (newRiderExtraFields) {
+          newRiderExtraFields.querySelectorAll('input[data-sheet-key]').forEach((input) => {
+            newRiderData[input.dataset.sheetKey] = String(input.value || '').trim();
+          });
+        }
+
         if (!newRiderData['Rider ID']) {
           setAddRiderStatus('Rider ID is required', true);
           return;
@@ -1172,8 +1415,15 @@
           setAddRiderStatus('Full Name is required', true);
           return;
         }
+        if (newRiderData['Payroll Number'] && !/^\d{5,8}$/.test(newRiderData['Payroll Number'])) {
+          setAddRiderStatus('Payroll Number must be 5–8 digits', true);
+          return;
+        }
+        if (state.ridersById.has(newRiderData['Rider ID'])) {
+          setAddRiderStatus(`Rider ID "${newRiderData['Rider ID']}" already exists`, true);
+          return;
+        }
 
-        // Disable button during save
         if (saveNewRiderButton) {
           saveNewRiderButton.disabled = true;
           saveNewRiderButton.textContent = 'Saving...';
@@ -1182,20 +1432,11 @@
         setAddRiderStatus('Adding new rider...', false);
 
         try {
-          const response = await new Promise((resolve, reject) => {
-            google.script.run
-              .withSuccessHandler(resolve)
-              .withFailureHandler(reject)
-              .handleRiderOperation('create', newRiderData);
-          });
+          const response = await callServer('handleRiderOperation', 'create', newRiderData);
 
           if (response && response.success) {
-            setAddRiderStatus('✓ Rider added successfully!', false);
-            
-            // Reload riders list
+            setAddRiderStatus('✓ Rider added successfully! New riders are added to the end of the list.', false);
             await reloadRiders();
-            
-            // Close modal after short delay
             setTimeout(() => {
               closeAddRiderModal();
             }, 1500);
@@ -1216,6 +1457,7 @@
 
       function renderBulkTable() {
         if (!bulkTableBody) return;
+        renderHeadRow(bulkHeadRow, false);
         bulkTableBody.textContent = '';
 
         const fragment = document.createDocumentFragment();
@@ -1223,47 +1465,45 @@
         state.riders.forEach((rider) => {
           const row = document.createElement('tr');
           row.dataset.riderId = rider.riderId;
-          row.dataset.originalRiderId = rider.riderId; // Store original for tracking
+          row.dataset.originalRiderId = rider.riderId;
 
           const hasId = Boolean(rider.riderId);
           const pendingChanges = hasId ? state.changedRows.get(rider.riderId) : null;
           if (!hasId) {
             row.classList.add('row-disabled');
+            row.title = 'Add a Rider ID to this row in the Riders sheet to edit it here.';
           } else if (pendingChanges) {
             row.classList.add('row-changed');
           }
 
-          // Create cells for all fields including riderId
           Object.keys(fieldConfig).forEach((fieldKey) => {
             const config = fieldConfig[fieldKey];
             const cell = document.createElement('td');
             const changeValue = pendingChanges && Object.prototype.hasOwnProperty.call(pendingChanges, config.sheetKey)
               ? pendingChanges[config.sheetKey]
               : undefined;
-            const value = changeValue !== undefined ? changeValue : (rider[config.prop] || '');
+            const value = changeValue !== undefined ? changeValue : getFieldValue(rider, config);
 
             if (config.type === 'select') {
               const select = document.createElement('select');
               select.className = 'modal-select';
               select.dataset.field = fieldKey;
-              select.value = value;
+              select.setAttribute('aria-label', config.label);
               if (!hasId) {
                 select.disabled = true;
               }
 
               if (config.allowEmpty) {
-                const emptyOption = document.createElement('option');
-                emptyOption.value = '';
-                emptyOption.textContent = '';
-                select.appendChild(emptyOption);
+                select.appendChild(new Option('', ''));
               }
 
-              const optionsList = state.options[config.optionsKey] || [];
+              const optionsList = (state.options[config.optionsKey] || []).slice();
+              // Keep values already in the sheet selectable even if they are not in the option list.
+              if (value && optionsList.indexOf(value) === -1) {
+                optionsList.push(value);
+              }
               optionsList.forEach((optionValue) => {
-                const optionEl = document.createElement('option');
-                optionEl.value = optionValue;
-                optionEl.textContent = optionValue;
-                select.appendChild(optionEl);
+                select.appendChild(new Option(optionValue, optionValue));
               });
 
               select.value = value;
@@ -1273,6 +1513,7 @@
               input.type = config.type || 'text';
               input.className = 'modal-input';
               input.dataset.field = fieldKey;
+              input.setAttribute('aria-label', config.label);
               input.value = value;
               if (config.placeholder) {
                 input.placeholder = config.placeholder;
@@ -1304,35 +1545,44 @@
       }
 
       function updateChangeState(riderId, fieldKey, newValue, row) {
-        if (!riderId || !fieldConfig[fieldKey]) {
+        if (!fieldConfig[fieldKey]) {
           return;
         }
 
         const config = fieldConfig[fieldKey];
-        
-        // Use the original rider ID stored in the row for lookups
+
+        // Always track changes against the rider's original ID, even if the ID field is being edited.
         const originalRiderId = row && row.dataset.originalRiderId ? row.dataset.originalRiderId : riderId;
+        if (!originalRiderId) {
+          return;
+        }
         const originalRider = state.ridersById.get(originalRiderId);
-        const originalValue = originalRider ? sanitizeValue(originalRider[config.prop]) : '';
+        const originalValue = sanitizeValue(getFieldValue(originalRider, config));
         const sanitizedNewValue = sanitizeValue(newValue);
 
         const existing = state.changedRows.get(originalRiderId);
 
         if (originalValue === sanitizedNewValue) {
           if (existing) {
-            delete existing[config.sheetKey];
-            if (Object.keys(existing).filter((key) => key !== 'Rider ID' && key !== '_originalRiderId').length === 0) {
+            if (config.sheetKey === 'Rider ID') {
+              existing['Rider ID'] = originalRiderId;
+            } else {
+              delete existing[config.sheetKey];
+            }
+            const remaining = Object.keys(existing).filter((key) => key !== '_originalRiderId' &&
+              !(key === 'Rider ID' && existing[key] === originalRiderId));
+            if (remaining.length === 0) {
               state.changedRows.delete(originalRiderId);
             } else {
               state.changedRows.set(originalRiderId, existing);
             }
           }
         } else {
-          const payload = existing || { 
+          const payload = existing || {
             'Rider ID': originalRiderId,
-            '_originalRiderId': originalRiderId  // Track original for backend updates
+            '_originalRiderId': originalRiderId
           };
-          payload[config.sheetKey] = newValue;
+          payload[config.sheetKey] = sanitizedNewValue;
           state.changedRows.set(originalRiderId, payload);
         }
 
@@ -1352,15 +1602,6 @@
         bulkUpdateButton.disabled = changeCount === 0 || state.pendingUpdate;
       }
 
-      function runBulkUpdate(updates) {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            .handleRiderOperation('bulkUpdate', { updates });
-        });
-      }
-
       function formatFailureSummary(failures) {
         if (!Array.isArray(failures) || failures.length === 0) {
           return '';
@@ -1376,6 +1617,36 @@
         return parts.join(' • ');
       }
 
+      function validateBulkChanges(updates) {
+        const problems = [];
+        const finalIds = new Map();
+        state.riders.forEach((rider) => {
+          if (rider.riderId) finalIds.set(rider.riderId, rider.riderId);
+        });
+        updates.forEach((payload) => {
+          const original = payload._originalRiderId;
+          if (Object.prototype.hasOwnProperty.call(payload, 'Rider ID')) {
+            if (!payload['Rider ID']) {
+              problems.push(`${original}: Rider ID cannot be blank`);
+            } else {
+              finalIds.set(original, payload['Rider ID']);
+            }
+          }
+          const payroll = payload['Payroll Number'];
+          if (payroll && !/^\d{5,8}$/.test(payroll)) {
+            problems.push(`${original}: Payroll Number must be 5–8 digits`);
+          }
+        });
+        const seen = new Map();
+        finalIds.forEach((newId, original) => {
+          if (seen.has(newId)) {
+            problems.push(`Rider ID "${newId}" would be used by more than one rider`);
+          }
+          seen.set(newId, original);
+        });
+        return problems;
+      }
+
       async function handleBulkUpdate() {
         if (state.changedRows.size === 0) {
           setBulkStatus('No changes to update.', false);
@@ -1383,12 +1654,18 @@
         }
 
         const updates = Array.from(state.changedRows.values()).map((payload) => ({ ...payload }));
+        const problems = validateBulkChanges(updates);
+        if (problems.length) {
+          setBulkStatus(problems.slice(0, 3).join(' • '), true);
+          return;
+        }
+
         state.pendingUpdate = true;
         updateBulkUpdateButton();
         setBulkStatus('Applying updates…', false);
 
         try {
-          const response = await runBulkUpdate(updates);
+          const response = await callServer('handleRiderOperation', 'bulkUpdate', { updates });
           const failures = response && Array.isArray(response.failures) ? response.failures : [];
           const message = response && response.message ? response.message : 'Bulk update completed.';
           const failureSummary = formatFailureSummary(failures);
@@ -1402,15 +1679,20 @@
             renderBulkTable();
           } else {
             setBulkStatus(fullMessage, true);
-            if (response && Array.isArray(response.updated)) {
-              response.updated.forEach((riderId) => {
-                state.changedRows.delete(riderId);
+            if (response && Array.isArray(response.updated) && response.updated.length) {
+              // Keep only the failed rows as pending edits, then refresh.
+              const failedIds = new Set(failures.map((failure) => String(failure.riderId || '')));
+              Array.from(state.changedRows.keys()).forEach((originalId) => {
+                const payload = state.changedRows.get(originalId);
+                if (!failedIds.has(String(payload['Rider ID'])) && !failedIds.has(String(originalId))) {
+                  state.changedRows.delete(originalId);
+                }
               });
-              if (response.updated.length) {
-                await reloadRiders();
-                renderBulkTable();
-                setBulkStatus(fullMessage, true);
-              }
+              const stillPending = new Map(state.changedRows);
+              await reloadRiders();
+              state.changedRows = stillPending;
+              renderBulkTable();
+              setBulkStatus(fullMessage, true);
             }
           }
         } catch (error) {
@@ -1426,25 +1708,182 @@
         try {
           const response = await fetchRiders();
           if (response && response.success) {
-            applyRiderData(response.riders);
-            if (ridersTable && ridersTbody) {
-              ridersTbody.textContent = '';
-              state.riders.forEach((rider) => {
-                ridersTbody.appendChild(renderRiderRow(rider));
-              });
-              ridersTable.hidden = state.riders.length === 0;
-              if (state.riders.length === 0) {
-                showStatus('No riders found.', false);
-              } else {
-                hideStatus();
-              }
+            applyRiderData(response.riders, response.extraColumns);
+            renderRiderTable();
+            if (state.riders.length === 0) {
+              showStatus('No riders found.', false);
+            } else {
+              hideStatus();
             }
           } else if (response && response.message) {
             showStatus(response.message, true);
           }
         } catch (error) {
-          console.error('Failed to refresh riders after bulk update.', error);
+          console.error('Failed to refresh riders.', error);
         }
+      }
+
+      // ---------- Reordering ----------
+
+      function orderChanged() {
+        if (state.orderDraft.length !== state.riders.length) return true;
+        return state.orderDraft.some((rider, index) => rider !== state.riders[index]);
+      }
+
+      function updateReorderControls() {
+        if (saveOrderButton) {
+          saveOrderButton.disabled = state.savingOrder || !orderChanged();
+          saveOrderButton.textContent = state.savingOrder ? 'Saving…' : 'Save Order';
+        }
+        if (sortAzButton) sortAzButton.disabled = state.savingOrder;
+        if (cancelReorderButton) cancelReorderButton.disabled = state.savingOrder;
+      }
+
+      // Riders without an ID can't be addressed by the server, so they always stay last.
+      function keepIdlessLast(list) {
+        return list.filter((r) => r.riderId).concat(list.filter((r) => !r.riderId));
+      }
+
+      function enterReorderMode() {
+        if (!state.riders.length) {
+          showStatus('No riders to reorder.', true);
+          return;
+        }
+        state.reorderMode = true;
+        state.orderDraft = keepIdlessLast(state.riders.slice());
+        if (reorderToolbar) reorderToolbar.hidden = false;
+        if (reorderButton) reorderButton.disabled = true;
+        if (bulkEditButton) bulkEditButton.disabled = true;
+        if (addRiderButton) addRiderButton.disabled = true;
+        hideStatus();
+        renderRiderTable();
+        updateReorderControls();
+      }
+
+      function exitReorderMode() {
+        state.reorderMode = false;
+        state.orderDraft = [];
+        state.dragIndex = -1;
+        if (reorderToolbar) reorderToolbar.hidden = true;
+        if (reorderButton) reorderButton.disabled = false;
+        if (bulkEditButton) bulkEditButton.disabled = false;
+        if (addRiderButton) addRiderButton.disabled = false;
+        renderRiderTable();
+      }
+
+      function moveRider(fromIndex, toIndex) {
+        const list = state.orderDraft;
+        const movableCount = list.filter((r) => r.riderId).length;
+        if (fromIndex < 0 || fromIndex >= movableCount) return;
+        const target = Math.max(0, Math.min(movableCount - 1, toIndex));
+        if (target === fromIndex) return;
+        const [item] = list.splice(fromIndex, 1);
+        list.splice(target, 0, item);
+        renderRiderTable();
+        updateReorderControls();
+        // Keep keyboard focus on the moved rider's matching button.
+        const movedRow = ridersTbody ? ridersTbody.querySelector(`tr[data-index="${target}"]`) : null;
+        if (movedRow) {
+          const focusTarget = movedRow.querySelector('button:not(:disabled)');
+          if (focusTarget) focusTarget.focus();
+        }
+      }
+
+      function sortDraftAlphabetically() {
+        state.orderDraft = keepIdlessLast(state.orderDraft.slice().sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })));
+        renderRiderTable();
+        updateReorderControls();
+      }
+
+      async function saveOrder() {
+        if (!orderChanged()) return;
+        state.savingOrder = true;
+        updateReorderControls();
+        showStatus('Saving rider order…', false);
+        try {
+          const orderedIds = state.orderDraft.filter((r) => r.riderId).map((r) => r.riderId);
+          const response = await callServer('handleRiderOperation', 'reorder', { orderedIds });
+          if (response && response.success) {
+            state.savingOrder = false;
+            exitReorderMode();
+            await reloadRiders();
+            showStatus(response.message || 'Rider order saved.', false);
+            setTimeout(hideStatus, 3000);
+          } else {
+            showStatus((response && response.message) || 'Failed to save rider order.', true);
+          }
+        } catch (error) {
+          console.error('Failed to save rider order.', error);
+          showStatus(`Failed to save rider order. ${error && error.message ? error.message : ''}`.trim(), true);
+        } finally {
+          state.savingOrder = false;
+          updateReorderControls();
+        }
+      }
+
+      function attachReorderListeners() {
+        if (reorderButton) reorderButton.addEventListener('click', enterReorderMode);
+        if (cancelReorderButton) cancelReorderButton.addEventListener('click', () => {
+          if (!state.savingOrder) exitReorderMode();
+        });
+        if (sortAzButton) sortAzButton.addEventListener('click', sortDraftAlphabetically);
+        if (saveOrderButton) saveOrderButton.addEventListener('click', saveOrder);
+
+        if (!ridersTbody) return;
+
+        ridersTbody.addEventListener('click', (event) => {
+          if (!state.reorderMode || state.savingOrder) return;
+          const button = event.target.closest('button[data-move]');
+          if (!button) return;
+          const row = button.closest('tr');
+          const index = Number(row.dataset.index);
+          const last = state.orderDraft.length - 1;
+          switch (button.dataset.move) {
+            case 'top': moveRider(index, 0); break;
+            case 'up': moveRider(index, index - 1); break;
+            case 'down': moveRider(index, index + 1); break;
+            case 'bottom': moveRider(index, last); break;
+          }
+        });
+
+        ridersTbody.addEventListener('dragstart', (event) => {
+          const row = event.target.closest('tr');
+          if (!state.reorderMode || !row || !row.draggable) return;
+          state.dragIndex = Number(row.dataset.index);
+          row.classList.add('dragging');
+          event.dataTransfer.effectAllowed = 'move';
+          try { event.dataTransfer.setData('text/plain', String(state.dragIndex)); } catch (e) { /* ignore */ }
+        });
+
+        ridersTbody.addEventListener('dragover', (event) => {
+          if (!state.reorderMode || state.dragIndex < 0) return;
+          const row = event.target.closest('tr');
+          if (!row) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+          ridersTbody.querySelectorAll('tr.drop-target').forEach((r) => {
+            if (r !== row) r.classList.remove('drop-target');
+          });
+          row.classList.add('drop-target');
+        });
+
+        ridersTbody.addEventListener('drop', (event) => {
+          if (!state.reorderMode || state.dragIndex < 0) return;
+          const row = event.target.closest('tr');
+          if (!row) return;
+          event.preventDefault();
+          const from = state.dragIndex;
+          state.dragIndex = -1;
+          moveRider(from, Number(row.dataset.index));
+        });
+
+        ridersTbody.addEventListener('dragend', () => {
+          state.dragIndex = -1;
+          ridersTbody.querySelectorAll('tr.dragging, tr.drop-target').forEach((r) => {
+            r.classList.remove('dragging', 'drop-target');
+          });
+        });
       }
 
       function attachEventListeners() {
@@ -1470,7 +1909,6 @@
           });
         }
 
-        // Handle Enter key in add rider form
         if (addRiderForm) {
           addRiderForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -1498,8 +1936,7 @@
             if (!row) {
               return;
             }
-            const riderId = row.dataset.riderId;
-            updateChangeState(riderId, target.dataset.field, target.value, row);
+            updateChangeState(row.dataset.riderId, target.dataset.field, target.value, row);
           };
 
           bulkTableBody.addEventListener('input', changeHandler);
@@ -1531,6 +1968,8 @@
             }
           });
         }
+
+        attachReorderListeners();
       }
 
       async function initialize() {

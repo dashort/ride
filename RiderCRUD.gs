@@ -84,21 +84,66 @@ function getRidersForPage() {
       return { success: false, message: 'Riders sheet not found', riders: [] };
     }
 
+    // Columns that have dedicated fields below (compared in normalized form).
+    const knownColumns = [
+      CONFIG.columns.riders.jpNumber, 'JP Number', 'ID',
+      CONFIG.columns.riders.payrollNumber,
+      CONFIG.columns.riders.name, 'Name',
+      CONFIG.columns.riders.phone,
+      CONFIG.columns.riders.email, 'Google Email', 'Email Address', 'E-mail',
+      CONFIG.columns.riders.status,
+      CONFIG.columns.riders.platoon,
+      CONFIG.columns.riders.partTime, 'Part Time Rider', 'Part-Time',
+      CONFIG.columns.riders.certification,
+      CONFIG.columns.riders.organization,
+      CONFIG.columns.riders.totalAssignments,
+      CONFIG.columns.riders.lastAssignmentDate
+    ].map(normalizeColumnName);
+
+    // Any other non-empty header in the sheet is exposed as an editable text field.
+    const extraColumnDefs = sheetData.headers
+      .map((h, index) => ({ name: String(h || '').trim(), index }))
+      .filter(def => def.name && knownColumns.indexOf(normalizeColumnName(def.name)) === -1);
+    const extraColumns = extraColumnDefs.map(def => def.name);
+
+    const timeZone = Session.getScriptTimeZone();
+    const toClientValue = (value) => {
+      if (value === null || value === undefined) return '';
+      if (Object.prototype.toString.call(value) === '[object Date]') {
+        return isNaN(value.getTime()) ? '' : Utilities.formatDate(value, timeZone, 'yyyy-MM-dd');
+      }
+      return String(value);
+    };
+
+    // Riders are returned in sheet row order so the page reflects the saved order.
     const riders = sheetData.data
-      .map(row => mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers))
+      .map(row => {
+        const r = mapRowToRiderObject(row, sheetData.columnMap, sheetData.headers);
+        const extras = {};
+        extraColumnDefs.forEach(def => {
+          extras[def.name] = toClientValue(row[def.index]);
+        });
+        r._extras = extras;
+        return r;
+      })
       .filter(r => r && (r.jpNumber || r.name))
       .map(r => ({
-        riderId: r.jpNumber || '',
-        name: r.name || '',
-        phone: r.phone || '',
-        email: r.email || '',
-        status: r.status || '',
-        platoon: r.platoon || '',
-        partTime: r.partTime || '',
-        certification: r.certification || ''
+        riderId: toClientValue(r.jpNumber),
+        name: toClientValue(r.name),
+        phone: toClientValue(r.phone),
+        email: toClientValue(r.email),
+        status: toClientValue(r.status),
+        platoon: toClientValue(r.platoon),
+        partTime: toClientValue(r.partTime),
+        certification: toClientValue(r.certification),
+        payrollNumber: toClientValue(r.payrollNumber),
+        organization: toClientValue(r.organization),
+        totalAssignments: toClientValue(r.totalAssignments),
+        lastAssignmentDate: toClientValue(r.lastAssignmentDate),
+        extras: r._extras
       }));
 
-    return { success: true, riders };
+    return { success: true, riders, extraColumns };
   } catch (error) {
     if (typeof logError === 'function') {
       logError('getRidersForPage', error);
@@ -460,6 +505,9 @@ function handleRiderOperation(action, data) {
       case 'bulkUpdate':
         return bulkUpdateRiders(data && data.updates ? data.updates : []);
 
+      case 'reorder':
+        return reorderRiders(data && data.orderedIds ? data.orderedIds : []);
+
       default:
         throw new Error(`Unknown rider operation: ${action}`);
     }
@@ -540,11 +588,10 @@ function addRider(riderData) {
   try {
     console.log('➕ Adding new rider:', JSON.stringify(riderData, null, 2));
     
-    // Validate required fields
+    // Validate required fields (phone is optional, matching the Add Rider form)
     const requiredFields = [
       CONFIG.columns.riders.jpNumber,
-      CONFIG.columns.riders.name,
-      CONFIG.columns.riders.phone
+      CONFIG.columns.riders.name
     ];
     
     for (const field of requiredFields) {
@@ -658,11 +705,24 @@ function updateRider(riderData) {
     console.log('📝 Updating rider:', JSON.stringify(riderData, null, 2));
     
     const riderIdField = CONFIG.columns.riders.jpNumber;
-  const riderId = riderData[riderIdField];
+    riderData = Object.assign({}, riderData);
 
-  if (!riderId) {
-    throw new Error(`Missing Rider ID (${riderIdField}) in update data`);
-  }
+    // When the Rider ID itself is being edited, the editor sends the old ID in
+    // _originalRiderId so we can still find the row.
+    const originalRiderId = riderData._originalRiderId;
+    delete riderData._originalRiderId;
+
+    const newRiderId = riderData[riderIdField];
+    const riderId = (originalRiderId !== undefined && String(originalRiderId).trim() !== '')
+      ? originalRiderId
+      : newRiderId;
+
+    if (!riderId) {
+      throw new Error(`Missing Rider ID (${riderIdField}) in update data`);
+    }
+    if (riderData.hasOwnProperty(riderIdField) && String(newRiderId || '').trim() === '') {
+      throw new Error('Rider ID cannot be blank');
+    }
 
     // Validate payroll number if provided
     if (riderData[CONFIG.columns.riders.payrollNumber]) {
@@ -696,7 +756,16 @@ function updateRider(riderData) {
     if (targetRowIndex === -1) {
       throw new Error(`Rider with ID "${riderId}" not found`);
     }
-    
+
+    // Prevent renaming a rider to an ID that another rider already uses
+    if (newRiderId !== undefined && String(newRiderId).trim() !== String(riderId).trim()) {
+      const duplicate = sheetData.data.some((row, i) =>
+        i !== targetRowIndex && String(row[riderIdIndex]).trim() === String(newRiderId).trim());
+      if (duplicate) {
+        throw new Error(`Rider ID "${newRiderId}" is already used by another rider`);
+      }
+    }
+
     // Normalize update data keys to handle header inconsistencies
     const normalizedData = {};
     Object.keys(riderData).forEach(key => {
@@ -719,25 +788,30 @@ function updateRider(riderData) {
       normalizedData['parttimerider'] = normalizedPartTime;
     }
 
-    // Create updated row array using normalized matching
-    const updatedRowArray = sheetData.headers.map((header, headerIndex) => {
-      const normalizedHeader = normalizeColumnName(header);
-
-      if (normalizedData.hasOwnProperty(normalizedHeader)) {
-        return normalizedData[normalizedHeader];
-      }
-
-      // Otherwise, preserve the existing value
-      return sheetData.data[targetRowIndex][headerIndex];
-    });
-    
     // Calculate actual sheet row number (data index + 2 for header and 0-based indexing)
     const sheetRowNumber = targetRowIndex + 2;
-    
-    // Update the row in the sheet
     const sheet = sheetData.sheet;
-    sheet.getRange(sheetRowNumber, 1, 1, updatedRowArray.length).setValues([updatedRowArray]);
-    SpreadsheetApp.flush(); // Ensure changes are written
+
+    // Only write the columns that were supplied, so formulas and other cells in
+    // the row are left untouched.
+    let cellsWritten = 0;
+    sheetData.headers.forEach((header, headerIndex) => {
+      const normalizedHeader = normalizeColumnName(header);
+      if (!normalizedHeader || !normalizedData.hasOwnProperty(normalizedHeader)) {
+        return;
+      }
+      const newValue = normalizedData[normalizedHeader];
+      const currentValue = sheetData.data[targetRowIndex][headerIndex];
+      if (String(newValue === null || newValue === undefined ? '' : newValue) ===
+          String(currentValue === null || currentValue === undefined ? '' : currentValue)) {
+        return;
+      }
+      sheet.getRange(sheetRowNumber, headerIndex + 1).setValue(newValue);
+      cellsWritten++;
+    });
+    if (cellsWritten > 0) {
+      SpreadsheetApp.flush(); // Ensure changes are written
+    }
     
     // Clear cache to refresh data
     dataCache.clear('sheet_' + CONFIG.sheets.riders);
@@ -749,7 +823,7 @@ function updateRider(riderData) {
     return {
       success: true,
       message: 'Rider updated successfully.',
-      riderId: riderId
+      riderId: newRiderId || riderId
     };
     
   } catch (error) {
@@ -838,6 +912,98 @@ function bulkUpdateRiders(updates) {
       updated: [],
       failures: []
     };
+  }
+}
+
+/**
+ * Reorders the rider rows on the Riders sheet to match the given list of Rider IDs.
+ * Rows are physically moved (sheet.moveRows), so formulas and formatting travel
+ * with each rider. Rows whose ID is not in the list (e.g. rows without an ID)
+ * keep their relative order after the listed riders.
+ * @param {Array<string>} orderedIds Rider IDs in the desired order.
+ * @return {{success: boolean, message: string, moved?: number}}
+ */
+function reorderRiders(orderedIds) {
+  const lock = LockService.getScriptLock();
+  let locked = false;
+  try {
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      return { success: false, message: 'No rider order was provided.' };
+    }
+
+    locked = lock.tryLock(20000);
+    if (!locked) {
+      return { success: false, message: 'Another update is in progress. Please try again in a moment.' };
+    }
+
+    const sheetData = getSheetData(CONFIG.sheets.riders, false);
+    if (!sheetData || !sheetData.data || sheetData.data.length === 0) {
+      throw new Error('No rider data found in sheet');
+    }
+
+    const idIndex = getColumnIndex(sheetData.columnMap, CONFIG.columns.riders.jpNumber);
+    if (idIndex === undefined) {
+      throw new Error(`Column "${CONFIG.columns.riders.jpNumber}" not found in Riders sheet`);
+    }
+
+    // Map each requested ID to its current data-row index.
+    const used = {};
+    const requested = [];
+    const seen = {};
+    for (const rawId of orderedIds) {
+      const id = String(rawId === null || rawId === undefined ? '' : rawId).trim();
+      if (!id) continue;
+      if (seen[id]) {
+        throw new Error(`Rider ID "${id}" appears more than once in the new order`);
+      }
+      seen[id] = true;
+      const rowIndex = sheetData.data.findIndex((row, i) =>
+        !used[i] && String(row[idIndex]).trim() === id);
+      if (rowIndex === -1) {
+        throw new Error(`Rider ID "${id}" was not found. The list may be out of date; reload the page and try again.`);
+      }
+      used[rowIndex] = true;
+      requested.push(rowIndex);
+    }
+
+    // Final order: requested riders first, then every other row in its current order.
+    const target = requested.slice();
+    for (let i = 0; i < sheetData.data.length; i++) {
+      if (!used[i]) target.push(i);
+    }
+
+    // Move rows one at a time; `current` tracks where each original row now sits.
+    const sheet = sheetData.sheet;
+    const current = sheetData.data.map((_, i) => i);
+    let moved = 0;
+    for (let pos = 0; pos < target.length; pos++) {
+      const from = current.indexOf(target[pos]);
+      if (from === pos) continue;
+      // Sheet rows: header is row 1, so data position p lives on row p + 2.
+      sheet.moveRows(sheet.getRange(from + 2, 1), pos + 2);
+      current.splice(from, 1);
+      current.splice(pos, 0, target[pos]);
+      moved++;
+    }
+
+    SpreadsheetApp.flush();
+    dataCache.clear('sheet_' + CONFIG.sheets.riders);
+
+    const message = moved === 0 ? 'Rider order is unchanged.' : 'Rider order saved.';
+    if (moved > 0 && typeof logActivity === 'function') {
+      logActivity(`Riders reordered (${moved} row move${moved === 1 ? '' : 's'})`);
+    }
+    return { success: true, message, moved };
+  } catch (error) {
+    console.error('❌ Error reordering riders:', error);
+    if (typeof logError === 'function') {
+      logError('Error in reorderRiders', error);
+    }
+    return { success: false, message: `Failed to save rider order: ${error.message}` };
+  } finally {
+    if (locked) {
+      lock.releaseLock();
+    }
   }
 }
 

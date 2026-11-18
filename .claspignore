@@ -1,0 +1,14 @@
+# Keep clasp from uploading the nested second clone or tooling files
+ride/**
+**/node_modules/**
+.git/**
+
+# In git but not in the live Apps Script project (as of 2026-11-18 pull) - keep them out
+README.md
+DASHBOARD_STATS_TEST_SCRIPT.gs
+PerformanceOptimizationVerification.gs
+debug_reports_fix.gs
+performance_optimizations.gs
+temprun.gs
+temputils.gs
+test_reports_fix.gs
