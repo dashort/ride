@@ -95,7 +95,7 @@ function getRidersForPage() {
       CONFIG.columns.riders.platoon,
       CONFIG.columns.riders.partTime, 'Part Time Rider', 'Part-Time',
       CONFIG.columns.riders.certification,
-      CONFIG.columns.riders.organization,
+      CONFIG.columns.riders.organization, // known but intentionally not shown/edited on the Riders page
       CONFIG.columns.riders.totalAssignments,
       CONFIG.columns.riders.lastAssignmentDate
     ].map(normalizeColumnName);
@@ -137,7 +137,6 @@ function getRidersForPage() {
         partTime: toClientValue(r.partTime),
         certification: toClientValue(r.certification),
         payrollNumber: toClientValue(r.payrollNumber),
-        organization: toClientValue(r.organization),
         totalAssignments: toClientValue(r.totalAssignments),
         lastAssignmentDate: toClientValue(r.lastAssignmentDate),
         extras: r._extras

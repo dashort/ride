@@ -123,10 +123,6 @@
       </select>
     </label>
 
-    <label>Organization
-      <input type="text" id="organization">
-    </label>
-
     <button onclick="saveRider()">Save</button>
     <div id="message"></div>
   </div>
@@ -532,7 +528,6 @@ function handleRiderResponse(response) {
       }
       window.__originalRiderId = String(rider['Rider ID'] || rider.riderId || rider.jpNumber || '');
       document.getElementById('riderId').value = window.__originalRiderId;
-      document.getElementById('organization').value = rider['Organization'] || rider.organization || '';
       document.getElementById('fullName').value = rider['Full Name'] || rider.name || '';
       document.getElementById('phone').value = rider['Phone Number'] || rider.phone || '';
       document.getElementById('email').value = rider['Email'] || rider.email || '';
@@ -556,7 +551,6 @@ function handleRiderResponse(response) {
         'Part-Time Rider': document.getElementById('partTime').value,
         'Payroll Number': document.getElementById('payrollNumber').value,
         'Platoon': document.getElementById('platoon').value,
-        'Organization': document.getElementById('organization').value,
         // Lets the server find the row even if the Rider ID was changed above.
         '_originalRiderId': window.__originalRiderId || document.getElementById('riderId').value
       };

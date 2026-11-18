@@ -903,13 +903,6 @@
               </select>
             </div>
 
-            <div>
-              <label for="newRiderOrganization" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">
-                Organization
-              </label>
-              <input type="text" id="newRiderOrganization" class="modal-input">
-            </div>
-
             <div id="newRiderExtraFields" style="display: grid; gap: 1.25rem;"></div>
           </div>
         </form>
@@ -978,8 +971,7 @@
         platoon: { label: 'Platoon', sheetKey: 'Platoon', prop: 'platoon', type: 'select', optionsKey: 'platoonOptions', allowEmpty: true },
         partTime: { label: 'Part-Time', sheetKey: 'Part-Time Rider', prop: 'partTime', type: 'select', optionsKey: 'partTimeOptions', allowEmpty: true },
         payrollNumber: { label: 'Payroll #', sheetKey: 'Payroll Number', prop: 'payrollNumber', type: 'text', placeholder: '5–8 digits' },
-        certification: { label: 'Certification', sheetKey: 'Certification', prop: 'certification', type: 'select', optionsKey: 'certificationOptions', allowEmpty: true },
-        organization: { label: 'Organization', sheetKey: 'Organization', prop: 'organization', type: 'text', placeholder: 'Organization' }
+        certification: { label: 'Certification', sheetKey: 'Certification', prop: 'certification', type: 'select', optionsKey: 'certificationOptions', allowEmpty: true }
       };
 
       let fieldConfig = Object.assign({}, baseFieldConfig);
@@ -1243,7 +1235,6 @@
             partTime: asText(source.partTime),
             certification: asText(source.certification),
             payrollNumber: asText(source.payrollNumber),
-            organization: asText(source.organization),
             totalAssignments: asText(source.totalAssignments),
             lastAssignmentDate: asText(source.lastAssignmentDate),
             extras
@@ -1397,8 +1388,7 @@
           'Platoon': inputValue('newRiderPlatoon'),
           'Part-Time Rider': inputValue('newRiderPartTime'),
           'Payroll Number': inputValue('newRiderPayroll'),
-          'Certification': inputValue('newRiderCertification'),
-          'Organization': inputValue('newRiderOrganization')
+          'Certification': inputValue('newRiderCertification')
         };
 
         if (newRiderExtraFields) {
