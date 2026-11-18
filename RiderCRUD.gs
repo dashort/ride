@@ -102,13 +102,13 @@ function getRidersForPage() {
 
     // Any other non-empty header in the sheet is exposed as an editable text field.
     // Sheet columns that should never appear on the Riders page.
-    const hiddenColumnPatterns = [/mapped/i];
+    const hiddenColumns = ['Auth Status'].map(normalizeColumnName);
 
     const extraColumnDefs = sheetData.headers
       .map((h, index) => ({ name: String(h || '').trim(), index }))
       .filter(def => def.name &&
         knownColumns.indexOf(normalizeColumnName(def.name)) === -1 &&
-        !hiddenColumnPatterns.some(pattern => pattern.test(def.name)));
+        hiddenColumns.indexOf(normalizeColumnName(def.name)) === -1);
     const extraColumns = extraColumnDefs.map(def => def.name);
 
     const timeZone = Session.getScriptTimeZone();
