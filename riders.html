@@ -501,6 +501,10 @@
       font-size: 0.9rem;
     }
 
+    td.nowrap {
+      white-space: nowrap;
+    }
+
     .order-cell {
       white-space: nowrap;
       color: #64748b;
@@ -1167,6 +1171,9 @@
             cell.appendChild(createStatusPill(value));
           } else {
             cell.textContent = value || '—';
+          }
+          if (config.type === 'tel') {
+            cell.classList.add('nowrap');
           }
           row.appendChild(cell);
         });
