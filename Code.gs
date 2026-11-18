@@ -5446,23 +5446,23 @@ function buildPublicAssignmentSummaryData(startDate) {
   const ridersData = getRidersData();
 
   const excludedNames = ['nopd rider', 'nopd rider 2'];
-  const riderMap = {};
+  // Keyed by lower-cased rider name (that is how requests list assigned riders).
+  // A Map keeps the Riders sheet row order, so the report follows the order set
+  // on the Riders page, and riders without a Payroll Number stay separate.
+  const riderHours = new Map();
   ridersData.data.forEach(row => {
-    const name = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+    const rawName = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.name);
+    const name = rawName ? String(rawName).trim() : '';
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (excludedNames.includes(key) || riderHours.has(key)) return;
     const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
-    if (name && !excludedNames.includes(name.trim().toLowerCase())) {
-      riderMap[name.trim().toLowerCase()] = { name: name.trim(), id: payroll || '' };
-    }
-  });
-
-  const riderHours = {};
-  Object.values(riderMap).forEach(r => {
-    riderHours[r.id] = {
-      name: r.name,
-      id: r.id,
+    riderHours.set(key, {
+      name: name,
+      id: payroll === null || payroll === undefined ? '' : String(payroll).trim(),
       daily: Array.from({ length: daysInMonth }, () => []),
       total: 0
-    };
+    });
   });
 
   const normalizeTimeValue = value => {
@@ -5514,19 +5514,19 @@ function buildPublicAssignmentSummaryData(startDate) {
       .map(n => n.trim())
       .filter(Boolean)
       .forEach(name => {
-        const rider = riderMap[name.toLowerCase()];
-        if (rider && riderHours[rider.id]) {
-          riderHours[rider.id].daily[day - 1].push({
+        const rider = riderHours.get(name.toLowerCase());
+        if (rider) {
+          rider.daily[day - 1].push({
             start: normalizedStart,
             end: normalizedEnd,
             hours: hoursToAdd
           });
-          riderHours[rider.id].total += hoursToAdd;
+          rider.total += hoursToAdd;
         }
       });
   });
 
-  const riders = Object.values(riderHours)
+  const riders = Array.from(riderHours.values())
     .map(rider => {
       const dailyEntries = rider.daily.map(entries => entries.slice());
       const totalHours = dailyEntries.reduce((sum, entries) => {
