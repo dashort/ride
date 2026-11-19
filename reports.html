@@ -1163,32 +1163,53 @@ function updateTablesSafe(tables) {
                 return;
             }
 
-            showLoading('Exporting assignment summary...');
+            showLoading('Building Detail Schedule PDF for the selected month...');
 
             if (typeof google !== 'undefined' && google.script && google.script.run) {
                 google.script.run
                     .withSuccessHandler(function(result) {
                         hideLoading();
-                        if (result && result.success) {
-                            var blob = new Blob([result.csvContent], { type: 'text/csv' });
+                        if (!result || !result.success) {
+                            showError(result && result.message ? result.message : 'Export failed');
+                            return;
+                        }
+                        if (result.pdfBase64) {
+                            var binary = atob(result.pdfBase64);
+                            var bytes = new Uint8Array(binary.length);
+                            for (var i = 0; i < binary.length; i++) {
+                                bytes[i] = binary.charCodeAt(i);
+                            }
+                            var blob = new Blob([bytes], { type: 'application/pdf' });
                             var url = URL.createObjectURL(blob);
                             var a = document.createElement('a');
                             a.href = url;
-                            a.download = result.filename || 'public_assignment_summary.csv';
+                            a.download = result.filename || 'Public Assignment Summary.pdf';
                             document.body.appendChild(a);
                             a.click();
                             document.body.removeChild(a);
-                            URL.revokeObjectURL(url);
-                            showNotification('Assignment summary exported', '#2ecc71');
+                            setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+                            showNotification('Public Assignment Summary PDF downloaded (' + result.riderCount + ' riders)', '#2ecc71');
+                        } else if (result.html) {
+                            // PDF conversion unavailable: open a printable copy instead (use Save as PDF).
+                            var printWindow = window.open('', '_blank');
+                            if (printWindow) {
+                                printWindow.document.open();
+                                printWindow.document.write(result.html);
+                                printWindow.document.close();
+                                printWindow.focus();
+                                printWindow.print();
+                            } else {
+                                showError('Allow pop-ups for this site to print the summary');
+                            }
                         } else {
-                            showError(result && result.message ? result.message : 'Export failed');
+                            showError('Export failed');
                         }
                     })
                     .withFailureHandler(function(error) {
                         hideLoading();
                         handleError(error);
                     })
-                    .exportPublicAssignmentSummaryCSV(startDate);
+                    .exportPublicAssignmentSummaryPDF(startDate);
             } else {
                 hideLoading();
                 showError('Feature requires Google Apps Script connection');

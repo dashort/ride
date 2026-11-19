@@ -5432,6 +5432,36 @@ function createPublicAssignmentSummarySheet(startDate) {
   }
 }
 
+/**
+ * Converts a time value (Sheets time/Date, "HH:MM", "h:mm AM/PM", "HHMM" or a
+ * fraction of a day) to minutes after midnight. Returns null if it can't be read.
+ * @param {*} value
+ * @return {?number}
+ */
+function timeValueToMinutes(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value.getHours() * 60 + value.getMinutes();
+  }
+  if (typeof value === 'number') {
+    if (value >= 0 && value < 1) return Math.round(value * 24 * 60);
+    return null;
+  }
+  const text = String(value).trim().toUpperCase();
+  let match = text.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/);
+  if (!match) {
+    match = text.match(/^(\d{1,2})(\d{2})\s*(AM|PM)?$/); // e.g. 1630 or 800
+  }
+  if (!match) return null;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const ampm = match[3];
+  if (ampm === 'PM' && hours < 12) hours += 12;
+  if (ampm === 'AM' && hours === 12) hours = 0;
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
 function buildPublicAssignmentSummaryData(startDate) {
   const start = parseDateString(startDate) || new Date();
   const year = start.getFullYear();
@@ -5457,9 +5487,11 @@ function buildPublicAssignmentSummaryData(startDate) {
     const key = name.toLowerCase();
     if (excludedNames.includes(key) || riderHours.has(key)) return;
     const payroll = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.payrollNumber);
+    const jpNumber = getColumnValue(row, ridersData.columnMap, CONFIG.columns.riders.jpNumber);
     riderHours.set(key, {
       name: name,
       id: payroll === null || payroll === undefined ? '' : String(payroll).trim(),
+      jpNumber: jpNumber === null || jpNumber === undefined ? '' : String(jpNumber).trim(),
       daily: Array.from({ length: daysInMonth }, () => []),
       total: 0
     });
@@ -5494,10 +5526,16 @@ function buildPublicAssignmentSummaryData(startDate) {
 
     let hoursToAdd = 0;
     if (startTime && endTime) {
-      const startT = startTime instanceof Date ? startTime : new Date(startTime);
-      const endT = endTime instanceof Date ? endTime : new Date(endTime);
-      if (!isNaN(startT.getTime()) && !isNaN(endT.getTime())) {
-        hoursToAdd = Math.max(0, (endT.getTime() - startT.getTime()) / (1000 * 60 * 60));
+      const startMinutes = timeValueToMinutes(startTime);
+      const endMinutes = timeValueToMinutes(endTime);
+      if (startMinutes !== null && endMinutes !== null) {
+        let diffMinutes = endMinutes - startMinutes;
+        // An end time earlier than the start time means the escort ran past midnight
+        // (e.g. 2330-0000), so count it into the next day.
+        if (diffMinutes < 0) {
+          diffMinutes += 24 * 60;
+        }
+        hoursToAdd = diffMinutes / 60;
       }
     }
     if (hoursToAdd <= 0) {
@@ -5536,6 +5574,7 @@ function buildPublicAssignmentSummaryData(startDate) {
       return {
         name: rider.name,
         id: rider.id,
+        jpNumber: rider.jpNumber,
         dailyEntries: dailyEntries,
         totalHours: roundToQuarterHour(totalHours)
       };
